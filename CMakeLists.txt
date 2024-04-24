@@ -10,10 +10,14 @@ qt_standard_project_setup()
 
 qt_add_executable(AutoCarver
         src/Core/EntryPoint.cpp
-#        geometryengine.cpp geometryengine.h
-#        main.cpp
-#        mainwidget.cpp mainwidget.h
-#        camera.cpp camera.h
+        src/Renderer/Camera.h
+        src/Renderer/Camera.cpp
+        src/Widgets/SceneViewWidget.h
+        src/Widgets/SceneViewWidget.cpp
+        src/Renderer/VertexArray.h
+        src/Renderer/VertexArray.cpp
+        src/Widgets/CameraController.h
+        src/Widgets/CameraController.cpp
         )
 
 set_target_properties(AutoCarver PROPERTIES
@@ -30,17 +34,17 @@ target_link_libraries(AutoCarver PRIVATE
         )
 
 # Resources:
-#set(shaders_resource_files
-#        "fshader.glsl"
-#        "vshader.glsl"
-#        )
+set(shaders_resource_files
+        "res/fshader.glsl"
+        "res/vshader.glsl"
+        )
 
-#qt6_add_resources(AutoCarver "shaders"
-#        PREFIX
-#        "/"
-#        FILES
-#        ${shaders_resource_files}
-#        )
+qt6_add_resources(AutoCarver "res/shaders"
+        PREFIX
+        "/"
+        FILES
+        ${shaders_resource_files}
+        )
 
 #set(textures_resource_files
 #        "cube.png"
