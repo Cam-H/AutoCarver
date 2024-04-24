@@ -49,7 +49,7 @@ void CameraController::mouseMoveEvent(QMouseEvent *e) {
             QCursor::setPos(mapToGlobal(rect().center()));
 
             camera->yaw(delta.x());
-            camera->pitch(delta.y());
+            camera->pitch(delta.y(), 89);
         }
     }
 }

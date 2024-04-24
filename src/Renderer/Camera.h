@@ -23,8 +23,8 @@ public:
     void strafe(float amount);
     void climb(float amount);
 
-    void yaw(float degrees);
-    void pitch(float degrees);
+    void yaw(float degrees, float limit = -1);
+    void pitch(float degrees, float limit = -1);
 
     void setFOV(float fov);
     void setAspectRatio(float aspectRatio);
@@ -37,6 +37,11 @@ public:
 signals:
     void poseChanged();
 private:
+    void recalculateAxes();
+
+    static inline void clamp(float *value, float limit);
+    static inline void clamp360(float *value);
+
     void invalidate();
 private:
 
