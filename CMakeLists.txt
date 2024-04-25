@@ -4,20 +4,24 @@
 cmake_minimum_required(VERSION 3.16)
 project(AutoCarver LANGUAGES CXX)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui OpenGL OpenGLWidgets Widgets)
+find_package(Qt6 REQUIRED COMPONENTS 3DCore 3DExtras 3DInput 3DRender Core Gui OpenGL OpenGLWidgets Widgets)
 
 qt_standard_project_setup()
 
 qt_add_executable(AutoCarver
-        src/Core/EntryPoint.cpp
-        src/Renderer/Camera.h
-        src/Renderer/Camera.cpp
-        src/Widgets/SceneViewWidget.h
-        src/Widgets/SceneViewWidget.cpp
-        src/Renderer/VertexArray.h
-        src/Renderer/VertexArray.cpp
-        src/Widgets/CameraController.h
-        src/Widgets/CameraController.cpp
+        src/core/EntryPoint.cpp
+        src/widgets/SceneViewWidget.h
+        src/widgets/SceneViewWidget.cpp
+        src/renderer/VertexArray.h
+        src/renderer/VertexArray.cpp
+        src/renderer/MonitorCameraController.h
+        src/renderer/MonitorCameraController.cpp
+        src/geometry/Tesselation.h
+        src/geometry/Tesselation.cpp
+        src/fileIO/FileHandler.h
+        src/fileIO/FileHandler.cpp
+        src/fileIO/DataHandler.h
+        src/fileIO/DataHandler.cpp
         )
 
 set_target_properties(AutoCarver PROPERTIES
@@ -26,6 +30,10 @@ set_target_properties(AutoCarver PROPERTIES
         )
 
 target_link_libraries(AutoCarver PRIVATE
+        Qt::3DCore
+        Qt::3DExtras
+        Qt::3DInput
+        Qt::3DRender
         Qt6::Core
         Qt6::Gui
         Qt6::OpenGL
