@@ -23,27 +23,41 @@ void GeometryBuilder::add(Tesselation *sink, Qt3DCore::QGeometry *geometry)
     for (auto *attrib : geometry->attributes()){
         if (attrib->attributeType() == Qt3DCore::QAttribute::VertexAttribute) {
             if (attrib->name() == "vertexPosition") {
-                auto buffer = (float *)attrib->buffer()->data().data();
 
+                auto buffer = reinterpret_cast<const float*>(attrib->buffer()->data().constData());
+
+                uint32_t stride = attrib->byteStride() / sizeof(float);
                 for (uint32_t i = 0; i < attrib->count(); i++) {
-                    uint32_t idx = (attrib->byteOffset() + attrib->byteStride() * i) / 4;
-                    indexMap.push_back(GeometryBuilder::addVertex(vertices, vertexMap, buffer[idx], buffer[idx + 1], buffer[idx + 2]));
-                    buffer = (float *)attrib->buffer()->data().data();
+                    uint32_t idx = GeometryBuilder::addVertex(vertices, vertexMap, *buffer, *(buffer + 1), *(buffer + 2));
+                    indexMap.push_back(idx);
+                    buffer += stride;
                 }
             }
 //            else if (attrib->name() == "vertexNormal") {
 //
 //            }
         } else if (attrib->attributeType() == Qt3DCore::QAttribute::IndexAttribute) {
+
             switch (attrib->vertexBaseType()){
+//                case Qt3DCore::QAttribute::UnsignedByte:
+//                    break;
                 case Qt3DCore::QAttribute::UnsignedShort:
                 {
-                    auto buffer = (uint16_t *) attrib->buffer()->data().data();
+                    auto buffer = reinterpret_cast<const uint16_t*>(attrib->buffer()->data().constData());
                     for (uint32_t i = 0; i < attrib->count(); i += 3) {
-                        triangles.emplace_back(indexMap[buffer[i]], indexMap[buffer[i + 1]], indexMap[buffer[i + 2]]);
-                        buffer = (uint16_t *) attrib->buffer()->data().data();
+                        triangles.emplace_back(indexMap[*buffer], indexMap[*(buffer + 1)], indexMap[*(buffer + 2)]);
+                        buffer += 3;
                     }
                 }
+                    break;
+                case Qt3DCore::QAttribute::UnsignedInt:
+                    {
+                        auto buffer = reinterpret_cast<const uint32_t*>(attrib->buffer()->data().constData());
+                        for (uint32_t i = 0; i < attrib->count(); i += 3) {
+                            triangles.emplace_back(indexMap[*buffer], indexMap[*(buffer + 1)], indexMap[*(buffer + 2)]);
+                            buffer += 3;
+                        }
+                    }
                     break;
                 default:
                     std::cout << "Failure! Unhandled condition when parsing geometry\n";
@@ -160,16 +174,17 @@ Qt3DCore::QGeometry* GeometryBuilder::convert(const std::vector<Triangle> &trian
 {
     auto geometry = new Qt3DCore::QGeometry();
 
-    uint16_t vertexCount = (*attributes.begin()).size();
-    uint16_t stride = 3 * attributes.size();
+    uint32_t vertexCount = (*(attributes.begin())).size();
+    uint32_t stride = 3 * attributes.size();// TODO - Low priority to support texture coordinate conversions
+    size_t size = stride * vertexCount * sizeof(float);
 
     // Generate buffer for vertices
-    // TODO - Low priority to support texture coordinate conversions
     QByteArray vertexData;
-    vertexData.resize(stride * vertexCount * sizeof(float));
-    auto vertexPtr = reinterpret_cast<float*>(vertexData.data());
+    vertexData.resize(size);
+
+    auto vertexPtr = reinterpret_cast<float*>(vertexData.begin());
     for (uint32_t i = 0; i < vertexCount; i++) {
-        for (auto attribute : attributes) {
+        for (const auto& attribute : attributes) {
             *vertexPtr++ = attribute[i].x();
             *vertexPtr++ = attribute[i].y();
             *vertexPtr++ = attribute[i].z();
@@ -195,13 +210,16 @@ Qt3DCore::QGeometry* GeometryBuilder::convert(const std::vector<Triangle> &trian
 
 
     // Generate buffer for indices
+    // TODO support uint16_t simultaneously
+    size = 3 * triangles.size() * sizeof(uint32_t);
     QByteArray indexData;
-    indexData.resize(3 * triangles.size() * sizeof(uint16_t));
-    auto indexPtr = reinterpret_cast<uint16_t*>(indexData.data());
+    indexData.resize(size);
+
+    auto indexPtr = reinterpret_cast<uint32_t*>(indexData.data());
     for (const Triangle &tri : triangles) {
-        *indexPtr++ = (uint16_t)tri.m_I0;
-        *indexPtr++ = (uint16_t)tri.m_I1;
-        *indexPtr++ = (uint16_t)tri.m_I2;
+        *indexPtr++ = tri.m_I0;//(uint16_t)
+        *indexPtr++ = tri.m_I1;//(uint16_t)
+        *indexPtr++ = tri.m_I2;//(uint16_t)
     }
     auto indexBuffer = new Qt3DCore::QBuffer(geometry);
     indexBuffer->setData(indexData);
@@ -209,7 +227,7 @@ Qt3DCore::QGeometry* GeometryBuilder::convert(const std::vector<Triangle> &trian
     // Prepare index attributes
     auto indexAttribute = new Qt3DCore::QAttribute(geometry);
     indexAttribute->setAttributeType(Qt3DCore::QAttribute::IndexAttribute);
-    indexAttribute->setVertexBaseType(Qt3DCore::QAttribute::VertexBaseType::UnsignedShort);
+    indexAttribute->setVertexBaseType(Qt3DCore::QAttribute::VertexBaseType::UnsignedInt);
     indexAttribute->setBuffer(indexBuffer);
     indexAttribute->setCount(3 * triangles.size());
 

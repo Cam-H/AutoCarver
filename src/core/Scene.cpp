@@ -47,13 +47,14 @@ Scene::Scene(Qt3DCore::QEntity *rootEntity)
     }
 
     Qt3DCore::QTransform *bunnyTransform = new Qt3DCore::QTransform();
-    bunnyTransform->setTranslation(QVector3D(-10.0f, -4.0f, 0.0f));
+    bunnyTransform->setTranslation(QVector3D(-10.0f, -4.0f, -5.0f));
     auto bunnyMaterial = new Qt3DExtras::QPerVertexColorMaterial();
 //    bunnyMaterial->setDiffuse(QColor(QRgb(0xa69929)));
 
     Qt3DCore::QEntity *m_BunnyEntity = new Qt3DCore::QEntity(rootEntity);
     m_BunnyMesh = new Qt3DRender::QMesh();
-    m_BunnyMesh->setSource(QUrl::fromLocalFile("/home/cameronh/CLionProjects/AutoCarver/res/icosphere.obj"));
+    m_BunnyMesh->setSource(QUrl::fromLocalFile("/home/cameronh/CLionProjects/AutoCarver/res/icosphere.stl"));
+//    bunnyTransform->setTranslation(QVector3D(-10.0f, -4.0f, -400.0f));
 
     good = false;
     QObject::connect(m_BunnyMesh, &Qt3DRender::QMesh::statusChanged, this, [this](Qt3DRender::QMesh::Status status) {
@@ -67,8 +68,8 @@ Scene::Scene(Qt3DCore::QEntity *rootEntity)
             auto colors = std::vector<QVector3D>(m_tessel.getTriangleCount());
             for (auto & color : colors) {
                 color = {QRandomGenerator::global()->bounded(100) / 100.0f
-                             , QRandomGenerator::global()->bounded(100) / 100.0f
-                             , QRandomGenerator::global()->bounded(100) / 100.0f
+                        , QRandomGenerator::global()->bounded(100) / 100.0f
+                        , QRandomGenerator::global()->bounded(100) / 100.0f
                 };
             }
 
@@ -82,19 +83,28 @@ Scene::Scene(Qt3DCore::QEntity *rootEntity)
     m_BunnyEntity->addComponent(bunnyMaterial);
     m_BunnyEntity->addComponent(bunnyTransform);
 
-//    QObject::connect(m_frameAction, &Qt3DLogic::QFrameAction::triggered, this, [this] (float dt) {
-//        static float f = 0;
-//        if (good) {
-//            for (auto *attrib : m_BunnyMesh->geometry()->attributes()){
-////                std::cout << "Write: " << attrib->name().toStdString() << " | " << attrib->buffer() << " " << f << "\n";
-//                if (attrib->name() == "vertexPosition") {
-//                    auto buffer = attrib->buffer();
-//                    buffer->updateData(0, QByteArray(reinterpret_cast<const char*>(&f), sizeof(f)));
-//                    f+=0.05f;
-//                }
+    QObject::connect(m_frameAction, &Qt3DLogic::QFrameAction::triggered, this, [this] (float dt) {
+        static int c = 0;
+        if (good) {
+//            if (c++ < 100) {
+//                return;
 //            }
-//        }
-//    });
+//
+//            auto colors = std::vector<QVector3D>(m_tessel.getTriangleCount());
+//            for (auto & color : colors) {
+//                color = {QRandomGenerator::global()->bounded(100) / 100.0f
+//                        , QRandomGenerator::global()->bounded(100) / 100.0f
+//                        , QRandomGenerator::global()->bounded(100) / 100.0f
+//                };
+//            }
+//
+//            Qt3DCore::QGeometry *geo = GeometryBuilder::convert(m_tessel, colors);
+//            geo->setParent(m_BunnyMesh);
+//            m_BunnyMesh->setGeometry(geo);
+
+            c = 0;
+        }
+    });
 
     m_BunnyEntity->addComponent(m_frameAction);
 
