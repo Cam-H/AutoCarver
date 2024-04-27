@@ -15,7 +15,6 @@
 #include <QAttribute>
 #include <QUrl>
 #include <QObject>
-#include <QVector3D>
 #include <iostream>
 #include <vector>
 
@@ -53,14 +52,14 @@ Scene::Scene(Qt3DCore::QEntity *rootEntity)
 
     Qt3DCore::QEntity *m_BunnyEntity = new Qt3DCore::QEntity(rootEntity);
     m_BunnyMesh = new Qt3DRender::QMesh();
-    m_BunnyMesh->setSource(QUrl::fromLocalFile("/home/cameronh/CLionProjects/AutoCarver/res/icosphere.stl"));
+    m_BunnyMesh->setSource(QUrl::fromLocalFile("/home/cameronh/CLionProjects/AutoCarver/res/bunny.obj"));
 //    bunnyTransform->setTranslation(QVector3D(-10.0f, -4.0f, -400.0f));
 
     good = false;
     QObject::connect(m_BunnyMesh, &Qt3DRender::QMesh::statusChanged, this, [this](Qt3DRender::QMesh::Status status) {
         std::cout << status << "\n";
         if (status == 2){
-            good = true;
+//            good = true;
 
             m_tessel = Tesselation();
             GeometryBuilder::add(&m_tessel, m_BunnyMesh->geometry());
@@ -83,6 +82,14 @@ Scene::Scene(Qt3DCore::QEntity *rootEntity)
     m_BunnyEntity->addComponent(bunnyMaterial);
     m_BunnyEntity->addComponent(bunnyTransform);
 
+    m_set = std::vector<QVector3D>(100);
+    for (auto &color : m_set) {
+        color = {QRandomGenerator::global()->bounded(100) / 100.0f
+                , QRandomGenerator::global()->bounded(100) / 100.0f
+                , QRandomGenerator::global()->bounded(100) / 100.0f
+        };
+    }
+
     QObject::connect(m_frameAction, &Qt3DLogic::QFrameAction::triggered, this, [this] (float dt) {
         static int c = 0;
         if (good) {
@@ -90,18 +97,17 @@ Scene::Scene(Qt3DCore::QEntity *rootEntity)
 //                return;
 //            }
 //
-//            auto colors = std::vector<QVector3D>(m_tessel.getTriangleCount());
-//            for (auto & color : colors) {
-//                color = {QRandomGenerator::global()->bounded(100) / 100.0f
-//                        , QRandomGenerator::global()->bounded(100) / 100.0f
-//                        , QRandomGenerator::global()->bounded(100) / 100.0f
-//                };
-//            }
-//
-//            Qt3DCore::QGeometry *geo = GeometryBuilder::convert(m_tessel, colors);
-//            geo->setParent(m_BunnyMesh);
-//            m_BunnyMesh->setGeometry(geo);
+            auto colors = std::vector<QVector3D>(m_tessel.getTriangleCount());
+            auto res = m_tessel.horizon(m_apex.normalized());
+            for (uint32_t i = 0; i < colors.size(); i++) {
+                colors[i] = m_set[res[i]];
+            }
 
+            Qt3DCore::QGeometry *geo = GeometryBuilder::convert(m_tessel, colors);
+            geo->setParent(m_BunnyMesh);
+            m_BunnyMesh->setGeometry(geo);
+
+            good = false;
             c = 0;
         }
     });
@@ -112,4 +118,22 @@ Scene::Scene(Qt3DCore::QEntity *rootEntity)
 
 Scene::~Scene()
 {
+}
+
+void Scene::apexX(int value)
+{
+    m_apex.setX(value != 0 ? value : 1);
+    good = true;
+}
+
+void Scene::apexY(int value)
+{
+    m_apex.setY(value);
+    good = true;
+}
+
+void Scene::apexZ(int value)
+{
+    m_apex.setZ(value);
+    good = true;
 }

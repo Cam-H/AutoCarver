@@ -6,6 +6,7 @@
 #define AUTOCARVER_SCENE_H
 
 #include <QtCore/QObject>
+#include <QVector3D>
 
 #include <Qt3DCore/QEntity>
 #include <Qt3DCore/QTransform>
@@ -15,6 +16,7 @@
 #include <Qt3DLogic/QFrameAction>
 
 #include "../geometry/Tesselation.h"
+#include <vector>
 
 class Scene : public QObject
 {
@@ -24,12 +26,19 @@ public:
     explicit Scene(Qt3DCore::QEntity *rootEntity);
     ~Scene();
 
+
 public slots:
+    void apexX(int value);
+    void apexY(int value);
+    void apexZ(int value);
 
 private:
     Qt3DCore::QEntity *m_rootEntity;
     Qt3DRender::QMesh *m_BunnyMesh;
     Tesselation m_tessel;
+
+    std::vector<QVector3D> m_set;
+    QVector3D m_apex;
     bool good;
 
     Qt3DLogic::QFrameAction *m_frameAction;

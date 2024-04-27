@@ -159,9 +159,9 @@ void GeometryBuilder::expand(const Tesselation &tessel, std::vector<QVector3D> &
         vertices.push_back(tessel.getVertices()[tri.m_I1]);
         vertices.push_back(tessel.getVertices()[tri.m_I2]);
 
-        normals.push_back(tessel.getNormals()[tri.m_I0]);
-        normals.push_back(tessel.getNormals()[tri.m_I1]);
-        normals.push_back(tessel.getNormals()[tri.m_I2]);
+        normals.push_back(tessel.getVertexNormals()[tri.m_I0]);
+        normals.push_back(tessel.getVertexNormals()[tri.m_I1]);
+        normals.push_back(tessel.getVertexNormals()[tri.m_I2]);
 
         triangles.emplace_back(idx, idx + 1, idx + 2);
         idx += 3;

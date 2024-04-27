@@ -3,6 +3,7 @@
 
 #include <QSurfaceFormat>
 #include <QLabel>
+#include <QSlider>
 
 #include <QGuiApplication>
 
@@ -93,42 +94,27 @@ int main(int argc, char *argv[]) {
     view->setRootEntity(rootEntity);
 
     // Create control widgets
-    QCommandLinkButton *info = new QCommandLinkButton();
-    info->setText(QStringLiteral("Qt3D ready-made meshes"));
-    info->setDescription(QString::fromLatin1("Qt3D provides several ready-made meshes, like torus, cylinder, cone, "
-                                             "cube, plane and sphere."));
-    info->setIconSize(QSize(0,0));
 
-    QCheckBox *torusCB = new QCheckBox(widget);
-    torusCB->setChecked(true);
-    torusCB->setText(QStringLiteral("Torus"));
+    QSlider *rxSlider = new QSlider(Qt::Orientation::Horizontal, widget);
+    rxSlider->setMinimumWidth(200);
+    rxSlider->setMinimum(-100);
+    QSlider *rySlider = new QSlider(Qt::Orientation::Horizontal, widget);
+    rySlider->setMinimum(-100);
+    QSlider *rzSlider = new QSlider(Qt::Orientation::Horizontal, widget);
+    rzSlider->setMinimum(-100);
 
-    QCheckBox *coneCB = new QCheckBox(widget);
-    coneCB->setChecked(true);
-    coneCB->setText(QStringLiteral("Cone"));
-
-    QCheckBox *cylinderCB = new QCheckBox(widget);
-    cylinderCB->setChecked(true);
-    cylinderCB->setText(QStringLiteral("Cylinder"));
-
-    QCheckBox *cuboidCB = new QCheckBox(widget);
-    cuboidCB->setChecked(true);
-    cuboidCB->setText(QStringLiteral("Cuboid"));
-
-    QCheckBox *planeCB = new QCheckBox(widget);
-    planeCB->setChecked(true);
-    planeCB->setText(QStringLiteral("Plane"));
+    QObject::connect(rxSlider, &QSlider::valueChanged, scene, &Scene::apexX);
+    QObject::connect(rySlider, &QSlider::valueChanged, scene, &Scene::apexY);
+    QObject::connect(rzSlider, &QSlider::valueChanged, scene, &Scene::apexZ);
 
     QCheckBox *sphereCB = new QCheckBox(widget);
     sphereCB->setChecked(true);
     sphereCB->setText(QStringLiteral("Sphere"));
 
-    vLayout->addWidget(info);
-    vLayout->addWidget(torusCB);
-    vLayout->addWidget(coneCB);
-    vLayout->addWidget(cylinderCB);
-    vLayout->addWidget(cuboidCB);
-    vLayout->addWidget(planeCB);
+    vLayout->addWidget(rxSlider);
+    vLayout->addWidget(rySlider);
+    vLayout->addWidget(rzSlider);
+
     vLayout->addWidget(sphereCB);
 
     // Show window

@@ -16,6 +16,14 @@
 
 #include "Triangle.h"
 
+struct Edge {
+    uint32_t I0;
+    uint32_t I1;
+
+    uint64_t index();
+    static uint64_t index(uint32_t a, uint32_t b);
+};
+
 class Tesselation
 {
 public:
@@ -24,7 +32,10 @@ public:
 
     Tesselation();
 
-    void append(const std::vector<QVector3D>& vertices, const std::vector<Triangle>& triangles);
+    void append(const std::vector<QVector3D> &vertices, const std::vector<Triangle> &triangles);
+    std::vector<uint32_t> horizon(const QVector3D &dir);
+    void horizon(const QVector3D &dir, std::vector<uint32_t> &set);
+    void horizon(const QVector3D &dir, std::vector<uint32_t> &set, uint32_t current, uint32_t mark);
 
     // Tesselation information getters
 
@@ -33,22 +44,27 @@ public:
     size_t getTriangleCount() const;
 
     const std::vector<QVector3D>& getVertices() const;
-    const std::unordered_map<uint64_t, std::pair<uint32_t, uint32_t>>& getEdges();
+    const std::vector<QVector3D>& getVertexNormals() const;
+    const std::unordered_map<uint64_t, Edge>& getEdges();
     const std::vector<Triangle>& getTriangles() const;
     const std::vector<QVector3D>& getNormals() const;
 
 private:
+    void calculateVertexNormals();
 
-    static uint64_t getIndex(uint32_t a, uint32_t b);
-    std::pair<uint32_t, uint32_t>& getEdge(uint32_t a, uint32_t b);
     static std::pair<uint32_t, uint32_t> getVertices(uint64_t edge);
 private:
 
     // Tesselation information
     std::vector<QVector3D> m_vertices;
-    std::unordered_map<uint64_t, std::pair<uint32_t, uint32_t>> m_edges;
+    std::vector<QVector3D> m_vertexNormals;
+
+    std::unordered_map<uint64_t, Edge> m_edges;
+
     std::vector<Triangle> m_triangles;
-    std::vector<QVector3D> m_normals;
+    std::vector<QVector3D> m_faceNormals;
+
+    float m_epsilon;
 };
 
 #endif //AUTOCARVER_TESSELATION_H
