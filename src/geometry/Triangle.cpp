@@ -37,6 +37,13 @@ uint32_t& Triangle::operator[](uint32_t i)
     }
 }
 
+uint32_t Triangle::last(uint32_t a, uint32_t b)
+{
+    if (m_I0 != a && m_I0 != b) return m_I0;
+    if (m_I1 != a && m_I1 != b) return m_I1;
+    return m_I2;
+}
+
 float Triangle::signedArea(const QVector2D& a, const QVector2D& b, const QVector2D& c)
 {
     return (a.x() - c.x()) * (b.y() - c.y()) - (b.x() - c.x()) * (a.y() - c.y());

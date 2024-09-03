@@ -31,11 +31,16 @@ public slots:
     void apexX(int value);
     void apexY(int value);
     void apexZ(int value);
+    void cut(int value);
+    void show(bool enabled);
 
 private:
     Qt3DCore::QEntity *m_rootEntity;
     Qt3DRender::QMesh *m_BunnyMesh;
     Tesselation m_tessel;
+
+    Qt3DCore::QTransform *m_cutPlaneTransform;
+    Qt3DCore::QEntity *m_plane;
 
     std::vector<QVector3D> m_set;
     QVector3D m_apex;

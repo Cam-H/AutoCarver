@@ -14,4 +14,5 @@ qt_standard_project_setup()
 
 add_subdirectory(src)
 
+set(TEST_SOURCE_DIRECTORY ${PROJECT_SOURCE_DIR})
 add_subdirectory(tests)

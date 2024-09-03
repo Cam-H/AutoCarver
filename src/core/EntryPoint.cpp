@@ -4,9 +4,12 @@
 #include <QSurfaceFormat>
 #include <QLabel>
 #include <QSlider>
+#include <QLine>
 
 #include <QGuiApplication>
 
+
+#include <QPainter>
 #include <Qt3DRender/qcamera.h>
 #include <Qt3DCore/qentity.h>
 #include <Qt3DRender/qcameralens.h>
@@ -38,11 +41,13 @@
 #include <iostream>
 
 #include "../renderer/MonitorCameraController.h"
+
 #include "Scene.h"
 
 #ifndef QT_NO_OPENGL
 #include "../widgets/SceneViewWidget.h"
 #endif
+
 
 int main(int argc, char *argv[]) {
 //    std::cout << argc << " " << argv[0] << "\n";
@@ -103,19 +108,27 @@ int main(int argc, char *argv[]) {
     QSlider *rzSlider = new QSlider(Qt::Orientation::Horizontal, widget);
     rzSlider->setMinimum(-100);
 
+    QSlider *cutSlider = new QSlider(Qt::Orientation::Horizontal, widget);
+    cutSlider->setMinimum(-40);
+    cutSlider->setMaximum(100);
+
     QObject::connect(rxSlider, &QSlider::valueChanged, scene, &Scene::apexX);
     QObject::connect(rySlider, &QSlider::valueChanged, scene, &Scene::apexY);
     QObject::connect(rzSlider, &QSlider::valueChanged, scene, &Scene::apexZ);
+    QObject::connect(cutSlider, &QSlider::valueChanged, scene, &Scene::cut);
 
-    QCheckBox *sphereCB = new QCheckBox(widget);
-    sphereCB->setChecked(true);
-    sphereCB->setText(QStringLiteral("Sphere"));
+    QCheckBox *cutPlaneShowCB = new QCheckBox(widget);
+    cutPlaneShowCB->setChecked(true);
+    cutPlaneShowCB->setText(QStringLiteral("Show cut plane"));
+    QObject::connect(cutPlaneShowCB, &QCheckBox::stateChanged, scene, &Scene::show);
 
     vLayout->addWidget(rxSlider);
     vLayout->addWidget(rySlider);
     vLayout->addWidget(rzSlider);
 
-    vLayout->addWidget(sphereCB);
+    vLayout->addWidget(cutSlider);
+
+    vLayout->addWidget(cutPlaneShowCB);
 
     // Show window
     widget->show();

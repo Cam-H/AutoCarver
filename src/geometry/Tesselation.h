@@ -20,6 +20,8 @@ struct Edge {
     uint32_t I0;
     uint32_t I1;
 
+    Edge();
+
     uint64_t index();
     static uint64_t index(uint32_t a, uint32_t b);
 };
@@ -31,11 +33,17 @@ public:
     // Construction
 
     Tesselation();
+    Tesselation(const Tesselation& rhs) = default;
+    Tesselation& operator=(const Tesselation& rhs) = default;
 
     void append(const std::vector<QVector3D> &vertices, const std::vector<Triangle> &triangles);
+
     std::vector<uint32_t> horizon(const QVector3D &dir);
     void horizon(const QVector3D &dir, std::vector<uint32_t> &set);
     void horizon(const QVector3D &dir, std::vector<uint32_t> &set, uint32_t current, uint32_t mark);
+
+    void slice(const QVector3D &origin, const QVector3D &normal, Tesselation &body);
+    void slice(const QVector3D &origin, const QVector3D &normal, Tesselation &bodyA, Tesselation &bodyB);
 
     // Tesselation information getters
 
@@ -51,6 +59,10 @@ public:
 
 private:
     void calculateVertexNormals();
+
+    void sliceBounds(const QVector3D &origin, const QVector3D &normal, std::vector<bool> &vertices, std::vector<uint16_t> &triangles);
+    void healBoundaries();
+    std::vector<uint64_t> getBoundary(uint64_t start);
 
     static std::pair<uint32_t, uint32_t> getVertices(uint64_t edge);
 private:

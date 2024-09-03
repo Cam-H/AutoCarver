@@ -16,6 +16,8 @@ public:
     uint32_t operator[](uint32_t i) const;
     uint32_t& operator[](uint32_t i);
 
+    uint32_t last(uint32_t a, uint32_t b);
+
 //    friend std::ostream& operator<<(std::ostream& os, const Triangle& tri)
 //    {
 //        os << '[' << tri.m_I0 << ' ' << tri.m_I1 << ' ' << tri.m_I2 << ']';
