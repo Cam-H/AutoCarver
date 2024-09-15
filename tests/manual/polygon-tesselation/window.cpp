@@ -40,26 +40,12 @@ void Window::enablePartition(bool enable)
 
 void Window::enableTesselation(bool enable)
 {
-//    m_tesselation = m_partition && enable;
     m_tesselation = enable;
     repaint();
 }
 
 Polygon* Window::getPolygon()
 {
-    if (!m_latest) {
-//        delete m_poly;
-//
-//        // Construct a polygon to process based on visual geometry
-//        std::vector<QVector2D> border;
-//        for (const QPoint &vertex : m_vertices) {
-//            border.emplace_back(vertex.x(), vertex.y());
-//        }
-//
-//        m_poly = new Polygon(border);
-        m_latest = true;
-    }
-
     return m_poly;
 }
 
@@ -80,16 +66,13 @@ void Window::paintEvent(QPaintEvent *)
     QPen triPen(Qt::cyan);
     triPen.setWidth(2.0);
 
-    std::vector<QVector2D> cut = {QVector2D(250, 150), QVector2D(150, 250), QVector2D(250, 350), QVector2D(350, 250)};
     std::vector<QColor> colorSet = {Qt::green, Qt::cyan, Qt::yellow, Qt::blue, Qt::red, Qt::darkBlue, Qt::magenta, Qt::gray, Qt::black, Qt::darkCyan};
     int idx = 0;
 
     // Draw tesselation results
     if (m_tesselation) {
         Polygon *poly = getPolygon();
-        std::vector<Triangle> triangles = poly->tesselate();
-
-        std::cout << "\nPolygon tesselation: " << triangles.size() << " triangles\n";
+        std::vector<Triangle> triangles = poly->triangulation();
 
         for (const Triangle &tri : triangles) {
             painter.setPen(colorSet[idx]);
@@ -112,26 +95,25 @@ void Window::paintEvent(QPaintEvent *)
     // Draw partition results
     if (m_partition) {
         Polygon *poly = getPolygon();
-        std::vector<Polygon::IndexedBorder> partitions = poly->partition();
+        std::vector<Polygon::IndexedBorder> partitions = poly->partitions();
 
         // Output partition results for user-check
-        std::cout << "Partitions: \n";
-        for(const Polygon::IndexedBorder &partition : partitions) {
-            for (auto idx : partition.vertices) {
-                std::cout << idx << " ";
-            }
-
-            std::cout << "\n";
-        }
+//        std::cout << "Partitions: \n";
+//        for(const Polygon::IndexedBorder &partition : partitions) {
+//            for (auto idx : partition.vertices) {
+//                std::cout << idx << " ";
+//            }
+//
+//            std::cout << "\n";
+//        }
 
         for(const Polygon::IndexedBorder &partition : partitions) {
             painter.setPen(colorSet[idx]);
             if (++idx >= colorSet.size()) idx = 0;
 
-            for (uint16_t i = 0; i < partition.vertices.size(); i++) {
-                QVector2D a = partition.vertices[i] >= m_poly->vertexCount() ? cut[partition.vertices[i] - m_poly->vertexCount()] : m_poly->getVertex(partition.vertices[i]);
-                QVector2D b = partition.vertices[(i + 1) % partition.vertices.size()] >= m_poly->vertexCount() ?
-                        cut[partition.vertices[(i + 1) % partition.vertices.size()] - m_poly->vertexCount()] : m_poly->getVertex(partition.vertices[(i + 1) % partition.vertices.size()]);
+            for (uint32_t i = 0; i < partition.vertices.size(); i++) {
+                QVector2D a = m_poly->getVertex(partition.vertices[i]);
+                QVector2D b = m_poly->getVertex(partition.vertices[(i + 1) % partition.vertices.size()]);
 
                 painter.drawLine(QPoint(a.x(), a.y()), QPoint(b.x(), b.y()));
             }
@@ -143,27 +125,20 @@ void Window::paintEvent(QPaintEvent *)
     if (m_polygon) {
         painter.setBrush(Qt::black);
         painter.setPen(borderPen);
-        for (uint16_t i = 0; i < m_poly->loopCount(); i++) {
+        for (uint32_t i = 0; i < m_poly->loopCount(); i++) {
             std::vector<uint32_t> loop = m_poly->getLoop(i);
 
-            for (uint16_t j = 0; j < loop.size(); j++) {
-                std::cout << i << " " << j << " " << loop[j] << "\n";
+            for (uint32_t j = 0; j < loop.size(); j++) {
                 QVector2D a = m_poly->getVertex(loop[j]);
                 QVector2D b = m_poly->getVertex(loop[(j + 1) % loop.size()]);
                 painter.drawLine(QPoint(a.x(), a.y()), QPoint(b.x(), b.y()));
             }
         }
-
-
-//        painter.drawLine(cut[0], cut[1]);
-//        painter.drawLine(cut[1], cut[2]);
-//        painter.drawLine(cut[2], cut[3]);
-//        painter.drawLine(cut[3], cut[0]);
     }
 
     // Draw vertices
     painter.setPen(Qt::black);
-    for (uint16_t i = 0; i < m_poly->vertexCount(); i++) {
+    for (uint32_t i = 0; i < m_poly->vertexCount(); i++) {
         QVector2D vertex = m_poly->getVertex(i);
         painter.drawEllipse(QPoint(vertex.x(), vertex.y()), 3, 3);
     }
@@ -183,7 +158,7 @@ void Window::mousePressEvent(QMouseEvent *event)
     if (event->button() == Qt::LeftButton) {
         m_selection = -1;
 
-        for (uint16_t i = 0; i < m_poly->vertexCount(); i++) {
+        for (uint32_t i = 0; i < m_poly->vertexCount(); i++) {
             QVector2D vertex = m_poly->getVertex(i);
             if ((event->pos() - QPoint(vertex.x(), vertex.y())).manhattanLength() < 8) {
                 m_selection = i;

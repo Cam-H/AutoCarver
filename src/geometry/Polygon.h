@@ -15,8 +15,8 @@
 class Polygon {
 public:
 
-    Polygon(const std::vector<QVector2D> &border);
-    Polygon(const std::vector<std::vector<QVector2D>> &loops);
+    explicit Polygon(const std::vector<QVector2D> &border);
+    explicit Polygon(const std::vector<std::vector<QVector2D>> &loops);
 
     struct IndexedBorder {
         std::vector<uint32_t> vertices;
@@ -28,17 +28,16 @@ public:
     void insertVertex(uint32_t reference, QVector2D vertex);
     void positionVertex(uint32_t index, QVector2D position, bool maintainIntegrity = false);
 
-    uint32_t vertexCount();
     uint32_t loopCount();
     uint32_t loopLength(uint32_t index);
     uint32_t identifyParentLoop(uint32_t index);
-
-    QVector2D getVertex(uint32_t index);
     std::vector<uint32_t> getLoop(uint32_t index);
 
-    std::vector<IndexedBorder> partition();
+    uint32_t vertexCount();
+    QVector2D getVertex(uint32_t index);
 
-    std::vector<Triangle> tesselate();
+    std::vector<IndexedBorder> partitions();
+    std::vector<Triangle> triangulation();
 
 private:
 
@@ -54,7 +53,7 @@ private:
     struct Vertex{
         QVector2D p;
 
-        int index;
+        int index = -1;
 
         int prev = -1;
         int next = -1;
@@ -65,8 +64,10 @@ private:
 
     void initializeLoop(const std::vector<QVector2D> &border, bool internal = false);
 
+    void diagonalize();
+
     void identifyVertexTypes();
-    void identifyVertexType(const QVector2D &prev, Vertex &vertex, const QVector2D &next);
+    static void identifyVertexType(const QVector2D &prev, Vertex &vertex, const QVector2D &next);
 
     void handleRegularVertex(const Vertex& current);
     void handleStartVertex(const Vertex& current);
@@ -78,9 +79,11 @@ private:
     void insertInterval(const Vertex& current, const Vertex& end);
     void removeInterval(int index);
     int getLeftNeighborIndex(const Vertex& current);
-    static float interpolate(const QVector2D &start, const QVector2D &end, float dy);
 
-    void partition(std::vector<std::pair<int, int>> boundaries);
+    void partition(const std::vector<std::pair<int, int>>& boundaries);
+    void tesselate(const IndexedBorder &partition);
+
+    bool intersects(const Vertex &a, const Vertex &b);
 
     static bool compare(const Vertex& v1,const Vertex& v2);
 
@@ -95,14 +98,10 @@ private:
     static float cross(const QVector2D &pivot, const QVector2D &a, const QVector2D &b);
     static float cross(const QVector2D &v1, const QVector2D &v2);
 
-    bool intersects(const Vertex &a, const Vertex &b);
+    static float interpolate(const QVector2D &start, const QVector2D &end, float dy);
 
     static bool segmentIntersection(const QVector2D &a, const QVector2D &b, const QVector2D &c, const QVector2D &d);
     static float triArea(const QVector2D &a, const QVector2D &b, const QVector2D &c);
-
-    void diagonalize();
-    void tesselate(const IndexedBorder &partition);
-
 
 private:
 
