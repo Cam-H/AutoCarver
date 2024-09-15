@@ -14,7 +14,7 @@ qt_add_executable(polygontesselation
         )
 
 set_target_properties(polygontesselation PROPERTIES
-        WIN32_EXECUTABLE TRUE
+#        WIN32_EXECUTABLE TRUE
         MACOSX_BUNDLE TRUE
         )
 

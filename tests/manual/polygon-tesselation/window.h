@@ -20,12 +20,13 @@ Q_OBJECT
 public:
     explicit Window(QWidget *parent = nullptr);
 
-//    void addWidgets(const QWidget *from, const QWidget *to);
-    void setBorder(const std::vector<QPoint> &border);
-    const std::vector<QPoint> &getBorder();
+    void setPolygon(Polygon *polygon);
 
+    void enablePolygon(bool enable);
     void enablePartition(bool enable);
     void enableTesselation(bool enable);
+
+    Polygon* getPolygon();
 
 protected:
     void paintEvent(QPaintEvent *);
@@ -38,12 +39,15 @@ protected:
 
 private:
 
-    std::vector<QPoint> m_vertices;
+
+private:
+
     int m_selection;
 
+    Polygon *m_poly;
     bool m_latest;
-    std::vector<Polygon::IndexedBorder> m_partitions;
 
+    bool m_polygon;
     bool m_partition;
     bool m_tesselation;
 };

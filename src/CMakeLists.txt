@@ -57,6 +57,6 @@ target_link_libraries(AutoCarver PRIVATE
         )
 
 set_target_properties(AutoCarver PROPERTIES
-        WIN32_EXECUTABLE TRUE
+#        WIN32_EXECUTABLE TRUE
         MACOSX_BUNDLE TRUE
         )
