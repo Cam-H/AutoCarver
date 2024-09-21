@@ -2,6 +2,8 @@
 qt_add_library(AutoCarverLib
         core/Scene.h
         core/Scene.cpp
+        core/Timer.h
+        core/Timer.cpp
 
         widgets/SceneViewWidget.h
         widgets/SceneViewWidget.cpp
@@ -19,7 +21,7 @@ qt_add_library(AutoCarverLib
         geometry/Tesselation.cpp
         geometry/GeometryBuilder.h
         geometry/GeometryBuilder.cpp
-)
+        )
 
 #target_include_directories(AutoCarverLib PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
 
@@ -41,7 +43,7 @@ qt_add_executable(AutoCarver
 
 #        fileIO/FileHandler.cpp
 #        fileIO/DataHandler.cpp
-        )
+        core/Timer.cpp core/Timer.h)
 
 target_link_libraries(AutoCarver PRIVATE
         Qt::3DCore
