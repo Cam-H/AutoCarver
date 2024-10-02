@@ -5,15 +5,20 @@
 #include "window.h"
 
 #include <QPainter>
+#include <QPainterPath>
+
+#include <QPolygonF>
+#include <QList>
 
 #include <iostream>
 
 Window::Window(QWidget *parent) : QWidget(parent), m_selection(-1)
     , m_poly(nullptr)
-    , m_latest(false)
     , m_polygon(true)
     , m_partition(false)
     , m_tesselation(false)
+    , m_p(100, 100)
+    , m_enclosing(false)
 {
     grabKeyboard();
 }
@@ -22,7 +27,6 @@ void Window::setPolygon(Polygon *polygon)
 {
     m_poly = polygon;
     m_selection = -1;
-    m_latest = false;
     repaint();
 }
 
@@ -66,7 +70,7 @@ void Window::paintEvent(QPaintEvent *)
     QPen triPen(Qt::cyan);
     triPen.setWidth(2.0);
 
-    std::vector<QColor> colorSet = {Qt::green, Qt::cyan, Qt::yellow, Qt::blue, Qt::red, Qt::darkBlue, Qt::magenta, Qt::gray, Qt::black, Qt::darkCyan};
+    std::vector<QColor> colorSet = {Qt::green, Qt::cyan, Qt::yellow, Qt::blue, Qt::red, Qt::darkBlue, Qt::magenta, Qt::gray, Qt::darkGray, Qt::darkCyan};
     int idx = 0;
 
     // Draw tesselation results
@@ -82,13 +86,22 @@ void Window::paintEvent(QPaintEvent *)
             QVector2D b = m_poly->getVertex(tri.m_I1);
             QVector2D c = m_poly->getVertex(tri.m_I2);
 
-            QPoint ap = {(int)a.x(), (int)a.y()};
-            QPoint bp = {(int)b.x(), (int)b.y()};
-            QPoint cp = {(int)c.x(), (int)c.y()};
+            QPointF ap = {a.x(), a.y()};
+            QPointF bp = {b.x(), b.y()};
+            QPointF cp = {c.x(), c.y()};
 
-            painter.drawLine(ap, bp);
-            painter.drawLine(bp, cp);
-            painter.drawLine(cp, ap);
+            // Additional check to confirm triangle winding is correct / consistent
+            bool out = QVector3D::dotProduct({0, 0, 1}, QVector3D::crossProduct({b.x() - a.x(), b.y() - a.y(), 0}, {c.x() - a.x(), c.y() - a.y(), 0})) < 0;
+
+            QPainterPath path = QPainterPath(ap);
+            path.addPolygon(QPolygonF({ap, bp, cp}));
+            painter.fillPath(path, out ? colorSet[idx] : Qt::black);
+
+//            painter.drawLine(ap, bp);
+//            painter.drawLine(bp, cp);
+//            painter.drawLine(cp, ap);
+
+            std::cout << "T: " << tri.m_I0 << " " << tri.m_I1 << " " << tri.m_I2 << "\n";
         }
     }
 
@@ -144,13 +157,16 @@ void Window::paintEvent(QPaintEvent *)
     }
 
     if (m_selection != -1) {
-       painter.setBrush(Qt::blue);
+        painter.setBrush(Qt::blue);
         QVector2D vertex = m_poly->getVertex(m_selection);
 
         painter.drawEllipse(QPoint(vertex.x(), vertex.y()), 5, 5);
 
-       painter.drawText(20, 20, QString(std::to_string(m_selection).c_str()));
+        painter.drawText(20, 20, QString(std::to_string(m_selection).c_str()));
     }
+
+    painter.setBrush(m_enclosing ? Qt::darkGreen : Qt::darkRed);
+    painter.drawEllipse(QPoint(m_p.x(), m_p.y()), 4, 4);
 }
 
 void Window::mousePressEvent(QMouseEvent *event)
@@ -174,7 +190,6 @@ void Window::mouseMoveEvent(QMouseEvent *event)
 {
     if ((event->buttons() & Qt::LeftButton) && m_selection != -1) {
         m_poly->positionVertex(m_selection, QVector2D(event->pos().x(), event->pos().y()), true);
-        m_latest = false;
         repaint();
     }
 }
@@ -189,16 +204,40 @@ void Window::keyPressEvent(QKeyEvent *event)
                 if (m_poly->vertexCount() > 3) {
                     m_poly->removeVertex(m_selection, true);
                     m_selection = -1;
-                    m_latest = false;
                     repaint();
                 }
                 break;
             case Qt::Key_Control:
                 m_poly->insertVertex(m_selection, m_poly->getVertex(m_selection));
                 m_selection++;
-                m_latest = false;
                 repaint();
                 break;
         }
     }
+
+    float delta = 5;
+    switch (event->key()) {
+        case Qt::Key_Up:
+            m_p -= {0, delta};
+            check();
+            break;
+        case Qt::Key_Down:
+            m_p += {0, delta};
+            check();
+            break;
+        case Qt::Key_Right:
+            m_p += {delta, 0};
+            check();
+            break;
+        case Qt::Key_Left:
+            m_p -= {delta, 0};
+            check();
+            break;
+    }
+}
+
+void Window::check()
+{
+    m_enclosing = m_poly->encloses(m_p);
+    repaint();
 }

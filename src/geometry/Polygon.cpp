@@ -25,6 +25,39 @@ Polygon::Polygon(const std::vector<std::vector<QVector2D>> &loops) : m_diagonali
     }
 }
 
+Polygon::Polygon(const std::vector<QVector3D> &border, const QVector3D &normal) : m_diagonalized(false), m_loops({0})
+{
+    if (border.size() < 3) return;
+
+    QVector3D xAxis = (border[1] - border[0]).normalized();
+    QVector3D yAxis = QVector3D::crossProduct(normal, xAxis).normalized();
+
+    System sys = { border[0], xAxis, yAxis };
+
+    initializeLoop(reduce(border, normal, sys));
+
+}
+
+Polygon::Polygon(const std::vector<std::vector<QVector3D>> &loops, const QVector3D &normal) : m_diagonalized(false), m_loops(loops.size())
+{
+    if (loops.empty() || loops[0].size() < 3) return;
+
+
+    QVector3D xAxis = (loops[0][1] - loops[0][0]).normalized();
+    QVector3D yAxis = QVector3D::crossProduct(normal, xAxis).normalized();
+
+    System sys = { loops[0][0], xAxis, yAxis };
+
+    bool internal = false;
+    for (uint32_t i = 0; i < loops.size(); i++) {
+        m_loops[i] = m_hull.size();
+
+        initializeLoop(reduce(loops[i], normal, sys), internal);
+        internal = true;
+    }
+
+}
+
 void Polygon::initializeLoop(const std::vector<QVector2D> &border, bool internal)
 {
     int start = m_hull.size(), index = start;
@@ -42,6 +75,19 @@ void Polygon::initializeLoop(const std::vector<QVector2D> &border, bool internal
     // Correct boundary edge links
     m_hull[start].prev = (int)m_hull.size() - 1;
     m_hull[m_hull.size() - 1].next = start;
+}
+
+std::vector<QVector2D> Polygon::reduce(const std::vector<QVector3D> &loop, const QVector3D &normal, const System &sys)
+{
+    std::vector<QVector2D> reduction;
+    reduction.reserve(loop.size());
+
+    for(const QVector3D &vertex : loop) {
+        QVector3D rel = vertex - sys.origin;
+        reduction.emplace_back(QVector3D::dotProduct(rel, sys.xAxis), QVector3D::dotProduct(rel, sys.yAxis));
+    }
+
+    return reduction;
 }
 
 void Polygon::invalidate()
@@ -163,6 +209,18 @@ void Polygon::positionVertex(uint32_t index, QVector2D position, bool maintainIn
     }
 }
 
+void Polygon::addLoop(const std::vector<QVector2D> &loop)
+{
+    int start = (int)m_hull.size(), current = start;
+    initializeLoop(loop, true);
+
+    do {
+        identifyVertexType(m_hull[m_hull[current].prev].p, m_hull[current], m_hull[m_hull[current].next].p);
+        current = m_hull[current].next;
+    } while(start != current);
+
+    invalidate();
+}
 
 uint32_t Polygon::loopCount()
 {
@@ -243,11 +301,22 @@ std::vector<Triangle> Polygon::triangulation()
         }
 
         for (const IndexedBorder &partition : m_partitions) {
-            tesselate(partition);
+            triangulate(partition);
         }
     }
 
     return m_triangles;
+}
+
+bool Polygon::encloses(const QVector2D &p)
+{
+    triangulation();
+
+    for (const Triangle &tri : m_triangles) {
+        if (Triangle::encloses(m_hull[tri.m_I0].p, m_hull[tri.m_I1].p, m_hull[tri.m_I2].p, p)) return true;
+    }
+
+    return false;
 }
 
 void Polygon::diagonalize(){
@@ -280,7 +349,6 @@ void Polygon::diagonalize(){
                 handleMergeVertex(current);
                 break;
         }
-
     }
 
     // Prevent any diagonals between direct neighbors
@@ -309,13 +377,13 @@ void Polygon::identifyVertexTypes(){
 
 void Polygon::identifyVertexType(const QVector2D &prev, Vertex &vertex, const QVector2D &next)
 {
-    if((prev.y() < vertex.p.y()) && (vertex.p.y() >= next.y())){// Current greater than connected vertices
+    if(prev.y() <= vertex.p.y() && next.y() < vertex.p.y()){// Current greater than connected vertices
         if(angle(vertex.p, next, prev)){
             vertex.type = VertexType::END;
         }else{
             vertex.type = VertexType::MERGE;
         }
-    }else if((prev.y() > vertex.p.y()) && (vertex.p.y() <= next.y())){// Current less than connected vertices
+    }else if(prev.y() >= vertex.p.y() && next.y() > vertex.p.y()){// Current less than connected vertices
         if(angle(vertex.p, next, prev)){
             vertex.type = VertexType::START;
         }else{
@@ -328,13 +396,11 @@ void Polygon::identifyVertexType(const QVector2D &prev, Vertex &vertex, const QV
 
 void Polygon::handleRegularVertex(const Vertex& current){
     if(right(current, m_hull[current.prev])){
+        tryMergeDiagonalInsertion(current, helper[current.prev]);
 
-        tryMergeDiagonalInsertion(current, helper[current.next]);
+        removeInterval(current.prev);
 
-        removeInterval(current.next);
-
-        insertInterval(current, m_hull[current.prev]);
-
+        insertInterval(current, m_hull[current.next]);
     }else{
         if(!intervals.empty()){
 
@@ -347,13 +413,13 @@ void Polygon::handleRegularVertex(const Vertex& current){
 }
 
 void Polygon::handleStartVertex(const Vertex& current){
-    insertInterval(current, m_hull[current.prev]);
+    insertInterval(current, m_hull[current.next]);
 }
 
 void Polygon::handleEndVertex(const Vertex& current){
-    tryMergeDiagonalInsertion(current, helper[current.next]);
+    tryMergeDiagonalInsertion(current, helper[current.prev]);
 
-    removeInterval(current.next);
+    removeInterval(current.prev);
 }
 
 void Polygon::handleSplitVertex(const Vertex& current){
@@ -365,16 +431,16 @@ void Polygon::handleSplitVertex(const Vertex& current){
         helper[index] = current.index;
     }
 
-    insertInterval(current, m_hull[current.prev]);
+    insertInterval(current, m_hull[current.next]);
 }
 
 void Polygon::handleMergeVertex(const Vertex& current){
-    tryMergeDiagonalInsertion(current, helper[current.next]);
 
-    removeInterval(current.next);
+    tryMergeDiagonalInsertion(current, helper[current.prev]);
+
+    removeInterval(current.prev);
 
     if(!intervals.empty()){
-
         int index = getLeftNeighborIndex(current);
         tryMergeDiagonalInsertion(current, helper[index]);
 
@@ -483,7 +549,8 @@ void Polygon::partition(const std::vector<std::pair<int, int>> &diagonals)
 
                 // Choose the smallest internal angle
                 float temp = internalAngle(m_hull[current].p, ref, m_hull[cut].p) ;
-                if (value < temp) {
+
+                if (value < temp || count[next] == 0) {
                     next = cut;
                     value = temp;
                 }
@@ -493,6 +560,7 @@ void Polygon::partition(const std::vector<std::pair<int, int>> &diagonals)
             if (next != m_hull[current].next) {
                 map[current].erase(std::find(map[current].begin(), map[current].end(), next));
             }
+
 
             ref = m_hull[current].p;
             prev = current;
@@ -505,10 +573,11 @@ void Polygon::partition(const std::vector<std::pair<int, int>> &diagonals)
     }
 }
 
-void Polygon::tesselate(const IndexedBorder &partition)
+void Polygon::triangulate(const IndexedBorder &partition)
 {
     if (partition.vertices.size() == 3) {
         m_triangles.emplace_back(partition.vertices[0], partition.vertices[1], partition.vertices[2]);
+//        m_triangles.push_back(ccwTriangle(partition.vertices[0], partition.vertices[1], partition.vertices[2]));
         return;
     }
 
@@ -523,34 +592,33 @@ void Polygon::tesselate(const IndexedBorder &partition)
 
     // Find the highest vertex
     uint32_t top = 0;
-    for (uint32_t i = 1; i < list.size(); i++) {
+    for (uint32_t i = 0; i < list.size(); i++) {
         if (list[top].p.y() > list[i].p.y()) top = i;
     }
 
     // Develop links for vertex chains from the top most to the bottom most vertex, sorting in descending order
+
     std::vector<Vertex> set;
     set.reserve(list.size());
     set.push_back(list[top]);
-    int left = top == 0 ? list.size() - 1 : top - 1, prevL = -1, prevR = 0, limit = list.size();
-    for (uint32_t i = 1; i < limit; i++) {
-        uint32_t idx = (top + i) % list.size();
 
-        if (list[left].p.y() <= list[idx].p.y()) { // Extending left chain
+    int prevL = -1, prevR = 0, left = top == list.size() - 1 ? 0 : top + 1, right = top == 0 ? list.size() - 1 : top - 1;//, limit = list.size();
+    while (left != right) {
+        int size = (int)set.size();
+
+        if (list[left].p.y() < list[right].p.y()) {
             set.push_back(list[left]);
-            left = left == 0 ? list.size() - 1 : left - 1;
-
-            if (prevL != -1) set[prevL].next = set.size() - 1;
-            prevL = set.size() - 1;
-
-            limit--;
-            i--;
-        } else { // Extending right chain
-            set.push_back(list[idx]);
-
-            set[prevR].next = set.size() - 1;
-            prevR = set.size() - 1;
+            left = left == list.size() - 1 ? 0 : left + 1;
+            if (prevL != -1) set[prevL].next = size;
+            prevL = size;
+        } else {
+            set.push_back(list[right]);
+            right = right == 0 ? list.size() - 1 : right - 1;
+            set[prevR].next = size;
+            prevR = size;
         }
     }
+    set.push_back(list[right]);
 
     list = set;
 
@@ -568,14 +636,14 @@ void Polygon::tesselate(const IndexedBorder &partition)
                 queue.pop_back();
 
                 // Check for exterior angle - do not proceed if found
-                if(cross(v.p, queue.back().p, list[i].p) * reference > 0){
+                if(Triangle::cross(v.p, queue.back().p, list[i].p) * reference > 0){
                     queue.push_back(v);
                     break;
                 }
 
-                m_triangles.emplace_back(
-                        indexMap[queue.back().index], indexMap[v.index], indexMap[list[i].index]
-                );
+                m_triangles.push_back(ccwTriangle(
+                        indexMap[v.index], indexMap[list[i].index], indexMap[queue.back().index]
+                ));
             }
 
 
@@ -587,9 +655,9 @@ void Polygon::tesselate(const IndexedBorder &partition)
                 Vertex v = queue.front();
                 queue.pop_front();
 
-                m_triangles.emplace_back(
-                        indexMap[list[i].index], indexMap[queue.front().index], indexMap[v.index]
-                );
+                m_triangles.push_back(ccwTriangle(
+                        indexMap[v.index], indexMap[list[i].index], indexMap[queue.front().index]
+                ));
             }
 
             queue.push_back(list[i]);
@@ -597,6 +665,15 @@ void Polygon::tesselate(const IndexedBorder &partition)
             // Update reference angle for interior angle checks
             reference = -reference;
         }
+    }
+}
+
+Triangle Polygon::ccwTriangle(uint32_t I0, uint32_t I1, uint32_t I2)
+{
+    if (Triangle::cross(m_hull[I0].p, m_hull[I1].p, m_hull[I2].p) < 0) {
+        return {I0, I1, I2};
+    } else {
+        return {I0, I2, I1};
     }
 }
 
@@ -627,16 +704,12 @@ bool Polygon::compare(const Vertex& v1, const Vertex& v2){
 }
 
 bool Polygon::right(const Vertex& current, const Vertex& prev){
-    if(current.p.y() < prev.p.y()){
-        return true;
-    }
-
-    return false;
+    return current.p.y() > prev.p.y();
 }
 
 bool Polygon::angle(const QVector2D &pivot, const QVector2D &a, const QVector2D &b)
 {
-    return cross(pivot, a, b) >= 0;
+    return Triangle::cross(pivot, a, b) <= 0;
 }
 
 float Polygon::internalAngle(const QVector2D &pivot, const QVector2D &a, const QVector2D &b)
@@ -653,16 +726,6 @@ float Polygon::dot(const QVector2D &a, const QVector2D &b) {
     return (a.x() * b.x() + a.y() * b.y()) / a.length() / b.length();
 }
 
-float Polygon::cross(const QVector2D &pivot, const QVector2D &a, const QVector2D &b)
-{
-    return cross(a - pivot, b - pivot);
-}
-
-float Polygon::cross(const QVector2D &v1, const QVector2D &v2)
-{
-    return v1.x() * v2.y() - v2.x() * v1.y();
-}
-
 float Polygon::interpolate(const QVector2D &start, const QVector2D &end, float dy)
 {
     return start.x() + (end.x() - start.x()) * (dy - start.y()) / (end.y() - start.y());
@@ -670,11 +733,11 @@ float Polygon::interpolate(const QVector2D &start, const QVector2D &end, float d
 
 bool Polygon::segmentIntersection(const QVector2D &a, const QVector2D &b, const QVector2D &c, const QVector2D &d)
 {
-    float a1 = triArea(a, b, d);
-    float a2 = triArea(a, b, c);
+    float a1 = Triangle::signedArea(a, b, d);
+    float a2 = Triangle::signedArea(a, b, c);
 
     if (a1 * a2 < 0) {
-        float a3 = triArea(c, d, a);
+        float a3 = Triangle::signedArea(c, d, a);
         float a4 = a3 + a2 - a1;
 
         if (a3 * a4 < 0) {
@@ -685,9 +748,4 @@ bool Polygon::segmentIntersection(const QVector2D &a, const QVector2D &b, const 
     }
 
     return false;
-}
-
-float Polygon::triArea(const QVector2D &a, const QVector2D &b, const QVector2D &c)
-{
-    return (a.x() - c.x()) * (b.y() - c.y()) - (a.y() - c.y()) * (b.x() - c.x());
 }

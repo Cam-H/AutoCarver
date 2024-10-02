@@ -21,38 +21,62 @@ int main(int argc, char **argv)
     // Test data set
     uint32_t idx = 0;
     std::vector<Polygon> polygons;
+
+    // Square
     polygons.emplace_back(std::vector<std::vector<QVector2D>>{
-            std::vector<QVector2D>{QVector2D(100.000000, 100.000000), QVector2D(400.000000, 100.000000), QVector2D(400.000000, 400.000000), QVector2D(114.000000, 422.000000), QVector2D(95.000000, 402.000000), QVector2D(68.000000, 358.000000), QVector2D(32.000000, 279.000000), QVector2D(28.000000, 185.000000), QVector2D(63.000000, 62.000000)},
-            std::vector<QVector2D>{QVector2D(250.000000, 150.000000), QVector2D(150.000000, 250.000000), QVector2D(250.000000, 350.000000), QVector2D(350.000000, 250.000000)}
+            std::vector<QVector2D>{QVector2D(100, 100), QVector2D(100, 400), QVector2D(400, 400), QVector2D(400, 100)}
     });
 
+    // Square w/ diamond
     polygons.emplace_back(std::vector<std::vector<QVector2D>>{
-            std::vector<QVector2D>{QVector2D(100, 100), QVector2D(400, 100), QVector2D(400, 400), QVector2D(100, 400)},
-            std::vector<QVector2D>{QVector2D(250, 150), QVector2D(150, 250), QVector2D(250, 350), QVector2D(350, 250)}
+            std::vector<QVector2D>{QVector2D(100, 100), QVector2D(100, 400), QVector2D(400, 400), QVector2D(400, 100)},
+            std::vector<QVector2D>{QVector2D(250, 150), QVector2D(350, 250), QVector2D(250, 350), QVector2D(150, 250)}
     });
 
+    // Multi-hole square
     polygons.emplace_back(std::vector<std::vector<QVector2D>>{
-            std::vector<QVector2D>{QVector2D(100, 100), QVector2D(400, 100), QVector2D(400, 400), QVector2D(100, 400)},
-            std::vector<QVector2D>{QVector2D(250, 150), QVector2D(150, 230), QVector2D(250, 210), QVector2D(350, 230)},
-            std::vector<QVector2D>{QVector2D(250, 350), QVector2D(350, 270), QVector2D(250, 290), QVector2D(150, 270)}
+            std::vector<QVector2D>{QVector2D(100, 100), QVector2D(100, 400), QVector2D(400, 400), QVector2D(400, 100)},
+            std::vector<QVector2D>{QVector2D(250, 150), QVector2D(350, 230), QVector2D(250, 210), QVector2D(150, 230)},
+            std::vector<QVector2D>{QVector2D(250, 350), QVector2D(150, 270), QVector2D(250, 290), QVector2D(350, 270)}
     });
 
-    polygons.emplace_back(std::vector<QVector2D>{QVector2D(110.000000, 88.000000), QVector2D(249.000000, 36.000000), QVector2D(301.000000, 85.000000), QVector2D(271.000000, 215.000000), QVector2D(407.000000, 292.000000), QVector2D(411.000000, 124.000000), QVector2D(352.000000, 154.000000), QVector2D(383.000000, 190.000000), QVector2D(351.000000, 237.000000), QVector2D(302.000000, 141.000000), QVector2D(335.000000, 105.000000), QVector2D(335.000000, 136.000000), QVector2D(481.000000, 53.000000), QVector2D(476.000000, 253.000000), QVector2D(401.000000, 403.000000), QVector2D(258.000000, 470.000000), QVector2D(100.000000, 400.000000), QVector2D(28.000000, 235.000000)});    polygons.emplace_back(std::vector<QVector2D>{QVector2D(110, 88), QVector2D(249, 36), QVector2D(403, 99), QVector2D(476, 253), QVector2D(401, 403), QVector2D(258, 470), QVector2D(100, 400), QVector2D(28, 235)});
-    polygons.emplace_back(std::vector<QVector2D>{QVector2D(100, 100), QVector2D(254, 266), QVector2D(338, 81), QVector2D(274, 337), QVector2D(466, 92), QVector2D(476, 423), QVector2D(319, 331), QVector2D(221, 452), QVector2D(161, 257), QVector2D(100, 400)});
-    polygons.emplace_back(std::vector<QVector2D>{QVector2D(100, 100), QVector2D(402, 72), QVector2D(446, 96), QVector2D(390, 166), QVector2D(482, 227), QVector2D(400, 400), QVector2D(171, 319), QVector2D(191, 165), QVector2D(240, 303), QVector2D(328, 329), QVector2D(253, 178), QVector2D(265, 129), QVector2D(346, 223), QVector2D(365, 118)});
-    polygons.emplace_back(std::vector<QVector2D>{QVector2D(178, 129), QVector2D(273, 188), QVector2D(269, 75), QVector2D(466, 61), QVector2D(479, 141), QVector2D(403, 99), QVector2D(476, 253), QVector2D(401, 403), QVector2D(258, 470), QVector2D(100, 400), QVector2D(167, 263), QVector2D(230, 382)});
-    polygons.emplace_back(std::vector<QVector2D>{QVector2D(178, 129), QVector2D(277, 191), QVector2D(326, 303), QVector2D(310, 28), QVector2D(466, 61), QVector2D(477, 96), QVector2D(398, 107), QVector2D(343, 172), QVector2D(364, 259), QVector2D(377, 201), QVector2D(412, 147), QVector2D(402, 270), QVector2D(430, 186), QVector2D(430, 271), QVector2D(469, 187), QVector2D(415, 124), QVector2D(493, 170), QVector2D(484, 295), QVector2D(462, 261), QVector2D(401, 403), QVector2D(258, 470), QVector2D(184, 476), QVector2D(147, 387), QVector2D(125, 479), QVector2D(104, 394), QVector2D(79, 479), QVector2D(63, 88), QVector2D(147, 326), QVector2D(145, 94), QVector2D(248, 377), QVector2D(309, 402)});
-    polygons.emplace_back(std::vector<QVector2D>{QVector2D(178, 129), QVector2D(316, 117), QVector2D(269, 75), QVector2D(466, 61), QVector2D(479, 141), QVector2D(403, 99), QVector2D(476, 253), QVector2D(401, 403), QVector2D(258, 470), QVector2D(100, 400), QVector2D(170, 295), QVector2D(330, 306), QVector2D(348, 162), QVector2D(198, 155), QVector2D(189, 262), QVector2D(296, 279), QVector2D(307, 212), QVector2D(230, 193), QVector2D(225, 242), QVector2D(272, 250), QVector2D(271, 231), QVector2D(243, 230), QVector2D(250, 210), QVector2D(287, 219), QVector2D(289, 267), QVector2D(206, 252), QVector2D(213, 174), QVector2D(324, 196), QVector2D(316, 294), QVector2D(158, 272)});
+    // Circle hammer
+    polygons.emplace_back(std::vector<std::vector<QVector2D>>{
+            std::vector<QVector2D>{QVector2D(28.000000, 235.000000), QVector2D(100.000000, 400.000000), QVector2D(261.000000, 467.000000), QVector2D(401.000000, 403.000000), QVector2D(476.000000, 253.000000), QVector2D(481.000000, 53.000000), QVector2D(335.000000, 136.000000), QVector2D(335.000000, 105.000000), QVector2D(302.000000, 141.000000), QVector2D(351.000000, 237.000000), QVector2D(383.000000, 190.000000), QVector2D(352.000000, 154.000000), QVector2D(411.000000, 124.000000), QVector2D(407.000000, 292.000000), QVector2D(271.000000, 215.000000), QVector2D(301.000000, 85.000000), QVector2D(249.000000, 36.000000), QVector2D(110.000000, 88.000000)}
+    });
 
-//    std::vector<std::vector<QPoint>> borders;
-////    borders.emplace_back(std::vector{QPoint(269, 75), QPoint(466, 61), QPoint(479, 141), QPoint(403, 99)});
-////    borders.emplace_back(std::vector{QPoint(178, 129), QPoint(273, 188), QPoint(476, 253), QPoint(401, 403), QPoint(258, 470), QPoint(100, 400), QPoint(230, 382)});
-//    borders.emplace_back(std::vector{QPoint(100, 100), QPoint(400, 100), QPoint(400, 400), QPoint(100, 400)});
-//    borders.emplace_back(std::vector{QPoint(100, 100), QPoint(254, 266), QPoint(338, 81), QPoint(274, 337), QPoint(466, 92), QPoint(476, 423), QPoint(319, 331), QPoint(221, 452), QPoint(161, 257), QPoint(100, 400)});    borders.emplace_back(std::vector{QPoint(110, 88), QPoint(249, 36), QPoint(403, 99), QPoint(476, 253), QPoint(401, 403), QPoint(258, 470), QPoint(100, 400), QPoint(28, 235)});
-//    borders.emplace_back(std::vector{QPoint(100, 100), QPoint(402, 72), QPoint(446, 96), QPoint(390, 166), QPoint(482, 227), QPoint(400, 400), QPoint(171, 319), QPoint(191, 165), QPoint(240, 303), QPoint(328, 329), QPoint(253, 178), QPoint(265, 129), QPoint(346, 223), QPoint(365, 118)});    borders.emplace_back(std::vector{QPoint(178, 129), QPoint(273, 188), QPoint(269, 75), QPoint(466, 61), QPoint(479, 141), QPoint(403, 99), QPoint(476, 253), QPoint(401, 403), QPoint(258, 470), QPoint(100, 400), QPoint(167, 263), QPoint(230, 382)});
-//    borders.emplace_back(std::vector{QPoint(178, 129), QPoint(277, 191), QPoint(326, 303), QPoint(310, 28), QPoint(466, 61), QPoint(477, 96), QPoint(398, 107), QPoint(343, 172), QPoint(364, 259), QPoint(377, 201), QPoint(412, 147), QPoint(402, 270), QPoint(430, 186), QPoint(430, 271), QPoint(469, 187), QPoint(415, 124), QPoint(493, 170), QPoint(484, 295), QPoint(462, 261), QPoint(401, 403), QPoint(258, 470), QPoint(184, 476), QPoint(147, 387), QPoint(125, 479), QPoint(104, 394), QPoint(79, 479), QPoint(63, 88), QPoint(147, 326), QPoint(145, 94), QPoint(248, 377), QPoint(309, 402)});
-//    borders.emplace_back(std::vector{QPoint(178, 129), QPoint(316, 117), QPoint(269, 75), QPoint(466, 61), QPoint(479, 141), QPoint(403, 99), QPoint(476, 253), QPoint(401, 403), QPoint(258, 470), QPoint(100, 400), QPoint(170, 295), QPoint(330, 306), QPoint(348, 162), QPoint(198, 155), QPoint(189, 262), QPoint(296, 279), QPoint(307, 212), QPoint(230, 193), QPoint(225, 242), QPoint(272, 250), QPoint(271, 231), QPoint(243, 230), QPoint(250, 210), QPoint(287, 219), QPoint(289, 267), QPoint(206, 252), QPoint(213, 174), QPoint(324, 196), QPoint(316, 294), QPoint(158, 272)});
+    // Circle
+    polygons.emplace_back(std::vector<std::vector<QVector2D>>{
+            std::vector<QVector2D>{QVector2D(28.000000, 235.000000), QVector2D(100.000000, 400.000000), QVector2D(258.000000, 470.000000), QVector2D(401.000000, 403.000000), QVector2D(476.000000, 253.000000), QVector2D(403.000000, 99.000000), QVector2D(249.000000, 36.000000), QVector2D(110.000000, 88.000000)}
+    });
 
+    // Zap
+    polygons.emplace_back(std::vector<std::vector<QVector2D>>{
+            std::vector<QVector2D>{QVector2D(100.000000, 400.000000), QVector2D(161.000000, 257.000000), QVector2D(221.000000, 452.000000), QVector2D(319.000000, 331.000000), QVector2D(476.000000, 423.000000), QVector2D(466.000000, 92.000000), QVector2D(274.000000, 337.000000), QVector2D(338.000000, 81.000000), QVector2D(254.000000, 266.000000), QVector2D(100.000000, 100.000000)}
+    });
+
+    // Reverse E
+    polygons.emplace_back(std::vector<std::vector<QVector2D>>{
+            std::vector<QVector2D>{QVector2D(365.000000, 118.000000), QVector2D(346.000000, 223.000000), QVector2D(265.000000, 129.000000), QVector2D(253.000000, 178.000000), QVector2D(328.000000, 329.000000), QVector2D(240.000000, 303.000000), QVector2D(191.000000, 165.000000), QVector2D(171.000000, 319.000000), QVector2D(400.000000, 400.000000), QVector2D(482.000000, 227.000000), QVector2D(390.000000, 166.000000), QVector2D(446.000000, 96.000000), QVector2D(402.000000, 72.000000), QVector2D(100.000000, 100.000000)}
+    });
+
+    // Seahorse
+    polygons.emplace_back(std::vector<std::vector<QVector2D>>{
+            std::vector<QVector2D>{QVector2D(230.000000, 382.000000), QVector2D(167.000000, 263.000000), QVector2D(100.000000, 400.000000), QVector2D(258.000000, 470.000000), QVector2D(401.000000, 403.000000), QVector2D(476.000000, 253.000000), QVector2D(403.000000, 99.000000), QVector2D(479.000000, 141.000000), QVector2D(466.000000, 61.000000), QVector2D(269.000000, 75.000000), QVector2D(273.000000, 188.000000), QVector2D(178.000000, 129.000000)}
+    });
+
+    // Sigil
+    polygons.emplace_back(std::vector<std::vector<QVector2D>>{
+            std::vector<QVector2D>{QVector2D(309.000000, 402.000000), QVector2D(248.000000, 377.000000), QVector2D(145.000000, 94.000000), QVector2D(147.000000, 326.000000), QVector2D(63.000000, 88.000000), QVector2D(79.000000, 479.000000), QVector2D(104.000000, 394.000000), QVector2D(125.000000, 479.000000), QVector2D(147.000000, 387.000000), QVector2D(184.000000, 476.000000), QVector2D(258.000000, 470.000000), QVector2D(401.000000, 403.000000), QVector2D(462.000000, 261.000000), QVector2D(484.000000, 295.000000), QVector2D(493.000000, 170.000000), QVector2D(415.000000, 124.000000), QVector2D(469.000000, 187.000000), QVector2D(430.000000, 271.000000), QVector2D(430.000000, 186.000000), QVector2D(402.000000, 270.000000), QVector2D(412.000000, 147.000000), QVector2D(377.000000, 201.000000), QVector2D(364.000000, 259.000000), QVector2D(343.000000, 172.000000), QVector2D(398.000000, 107.000000), QVector2D(477.000000, 96.000000), QVector2D(466.000000, 61.000000), QVector2D(310.000000, 28.000000), QVector2D(326.000000, 303.000000), QVector2D(277.000000, 191.000000), QVector2D(178.000000, 129.000000)}
+    });
+
+    // Twist
+    polygons.emplace_back(std::vector<std::vector<QVector2D>>{
+            std::vector<QVector2D>{QVector2D(158.000000, 272.000000), QVector2D(316.000000, 294.000000), QVector2D(324.000000, 196.000000), QVector2D(213.000000, 174.000000), QVector2D(206.000000, 252.000000), QVector2D(289.000000, 267.000000), QVector2D(287.000000, 219.000000), QVector2D(250.000000, 210.000000), QVector2D(243.000000, 230.000000), QVector2D(271.000000, 231.000000), QVector2D(272.000000, 250.000000), QVector2D(225.000000, 242.000000), QVector2D(230.000000, 193.000000), QVector2D(307.000000, 212.000000), QVector2D(296.000000, 279.000000), QVector2D(189.000000, 262.000000), QVector2D(198.000000, 155.000000), QVector2D(348.000000, 162.000000), QVector2D(330.000000, 306.000000), QVector2D(170.000000, 295.000000), QVector2D(100.000000, 400.000000), QVector2D(258.000000, 470.000000), QVector2D(401.000000, 403.000000), QVector2D(476.000000, 253.000000), QVector2D(403.000000, 99.000000), QVector2D(479.000000, 141.000000), QVector2D(466.000000, 61.000000), QVector2D(269.000000, 75.000000), QVector2D(316.000000, 117.000000), QVector2D(178.000000, 129.000000)}
+    });
+
+//    std::vector<QVector2D> temp = std::vector<QVector2D>;
+//    polygons.emplace_back(std::vector<QVector2D>(temp.rbegin(), temp.rend()));
 
     QWidget *container = new QWidget;
 

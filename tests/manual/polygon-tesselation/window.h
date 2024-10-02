@@ -39,17 +39,20 @@ protected:
 
 private:
 
+    void check();
 
 private:
 
     int m_selection;
 
     Polygon *m_poly;
-    bool m_latest;
 
     bool m_polygon;
     bool m_partition;
     bool m_tesselation;
+
+    QVector2D m_p;
+    bool m_enclosing;
 };
 
 
