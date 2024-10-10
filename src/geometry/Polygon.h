@@ -31,6 +31,8 @@ public:
     void insertVertex(uint32_t reference, QVector2D vertex);
     void positionVertex(uint32_t index, QVector2D position, bool maintainIntegrity = false);
 
+    void translate(QVector2D delta);
+
     void addLoop(const std::vector<QVector2D> &loop);
 
     uint32_t loopCount();
@@ -41,10 +43,20 @@ public:
     uint32_t vertexCount();
     QVector2D getVertex(uint32_t index);
 
-    std::vector<IndexedBorder> partitions();
-    std::vector<Triangle> triangulation();
+    const std::vector<std::pair<int, int>>& diagonals();
+    const std::vector<IndexedBorder>& partitions();
+    const std::vector<Triangle>& triangulation();
+
+    const std::vector<std::pair<int, int>>& diagonals() const;
+    const std::vector<IndexedBorder>& partitions() const;
+    const std::vector<Triangle>& triangulation() const;
 
     bool encloses(const QVector2D &p);
+
+    float area() const;
+    static float area(const std::vector<QVector2D> &border);
+
+    static std::vector<QVector2D> reduce(const std::vector<QVector3D> &loop, const QVector3D &normal);
 
 private:
 
@@ -82,7 +94,7 @@ private:
     void diagonalize();
 
     void identifyVertexTypes();
-    void identifyVertexType(const QVector2D &prev, Vertex &vertex, const QVector2D &next);
+    static void identifyVertexType(const QVector2D &prev, Vertex &vertex, const QVector2D &next);
 
     void handleRegularVertex(const Vertex& current);
     void handleStartVertex(const Vertex& current);
@@ -102,8 +114,6 @@ private:
     bool intersects(const Vertex &a, const Vertex &b);
 
     static bool compare(const Vertex& v1,const Vertex& v2);
-
-    static bool right(const Vertex& current, const Vertex& prev);
 
     static bool angle(const QVector2D &pivot, const QVector2D &a, const QVector2D &b);
     static float internalAngle(const QVector2D &pivot, const QVector2D &a, const QVector2D &b);

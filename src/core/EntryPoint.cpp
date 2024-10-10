@@ -52,10 +52,15 @@
 int main(int argc, char *argv[]) {
 //    std::cout << argc << " " << argv[0] << "\n";
     QApplication app(argc, argv);
-    Qt3DExtras::Qt3DWindow *view = new Qt3DExtras::Qt3DWindow();
-    view->defaultFrameGraph()->setClearColor(QColor(QRgb(0x4d4d4f)));
-    QWidget *container = QWidget::createWindowContainer(view);
-    QSize screenSize = view->screen()->size();
+
+    // Root entity
+    Qt3DCore::QEntity *rootEntity = new Qt3DCore::QEntity();
+    Scene *scene = new Scene(rootEntity, argv[1]);
+
+//    Qt3DExtras::Qt3DWindow *view = new Qt3DExtras::Qt3DWindow();
+    scene->defaultFrameGraph()->setClearColor(QColor(QRgb(0x4d4d4f)));
+    QWidget *container = QWidget::createWindowContainer(scene);
+    QSize screenSize = scene->screen()->size();
     container->setMinimumSize(QSize(200, 100));
     container->setMaximumSize(screenSize);
 
@@ -68,16 +73,14 @@ int main(int argc, char *argv[]) {
 
     widget->setWindowTitle(QStringLiteral("Auto Carver"));
 
-    // Root entity
-    Qt3DCore::QEntity *rootEntity = new Qt3DCore::QEntity();
-
     // Camera
-    Qt3DRender::QCamera *cameraEntity = view->camera();
+    Qt3DRender::QCamera *cameraEntity = scene->camera();
 
     cameraEntity->lens()->setPerspectiveProjection(45.0f, 16.0f/9.0f, 0.1f, 1000.0f);
     cameraEntity->setPosition(QVector3D(0, 0, 20.0f));
     cameraEntity->setUpVector(QVector3D(0, 1, 0));
     cameraEntity->setViewCenter(QVector3D(0, 0, 0));
+
 
     Qt3DCore::QEntity *lightEntity = new Qt3DCore::QEntity(rootEntity);
     Qt3DRender::QPointLight *light = new Qt3DRender::QPointLight(lightEntity);
@@ -93,10 +96,8 @@ int main(int argc, char *argv[]) {
     camController->setCamera(cameraEntity);
     camController->linkContainer(container);
 
-    Scene *scene = new Scene(rootEntity);
-
     // Set root object of the scene
-    view->setRootEntity(rootEntity);
+    scene->setRootEntity(rootEntity);
 
     // Create control widgets
 
@@ -117,8 +118,9 @@ int main(int argc, char *argv[]) {
     QObject::connect(rzSlider, &QSlider::valueChanged, scene, &Scene::apexZ);
     QObject::connect(cutSlider, &QSlider::valueChanged, scene, &Scene::cut);
 
+
     QCheckBox *cutPlaneShowCB = new QCheckBox(widget);
-    cutPlaneShowCB->setChecked(true);
+    cutPlaneShowCB->setChecked(false);
     cutPlaneShowCB->setText(QStringLiteral("Show cut plane"));
     QObject::connect(cutPlaneShowCB, &QCheckBox::stateChanged, scene, &Scene::show);
 

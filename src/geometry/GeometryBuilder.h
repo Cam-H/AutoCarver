@@ -27,6 +27,8 @@ class GeometryBuilder {
 public:
     static void add(Tesselation *sink, Qt3DCore::QGeometry *geometry);
 
+    static std::vector<QVector3D> reduce(const std::vector<QVector3D> &vertices, std::vector<Triangle> &triangles);
+
     static Qt3DCore::QGeometry* convert(const Tesselation &tessel);
     static Qt3DCore::QGeometry* convert(const Tesselation &tessel, const std::vector<QVector3D> &color);
 

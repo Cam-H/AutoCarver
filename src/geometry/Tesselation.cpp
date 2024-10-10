@@ -6,12 +6,15 @@
 
 #include <stack>
 
+#include "Surface.h"
+#include "Polygon.h"
+
 Edge::Edge() : I0(std::numeric_limits<uint32_t>::max()), I1(std::numeric_limits<uint32_t>::max()) {}
 
-uint64_t Edge::index()
-{
-    return index(I0, I1);
-}
+//uint64_t Edge::index() const
+//{
+//    return idx;
+//}
 
 uint64_t Edge::index(uint32_t a, uint32_t b)
 {
@@ -43,6 +46,7 @@ void Tesselation::append(const std::vector<QVector3D>& vertices, const std::vect
         for(uint32_t j = 0; j < 3; j++){
             uint64_t edgeIdx = Edge::index(triangles[i][j], triangles[i][(j + 1) % 3]);
             Edge& edge = m_edges[edgeIdx];
+
             if(edge.I0 == std::numeric_limits<uint32_t>::max()){
                 edge.I0 = index;
             }else if(edge.I1 == std::numeric_limits<uint32_t>::max()){//TODO
@@ -60,6 +64,44 @@ void Tesselation::append(const std::vector<QVector3D>& vertices, const std::vect
     calculateVertexNormals();
 
     std::cout << "TP ERR: " << cc << " / " << m_edges.size() << " | " << m_vertices.size() << " " << m_triangles.size() << "\n";
+}
+
+void Tesselation::clear()
+{
+    m_vertices.clear();
+    m_vertexNormals.clear();
+
+    m_edges.clear();
+
+    m_triangles.clear();
+    m_faceNormals.clear();
+}
+
+int64_t Tesselation::pickVertex(const QVector3D& origin, const QVector3D& direction, bool occlusion){
+    int64_t index = -1;
+    float distance = std::numeric_limits<float>::max();
+
+    for(uint32_t i = 0; i < m_vertices.size(); i++){
+        QVector3D r = m_vertices[i] - origin;
+        float length = r.length();
+        float delta = sin(acos(QVector3D::dotProduct(r, direction) / length));
+
+        // Prioritize selection of nearest vertex, but balance against delta from cursor selection
+        if(length * pow(delta, 2) < distance && delta < 0.1){
+            index = i;
+            distance = length * pow(delta, 2);
+        }
+    }
+
+    if(index != -1){
+
+        //TODO handle occlusion
+        if(occlusion){
+
+        }
+    }
+
+    return index;
 }
 
 std::vector<uint32_t> Tesselation::horizon(const QVector3D& dir)
@@ -95,9 +137,9 @@ void Tesselation::horizon(const QVector3D &dir, std::vector<uint32_t> &set, uint
 
         // Identify edges of the current triangle
         std::vector<Edge> edges = {
-                m_edges[Edge::index(m_triangles[current].m_I0, m_triangles[current].m_I1)],
-                m_edges[Edge::index(m_triangles[current].m_I1, m_triangles[current].m_I2)],
-                m_edges[Edge::index(m_triangles[current].m_I2, m_triangles[current].m_I0)]
+                m_edges.at(Edge::index(m_triangles[current].m_I0, m_triangles[current].m_I1)),
+                m_edges.at(Edge::index(m_triangles[current].m_I1, m_triangles[current].m_I2)),
+                m_edges.at(Edge::index(m_triangles[current].m_I2, m_triangles[current].m_I0))
         };
 
         std::vector<uint32_t> neighbors = { edges[0].I0, edges[0].I1, edges[1].I0, edges[1].I1, edges[2].I0, edges[2].I1 };
@@ -205,15 +247,22 @@ void Tesselation::slice(const QVector3D& origin, const QVector3D& normal, Tessel
     body.append(std::vector<QVector3D>(), triangles);
 
     // Heal boundary resulting from the cut
-    body.healBoundaries();
+    body.mend();
 
     std::cout << "slice complete!\n";
 //    std::cout << "-> " << count << "\n";
 }
 
-void Tesselation::healBoundaries()
+void Tesselation::mend()
 {
+    struct Loop {
+        std::vector<uint32_t> idx;
+        float area;
+    };
 
+    std::vector<Loop> loops;
+
+    std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
     for (auto const& [key, edge] : m_edges) {
         if(edge.I0 == std::numeric_limits<uint32_t>::max() || edge.I1 == std::numeric_limits<uint32_t>::max()) {
             std::cout << key << " missing!\n";
@@ -235,12 +284,33 @@ void Tesselation::healBoundaries()
                 else loop.push_back(idx.first);
             }
 
-//            for(int i = 0; i < loop.size(); i++) {
-//                std::cout << loop[i] << " ";
+            std::vector<QVector2D> border;
+            border.reserve(loop.size());
+
+            // TODO implement check to make sure normal is not calculated from collinear vectors
+            QVector3D normal = QVector3D::crossProduct(m_vertices[loop[1]] - m_vertices[loop[0]], m_vertices[loop[loop.size() - 1]] - m_vertices[loop[0]]);
+            QVector3D xAxis = (m_vertices[loop[1]] - m_vertices[loop[0]]).normalized();
+            QVector3D yAxis = QVector3D::crossProduct(normal, xAxis).normalized();
+
+            std::cout << "===\n";
+            for(uint32_t index : loop) {
+                QVector3D vertex = m_vertices[index] - m_vertices[loop[0]];
+                border.emplace_back(QVector3D::dotProduct(vertex, xAxis), QVector3D::dotProduct(vertex, yAxis));
+                std::cout << index << "| " << m_vertices[index].x() << " " << m_vertices[index].y() << " " << m_vertices[index].z() << " -> "
+                    << QVector3D::dotProduct(vertex, xAxis) << " " << QVector3D::dotProduct(vertex, yAxis) << "\n";
+            }
+            std::cout << "===\n";
+
+            Polygon poly(border);
+            std::vector<Triangle> triangles = poly.triangulation();
+            append(std::vector<QVector3D>(), triangles);
+//            for (const Triangle &tri : triangles) {
+//                std::cout << "T: " << tri.m_I0 << " " << tri.m_I1 << " " << tri.m_I2
+//                    << " -> " << loop[tri.m_I0] << " " << loop[tri.m_I1] << " " << loop[tri.m_I2] << "\n";
+//                m_triangles.emplace_back(loop[tri.m_I0], loop[tri.m_I1], loop[tri.m_I2]);
 //            }
-//            std::cout << "\n";
-//
-//            std::cout << boundary.size() << "<< \n";
+
+            std::cout << boundary.size() << " " << triangles.size() << "<< \n";
         }
     }
 }
@@ -352,6 +422,180 @@ const std::vector<Triangle>& Tesselation::getTriangles() const {
 
 const std::vector<QVector3D>& Tesselation::getNormals() const {
     return m_faceNormals;
+}
+
+void Tesselation::planarLoops(std::vector<std::vector<uint32_t>> &loops, std::vector<QVector3D> &normals) const
+{
+    std::vector<bool> processed(m_triangles.size(), false);
+
+    for (uint32_t i = 0; i < processed.size(); i++) {
+        if (processed[i]) continue;
+
+        std::vector<uint32_t> loop;
+
+        // Identify edges of the current triangle
+        std::vector<std::pair<uint64_t, Edge>> edges = {
+                {Edge::index(m_triangles[i].m_I0, m_triangles[i].m_I1), m_edges.at(Edge::index(m_triangles[i].m_I0, m_triangles[i].m_I1))},
+                {Edge::index(m_triangles[i].m_I1, m_triangles[i].m_I2), m_edges.at(Edge::index(m_triangles[i].m_I1, m_triangles[i].m_I2))},
+                {Edge::index(m_triangles[i].m_I2, m_triangles[i].m_I0), m_edges.at(Edge::index(m_triangles[i].m_I2, m_triangles[i].m_I0))}
+        };
+
+        processed[i] = true;
+
+        for (int64_t j = 0; j < edges.size(); j++) {
+            uint32_t idx = processed[edges[j].second.I0] ? edges[j].second.I1 : edges[j].second.I0;
+            if (!processed[idx] && QVector3D::dotProduct(m_faceNormals[i], m_faceNormals[idx]) > 0.999f) {
+                const Triangle &tri = m_triangles[idx];
+                std::pair<uint32_t, uint32_t> edge = getVertices(edges[j].first);
+
+                uint32_t pIdx = 0;
+                if (tri[pIdx] == edge.first || tri[pIdx] == edge.second) pIdx++;
+                if (tri[pIdx] == edge.first || tri[pIdx] == edge.second) pIdx++;
+
+                uint64_t eIdx = Edge::index(tri[pIdx != 0 ? pIdx - 1 : 2], tri[pIdx]);
+                edges[j] = {eIdx, m_edges.at(eIdx)};
+
+                eIdx = Edge::index(tri[pIdx], tri[(pIdx + 1) % 3]);
+                edges.insert(edges.begin() + j + 1, {eIdx, m_edges.at(eIdx)});
+
+                processed[idx] = true;
+                j--;
+            }
+
+        }
+
+        loop.reserve(edges.size());
+        std::pair<uint32_t, uint32_t> idx = getVertices(edges[0].first), next = getVertices(edges[1].first);
+        loop.push_back(idx.first == next.first || idx.first == next.second ? idx.first : idx.second);
+        for (uint32_t j = 1; j < edges.size(); j++) {
+            next = getVertices(edges[j].first);
+            loop.push_back(loop[loop.size() - 1] == next.first ? next.second : next.first);
+        }
+
+        normals.push_back(m_faceNormals[i]);
+        loops.push_back(loop);
+    }
+}
+
+std::vector<Surface> Tesselation::surface() const
+{
+    std::vector<Surface> surfaces;
+
+    std::vector<std::vector<uint32_t>> loops;
+    std::vector<QVector3D> normals;
+    planarLoops(loops, normals);
+
+    for (uint32_t i = 0; i < loops.size(); i++) {
+        surfaces.push_back(surface(loops[i], normals[i]));
+    }
+
+    return surfaces;
+}
+
+Surface Tesselation::surface(std::vector<uint32_t> &loop, const QVector3D &normal) const
+{
+    std::vector<std::vector<uint32_t>> loops;
+    std::unordered_map<uint32_t, uint32_t> map;
+
+    if (loop.size() < 6) { // Skip processing if internal loops are impossible
+        loops.push_back(loop);
+    } else {
+
+        // Count instances of vertices in the loop
+        for (uint32_t i : loop) map[i]++;
+
+        // Divide single long chain into separate loops (border + individual holes)
+        uint32_t limit = 0;
+        while (!loop.empty() && limit++ < 100) {
+            std::vector<uint32_t> set;
+            uint32_t start;
+            for (uint32_t j = 0; j < loop.size(); j++) {
+
+                // Capture final set
+                if (set.size() == loop.size()) {
+                    loops.push_back(set);
+                    loop.clear();
+                }
+
+                if (map[loop[j]] == 1) { // Add continuous elements to set
+                    if (set.empty()) {
+                        start = j == 0 ? loop.size() - 1 : j - 1;
+                        set.push_back(loop[start]);
+                    }
+
+                    set.push_back(loop[j]);
+                } else if (!set.empty()) {// Try to add processed set to the loop list
+
+                    // Verify loop closure before committing set
+                    if (map[loop[start]] != 2 || loop[start] != loop[j]) {
+                        set.clear();
+                        j--;
+                        continue;
+                    }
+
+                    map[loop[start]]--;
+
+                    // Remove set contents from the larger loop
+                    if (start == loop.size() - 1) {
+                        loop.erase(loop.begin() + start);
+                        loop.erase(loop.begin(), loop.begin() + j + 1);
+                    } else {
+                        loop.erase(loop.begin() + start, loop.begin() + j + 1);
+                    }
+
+                    loops.push_back(set);
+
+                    // Remove duplicate adjacenies that may appear
+                    if (start > 0 && start < loop.size()) {
+                        if (loop[start - 1] == loop[start]) {
+                            map[loop[start]]--;
+
+                            loop.erase(loop.begin() + start);
+                        }
+                    }
+
+                    break;
+                }
+            }
+        }
+    }
+
+    // Convert vertex indices to actual vertices
+    uint32_t idx = 0;
+    std::vector<std::vector<QVector3D>> out(loops.size());
+
+    for (const std::vector<uint32_t> &set : loops) {
+        out[idx].reserve(set.size());
+
+        for (uint32_t i : set) {
+            out[idx].push_back(m_vertices[i]);
+        }
+
+        idx++;
+    }
+
+    // Ensure that the first loop is the outer surface border
+    enforceVertexOrder(out, normal);
+
+    return Surface(out);
+}
+
+void Tesselation::enforceVertexOrder(std::vector<std::vector<QVector3D>> &loops, const QVector3D &normal)
+{
+
+    // Ensure the largest loops (border) is first in list
+    uint32_t borderIdx = 0;
+    float maxArea = 0;
+    for (uint32_t i = 0; i < loops.size(); i++) {
+        float area = std::abs(Polygon::area(Polygon::reduce(loops[i], normal)));
+
+        if (area > maxArea) {
+            borderIdx = i;
+            maxArea = area;
+        }
+    }
+
+    if (borderIdx != 0) std::swap(loops[0], loops[borderIdx]);
 }
 
 std::pair<uint32_t, uint32_t> Tesselation::getVertices(uint64_t edge){

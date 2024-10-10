@@ -16,13 +16,14 @@
 
 #include "Triangle.h"
 
+class Surface;
+
 struct Edge {
     uint32_t I0;
     uint32_t I1;
 
     Edge();
 
-    uint64_t index();
     static uint64_t index(uint32_t a, uint32_t b);
 };
 
@@ -37,6 +38,10 @@ public:
     Tesselation& operator=(const Tesselation& rhs) = default;
 
     void append(const std::vector<QVector3D> &vertices, const std::vector<Triangle> &triangles);
+    void clear();
+
+    int64_t pickVertex(const QVector3D& origin, const QVector3D& direction, bool occlusion = false);
+
 
     std::vector<uint32_t> horizon(const QVector3D &dir);
     void horizon(const QVector3D &dir, std::vector<uint32_t> &set);
@@ -57,11 +62,17 @@ public:
     const std::vector<Triangle>& getTriangles() const;
     const std::vector<QVector3D>& getNormals() const;
 
+    void planarLoops(std::vector<std::vector<uint32_t>> &loops, std::vector<QVector3D> &normals) const;
+    std::vector<Surface> surface() const;
+
+    Surface surface(std::vector<uint32_t> &loop, const QVector3D &normal) const;
+    static void enforceVertexOrder(std::vector<std::vector<QVector3D>> &loops, const QVector3D &normal) ;
+
 private:
     void calculateVertexNormals();
 
     void sliceBounds(const QVector3D &origin, const QVector3D &normal, std::vector<bool> &vertices, std::vector<uint16_t> &triangles);
-    void healBoundaries();
+    void mend();
     std::vector<uint64_t> getBoundary(uint64_t start);
 
     static std::pair<uint32_t, uint32_t> getVertices(uint64_t edge);

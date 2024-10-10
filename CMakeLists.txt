@@ -22,6 +22,7 @@ link_directories(./extern/assimp/bin ./extern/assimp/lib)
 #link_directories(./extern/assimp/lib)
 #add_subdirectory(./extern/assimp)
 
+include_directories(src)
 add_subdirectory(src)
 
 set(TEST_SOURCE_DIRECTORY ${PROJECT_SOURCE_DIR})

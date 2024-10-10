@@ -62,3 +62,22 @@ float Triangle::area(const QVector3D& a, const QVector3D& b, const QVector3D& c)
     + pow(ab.z() * ac.x() - ab.x ()* ac.z(), 2)
     + pow(ab.x() * ac.y() - ab.y() * ac.x(), 2));
 }
+
+float Triangle::cross(const QVector2D &pivot, const QVector2D &a, const QVector2D &b)
+{
+    return cross(a - pivot, b - pivot);
+}
+
+float Triangle::cross(const QVector2D &v1, const QVector2D &v2)
+{
+    return v1.x() * v2.y() - v2.x() * v1.y();
+}
+
+bool Triangle::encloses(const QVector2D& a, const QVector2D& b, const QVector2D& c, const QVector2D& p)
+{
+    if (cross(a, p, b) < 0) return false;
+    if (cross(b, p, c) < 0) return false;
+    if (cross(c, p, a) < 0) return false;
+
+    return true;
+}

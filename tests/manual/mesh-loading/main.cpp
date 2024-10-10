@@ -39,11 +39,11 @@
 #include <QCuboidMesh>
 #include <QRandomGenerator>
 
-#include "../../../src/core/Timer.h"
-
-#include "../../../src/geometry/Tesselation.h"
-#include "../../../src/geometry/GeometryBuilder.h"
-#include "../../../src/fileIO/MeshLoader.h"
+#include "core/Timer.h"
+#include "geometry/Tesselation.h"
+#include "geometry/GeometryBuilder.h"
+#include "geometry/Body.h"
+#include "fileIO/MeshLoader.h"
 
 static std::string s_filepath;
 Qt3DRender::QMesh* s_mesh;
@@ -105,16 +105,15 @@ int main(int argc, char *argv[]) {
 
         QObject::connect(s_mesh, &Qt3DRender::QMesh::statusChanged, view, [](Qt3DRender::QMesh::Status status) {
             std::cout << "Mesh Status: " << status << "\n";
+            if (status != 3) return;
 
             ScopedTimer timer("Geometry reconstruction");
 
             Tesselation tessel = MeshLoader::loadAsTesselation(s_filepath);
 
             std::cout << "Tesselation: " << tessel.getVertexCount() << " vertices, " << tessel.getTriangleCount() << " triangles\n";
-
-//        GeometryBuilder::add(&tessel, mesh->geometry());
-
-//        Qt3DCore::QGeometry *geo = GeometryBuilder::convert(tessel);
+            Body body(tessel);
+            tessel = body.tesselation();
 
             auto colors = std::vector<QVector3D>(tessel.getTriangleCount());
             for (auto & color : colors) {
@@ -161,8 +160,8 @@ int main(int argc, char *argv[]) {
         transform->setRotationX(theta);
         transform->setRotationY(phi);
 
-        theta += M_PI / 3;
-        phi += M_PI / 7;
+        theta += M_PI;
+        phi += M_PI / 16;
 
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }

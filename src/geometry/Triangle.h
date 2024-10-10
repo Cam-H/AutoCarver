@@ -35,6 +35,11 @@ public:
         return QVector3D::crossProduct(b - a, c - a).normalized();
     }
 
+    static float cross(const QVector2D &pivot, const QVector2D &a, const QVector2D &b);
+    static float cross(const QVector2D &v1, const QVector2D &v2);
+
+    static bool encloses(const QVector2D& a, const QVector2D& b, const QVector2D& c, const QVector2D& p);
+
     uint32_t m_I0;
     uint32_t m_I1;
     uint32_t m_I2;

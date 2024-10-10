@@ -10,6 +10,7 @@
 
 #include <iostream>
 
+#include "geometry/GeometryBuilder.h"
 
 Tesselation MeshLoader::loadAsTesselation(const std::string& filepath)
 {
@@ -18,7 +19,6 @@ Tesselation MeshLoader::loadAsTesselation(const std::string& filepath)
     Assimp::Importer importer;
 
     const aiScene* scene = importer.ReadFile( filepath,
-                                              aiProcess_CalcTangentSpace       |
                                               aiProcess_Triangulate            |
                                               aiProcess_JoinIdenticalVertices  |
                                               aiProcess_SortByPType);
@@ -44,12 +44,8 @@ Tesselation MeshLoader::loadAsTesselation(const std::string& filepath)
             if (scene->mMeshes[i]->mFaces[j].mNumIndices != 3) std::cout << scene->mMeshes[i]->mFaces[j].mNumIndices << " - Face indices\n";
         }
 
-        tessel.append(vertices, triangles);
+        tessel.append(GeometryBuilder::reduce(vertices, triangles), triangles);
     }
-
-
-
-    std::cout << filepath << " xa\n";
 
     return tessel;
 }

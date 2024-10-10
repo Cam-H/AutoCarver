@@ -23,6 +23,7 @@ public:
     void setPolygon(Polygon *polygon);
 
     void enablePolygon(bool enable);
+    void enableDiagonals(bool enable);
     void enablePartition(bool enable);
     void enableTesselation(bool enable);
 
@@ -48,6 +49,7 @@ private:
     Polygon *m_poly;
 
     bool m_polygon;
+    bool m_diagonals;
     bool m_partition;
     bool m_tesselation;
 

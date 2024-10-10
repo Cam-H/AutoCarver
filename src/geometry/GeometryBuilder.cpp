@@ -12,8 +12,12 @@
 #include "Triangle.h"
 #include "Tesselation.h"
 
+#include "../core/Timer.h"
+
 void GeometryBuilder::add(Tesselation *sink, Qt3DCore::QGeometry *geometry)
 {
+    ScopedTimer timer("Tesselation Reconstruction");
+
     std::unordered_map<size_t, uint32_t> vertexMap;
     std::vector<uint32_t> indexMap;
 
@@ -74,6 +78,29 @@ void GeometryBuilder::add(Tesselation *sink, Qt3DCore::QGeometry *geometry)
 //    }
 
     sink->append(vertices, triangles);
+}
+
+std::vector<QVector3D> GeometryBuilder::reduce(const std::vector<QVector3D> &vertices, std::vector<Triangle> &triangles)
+{
+    ScopedTimer timer("Tesselation Reduction");
+
+    std::unordered_map<size_t, uint32_t> vertexMap;
+    std::vector<uint32_t> indexMap;
+
+    std::vector<QVector3D> set;
+    set.reserve(vertices.size());
+
+    // Identify & remove duplicate vertices
+    for (const auto &vertex : vertices) {
+        indexMap.emplace_back(GeometryBuilder::addVertex(set, vertexMap, vertex));
+    }
+
+    // Adjust triangle indexing to account for vertex removals
+    for (Triangle &tri : triangles) {
+        tri = {indexMap[tri.m_I0], indexMap[tri.m_I1], indexMap[tri.m_I2]};
+    }
+
+    return set;
 }
 
 uint32_t GeometryBuilder::addVertex(std::vector<QVector3D>& vertices, std::unordered_map<size_t, uint32_t>& vertexMap, float x, float y, float z)

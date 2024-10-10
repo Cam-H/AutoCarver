@@ -15,6 +15,7 @@
 Window::Window(QWidget *parent) : QWidget(parent), m_selection(-1)
     , m_poly(nullptr)
     , m_polygon(true)
+    , m_diagonals(false)
     , m_partition(false)
     , m_tesselation(false)
     , m_p(100, 100)
@@ -33,6 +34,12 @@ void Window::setPolygon(Polygon *polygon)
 void Window::enablePolygon(bool enable)
 {
     m_polygon = enable;
+    repaint();
+}
+
+void Window::enableDiagonals(bool enable)
+{
+    m_diagonals = enable;
     repaint();
 }
 
@@ -105,20 +112,23 @@ void Window::paintEvent(QPaintEvent *)
         }
     }
 
+    if (m_diagonals) {
+        Polygon *poly = getPolygon();
+        std::vector<std::pair<int, int>> diagonals = poly->diagonals();
+        for(const std::pair<int, int> &diag : diagonals) {
+            painter.setPen(borderPen);
+
+            QVector2D a = m_poly->getVertex(diag.first);
+            QVector2D b = m_poly->getVertex(diag.second);
+
+            painter.drawLine(QPoint(a.x(), a.y()), QPoint(b.x(), b.y()));
+        }
+    }
+
     // Draw partition results
     if (m_partition) {
         Polygon *poly = getPolygon();
         std::vector<Polygon::IndexedBorder> partitions = poly->partitions();
-
-        // Output partition results for user-check
-//        std::cout << "Partitions: \n";
-//        for(const Polygon::IndexedBorder &partition : partitions) {
-//            for (auto idx : partition.vertices) {
-//                std::cout << idx << " ";
-//            }
-//
-//            std::cout << "\n";
-//        }
 
         for(const Polygon::IndexedBorder &partition : partitions) {
             painter.setPen(colorSet[idx]);
@@ -215,25 +225,28 @@ void Window::keyPressEvent(QKeyEvent *event)
         }
     }
 
-    float delta = 5;
+    float del = 5;
+    QVector2D delta = {0, 0};
     switch (event->key()) {
         case Qt::Key_Up:
-            m_p -= {0, delta};
-            check();
+            delta = {0, -del};
             break;
         case Qt::Key_Down:
-            m_p += {0, delta};
-            check();
+            delta = {0, del};
             break;
         case Qt::Key_Right:
-            m_p += {delta, 0};
-            check();
+            delta = {del, 0};
             break;
         case Qt::Key_Left:
-            m_p -= {delta, 0};
-            check();
+            delta = {-del, 0};
             break;
     }
+
+    m_poly->translate(delta);
+    repaint();
+//    m_p += delta;
+//    check();
+
 }
 
 void Window::check()

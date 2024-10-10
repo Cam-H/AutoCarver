@@ -29,19 +29,12 @@ Polygon::Polygon(const std::vector<QVector3D> &border, const QVector3D &normal) 
 {
     if (border.size() < 3) return;
 
-    QVector3D xAxis = (border[1] - border[0]).normalized();
-    QVector3D yAxis = QVector3D::crossProduct(normal, xAxis).normalized();
-
-    System sys = { border[0], xAxis, yAxis };
-
-    initializeLoop(reduce(border, normal, sys));
-
+    initializeLoop(reduce(border, normal));
 }
 
 Polygon::Polygon(const std::vector<std::vector<QVector3D>> &loops, const QVector3D &normal) : m_diagonalized(false), m_loops(loops.size())
 {
     if (loops.empty() || loops[0].size() < 3) return;
-
 
     QVector3D xAxis = (loops[0][1] - loops[0][0]).normalized();
     QVector3D yAxis = QVector3D::crossProduct(normal, xAxis).normalized();
@@ -209,6 +202,10 @@ void Polygon::positionVertex(uint32_t index, QVector2D position, bool maintainIn
     }
 }
 
+void Polygon::translate(QVector2D delta) {
+    for (Vertex &vertex : m_hull) vertex.p += delta;
+}
+
 void Polygon::addLoop(const std::vector<QVector2D> &loop)
 {
     int start = (int)m_hull.size(), current = start;
@@ -277,7 +274,16 @@ QVector2D Polygon::getVertex(uint32_t index)
     return {0, 0};
 }
 
-std::vector<Polygon::IndexedBorder> Polygon::partitions()
+const std::vector<std::pair<int, int>>& Polygon::diagonals()
+{
+    if (!m_diagonalized) {
+        diagonalize();
+    }
+
+    return m_diagonals;
+}
+
+const std::vector<Polygon::IndexedBorder>& Polygon::partitions()
 {
     // Skip process if results have been previously calculated
     if (!m_partitions.empty()) {
@@ -293,7 +299,7 @@ std::vector<Polygon::IndexedBorder> Polygon::partitions()
     return m_partitions;
 }
 
-std::vector<Triangle> Polygon::triangulation()
+const std::vector<Triangle>& Polygon::triangulation()
 {
     if (m_triangles.empty()) {
         if (m_partitions.empty()) {
@@ -308,6 +314,20 @@ std::vector<Triangle> Polygon::triangulation()
     return m_triangles;
 }
 
+const std::vector<std::pair<int, int>>& Polygon::diagonals() const
+{
+    return m_diagonals;
+}
+
+const std::vector<Polygon::IndexedBorder>& Polygon::partitions() const
+{
+    return m_partitions;
+}
+const std::vector<Triangle>& Polygon::triangulation() const
+{
+    return m_triangles;
+}
+
 bool Polygon::encloses(const QVector2D &p)
 {
     triangulation();
@@ -317,6 +337,34 @@ bool Polygon::encloses(const QVector2D &p)
     }
 
     return false;
+}
+
+float Polygon::area() const
+{
+    std::cout << "\033[93mPolygon area not yet programmed!\033[0m\n";
+
+    return -1;
+}
+
+float Polygon::area(const std::vector<QVector2D> &border)
+{
+    float area = 0;
+
+    for (uint32_t i = 0; i < border.size(); i++) {
+        uint32_t next = i + 1 == border.size() ? 0 : i + 1;
+        area += (border[i].y() + border[next].y()) * (border[i].x() - border[next].x());
+    }
+
+    return area / 2;
+}
+
+std::vector<QVector2D> Polygon::reduce(const std::vector<QVector3D> &loop, const QVector3D &normal)
+{
+    QVector3D xAxis = (loop[1] - loop[0]).normalized();
+    QVector3D yAxis = QVector3D::crossProduct(normal, xAxis).normalized();
+
+    System sys = { loop[0], xAxis, yAxis };
+    return reduce(loop, normal, sys);
 }
 
 void Polygon::diagonalize(){
@@ -395,16 +443,21 @@ void Polygon::identifyVertexType(const QVector2D &prev, Vertex &vertex, const QV
 }
 
 void Polygon::handleRegularVertex(const Vertex& current){
-    if(right(current, m_hull[current.prev])){
+
+    // If the edge made by this vertex encloses the area to the right
+    if(m_hull[current.prev].p.y() < current.p.y()) {
+
         tryMergeDiagonalInsertion(current, helper[current.prev]);
 
         removeInterval(current.prev);
 
-        insertInterval(current, m_hull[current.next]);
-    }else{
-        if(!intervals.empty()){
+        // Skip horizontal intervals
+        if (current.p.y() != m_hull[current.next].p.y()) insertInterval(current, m_hull[current.next]);
 
+    } else { // Area enclosed is to the left
+        if(!intervals.empty()){
             int index = getLeftNeighborIndex(current);
+
             tryMergeDiagonalInsertion(current, helper[index]);
 
             helper[index] = current.index;
@@ -435,12 +488,12 @@ void Polygon::handleSplitVertex(const Vertex& current){
 }
 
 void Polygon::handleMergeVertex(const Vertex& current){
-
     tryMergeDiagonalInsertion(current, helper[current.prev]);
 
     removeInterval(current.prev);
 
     if(!intervals.empty()){
+
         int index = getLeftNeighborIndex(current);
         tryMergeDiagonalInsertion(current, helper[index]);
 
@@ -534,7 +587,7 @@ void Polygon::partition(const std::vector<std::pair<int, int>> &diagonals)
         QVector2D ref = {m_hull[current].p.x() - 100, m_hull[current].p.y()};
 
         int prev = -1;
-        int limit = 20;
+        int limit = 10000;
         do {
             partition.vertices.push_back(current);
             count[current]--;
@@ -567,7 +620,9 @@ void Polygon::partition(const std::vector<std::pair<int, int>> &diagonals)
             current = next;
             next = m_hull[current].next;
 
-        } while (current != partition.vertices[0] && limit-- > 0); // Continue until loop is completed
+        } while (current != partition.vertices[0] && --limit > 0); // Continue until loop is completed
+
+        if (limit == 0) std::cout << "\033[91mPolygon partition failed! Limit reached!\033[0m\n";
 
         m_partitions.push_back(partition);
     }
@@ -697,14 +752,10 @@ bool Polygon::intersects(const Vertex &a, const Vertex &b)
 
 bool Polygon::compare(const Vertex& v1, const Vertex& v2){
     if(v1.p.y() == v2.p.y()) {
-        return v1.p.x() < v2.p.x();
+        return v1.type != VertexType::NORMAL;
     }
 
     return v1.p.y() < v2.p.y();
-}
-
-bool Polygon::right(const Vertex& current, const Vertex& prev){
-    return current.p.y() > prev.p.y();
 }
 
 bool Polygon::angle(const QVector2D &pivot, const QVector2D &a, const QVector2D &b)
