@@ -52,11 +52,11 @@ int main(int argc, char *argv[]) {
 
     std::string source = "..\\res\\";
     std::vector<std::pair<std::string, float>> paths = {
-            {source + "cube.obj", 2.0f}
-//            {source + "HollowCylinder.obj", 2.0f},
-//            {source + "emblem.obj", 1.4f},
-//            {source + "stone.obj", 2.0f},
-//            {source + "devil.obj", 2.0f},
+            {source + "cube.obj", 2.0f},
+            {source + "HollowCylinder.obj", 2.0f},
+            {source + "emblem.obj", 1.4f},
+            {source + "stone.obj", 2.0f},
+            {source + "devil.obj", 2.0f}
 //            {source + "spot.obj", 4.0f},
 //            {source + "beshon.obj", 4.0f},
 //            {source + "spider.obj", 0.06f},
@@ -150,13 +150,9 @@ int main(int argc, char *argv[]) {
     for (const std::pair<std::string, float>& path : paths) {
         auto mesh = MeshLoader::loadAsMeshBody(path.first, path.second);
 
-        std::cout << "mes\n";
         auto body = new Body(mesh);
-        std::cout << "mes1\n";
         body->hull(); // Induce calculation of convex hull
-        std::cout << "mes2\n";
         body->setRenderer(root, view);
-        std::cout << "mes3\n";
         body->hide();
 
         m_bodies.push_back(body);

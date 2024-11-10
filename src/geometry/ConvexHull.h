@@ -73,7 +73,7 @@ private:
         std::vector<uint32_t> neighbors;
         bool onHull;
 
-//        ~Facet() { std::cout << "del\n"; delete[] normal; }
+//        ~Facet() { delete[] normal; }
     };
 
     std::vector<Triangle> initialApproximation();

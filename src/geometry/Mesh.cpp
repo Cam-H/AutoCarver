@@ -44,7 +44,6 @@ Mesh::Mesh(const ConvexHull& hull)
         , m_colors(nullptr)
 {
 
-    std::cout << "start\n";
     ScopedTimer timer("Convert convex hull to mesh");
 
     std::copy(hull.vertices(), hull.vertices() + hull.vertexCount() * STRIDE, m_vertices);
@@ -64,16 +63,12 @@ Mesh::Mesh(const ConvexHull& hull)
         setFaceColor(i, {200, 150, 10});
     }
 
-    std::cout << m_indices << " " << m_indexCount << " " << m_vertices << " " << m_vertexCount << " s1\n";
     calculateFaceNormals();
-    std::cout << "s2\n";
     calculateVertexNormals();
-    std::cout << "s3\n";
 }
 
 Mesh::~Mesh()
 {
-    std::cout << "MESH DELETION~~~~~~~~~~~~~\n";
     delete[] m_vertices;
 
     delete[] m_indices;
@@ -89,11 +84,9 @@ Mesh::~Mesh()
 
 void Mesh::calculateFaceNormals()
 {
-    std::cout << m_indices << " cfn1\n";
     delete[] m_triNormals;
 
     m_triNormals = new float[3 * m_indexCount];
-    std::cout << "cfn2\n";
 
     for (uint32_t i = 0; i < m_indexCount; i++) {
         QVector3D normal = QVector3D::crossProduct(
@@ -113,8 +106,6 @@ void Mesh::calculateFaceNormals()
         m_triNormals[3 * i + 1] = normal.y();
         m_triNormals[3 * i + 2] = normal.z();
     }
-    std::cout << "cfnf\n";
-
 }
 
 void Mesh::calculateVertexNormals()

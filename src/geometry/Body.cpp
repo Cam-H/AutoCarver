@@ -47,8 +47,6 @@ Body::Body(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world, const std::shar
 {
 
     prepareColliders();
-
-    std::cout << "~~~~~~~~~~~~~~~~~~~~~~VERTEX COUNT: " << m_mesh->vertexCount() << " vs " << m_hull.vertexCount() << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
 }
 
 void Body::setRenderer(Qt3DCore::QEntity *parent, Qt3DExtras::Qt3DWindow *view)
@@ -57,7 +55,7 @@ void Body::setRenderer(Qt3DCore::QEntity *parent, Qt3DExtras::Qt3DWindow *view)
     m_render->add(m_mesh);
 
     if (m_hullOK) m_render->add(std::make_shared<Mesh>(m_hull));
-    std::cout << "mss\n";
+
     updateRenderer();
 }
 
@@ -197,11 +195,8 @@ const ConvexHull &Body::hull()
     if (!m_hullOK) {
 //        m_hull(m_mesh->vertices(), m_mesh->vertexCount());
 //        m_hull = ConvexHull(m_mesh->vertices(), m_mesh->vertexCount());
-        std::cout << "inaa\n";
         m_hullOK = true;
     }
-
-    std::cout << "xx\n";
 
     return m_hull;
 }

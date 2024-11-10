@@ -30,7 +30,6 @@ ConvexHull::ConvexHull(const float* cloud, uint32_t cloudSize)
     , m_cloud(cloud, cloudSize)
 
 {
-    std::cout << "sta\n";
     if(cloudSize < 4){
         std::cout << "\033[31mERROR! Can not generate a 3D convex hull with fewer than 4 vertices\033[0m\n";
         return;
@@ -120,7 +119,6 @@ ConvexHull::ConvexHull(const float* cloud, uint32_t cloudSize)
 
 ConvexHull::~ConvexHull()
 {
-    std::cout << "CH destroy\n";
     delete[] m_vertices;
 
     delete[] m_facets;
@@ -169,9 +167,6 @@ uint32_t* ConvexHull::triangulate(uint32_t& triangleCount) const
 
         fIdx += m_facetSizes[i];
     }
-
-    std::cout << "TRI: " << triangleCount << " " << m_facetCount << " " << triangles << " " << m_facets << " " << m_facetSizes << "\n";
-
 
     return triangles;
 }

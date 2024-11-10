@@ -96,6 +96,5 @@ std::shared_ptr<Mesh> MeshLoader::loadAsMeshBody(const std::string& filepath, fl
         offset += scene->mMeshes[i]->mNumVertices;
     }
 
-    std::cout << "load\n";
     return std::make_shared<Mesh>(vertices, vertexCount, indices, indexCount);
 }
