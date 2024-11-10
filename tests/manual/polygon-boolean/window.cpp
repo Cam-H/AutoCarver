@@ -14,48 +14,20 @@
 
 Window::Window(QWidget *parent) : QWidget(parent), m_selection(-1)
     , m_poly(nullptr)
-    , m_polygon(true)
-    , m_diagonals(false)
-    , m_partition(false)
-    , m_tesselation(false)
     , m_p(100, 100)
     , m_enclosing(false)
 {
     grabKeyboard();
 }
 
-void Window::setPolygon(CompositePolygon *polygon)
+void Window::setPolygon(Polygon *polygon)
 {
     m_poly = polygon;
     m_selection = -1;
     repaint();
 }
 
-void Window::enablePolygon(bool enable)
-{
-    m_polygon = enable;
-    repaint();
-}
-
-void Window::enableDiagonals(bool enable)
-{
-    m_diagonals = enable;
-    repaint();
-}
-
-void Window::enablePartition(bool enable)
-{
-    m_partition = enable;
-    repaint();
-}
-
-void Window::enableTesselation(bool enable)
-{
-    m_tesselation = enable;
-    repaint();
-}
-
-CompositePolygon* Window::getPolygon()
+Polygon* Window::getPolygon()
 {
     return m_poly;
 }
@@ -80,82 +52,15 @@ void Window::paintEvent(QPaintEvent *)
     std::vector<QColor> colorSet = {Qt::green, Qt::cyan, Qt::yellow, Qt::blue, Qt::red, Qt::darkBlue, Qt::magenta, Qt::gray, Qt::darkGray, Qt::darkCyan};
     int idx = 0;
 
-    // Draw tesselation results
-    if (m_tesselation) {
-        CompositePolygon *poly = getPolygon();
-        std::vector<Triangle> triangles = poly->triangulation();
+    painter.setBrush(Qt::black);
+    painter.setPen(borderPen);
+    for (uint32_t i = 0; i < m_poly->loopCount(); i++) {
+        std::vector<uint32_t> loop = m_poly->getLoop(i);
 
-        for (const Triangle &tri : triangles) {
-            painter.setPen(colorSet[idx]);
-            if (++idx >= colorSet.size()) idx = 0;
-
-            QVector2D a = m_poly->getVertex(tri.m_I0);
-            QVector2D b = m_poly->getVertex(tri.m_I1);
-            QVector2D c = m_poly->getVertex(tri.m_I2);
-
-            QPointF ap = {a.x(), a.y()};
-            QPointF bp = {b.x(), b.y()};
-            QPointF cp = {c.x(), c.y()};
-
-            // Additional check to confirm triangle winding is correct / consistent
-            bool out = QVector3D::dotProduct({0, 0, 1}, QVector3D::crossProduct({b.x() - a.x(), b.y() - a.y(), 0}, {c.x() - a.x(), c.y() - a.y(), 0})) < 0;
-
-            QPainterPath path = QPainterPath(ap);
-            path.addPolygon(QPolygonF({ap, bp, cp}));
-            painter.fillPath(path, out ? colorSet[idx] : Qt::black);
-
-//            painter.drawLine(ap, bp);
-//            painter.drawLine(bp, cp);
-//            painter.drawLine(cp, ap);
-
-            std::cout << "T: " << tri.m_I0 << " " << tri.m_I1 << " " << tri.m_I2 << "\n";
-        }
-    }
-
-    if (m_diagonals) {
-        CompositePolygon *poly = getPolygon();
-        std::vector<std::pair<int, int>> diagonals = poly->diagonals();
-        for(const std::pair<int, int> &diag : diagonals) {
-            painter.setPen(borderPen);
-
-            QVector2D a = m_poly->getVertex(diag.first);
-            QVector2D b = m_poly->getVertex(diag.second);
-
+        for (uint32_t j = 0; j < loop.size(); j++) {
+            QVector2D a = m_poly->getVertex(loop[j]);
+            QVector2D b = m_poly->getVertex(loop[(j + 1) % loop.size()]);
             painter.drawLine(QPoint(a.x(), a.y()), QPoint(b.x(), b.y()));
-        }
-    }
-
-    // Draw partition results
-    if (m_partition) {
-        CompositePolygon *poly = getPolygon();
-        std::vector<CompositePolygon::IndexedBorder> partitions = poly->partitions();
-
-        for(const CompositePolygon::IndexedBorder &partition : partitions) {
-            painter.setPen(colorSet[idx]);
-            if (++idx >= colorSet.size()) idx = 0;
-
-            for (uint32_t i = 0; i < partition.vertices.size(); i++) {
-                QVector2D a = m_poly->getVertex(partition.vertices[i]);
-                QVector2D b = m_poly->getVertex(partition.vertices[(i + 1) % partition.vertices.size()]);
-
-                painter.drawLine(QPoint(a.x(), a.y()), QPoint(b.x(), b.y()));
-            }
-
-        }
-    }
-
-    // Draw border / internal loops
-    if (m_polygon) {
-        painter.setBrush(Qt::black);
-        painter.setPen(borderPen);
-        for (uint32_t i = 0; i < m_poly->loopCount(); i++) {
-            std::vector<uint32_t> loop = m_poly->getLoop(i);
-
-            for (uint32_t j = 0; j < loop.size(); j++) {
-                QVector2D a = m_poly->getVertex(loop[j]);
-                QVector2D b = m_poly->getVertex(loop[(j + 1) % loop.size()]);
-                painter.drawLine(QPoint(a.x(), a.y()), QPoint(b.x(), b.y()));
-            }
         }
     }
 
@@ -256,6 +161,8 @@ void Window::keyPressEvent(QKeyEvent *event)
         m_p += delta;
         check();
     }
+//    m_p += delta;
+//    check();
 
 }
 

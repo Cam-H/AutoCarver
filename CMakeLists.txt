@@ -17,6 +17,20 @@ qt_standard_project_setup()
 #find_library(ASSIMP_LIBRARY assimp PATHS ./extern/assimp/bin)
 include_directories(./extern/assimp/include)
 link_directories(./extern/assimp/bin ./extern/assimp/lib)
+
+include_directories(./extern/mcut/include)
+
+include_directories(extern/reactphysics3d/include)
+
+#add_library()
+add_subdirectory(extern/reactphysics3d)
+
+#set(MCUT_BUILD_WITH_COMPUTE_HELPER_THREADPOOL 0)
+#add_subdirectory(./extern/mcut)
+
+#add_library(mcut SHARED ./extern/mcut/source/*.cpp)
+#target_include_directories(mcut PRIVATE ./extern/mcut/include ./extern/mcut/source)
+
 #set(ASSIMP_DIR ./extern/assimp/bin)
 #message(${ASSIMP_DIR})
 #link_directories(./extern/assimp/lib)

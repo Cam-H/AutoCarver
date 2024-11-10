@@ -42,7 +42,7 @@
 
 #include "../renderer/MonitorCameraController.h"
 
-#include "Scene.h"
+#include "NotScene.h"
 
 #ifndef QT_NO_OPENGL
 #include "../widgets/SceneViewWidget.h"
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
 
     // Root entity
     Qt3DCore::QEntity *rootEntity = new Qt3DCore::QEntity();
-    Scene *scene = new Scene(rootEntity, argv[1]);
+    NotScene *scene = new NotScene(rootEntity, argv[1]);
 
 //    Qt3DExtras::Qt3DWindow *view = new Qt3DExtras::Qt3DWindow();
     scene->defaultFrameGraph()->setClearColor(QColor(QRgb(0x4d4d4f)));
@@ -113,19 +113,20 @@ int main(int argc, char *argv[]) {
     cutSlider->setMinimum(-40);
     cutSlider->setMaximum(100);
 
-    QObject::connect(rxSlider, &QSlider::valueChanged, scene, &Scene::apexX);
-    QObject::connect(rySlider, &QSlider::valueChanged, scene, &Scene::apexY);
-    QObject::connect(rzSlider, &QSlider::valueChanged, scene, &Scene::apexZ);
-    QObject::connect(cutSlider, &QSlider::valueChanged, scene, &Scene::cut);
+    QObject::connect(rxSlider, &QSlider::valueChanged, scene, &NotScene::apexX);
+    QObject::connect(rySlider, &QSlider::valueChanged, scene, &NotScene::apexY);
+    QObject::connect(rzSlider, &QSlider::valueChanged, scene, &NotScene::apexZ);
+    QObject::connect(cutSlider, &QSlider::valueChanged, scene, &NotScene::cut);
 
 
     QCheckBox *cutPlaneShowCB = new QCheckBox(widget);
     cutPlaneShowCB->setChecked(false);
     cutPlaneShowCB->setText(QStringLiteral("Show cut plane"));
-    QObject::connect(cutPlaneShowCB, &QCheckBox::stateChanged, scene, &Scene::show);
+    QObject::connect(cutPlaneShowCB, &QCheckBox::stateChanged, scene, &NotScene::show);
 
     vLayout->addWidget(rxSlider);
     vLayout->addWidget(rySlider);
+    vLayout->addWidget(rzSlider);
     vLayout->addWidget(rzSlider);
 
     vLayout->addWidget(cutSlider);

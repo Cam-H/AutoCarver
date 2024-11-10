@@ -7,7 +7,7 @@
 #include <stack>
 
 #include "Surface.h"
-#include "Polygon.h"
+#include "geometry/poly/CompositePolygon.h"
 
 Edge::Edge() : I0(std::numeric_limits<uint32_t>::max()), I1(std::numeric_limits<uint32_t>::max()) {}
 
@@ -301,7 +301,7 @@ void Tesselation::mend()
             }
             std::cout << "===\n";
 
-            Polygon poly(border);
+            CompositePolygon poly(border);
             std::vector<Triangle> triangles = poly.triangulation();
             append(std::vector<QVector3D>(), triangles);
 //            for (const Triangle &tri : triangles) {

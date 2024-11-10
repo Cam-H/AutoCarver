@@ -12,7 +12,7 @@
 
 #include <vector>
 
-#include "geometry/poly/CompositePolygon.h"
+#include "geometry/poly/Polygon.h"
 
 
 class Window : public QWidget {
@@ -20,14 +20,9 @@ Q_OBJECT
 public:
     explicit Window(QWidget *parent = nullptr);
 
-    void setPolygon(CompositePolygon *polygon);
+    void setPolygon(Polygon *polygon);
 
-    void enablePolygon(bool enable);
-    void enableDiagonals(bool enable);
-    void enablePartition(bool enable);
-    void enableTesselation(bool enable);
-
-    CompositePolygon* getPolygon();
+    Polygon* getPolygon();
 
 protected:
     void paintEvent(QPaintEvent *);
@@ -46,12 +41,7 @@ private:
 
     int m_selection;
 
-    CompositePolygon *m_poly;
-
-    bool m_polygon;
-    bool m_diagonals;
-    bool m_partition;
-    bool m_tesselation;
+    Polygon *m_poly;
 
     QVector2D m_p;
     bool m_enclosing;

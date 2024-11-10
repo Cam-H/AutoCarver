@@ -1,3 +1,9 @@
 [submodule "assimp"]
 	path = extern/assimp
 	url = https://github.com/assimp/assimp.git
+[submodule "mcut"]
+	path = extern/mcut
+	url = https://github.com/cutdigital/mcut.git
+[submodule "reactphysics3d"]
+	path = extern/reactphysics3d
+	url = https://github.com/DanielChappuis/reactphysics3d.git

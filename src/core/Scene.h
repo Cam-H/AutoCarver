@@ -1,70 +1,46 @@
 //
-// Created by cameronh on 25/04/24.
+// Created by Cam on 2024-10-21.
 //
 
 #ifndef AUTOCARVER_SCENE_H
 #define AUTOCARVER_SCENE_H
 
-#include <QtCore/QObject>
-#include <QVector3D>
+#include <reactphysics3d/reactphysics3d.h>
 
-#include <Qt3DCore/QEntity>
-#include <Qt3DCore/QTransform>
-#include <QMouseEvent>
-
-
-#include <Qt3DExtras/Qt3DWindow>
-#include <Qt3DExtras/QText2DEntity>
-
-#include <Qt3DRender/QCamera>
-#include <Qt3DRender/QMesh>
-#include <Qt3DCore/QBuffer>
-#include <Qt3DLogic/QFrameAction>
-
-#include "../geometry/Body.h"
-#include "../geometry/Tesselation.h"
 #include <vector>
+#include <thread>
 
-class Scene : public Qt3DExtras::Qt3DWindow
-{
-    Q_OBJECT
+#include "geometry/Body.h"
 
+class Scene {
 public:
-    explicit Scene(Qt3DCore::QEntity *rootEntity, const std::string& base);
-    ~Scene();
 
+    Scene();
 
-public slots:
-    void apexX(int value);
-    void apexY(int value);
-    void apexZ(int value);
-    void cut(int value);
-    void show(bool enabled);
+    void start();
+    void pause();
 
-protected:
-    void mouseMoveEvent(QMouseEvent *event) override;
+    void update(float timestep);
+
+    Body* createBody(const std::string &filepath, rp3d::BodyType type = rp3d::BodyType::STATIC);
+    Body* createBody(const std::shared_ptr<Mesh>& mesh, rp3d::BodyType type = rp3d::BodyType::STATIC);
 
 private:
-    Qt3DCore::QEntity *m_rootEntity;
-    Qt3DRender::QMesh *m_BunnyMesh;
-    std::string m_filepath;
+    void update();
 
-    Body* m_body;
-    Tesselation m_tessel;
+    void sync();
+private:
 
-    Qt3DCore::QTransform *m_cutPlaneTransform;
-    Qt3DCore::QTransform *m_cuboidTransform;
+    rp3d::PhysicsCommon m_physicsCommon;
+    rp3d::PhysicsWorld *m_world;
 
-    Qt3DCore::QEntity *m_plane;
+    std::vector<Body*> m_bodies;
 
-    std::vector<QVector3D> m_set;
-    QVector3D m_apex;
-    bool good;
+    std::thread m_updateThread;
+    bool m_paused;
+//    std::vector<Qt3DRender::QMesh*> m_meshes;
+//    std::vector<rp3d::RigidBody*> m_physBodies;
 
-    Qt3DExtras::QText2DEntity *m_text;
-    Qt3DCore::QTransform *m_textTransform;
-
-    Qt3DLogic::QFrameAction *m_frameAction;
 };
 
 

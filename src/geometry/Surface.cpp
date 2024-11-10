@@ -6,7 +6,7 @@
 
 #include <iostream>
 
-#include "Polygon.h"
+#include "geometry/poly/CompositePolygon.h"
 #include "../core/Timer.h"
 
 Surface::Surface(const std::vector<QVector3D> &loop) : m_type(SurfaceType::PLANAR), m_vertices({loop})
@@ -28,7 +28,7 @@ void Surface::triangulation(std::vector<QVector3D> &vertices, std::vector<Triang
     switch (m_type) {
         case SurfaceType::PLANAR:
         {
-            Polygon poly(m_vertices, m_normal);
+            CompositePolygon poly(m_vertices, m_normal);
             std::vector<Triangle> triangulation = poly.triangulation();
 
             uint32_t base = vertices.size();

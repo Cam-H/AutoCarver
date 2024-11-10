@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include "window.h"
+#include "geometry/poly/CompositePolygon.h"
 
 int main(int argc, char **argv)
 {
@@ -21,9 +22,6 @@ int main(int argc, char **argv)
     // Test data set
     uint32_t idx = 0;
     std::vector<CompositePolygon> polygons;
-
-
-
 
 
     // Flame I
@@ -165,37 +163,12 @@ int main(int argc, char **argv)
         window->setPolygon(&polygons[idx]);
     });
 
-    auto polygonButton = new QCheckBox("Polygon", container);
-    polygonButton->setChecked(true);
-    vLayout->addWidget(polygonButton);
-
-    auto diagonalButton = new QCheckBox("Diagonals", container);
-    vLayout->addWidget(diagonalButton);
-
-    auto partitionButton = new QCheckBox("Partition", container);
-    vLayout->addWidget(partitionButton);
-
-    auto tesselateButton = new QCheckBox("Tesselate", container);
-    vLayout->addWidget(tesselateButton);
-
-    QObject::connect(polygonButton, &QCheckBox::clicked, [&](bool checked) {
-        window->enablePolygon(checked);
-    });
-
-    QObject::connect(diagonalButton, &QCheckBox::clicked, [&](bool checked) {
-        window->enableDiagonals(checked);
-    });
-
-
-    QObject::connect(partitionButton, &QCheckBox::clicked, [&](bool checked) {
-        window->enablePartition(checked);
-//        tesselateButton->setChecked(tesselateButton->isChecked() && checked);
-//        tesselateButton->setEnabled(checked);
-    });
-
-    QObject::connect(tesselateButton, &QCheckBox::clicked, [&](bool checked) {
-        window->enableTesselation(checked);
-    });
+//    Polygon poly = Polygon({
+//        {{0, 0}, {0, 10}, {10, 10}, {10, 0}},
+//        {{2, 2}, {8, 2}, {8, 8}, {2, 8}}
+//    });
+//
+//    std::cout << "Area: " << poly.area() << "\n";
 
     container->show();
 

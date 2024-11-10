@@ -1,9 +1,11 @@
 
 qt_add_library(AutoCarverLib
-        core/Scene.h
-        core/Scene.cpp
+        core/NotScene.h
+        core/NotScene.cpp
         core/Timer.h
         core/Timer.cpp
+        core/Scene.h
+        core/Scene.cpp
 
         fileIO/MeshLoader.h
         fileIO/MeshLoader.cpp
@@ -11,15 +13,19 @@ qt_add_library(AutoCarverLib
         widgets/SceneViewWidget.h
         widgets/SceneViewWidget.cpp
 
-        renderer/VertexArray.h
-        renderer/VertexArray.cpp
         renderer/MonitorCameraController.h
         renderer/MonitorCameraController.cpp
 
         geometry/Triangle.h
         geometry/Triangle.cpp
-        geometry/Polygon.h
-        geometry/Polygon.cpp
+
+        geometry/poly/Polygon.h
+        geometry/poly/Polygon.cpp
+        geometry/poly/ConvexPolygon.h
+        geometry/poly/ConvexPolygon.cpp
+        geometry/poly/CompositePolygon.h
+        geometry/poly/CompositePolygon.cpp
+
         geometry/Surface.h
         geometry/Surface.cpp
         geometry/Tesselation.h
@@ -28,6 +34,21 @@ qt_add_library(AutoCarverLib
         geometry/GeometryBuilder.cpp
         geometry/Body.h
         geometry/Body.cpp
+        geometry/poly/ConvexPolygon.h
+        geometry/poly/ConvexPolygon.cpp
+        geometry/poly/CompositePolygon.h
+        geometry/poly/CompositePolygon.cpp
+        geometry/ConvexHull.h
+        geometry/ConvexHull.cpp
+        geometry/Mesh.h
+        geometry/Mesh.cpp
+        geometry/MeshBuilder.h
+        geometry/MeshBuilder.cpp
+        geometry/VertexArray.h
+        geometry/VertexArray.cpp
+
+        renderer/RenderEntity.h
+        renderer/RenderEntity.cpp
         )
 
 target_link_libraries(AutoCarverLib PRIVATE
@@ -41,6 +62,7 @@ target_link_libraries(AutoCarverLib PRIVATE
         Qt6::OpenGLWidgets
         Qt6::Widgets
         libassimp
+        reactphysics3d
         )
 
 qt_add_executable(AutoCarver
@@ -60,7 +82,7 @@ target_link_libraries(AutoCarver PRIVATE
         Qt6::OpenGLWidgets
         Qt6::Widgets
         libassimp
-
+        reactphysics3d
         AutoCarverLib
         )
 
