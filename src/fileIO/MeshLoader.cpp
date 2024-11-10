@@ -51,7 +51,7 @@ Tesselation MeshLoader::loadAsTesselation(const std::string& filepath)
     return tessel;
 }
 
-Mesh MeshLoader::loadAsMeshBody(const std::string& filepath, float scalar)
+std::shared_ptr<Mesh> MeshLoader::loadAsMeshBody(const std::string& filepath, float scalar)
 {
     ScopedTimer timer(filepath + " mesh loading");
     Assimp::Importer importer;
@@ -65,7 +65,7 @@ Mesh MeshLoader::loadAsMeshBody(const std::string& filepath, float scalar)
     // Report failed imports
     if (nullptr == scene) {
         std::cout << "\033[31mImport failed: " << importer.GetErrorString() << "\033[0m\n";
-        return Mesh(nullptr, 0, nullptr, 0);
+        return nullptr;
     }
 
     uint32_t vertexCount = 0, indexCount = 0;
@@ -96,5 +96,6 @@ Mesh MeshLoader::loadAsMeshBody(const std::string& filepath, float scalar)
         offset += scene->mMeshes[i]->mNumVertices;
     }
 
-    return Mesh(vertices, vertexCount, indices, indexCount);
+    std::cout << "load\n";
+    return std::make_shared<Mesh>(vertices, vertexCount, indices, indexCount);
 }

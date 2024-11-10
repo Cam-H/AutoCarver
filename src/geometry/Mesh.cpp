@@ -17,8 +17,8 @@ Mesh::Mesh(float vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t 
     , m_vertexCount(vertexCount)
     , m_indices(indices)
     , m_indexCount(indexCount)
-    , m_normals(nullptr)
     , m_triNormals(nullptr)
+    , m_normals(nullptr)
     , m_faces(nullptr)
     , m_faceSizes(nullptr)
     , m_faceCount(indexCount)
@@ -36,14 +36,15 @@ Mesh::Mesh(const ConvexHull& hull)
         , m_vertexCount(hull.vertexCount())
         , m_indices(nullptr)
         , m_indexCount(0)
-        , m_normals(nullptr)
         , m_triNormals(nullptr)
+        , m_normals(nullptr)
         , m_faces(nullptr)
         , m_faceSizes(new uint32_t[hull.facetCount()])
         , m_faceCount(hull.facetCount())
         , m_colors(nullptr)
 {
 
+    std::cout << "start\n";
     ScopedTimer timer("Convert convex hull to mesh");
 
     std::copy(hull.vertices(), hull.vertices() + hull.vertexCount() * STRIDE, m_vertices);
@@ -63,27 +64,36 @@ Mesh::Mesh(const ConvexHull& hull)
         setFaceColor(i, {200, 150, 10});
     }
 
+    std::cout << m_indices << " " << m_indexCount << " " << m_vertices << " " << m_vertexCount << " s1\n";
     calculateFaceNormals();
+    std::cout << "s2\n";
     calculateVertexNormals();
+    std::cout << "s3\n";
 }
 
 Mesh::~Mesh()
 {
-//    delete m_vertices;
-//
-//    delete m_normals;
-//    delete m_faceNormals;
-//
-//    delete m_colors;
-//
-//    delete m_indices;
+    std::cout << "MESH DELETION~~~~~~~~~~~~~\n";
+    delete[] m_vertices;
+
+    delete[] m_indices;
+
+    delete[] m_triNormals;
+    delete[] m_normals;
+
+    delete[] m_faces;
+    delete[] m_faceSizes;
+
+    delete[] m_colors;
 }
 
 void Mesh::calculateFaceNormals()
 {
-    delete m_triNormals;
+    std::cout << m_indices << " cfn1\n";
+    delete[] m_triNormals;
 
     m_triNormals = new float[3 * m_indexCount];
+    std::cout << "cfn2\n";
 
     for (uint32_t i = 0; i < m_indexCount; i++) {
         QVector3D normal = QVector3D::crossProduct(
@@ -103,11 +113,13 @@ void Mesh::calculateFaceNormals()
         m_triNormals[3 * i + 1] = normal.y();
         m_triNormals[3 * i + 2] = normal.z();
     }
+    std::cout << "cfnf\n";
+
 }
 
 void Mesh::calculateVertexNormals()
 {
-    delete m_normals;
+    delete[] m_normals;
 
     m_normals = new float[3 * m_vertexCount];
     for (uint32_t i = 0; i < 3 * m_vertexCount; i++) m_normals[i] = 0;

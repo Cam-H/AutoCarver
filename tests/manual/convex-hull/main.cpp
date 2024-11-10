@@ -25,8 +25,6 @@
 #include <Qt3DCore/qtransform.h>
 
 #include <Qt3DExtras/qt3dwindow.h>
-#include <Qt3DExtras/QPhongMaterial>
-
 
 #include <thread>
 #include <chrono>
@@ -54,27 +52,22 @@ int main(int argc, char *argv[]) {
 
     std::string source = "..\\res\\";
     std::vector<std::pair<std::string, float>> paths = {
-            {source + "cube.obj", 2.0f},
-            {source + "HollowCylinder.obj", 2.0f},
-            {source + "emblem.obj", 1.4f},
-            {source + "stone.obj", 2.0f},
-            {source + "devil.obj", 2.0f},
-            {source + "spot.obj", 4.0f},
-            {source + "beshon.obj", 4.0f},
-            {source + "spider.obj", 0.06f},
-            {source + "horse.obj", 50.0f},
-            {source + "hornbug.obj", 4.0f},
-            {source + "caterpillar.obj", 0.05f},
-            {source + "teddy.obj", 0.3f},
-            {source + "ogre.obj", 0.3f},
-            {source + "bunny.obj", 0.6f},
-            {source + "dragon.ply", 40.0f}
-
-
+            {source + "cube.obj", 2.0f}
+//            {source + "HollowCylinder.obj", 2.0f},
+//            {source + "emblem.obj", 1.4f},
+//            {source + "stone.obj", 2.0f},
+//            {source + "devil.obj", 2.0f},
+//            {source + "spot.obj", 4.0f},
+//            {source + "beshon.obj", 4.0f},
+//            {source + "spider.obj", 0.06f},
+//            {source + "horse.obj", 50.0f},
+//            {source + "hornbug.obj", 4.0f},
+//            {source + "caterpillar.obj", 0.05f},
+//            {source + "teddy.obj", 0.3f},
+//            {source + "ogre.obj", 0.3f},
+//            {source + "bunny.obj", 0.6f},
+//            {source + "dragon.ply", 40.0f}
     };
-//    std::vector<std::pair<std::string, float>> paths = {
-//            {source + "cube.obj", 2.0f}
-//    };
 
     // Root entity
     root = new Qt3DCore::QEntity();
@@ -155,21 +148,16 @@ int main(int argc, char *argv[]) {
 
     // Prepare all test bodies
     for (const std::pair<std::string, float>& path : paths) {
-        auto mesh = std::make_shared<Mesh>(MeshLoader::loadAsMeshBody(path.first, path.second));
-//        mesh->setBaseColor(QColor::fromRgbF(1, 1, 0.2));
-//        for (uint32_t i = 0; i < mesh->triangleCount(); i += 2) {
-//            mesh->setFaceColor(i, QColor::fromRgbF(0, 0, 1));
-//        }
-        auto body = new Body(mesh);
-        body->hull(); // Induce calculation of convex hull
-        body->setRenderer(root, view);
-        body->hide();
+        auto mesh = MeshLoader::loadAsMeshBody(path.first, path.second);
 
-        //TODO
-//        body->mesh().setBaseColor(QColor::fromRgbF(1, 1, 0.2));
-//        for (uint32_t i = 0; i < body->mesh().triangleCount(); i += 2) {
-//            body->mesh().setFaceColor(i, QColor::fromRgbF(0, 0, 1));
-//        }
+        std::cout << "mes\n";
+        auto body = new Body(mesh);
+        std::cout << "mes1\n";
+        body->hull(); // Induce calculation of convex hull
+        std::cout << "mes2\n";
+        body->setRenderer(root, view);
+        std::cout << "mes3\n";
+        body->hide();
 
         m_bodies.push_back(body);
     }

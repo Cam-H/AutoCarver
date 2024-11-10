@@ -12,8 +12,8 @@
 
 Body::Body(const std::shared_ptr<Mesh> &mesh)
     : m_mesh(mesh)
-    , m_hull()
-    , m_hullOK(false)
+    , m_hull(mesh->vertices(), mesh->vertexCount())
+    , m_hullOK(true)
     , m_render(nullptr)
     , m_physEnabled(false)
     , s_phys(nullptr)
@@ -57,7 +57,7 @@ void Body::setRenderer(Qt3DCore::QEntity *parent, Qt3DExtras::Qt3DWindow *view)
     m_render->add(m_mesh);
 
     if (m_hullOK) m_render->add(std::make_shared<Mesh>(m_hull));
-
+    std::cout << "mss\n";
     updateRenderer();
 }
 
@@ -195,9 +195,13 @@ float Body::volume()
 const ConvexHull &Body::hull()
 {
     if (!m_hullOK) {
-        m_hull = {m_mesh->vertices(), m_mesh->vertexCount()};
+//        m_hull(m_mesh->vertices(), m_mesh->vertexCount());
+//        m_hull = ConvexHull(m_mesh->vertices(), m_mesh->vertexCount());
+        std::cout << "inaa\n";
         m_hullOK = true;
     }
+
+    std::cout << "xx\n";
 
     return m_hull;
 }

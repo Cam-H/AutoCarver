@@ -50,7 +50,7 @@ void Scene::sync()
 
 Body* Scene::createBody(const std::string &filepath, rp3d::BodyType type)
 {
-    return createBody(std::make_shared<Mesh>(MeshLoader::loadAsMeshBody(filepath)), type);
+    return createBody(MeshLoader::loadAsMeshBody(filepath), type);
 }
 
 Body* Scene::createBody(const std::shared_ptr<Mesh>& mesh, rp3d::BodyType type)

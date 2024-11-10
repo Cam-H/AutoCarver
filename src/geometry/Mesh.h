@@ -19,10 +19,6 @@ public:
     explicit Mesh(const ConvexHull& hull);
     ~Mesh();
 
-//    void setTranslation(QVector3D translation);
-//    void setRotation(QQuaternion rotation);
-//    Qt3DCore::QTransform *transformation();
-
     void setBaseColor(QColor color);
     void setFaceColor(uint32_t faceIdx, QColor color);
 
@@ -49,12 +45,11 @@ private:
     float *m_vertices;
     uint32_t m_vertexCount;
 
-    float *m_normals;
-
     uint32_t *m_indices;
     uint32_t m_indexCount;
 
     float *m_triNormals;
+    float *m_normals;
 
     uint32_t *m_faces; // Triangle indices for each face
     uint32_t *m_faceSizes; // Size of each individual face in triangles

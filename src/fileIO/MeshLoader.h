@@ -13,7 +13,7 @@ public:
 
     static Tesselation loadAsTesselation(const std::string& filepath);
 
-    static Mesh loadAsMeshBody(const std::string& filepath, float scalar = 1.0f);
+    static std::shared_ptr<Mesh> loadAsMeshBody(const std::string& filepath, float scalar = 1.0f);
 
 };
 

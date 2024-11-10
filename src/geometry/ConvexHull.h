@@ -6,34 +6,14 @@
 #define AUTOCARVER_CONVEXHULL_H
 
 #include <QColor>
-//#include <glm/glm.hpp>
 
 #include <string>
 #include <memory>
 #include <vector>
 
-//#include "Sphere.h"
-//#include "Face.h"
 //#include "VHACD.h"
 
 #include "VertexArray.h"
-
-//const static QColor DEFAULT_CONVEX_HULL_COLOR = {166, 87, 51};
-//
-//const static std::vector<glm::vec3> COLOR_CYCLE = {
-//        {-0.12f, 0.56f, -0.72f},
-//        {1.00f, 0.51f, -0.06f},
-//        {-0.14f,  0.62f, -0.14f},
-//        {-0.91f, 0.11f,  -0.12f},
-//        {-0.53f, -0.41f, -0.92f},
-//        {0.48f, -0.38f,  0.25f},
-//        {-0.89f, -0.44f, 0.93f},
-//        {0.50f, 0.50f, -0.50f},
-//        {0.00f, -0.10f, 0.00f},
-//        {-0.33f, -0.33f, -0.33f},
-//        {0.33f, -1.00f, 1.00f}
-//};
-//
 
 class ConvexHull {
 public:
@@ -42,42 +22,15 @@ public:
     ConvexHull(const float* cloud, uint32_t cloudSize);
 
     ConvexHull(const ConvexHull& rhs) = default;
-//    ConvexHull& operator=(const ConvexHull& rhs){};
-
-    void scale(float distance);
-
+    ~ConvexHull();
 
     uint32_t vertexCount() const;
     float* vertices() const;
 
-//    uint32_t *facets() const;
     uint32_t *facetSizes() const;
     uint32_t facetCount() const;
 
     uint32_t* triangulate(uint32_t& triangleCount) const;
-
-//    [[nodiscard]] const std::vector<glm::vec3>& getVertices() const;
-//    [[nodiscard]] const std::vector<glm::vec3>& getNormals() const;
-//    [[nodiscard]] const std::vector<Triangle>& getTriangles() const;
-
-//    [[nodiscard]] std::vector<Face> getFaces() const;
-
-//    [[nodiscard]] std::vector<std::pair<glm::vec3, glm::vec3>> getAxes() const;
-
-
-//    [[nodiscard]] bool isSourceConvex() const;
-//    [[nodiscard]] float getVolume() const;
-//    [[nodiscard]] const Sphere& getBoundingSphere() const;
-//
-//    [[nodiscard]] glm::vec3 getColor() const;
-//    [[nodiscard]] static glm::vec3 getNextColor(const glm::vec3& base, const glm::vec3& delta, uint32_t& index);
-
-
-//    [[nodiscard]] ConvexHull transformed(const glm::mat4& transform) const;
-//    [[nodiscard]] std::vector<glm::vec2> sweptSection(const glm::vec3& origin, const glm::vec3& axis) const;
-
-//    [[nodiscard]] bool raycast(const glm::vec3& origin, const glm::vec3& direction, float& t) const;
-//    [[nodiscard]] bool raycast(const glm::vec3& origin, const glm::vec3& direction) const;
 
 private:
 
@@ -115,10 +68,12 @@ private:
 
     struct Facet {
         Triangle triangle;
-        float *normal;
+        float* normal;
         std::vector<uint32_t> outside;
         std::vector<uint32_t> neighbors;
         bool onHull;
+
+//        ~Facet() { std::cout << "del\n"; delete[] normal; }
     };
 
     std::vector<Triangle> initialApproximation();
@@ -130,8 +85,6 @@ private:
 
     static bool isManifold(const std::vector<Facet> &facets);
     static bool isManifold(const Facet &dest, uint32_t src);
-
-//    glm::vec3 normal(const Triangle& triangle);
 
 private:
 
