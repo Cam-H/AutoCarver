@@ -56,9 +56,9 @@ int main(int argc, char *argv[]) {
             {source + "HollowCylinder.obj", 2.0f},
             {source + "emblem.obj", 1.4f},
             {source + "stone.obj", 2.0f},
-            {source + "devil.obj", 2.0f}
-//            {source + "spot.obj", 4.0f},
-//            {source + "beshon.obj", 4.0f},
+            {source + "devil.obj", 2.0f},
+            {source + "spot.obj", 4.0f},
+            {source + "beshon.obj", 4.0f}
 //            {source + "spider.obj", 0.06f},
 //            {source + "horse.obj", 50.0f},
 //            {source + "hornbug.obj", 4.0f},

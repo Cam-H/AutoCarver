@@ -6,8 +6,7 @@
 
 // Rendering
 #include <Qt3DCore/QAttribute>
-#include <QPerVertexColorMaterial>
-#include <QPhongMaterial>
+
 #include <QTorusMesh>
 
 #include "core/Timer.h"
@@ -44,20 +43,40 @@ Qt3DCore::QTransform *RenderEntity::transformation()
     return m_transform;
 }
 
-void RenderEntity::add(const std::shared_ptr<Mesh>& mesh)
+void RenderEntity::add(const std::shared_ptr<Mesh>& mesh, Qt3DRender::QMaterial *material)
 {
-    meshes.push_back(mesh);
+    if (material == nullptr) {
+        material = new Qt3DExtras::QDiffuseSpecularMaterial();
+        ((Qt3DExtras::QDiffuseSpecularMaterial*)material)->setDiffuse(QVariant(QColor(QRgb(0xa69929))));
+//        ((Qt3DExtras::QDiffuseSpecularMaterial*)material)->setAlphaBlendingEnabled(true);
+    }
+
+    meshes.emplace_back(mesh, material);
 }
 
 void RenderEntity::generate()
 {
+
+    // Prevent materials from being deleted alongside the old entities (wll be reused)
+    for (auto& mesh : meshes) {
+        if (mesh.second != nullptr) {
+            mesh.second->setParent((Qt3DCore::QNode*)nullptr);
+        }
+    }
+
+    // Record state of entities
+    std::vector<bool> enables;
+
     // Purge old entities
-    for (Qt3DCore::QEntity *render : m_renders) render->deleteLater();
+    for (Qt3DCore::QEntity *render : m_renders) {
+        enables.push_back(render->isEnabled());
+        render->deleteLater();
+    }
     m_renders.clear();
 
     ScopedTimer timer("QRenderer creation");
 
-    for (const std::shared_ptr<Mesh> &mesh : meshes) {
+    for (const auto& mesh : meshes) {
         auto entity = new Qt3DCore::QEntity(this);
 
         // Mesh transform
@@ -67,22 +86,27 @@ void RenderEntity::generate()
         // Mesh geometry
         auto renderer = new Qt3DRender::QGeometryRenderer(entity);
 
-        if (mesh->faceCount() == mesh->triangleCount()) {
-            auto material = new Qt3DExtras::QPhongMaterial();
-            material->setDiffuse(QColor(QRgb(0xa69929)));
-            entity->addComponent(material);
+        if (mesh.first->faceCount() == mesh.first->triangleCount()) {
+            entity->addComponent(mesh.second);
 
-            renderer->setGeometry(indexedGeometry(mesh, renderer));
+            renderer->setGeometry(indexedGeometry(mesh.first, renderer));
         } else {
             auto material = new Qt3DExtras::QPerVertexColorMaterial();
             entity->addComponent(material);
 
-            renderer->setGeometry(faceGeometry(mesh, renderer));
+            renderer->setGeometry(faceGeometry(mesh.first, renderer));
         }
 
         entity->addComponent(renderer);
 
         m_renders.push_back(entity);
+    }
+
+    // Restore prior visibilities
+    for (uint32_t i = 0; i < m_renders.size(); i++) {
+        if (i >= enables.size()) break;
+
+        m_renders[i]->setEnabled(enables[i]);
     }
 }
 
@@ -92,7 +116,7 @@ Qt3DCore::QGeometry* RenderEntity::indexedGeometry(const std::shared_ptr<Mesh>& 
 
     uint32_t vertexCount = mesh->vertexCount();
 
-    float *attributes[] = {mesh->vertices(), mesh->normals()};
+    const float *attributes[] = {mesh->vertices(), mesh->normals()};
     uint8_t attributeCount = 2;
 
     const auto attributeNames = {
@@ -169,7 +193,7 @@ Qt3DCore::QGeometry* RenderEntity::faceGeometry(const std::shared_ptr<Mesh>& mes
 
     mesh->directRepresentation(vertices, normals);
 
-    float *attributes[] = {vertices, normals, mesh->colors()};
+    float *attributes[3] = {vertices, normals, mesh->colors()};
     uint8_t attributeCount = 3;
 
     const auto attributeNames = {
@@ -212,13 +236,8 @@ Qt3DCore::QGeometry* RenderEntity::faceGeometry(const std::shared_ptr<Mesh>& mes
         geometry->addAttribute(vertexAttribute);
     }
 
-    // Cleanup
-//    if (!m_faceColors.empty()) {
-//        delete vertices;
-//        delete normals;
-//        delete colors;
-//        delete indices;
-//    }
+    delete[] vertices;
+    delete[] normals;
 
     return geometry;
 }

@@ -61,6 +61,62 @@ VertexArray::~VertexArray()
     delete[] m_vertices;
 }
 
+float* VertexArray::operator[](uint32_t idx)
+{
+    return &m_vertices[idx * STRIDE];
+}
+
+float* VertexArray::operator[](uint32_t idx) const
+{
+    return &m_vertices[idx * STRIDE];
+}
+
+void VertexArray::scale(float scalar) {
+    for (uint32_t i = 0; i < m_vertexCount * STRIDE; i++) {
+        m_vertices[i] *= scalar;
+    }
+}
+
+void VertexArray::translate(const float* translation)
+{
+    for (uint32_t i = 0; i < m_vertexCount * STRIDE; i++) {
+        m_vertices[i] += translation[i % STRIDE];
+    }
+}
+
+void VertexArray::rotate(const float* axis, float theta)
+{
+    float val = sinf(theta / 2), temp[3];
+
+    float quat[4] = {cosf(theta / 2), axis[0] * val, axis[1] * val, axis[2] * val};
+
+    float mat[3][3] = {
+            {
+                1 - 2 * (powf(quat[2], 2) + powf(quat[3], 2)),
+                2 * (quat[1] * quat[2] - quat[3] * quat[0]),
+                2 * (quat[1] * quat[3] + quat[2] * quat[0])
+            }, {
+                2 * (quat[1] * quat[2] + quat[3] * quat[0]),
+                1 - 2 * (powf(quat[1], 2) + powf(quat[3], 2)),
+                2 * (quat[2] * quat[3] - quat[1] * quat[0])
+            }, {
+                2 * (quat[1] * quat[3] - quat[2] * quat[0]),
+                2 * (quat[2] * quat[3] + quat[1] * quat[0]),
+                1 - 2 * (powf(quat[1], 2) + powf(quat[2], 2))
+            }
+    };
+
+    for (uint32_t i = 0; i < m_vertexCount; i++) {
+        temp[0] = m_vertices[i * STRIDE + 0] * mat[0][0] + m_vertices[i * STRIDE + 1] * mat[0][1] + m_vertices[i * STRIDE + 2] * mat[0][2];
+        temp[1] = m_vertices[i * STRIDE + 0] * mat[1][0] + m_vertices[i * STRIDE + 1] * mat[1][1] + m_vertices[i * STRIDE + 2] * mat[1][2];
+        temp[2] = m_vertices[i * STRIDE + 0] * mat[2][0] + m_vertices[i * STRIDE + 1] * mat[2][1] + m_vertices[i * STRIDE + 2] * mat[2][2];
+
+        m_vertices[i * STRIDE + 0] = temp[0];
+        m_vertices[i * STRIDE + 1] = temp[1];
+        m_vertices[i * STRIDE + 2] = temp[2];
+    }
+}
+
 void VertexArray::remove(uint32_t idx)
 {
     if (idx < m_vertexCount) {
@@ -167,6 +223,11 @@ uint32_t VertexArray::vertexCount() const
     return m_vertexCount;
 }
 
+uint32_t VertexArray::size() const
+{
+    return m_vertexCount * STRIDE;
+}
+
 bool VertexArray::extremes(const float *axis, uint32_t &min, uint32_t &max)
 {
     float minValue = std::numeric_limits<float>::max();
@@ -230,4 +291,13 @@ bool VertexArray::extreme(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max)
     }
 
     return std::abs(maxValue) > std::numeric_limits<float>::epsilon();
+}
+
+void VertexArray::extents(const float *axis, float &near, float &far)
+{
+    uint32_t min, max;
+    extremes(axis, min, max);
+
+    near = VertexArray::dot(axis, &m_vertices[min * STRIDE]);
+    far = VertexArray::dot(axis, &m_vertices[max * STRIDE]);
 }

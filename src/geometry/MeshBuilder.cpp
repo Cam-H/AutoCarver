@@ -4,7 +4,7 @@
 
 #include "MeshBuilder.h"
 
-Mesh MeshBuilder::box(float length, float width, float height){
+std::shared_ptr<Mesh> MeshBuilder::box(float length, float width, float height){
 
     width /=2;
     length /= 2;
@@ -36,6 +36,6 @@ Mesh MeshBuilder::box(float length, float width, float height){
             6, 5, 4
     };
 
-    return Mesh(vertices, 8, indices, 12);
+    return std::make_shared<Mesh>(vertices, 8, indices, 12);
 
 }

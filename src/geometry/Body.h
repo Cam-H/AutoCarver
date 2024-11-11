@@ -31,7 +31,7 @@ public:
     explicit Body(const std::shared_ptr<Mesh> &mesh);
     explicit Body(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world, const std::shared_ptr<Mesh>& mesh);
 
-    void setRenderer(Qt3DCore::QEntity *parent, Qt3DExtras::Qt3DWindow *view);
+    virtual void setRenderer(Qt3DCore::QEntity *parent, Qt3DExtras::Qt3DWindow *view);
     void updateRenderer();
 
     void show(Model model = Model::ALL);
@@ -64,9 +64,9 @@ private:
     void calculateArea();
     void calculateVolume();
 
-private:
+protected:
 
-//    std::vector<Surface> m_surfaces;
+    //    std::vector<Surface> m_surfaces;
 //
 //    Tesselation m_tesselation;
 
@@ -94,6 +94,10 @@ private:
     bool m_isManifoldOK;
     bool m_areaOK;
     bool m_volumeOK;
+
+private:
+
+
 
 };
 

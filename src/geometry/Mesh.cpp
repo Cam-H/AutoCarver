@@ -13,8 +13,7 @@
 #include "core/Timer.h"
 
 Mesh::Mesh(float vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t indexCount)
-    : m_vertices(vertices)
-    , m_vertexCount(vertexCount)
+    : m_vertices(vertices, vertexCount)
     , m_indices(indices)
     , m_indexCount(indexCount)
     , m_triNormals(nullptr)
@@ -32,8 +31,7 @@ Mesh::Mesh(float vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t 
 }
 
 Mesh::Mesh(const ConvexHull& hull)
-        : m_vertices(new float[hull.vertexCount() * STRIDE])
-        , m_vertexCount(hull.vertexCount())
+        : m_vertices(hull.vertices(), hull.vertexCount())
         , m_indices(nullptr)
         , m_indexCount(0)
         , m_triNormals(nullptr)
@@ -46,7 +44,6 @@ Mesh::Mesh(const ConvexHull& hull)
 
     ScopedTimer timer("Convert convex hull to mesh");
 
-    std::copy(hull.vertices(), hull.vertices() + hull.vertexCount() * STRIDE, m_vertices);
     m_indices = hull.triangulate(m_indexCount);
 
     for (uint32_t i = 0; i < m_faceCount; i++) {
@@ -69,8 +66,6 @@ Mesh::Mesh(const ConvexHull& hull)
 
 Mesh::~Mesh()
 {
-    delete[] m_vertices;
-
     delete[] m_indices;
 
     delete[] m_triNormals;
@@ -82,6 +77,7 @@ Mesh::~Mesh()
     delete[] m_colors;
 }
 
+
 void Mesh::calculateFaceNormals()
 {
     delete[] m_triNormals;
@@ -91,14 +87,14 @@ void Mesh::calculateFaceNormals()
     for (uint32_t i = 0; i < m_indexCount; i++) {
         QVector3D normal = QVector3D::crossProduct(
                 QVector3D(
-                        m_vertices[3 * m_indices[3 * i + 1]]     - m_vertices[3 * m_indices[3 * i]],
-                        m_vertices[3 * m_indices[3 * i + 1] + 1] - m_vertices[3 * m_indices[3 * i] + 1],
-                        m_vertices[3 * m_indices[3 * i + 1] + 2] - m_vertices[3 * m_indices[3 * i] + 2]
+                        m_vertices[m_indices[3 * i + 1]][0] - m_vertices[m_indices[3 * i]][0],
+                        m_vertices[m_indices[3 * i + 1]][1] - m_vertices[m_indices[3 * i]][1],
+                        m_vertices[m_indices[3 * i + 1]][2] - m_vertices[m_indices[3 * i]][2]
                         ),
                 QVector3D(
-                        m_vertices[3 * m_indices[3 * i + 2]]     - m_vertices[3 * m_indices[3 * i]],
-                        m_vertices[3 * m_indices[3 * i + 2] + 1] - m_vertices[3 * m_indices[3 * i] + 1],
-                        m_vertices[3 * m_indices[3 * i + 2] + 2] - m_vertices[3 * m_indices[3 * i] + 2]
+                        m_vertices[m_indices[3 * i + 2]][0] - m_vertices[m_indices[3 * i]][0],
+                        m_vertices[m_indices[3 * i + 2]][1] - m_vertices[m_indices[3 * i]][1],
+                        m_vertices[m_indices[3 * i + 2]][2] - m_vertices[m_indices[3 * i]][2]
                         )
                 ).normalized();
 
@@ -112,8 +108,8 @@ void Mesh::calculateVertexNormals()
 {
     delete[] m_normals;
 
-    m_normals = new float[3 * m_vertexCount];
-    for (uint32_t i = 0; i < 3 * m_vertexCount; i++) m_normals[i] = 0;
+    m_normals = new float[m_vertices.size()];
+    for (uint32_t i = 0; i < m_vertices.size(); i++) m_normals[i] = 0;
 
     for (uint32_t i = 0; i < 3 * m_indexCount; i++) {
         for (uint8_t j = 0; j < 3; j++) {
@@ -121,8 +117,8 @@ void Mesh::calculateVertexNormals()
         }
     }
 
-    for (uint32_t i = 0; i < m_vertexCount; i++) {
-        auto norm = 1 / (float)sqrt(pow(m_vertices[3 * i], 2) + pow(m_vertices[3 * i + 1], 2) + pow(m_vertices[3 * i + 2], 2));
+    for (uint32_t i = 0; i < m_vertices.vertexCount(); i++) {
+        auto norm = 1 / (float)sqrt(pow(m_vertices[i][0], 2) + pow(m_vertices[i][1], 2) + pow(m_vertices[i][2], 2));
         m_normals[3 * i] *= norm;
         m_normals[3 * i + 1] *= norm;
         m_normals[3 * i + 2] *= norm;
@@ -134,10 +130,12 @@ void Mesh::directRepresentation(float *vertices, float *normals)
     uint32_t idx = 0;
     for (uint32_t i = 0; i < m_indexCount; i++) { // For each triangle
         for (uint32_t j = 0; j < 3; j++) { // For each vertex in the triangle
-            uint32_t vIdx = 3 * m_indices[3 * i + j];
 
+            uint32_t vIdx = m_indices[3 * i + j];
+            for (uint8_t k = 0; k < 3; k++) vertices[idx + k] = m_vertices[vIdx][k];
+
+            vIdx *= 3;
             for (uint8_t k = 0; k < 3; k++) { // Copy components of each vector
-                vertices[idx + k] = m_vertices[vIdx + k];
                 normals[idx + k] = m_normals[vIdx + k];
             }
 
@@ -160,6 +158,47 @@ void Mesh::directRepresentation(float *vertices, float *normals)
 //{
 //    return m_transform;
 //}
+
+void Mesh::scale(float scalar)
+{
+//    for (uint32_t i = 0; i < m_vertexCount * STRIDE; i++) {
+//
+//    }
+    m_vertices.scale(scalar);
+}
+
+void Mesh::translate(float x, float y, float z)
+{
+    auto translation = new float[3] {x, y, z};
+    m_vertices.translate(translation);
+    delete[] translation;
+}
+
+void Mesh::rotate(float x, float y, float z, float theta)
+{
+    auto axis = new float[3] {x, y, z};
+    m_vertices.rotate(axis, theta);
+    delete[] axis;
+}
+
+void Mesh::xExtent(float &near, float &far)
+{
+    auto axis = new float[3] {1, 0, 0};
+    m_vertices.extents(axis, near, far);
+    delete[] axis;
+}
+void Mesh::yExtent(float &near, float &far)
+{
+    auto axis = new float[3] {0, 1, 0};
+    m_vertices.extents(axis, near, far);
+    delete[] axis;
+}
+void Mesh::zExtent(float &near, float &far)
+{
+    auto axis = new float[3] {0, 0, 1};
+    m_vertices.extents(axis, near, far);
+    delete[] axis;
+}
 
 void Mesh::setBaseColor(QColor color)
 {
@@ -197,12 +236,12 @@ void Mesh::setFaceColor(uint32_t faceIdx, QColor color)
 
 uint32_t Mesh::vertexCount() const
 {
-    return m_vertexCount;
+    return m_vertices.vertexCount();
 }
 
-float* Mesh::vertices() const
+const float* Mesh::vertices() const
 {
-    return m_vertices;
+    return m_vertices.vertices();
 }
 
 float* Mesh::normals() const
@@ -228,4 +267,17 @@ uint32_t* Mesh::indices()
 uint32_t Mesh::faceCount() const
 {
     return m_faceCount;
+}
+
+float Mesh::volume() const
+{
+    float sum = 0, *val = new float[3];
+    for (uint32_t i = 0; i < triangleCount(); i++) {
+        VertexArray::cross(val, m_vertices[m_indices[i * STRIDE + 1]], m_vertices[m_indices[i * STRIDE + 2]]);
+        sum += VertexArray::dot(m_vertices[m_indices[i * STRIDE]], val);
+    }
+
+    delete[] val;
+
+    return sum / 6.0f;
 }

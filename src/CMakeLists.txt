@@ -49,6 +49,8 @@ qt_add_library(AutoCarverLib
 
         renderer/RenderEntity.h
         renderer/RenderEntity.cpp
+        core/Sculpture.h
+        core/Sculpture.cpp
         )
 
 target_link_libraries(AutoCarverLib PRIVATE

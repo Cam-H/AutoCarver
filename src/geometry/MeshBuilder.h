@@ -10,7 +10,7 @@
 class MeshBuilder {
 public:
 
-    static Mesh box(float length, float width, float height);
+    static std::shared_ptr<Mesh> box(float length, float width, float height);
 
 };
 

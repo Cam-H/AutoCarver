@@ -12,6 +12,8 @@
 #include "ConvexHull.h"
 #include <QColor>
 
+#include "VertexArray.h"
+
 class Mesh {
 public:
 
@@ -19,11 +21,19 @@ public:
     explicit Mesh(const ConvexHull& hull);
     ~Mesh();
 
+    void scale(float scalar);
+    void translate(float x, float y, float z);
+    void rotate(float x, float y, float z, float theta);
+
+    void xExtent(float &near, float &far);
+    void yExtent(float &near, float &far);
+    void zExtent(float &near, float &far);
+
     void setBaseColor(QColor color);
     void setFaceColor(uint32_t faceIdx, QColor color);
 
     uint32_t vertexCount() const;
-    [[nodiscard]] float* vertices() const;
+    [[nodiscard]] const float* vertices() const;
 
     [[nodiscard]] float* normals() const;
     [[nodiscard]] float* colors() const;
@@ -32,6 +42,8 @@ public:
     uint32_t* indices();
 
     uint32_t faceCount() const;
+
+    [[nodiscard]] float volume() const;
 
     void directRepresentation(float *vertices, float *normals);
 
@@ -42,8 +54,7 @@ private:
 
 private:
 
-    float *m_vertices;
-    uint32_t m_vertexCount;
+    VertexArray m_vertices;
 
     uint32_t *m_indices;
     uint32_t m_indexCount;

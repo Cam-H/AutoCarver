@@ -14,10 +14,19 @@ public:
     VertexArray(const VertexArray &);
     VertexArray& operator=(const VertexArray &);
 
-    VertexArray(VertexArray &&) noexcept;            // 4/5: Move Ctor
-    VertexArray& operator=(VertexArray &&) noexcept; // 5/5: Move Assignment
+    VertexArray(VertexArray &&) noexcept;
+    VertexArray& operator=(VertexArray &&) noexcept;
 
     ~VertexArray();
+
+    float* operator[](uint32_t idx);
+    float* operator[](uint32_t idx) const;
+
+
+    void scale(float scalar);
+//    void scale(float xScale, float yScale, float zScale);
+    void translate(const float* translation);
+    void rotate(const float* axis, float theta);
 
     void remove(uint32_t idx);
     static void swap(float *a, float *b);
@@ -43,9 +52,13 @@ public:
     [[nodiscard]] const float* vertices() const;
     [[nodiscard]] uint32_t vertexCount() const;
 
+    [[nodiscard]] uint32_t size() const; // Get the size of the array in bytes
+
     bool extremes(const float *axis, uint32_t &min, uint32_t &max); // Get furthest vertices (top & bottom) along axis
     bool extreme(uint32_t p1, uint32_t p2, uint32_t& max); // Get furthest vertex (perpendicular) from the provided axis
     bool extreme(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max); // Get furthest vertex from the plane formed by provided indices
+
+    void extents(const float *axis, float &near, float &far);
 
 private:
     float *m_vertices;

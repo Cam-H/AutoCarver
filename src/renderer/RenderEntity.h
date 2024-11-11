@@ -16,6 +16,8 @@
 #include <Qt3DCore/QTransform>
 #include <QGeometryRenderer>
 
+#include <QPerVertexColorMaterial>
+#include <QDiffuseSpecularMaterial>
 
 #include <vector>
 
@@ -44,8 +46,9 @@ public:
     void setRotation(QQuaternion rotation);
     Qt3DCore::QTransform *transformation();
 
-    void add(const std::shared_ptr<Mesh>& mesh);
+    void add(const std::shared_ptr<Mesh>& mesh, Qt3DRender::QMaterial *material = nullptr);
 
+//    void invalidate();
     void generate();
 
 private:
@@ -59,8 +62,10 @@ private:
 
     Qt3DCore::QTransform *m_transform;
 
-    std::vector<std::shared_ptr<Mesh>> meshes;
+    std::vector<std::pair<std::shared_ptr<Mesh>, Qt3DRender::QMaterial*>> meshes;
     std::vector<Qt3DCore::QEntity*> m_renders;
+
+//    bool m_valid;
 };
 
 

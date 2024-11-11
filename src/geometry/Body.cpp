@@ -62,7 +62,6 @@ void Body::setRenderer(Qt3DCore::QEntity *parent, Qt3DExtras::Qt3DWindow *view)
 void Body::updateRenderer()
 {
     m_render->generate();
-    hide(Model::HULL);
 }
 
 RenderEntity *Body::getRenderEntity()
