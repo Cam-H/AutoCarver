@@ -15,11 +15,11 @@ qt_standard_project_setup()
 
 
 #find_library(ASSIMP_LIBRARY assimp PATHS ./extern/assimp/bin)
-include_directories(./extern/assimp/include)
 link_directories(./extern/assimp/bin ./extern/assimp/lib)
+link_directories(./extern/mcut/bin ./extern/mcut/lib)
 
+include_directories(./extern/assimp/include)
 include_directories(./extern/mcut/include)
-
 include_directories(extern/reactphysics3d/include)
 
 #add_library()

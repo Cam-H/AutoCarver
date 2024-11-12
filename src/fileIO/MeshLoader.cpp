@@ -11,45 +11,6 @@
 #include <iostream>
 
 #include "core/Timer.h"
-#include "geometry/GeometryBuilder.h"
-
-Tesselation MeshLoader::loadAsTesselation(const std::string& filepath)
-{
-    Tesselation tessel;
-
-    Assimp::Importer importer;
-
-    const aiScene* scene = importer.ReadFile( filepath,
-                                              aiProcess_Triangulate            |
-                                              aiProcess_JoinIdenticalVertices  |
-                                              aiProcess_SortByPType);
-
-    // Report failed imports
-    if (nullptr == scene) {
-        std::cout << "Import failed: " << importer.GetErrorString() << "\n";
-        return tessel;
-    }
-
-    // Convert file content to a usable format
-    std::cout << "Assimp: " << scene->mNumMeshes << " " << scene->mNumMaterials << "\n";
-    for (uint32_t i = 0; i < scene->mNumMeshes; i++) {
-        std::vector<QVector3D> vertices;
-        std::vector<Triangle> triangles;
-
-        for (uint32_t j = 0; j < scene->mMeshes[i]->mNumVertices; j++) {
-            vertices.emplace_back(scene->mMeshes[i]->mVertices[j].x, scene->mMeshes[i]->mVertices[j].y, scene->mMeshes[i]->mVertices[j].z);
-        }
-
-        for (uint32_t j = 0; j < scene->mMeshes[i]->mNumFaces; j++) {
-            triangles.emplace_back((uint32_t)scene->mMeshes[i]->mFaces[j].mIndices[0], (uint32_t)scene->mMeshes[i]->mFaces[j].mIndices[1], (uint32_t)scene->mMeshes[i]->mFaces[j].mIndices[2]);
-            if (scene->mMeshes[i]->mFaces[j].mNumIndices != 3) std::cout << scene->mMeshes[i]->mFaces[j].mNumIndices << " - Face indices\n";
-        }
-
-        tessel.append(GeometryBuilder::reduce(vertices, triangles), triangles);
-    }
-
-    return tessel;
-}
 
 std::shared_ptr<Mesh> MeshLoader::loadAsMeshBody(const std::string& filepath, float scalar)
 {

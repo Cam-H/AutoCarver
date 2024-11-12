@@ -27,6 +27,7 @@ public:
     ~Mesh();
 
     void scale(float scalar);
+    void scale(float x, float y, float z);
     void translate(float x, float y, float z);
     void rotate(float x, float y, float z, float theta);
 

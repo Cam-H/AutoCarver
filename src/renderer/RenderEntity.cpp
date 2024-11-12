@@ -19,9 +19,20 @@ RenderEntity::RenderEntity(Qt3DCore::QEntity *parent, Qt3DExtras::Qt3DWindow *vi
     addComponent(m_transform);
 }
 
+void RenderEntity::show()
+{
+    setEnabled(true);
+}
+void RenderEntity::hide()
+{
+    setEnabled(false);
+}
+
 void RenderEntity::show(uint32_t idx)
 {
     if (idx < m_renders.size()) m_renders[idx]->setEnabled(true);
+
+    show(); // Make sure parent is also visible
 }
 void RenderEntity::hide(uint32_t idx)
 {
@@ -56,6 +67,7 @@ void RenderEntity::add(const std::shared_ptr<Mesh>& mesh, Qt3DRender::QMaterial 
 
 void RenderEntity::generate()
 {
+    ScopedTimer("RE Gen");
 
     // Prevent materials from being deleted alongside the old entities (wll be reused)
     for (auto& mesh : meshes) {

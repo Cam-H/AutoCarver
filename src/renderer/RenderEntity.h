@@ -23,7 +23,7 @@
 
 #include "geometry/Mesh.h"
 
-class RenderEntity : Qt3DCore::QEntity {
+class RenderEntity : public Qt3DCore::QEntity {
 public:
 
 //    class Configuration {
@@ -41,6 +41,9 @@ public:
 
     void show(uint32_t idx);
     void hide(uint32_t idx);
+
+    void show();
+    void hide();
 
     void setTranslation(QVector3D translation);
     void setRotation(QQuaternion rotation);

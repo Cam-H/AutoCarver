@@ -183,6 +183,11 @@ void Mesh::scale(float scalar)
     m_vertices.scale(scalar);
 }
 
+void Mesh::scale(float x, float y, float z)
+{
+    m_vertices.scale(x, y, z);
+}
+
 void Mesh::translate(float x, float y, float z)
 {
     auto translation = new float[3] {x, y, z};

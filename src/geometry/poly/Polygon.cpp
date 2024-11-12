@@ -45,8 +45,9 @@ Polygon::Polygon(const std::vector<std::vector<QVector3D>> &loops, const QVector
 
     QVector3D xAxis = (loops[0][1] - loops[0][0]).normalized();
     QVector3D yAxis = QVector3D::crossProduct(normal, xAxis).normalized();
+    QVector3D zAxis = QVector3D::crossProduct(xAxis, yAxis).normalized();
 
-    System sys = { loops[0][0], xAxis, yAxis };
+    System sys = { loops[0][0], xAxis, yAxis, zAxis };
 
     for (uint32_t i = 0; i < loops.size(); i++) {
         m_loops[i] = m_links.size();
@@ -83,6 +84,10 @@ std::vector<QVector2D> Polygon::reduce(const std::vector<QVector3D> &loop, const
     for(const QVector3D &vertex : loop) {
         QVector3D rel = vertex - sys.origin;
         reduction.emplace_back(QVector3D::dotProduct(rel, sys.xAxis), QVector3D::dotProduct(rel, sys.yAxis));
+        if (std::abs(QVector3D::dotProduct(rel, sys.zAxis)) > std::numeric_limits<float>::epsilon()) {
+            std::cout << "\033[31mERROR! Can not reduce polygon, vertices are not in-plane\033[0m\n";
+            break;
+        }
     }
 
     return reduction;
@@ -334,8 +339,9 @@ std::vector<QVector2D> Polygon::reduce(const std::vector<QVector3D> &loop, const
 {
     QVector3D xAxis = (loop[1] - loop[0]).normalized();
     QVector3D yAxis = QVector3D::crossProduct(normal, xAxis).normalized();
+    QVector3D zAxis = QVector3D::crossProduct(xAxis, yAxis).normalized();
 
-    System sys = { loop[0], xAxis, yAxis };
+    System sys = { loop[0], xAxis, yAxis, zAxis };
     return reduce(loop, normal, sys);
 }
 

@@ -20,6 +20,7 @@ public:
     explicit CompositePolygon(const std::vector<QVector2D> &border);
     explicit CompositePolygon(const std::vector<std::vector<QVector2D>> &loops);
 
+    explicit CompositePolygon(const std::vector<QVector3D> &border);
     explicit CompositePolygon(const std::vector<QVector3D> &border, const QVector3D &normal);
     explicit CompositePolygon(const std::vector<std::vector<QVector3D>> &loops, const QVector3D &normal);
 

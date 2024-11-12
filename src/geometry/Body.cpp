@@ -14,14 +14,12 @@ Body::Body(const std::shared_ptr<Mesh> &mesh)
     : m_mesh(mesh)
     , m_hull(mesh->vertices(), mesh->vertexCount())
     , m_hullOK(true)
-    , m_render(nullptr)
     , m_physEnabled(false)
     , s_phys(nullptr)
     , m_physBody(nullptr)
     , m_isManifold(false)
     , m_area(0)
     , m_volume(0)
-    , m_tesselationOK(false)
     , m_isManifoldOK(false)
     , m_areaOK(false)
     , m_volumeOK(false)
@@ -33,14 +31,12 @@ Body::Body(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world, const std::shar
     : m_mesh(mesh)
     , m_hull(mesh->vertices(), mesh->vertexCount())
     , m_hullOK(true)
-    , m_render(nullptr)
     , m_physEnabled(true)
     , s_phys(phys)
     , m_physBody(world->createRigidBody(rp3d::Transform::identity()))
     , m_isManifold(false)
     , m_area(0)
     , m_volume(0)
-    , m_tesselationOK(false)
     , m_isManifoldOK(false)
     , m_areaOK(false)
     , m_volumeOK(false)
@@ -49,108 +45,18 @@ Body::Body(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world, const std::shar
     prepareColliders();
 }
 
-void Body::setRenderer(Qt3DCore::QEntity *parent, Qt3DExtras::Qt3DWindow *view)
-{
-    m_render = new RenderEntity(parent, view);
-    m_render->add(m_mesh);
-
-    if (m_hullOK) m_render->add(std::make_shared<Mesh>(m_hull));
-
-    updateRenderer();
-}
-
-void Body::updateRenderer()
-{
-    m_render->generate();
-}
-
-RenderEntity *Body::getRenderEntity()
-{
-    return m_render;
-}
-
-void Body::show(Model model)
-{
-    switch (model) {
-        case Model::ALL:
-            m_render->show(0);
-            m_render->show(1);
-            break;
-        case Model::MESH:
-            m_render->show(0);
-            break;
-        case Model::HULL:
-            m_render->show(1);
-            break;
-        case Model::BOUNDING_SPHERE:
-            break;
-    }
-}
-void Body::hide(Model model)
-{
-    switch (model) {
-        case Model::ALL:
-            m_render->hide(0);
-            m_render->hide(1);
-            break;
-        case Model::MESH:
-            m_render->hide(0);
-            break;
-        case Model::HULL:
-            m_render->hide(1);
-            break;
-        case Model::BOUNDING_SPHERE:
-            break;
-    }
-}
-
-void Body::translate(float x, float y, float z)
-{
-    rp3d::Transform transform = m_physBody->getTransform();
-    transform.setPosition(transform.getPosition() + rp3d::Vector3{x, y, z});
-    m_physBody->setTransform(transform);
-
-    const rp3d::Vector3& position = transform.getPosition();
-    m_render->setTranslation({position.x, position.y, position.z});
-}
-
-void Body::rotate(float w, float x, float y, float z)
-{
-    if (m_physBody != nullptr) {
-        rp3d::Transform transform = m_physBody->getTransform();
-        transform.setOrientation(transform.getOrientation() * rp3d::Quaternion(rp3d::Vector3(x, y, z), w));
-        m_physBody->setTransform(transform);
-
-        const rp3d::Quaternion& orientation = transform.getOrientation();
-        m_render->setRotation(QQuaternion(orientation.w, orientation.x, orientation.y, orientation.z));
-    } else {
-        Qt3DCore::QTransform *transform = m_render->transformation();
-        transform->setRotation(transform->rotation() * QQuaternion(w, x, y, z));
-    }
-}
-
-void Body::sync()
-{
-    const reactphysics3d::Transform& transform = m_physBody->getTransform();
-    const reactphysics3d::Vector3& position = transform.getPosition();
-    const reactphysics3d::Quaternion& orientation = transform.getOrientation();
-
-    m_render->setTranslation({position.x, position.y, position.z});
-    m_render->setRotation(QQuaternion(orientation.w, orientation.x, orientation.y, orientation.z));
-}
-
 void Body::prepareColliders()
 {
-    rp3d::VertexArray vertexArray(m_hull.vertices(), 3 * sizeof(float), m_hull.vertexCount(), rp3d::VertexArray::DataType::VERTEX_FLOAT_TYPE);
-
-    std::vector<rp3d::Message> messages;
-    rp3d::ConvexMesh *convexMesh = s_phys->createConvexMesh(vertexArray, messages);
-    rp3d::ConvexMeshShape *convexMeshShape = s_phys->createConvexMeshShape(convexMesh, rp3d::Vector3(1, 1, 1));
-
-    rp3d::Transform transform = rp3d::Transform::identity();
-
-//    rp3d::Collider *collider =
-    m_physBody->addCollider(convexMeshShape, transform);
+//    rp3d::VertexArray vertexArray(m_hull.vertices().vertices(), 3 * sizeof(float), m_hull.vertexCount(), rp3d::VertexArray::DataType::VERTEX_FLOAT_TYPE);
+//
+//    std::vector<rp3d::Message> messages;
+//    rp3d::ConvexMesh *convexMesh = s_phys->createConvexMesh(vertexArray, messages);
+//    rp3d::ConvexMeshShape *convexMeshShape = s_phys->createConvexMeshShape(convexMesh, rp3d::Vector3(1, 1, 1));
+//
+//    rp3d::Transform transform = rp3d::Transform::identity();
+//
+////    rp3d::Collider *collider =
+//    m_physBody->addCollider(convexMeshShape, transform);
 
 }
 
@@ -177,17 +83,10 @@ float Body::volume()
     return m_volume;
 }
 
-//Mesh &Body::mesh()
-//{
-//    return m_mesh;
-//}
-//
-//Mesh *Body::hullMesh()
-//{
-//    if (m_hullMesh == nullptr) m_hullMesh = new Mesh(hull());
-//
-//    return m_hullMesh;
-//}
+const std::shared_ptr<Mesh>& Body::mesh()
+{
+    return m_mesh;
+}
 
 const ConvexHull &Body::hull()
 {

@@ -21,6 +21,13 @@ CompositePolygon::CompositePolygon(const std::vector<std::vector<QVector2D>> &lo
 {
 }
 
+CompositePolygon::CompositePolygon(const std::vector<QVector3D> &border)
+    : Polygon(border, -QVector3D::crossProduct(border[1] - border[0], border[2] - border[0]).normalized())
+    , m_diagonalized(false)
+{
+
+}
+
 CompositePolygon::CompositePolygon(const std::vector<QVector3D> &border, const QVector3D &normal)
     : Polygon(border, normal)
     , m_diagonalized(false)
@@ -212,38 +219,7 @@ const std::vector<Triangle>& CompositePolygon::triangulation() const
     return m_triangles;
 }
 
-//bool CompositePolygon::encloses(const QVector2D &p)
-//{
-//    triangulation();
-//
-//    for (const Triangle &tri : m_triangles) {
-//        if (Triangle::encloses(m_hull[tri.m_I0].p, m_hull[tri.m_I1].p, m_hull[tri.m_I2].p, p)) return true;
-//    }
-//
-//    return false;
-//}
-
-//float Polygon::area() const
-//{
-//    std::cout << "\033[93mPolygon area not yet programmed!\033[0m\n";
-//
-//    return -1;
-//}
-//
-//float Polygon::area(const std::vector<QVector2D> &border)
-//{
-//    float area = 0;
-//
-//    for (uint32_t i = 0; i < border.size(); i++) {
-//        uint32_t next = i + 1 == border.size() ? 0 : i + 1;
-//        area += (border[i].y() + border[next].y()) * (border[i].x() - border[next].x());
-//    }
-//
-//    return area / 2;
-//}
-
 void CompositePolygon::diagonalize(){
-    if (m_diagonalized) return;
 
     identifyVertexTypes();
 

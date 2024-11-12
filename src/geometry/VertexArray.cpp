@@ -79,6 +79,15 @@ void VertexArray::scale(float scalar) {
     }
 }
 
+void VertexArray::scale(float xScale, float yScale, float zScale)
+{
+    for (uint32_t i = 0; i < m_vertexCount * STRIDE; i+=3) {
+        m_vertices[i    ] *= xScale;
+        m_vertices[i + 1] *= yScale;
+        m_vertices[i + 2] *= zScale;
+    }
+}
+
 void VertexArray::translate(const float* translation)
 {
     for (uint32_t i = 0; i < m_vertexCount * STRIDE; i++) {

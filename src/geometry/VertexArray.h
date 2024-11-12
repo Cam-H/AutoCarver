@@ -24,7 +24,7 @@ public:
 
 
     void scale(float scalar);
-//    void scale(float xScale, float yScale, float zScale);
+    void scale(float xScale, float yScale, float zScale);
     void translate(const float* translation);
     void rotate(const float* axis, float theta);
 

@@ -80,6 +80,7 @@ protected:
         QVector3D origin;
         QVector3D xAxis;
         QVector3D yAxis;
+        QVector3D zAxis;
     };
 
     void initializeLoop(const std::vector<QVector2D> &border);

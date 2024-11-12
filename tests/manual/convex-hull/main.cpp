@@ -31,13 +31,14 @@
 #include <iostream>
 #include <QRandomGenerator>
 
-#include "geometry/Tesselation.h"
-#include "geometry/GeometryBuilder.h"
 #include "geometry/Body.h"
 #include "fileIO/MeshLoader.h"
 
+#include "core/Scene.h"
+#include "core/Sculpture.h"
+
 uint32_t m_bodyIndex = 0;
-std::vector<Body*> m_bodies;
+Scene *m_scene;
 
 bool m_displayHulls = false;
 
@@ -51,22 +52,22 @@ int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
 
     std::string source = "..\\res\\";
-    std::vector<std::pair<std::string, float>> paths = {
-            {source + "cube.obj", 2.0f},
-            {source + "HollowCylinder.obj", 2.0f},
-            {source + "emblem.obj", 1.4f},
-            {source + "stone.obj", 2.0f},
-            {source + "devil.obj", 2.0f},
-            {source + "spot.obj", 4.0f},
-            {source + "beshon.obj", 4.0f}
-//            {source + "spider.obj", 0.06f},
-//            {source + "horse.obj", 50.0f},
-//            {source + "hornbug.obj", 4.0f},
-//            {source + "caterpillar.obj", 0.05f},
-//            {source + "teddy.obj", 0.3f},
-//            {source + "ogre.obj", 0.3f},
-//            {source + "bunny.obj", 0.6f},
-//            {source + "dragon.ply", 40.0f}
+    std::vector<std::string> paths = {
+            source + "cube.obj",
+            source + "HollowCylinder.obj",
+            source + "emblem.obj",
+            source + "stone.obj",
+            source + "devil.obj",
+            source + "spot.obj",
+            source + "beshon.obj",
+            source + "spider.obj",
+            source + "horse.obj",
+            source + "hornbug.obj",
+            source + "caterpillar.obj",
+            source + "teddy.obj",
+            source + "ogre.obj",
+            source + "bunny.obj",
+            source + "dragon.ply"
     };
 
     // Root entity
@@ -115,9 +116,10 @@ int main(int argc, char *argv[]) {
     hLayout->addWidget(prevButton);
 
     QObject::connect(prevButton, &QPushButton::clicked, [&]() {
-        if (m_bodyIndex < m_bodies.size()) m_bodies[m_bodyIndex]->hide();
+        m_scene->hide(m_bodyIndex);
+
         if (m_bodyIndex > 0) m_bodyIndex--;
-        if (m_bodyIndex < m_bodies.size()) m_bodies[m_bodyIndex]->show(Body::Model::MESH);
+        m_scene->show(m_bodyIndex, Scene::Model::MESH);
 
         updateHullDisplay();
     });
@@ -138,28 +140,33 @@ int main(int argc, char *argv[]) {
     hLayout->addWidget(nextButton);
 
     QObject::connect(nextButton, &QPushButton::clicked, [&]() {
-        if (m_bodyIndex < m_bodies.size()) m_bodies[m_bodyIndex]->hide();
-        if (m_bodyIndex < m_bodies.size() - 1) m_bodyIndex++;
-        if (m_bodyIndex < m_bodies.size()) m_bodies[m_bodyIndex]->show(Body::Model::MESH);
+        m_scene->hide(m_bodyIndex);
+
+        if (m_bodyIndex < m_scene->bodyCount() - 1) m_bodyIndex++;
+        m_scene->show(m_bodyIndex, Scene::Model::MESH);
 
         updateHullDisplay();
     });
 
+    m_scene = new Scene();
+    m_scene->linkRenderer(root, view);
 
     // Prepare all test bodies
-    for (const std::pair<std::string, float>& path : paths) {
-        auto mesh = MeshLoader::loadAsMeshBody(path.first, path.second);
+    for (const std::string& path : paths) {
+        auto mesh = MeshLoader::loadAsMeshBody(path, 10.0f);
+        // TODO| Note: normals not calculated properly if sufficiently small mesh is loaded
 
-        auto body = new Body(mesh);
-        body->hull(); // Induce calculation of convex hull
-        body->setRenderer(root, view);
-        body->hide();
+        // Use sculpture positioning function to conveniently transform the mesh
+        auto temp = Sculpture(mesh, 12.0f, 12.0f);
+        mesh->translate(0, -temp.height() / 2, 0);
 
-        m_bodies.push_back(body);
+        m_scene->createBody(mesh);
     }
 
+    m_scene->hideAll();
+
     // Show current body
-    if (m_bodyIndex < m_bodies.size()) m_bodies[m_bodyIndex]->show(Body::Model::MESH);
+    if (m_bodyIndex < m_scene->bodyCount()) m_scene->show(m_bodyIndex, Scene::Model::MESH);
 
 
     auto thread = std::thread(update);
@@ -173,9 +180,9 @@ int main(int argc, char *argv[]) {
 
 void updateHullDisplay()
 {
-    if (m_bodyIndex < m_bodies.size()) {
-        if (m_displayHulls) m_bodies[m_bodyIndex]->show(Body::Model::HULL);
-        else m_bodies[m_bodyIndex]->hide(Body::Model::HULL);
+    if (m_bodyIndex < m_scene->bodyCount()) {
+        if (m_displayHulls) m_scene->show(m_bodyIndex, Scene::Model::HULL);
+        else m_scene->hide(m_bodyIndex, Scene::Model::HULL);
     }
 }
 
@@ -185,10 +192,8 @@ void updateHullDisplay()
 
     while (true) {
 
-        if (m_bodyIndex < m_bodies.size()) {
-            QQuaternion quat = QQuaternion::fromAxisAndAngle(1, 0, 0, M_PI / 2) * QQuaternion::fromAxisAndAngle(0, 1, 0, M_PI);
-            m_bodies[m_bodyIndex]->rotate(quat.scalar(), quat.x(), quat.y(), quat.z());
-        }
+        QQuaternion quat = QQuaternion::fromAxisAndAngle(1, 0, 0, M_PI / 2) * QQuaternion::fromAxisAndAngle(0, 1, 0, M_PI);
+        m_scene->rotateBody(m_bodyIndex, quat.scalar(), quat.x(), quat.y(), quat.z());
 
         theta += M_PI;
         phi += M_PI / 16;

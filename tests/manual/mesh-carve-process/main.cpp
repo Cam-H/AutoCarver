@@ -31,45 +31,44 @@
 #include <iostream>
 #include <QRandomGenerator>
 
-#include "geometry/Tesselation.h"
-#include "geometry/GeometryBuilder.h"
 #include "geometry/Body.h"
 #include "fileIO/MeshLoader.h"
 #include "core/Sculpture.h"
+#include "core/SculptProcess.h"
 
-Sculpture* m_sculpt;
-
-uint32_t m_bodyIndex = 0;
-std::vector<Sculpture*> m_bodies;
-
-bool m_displayHulls = false;
+uint32_t m_processIndex = 0;
+std::vector<SculptProcess*> m_processes;
+bool m_displaySculptures = true, m_displayHulls = false;
 
 Qt3DCore::QEntity *root;
 Qt3DExtras::Qt3DWindow *view;
 
-void updateHullDisplay();
+Qt3DRender::QCamera *m_camera;
+
+
+void updateSculptureDisplay();
 [[noreturn]] void update();
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
 
     std::string source = "..\\res\\";
-    std::vector<std::pair<std::string, float>> paths = {
-//            {source + "cube.obj", 2.0f}
-            {source + "devil.obj", 2.0f},
-            {source + "beshon.obj", 4.0f},
-            {source + "teddy.obj", 0.3f},
-            {source + "ogre.obj", 0.3f}
-//            {source + "HollowCylinder.obj", 2.0f},
-//            {source + "emblem.obj", 1.4f},
-//            {source + "stone.obj", 2.0f},
-//            {source + "spot.obj", 4.0f},
-//            {source + "spider.obj", 0.06f},
-//            {source + "horse.obj", 50.0f},
-//            {source + "hornbug.obj", 4.0f},
-//            {source + "caterpillar.obj", 0.05f},
-//            {source + "bunny.obj", 0.6f},
-//            {source + "dragon.ply", 40.0f}
+    std::vector<std::string> paths = {
+//            source + "cube.obj",
+            source + "devil.obj"
+//            source + "beshon.obj",
+//            source + "spot.obj",
+//            source + "teddy.obj",
+//            source + "ogre.obj",
+//            source + "bunny.obj",
+//            source + "dragon.ply",
+//            source + "HollowCylinder.obj",
+//            source + "emblem.obj",
+//            source + "stone.obj",
+//            source + "spider.obj",
+//            source + "horse.obj",
+//            source + "hornbug.obj",
+//            source + "caterpillar.obj"
     };
 
     // Root entity
@@ -95,12 +94,12 @@ int main(int argc, char *argv[]) {
     widget->setWindowTitle(QStringLiteral("Auto Carver - Convex Hull Algorithm Testing"));
 
     // Camera
-    Qt3DRender::QCamera *cameraEntity = view->camera();
+    m_camera = view->camera();
 
-    cameraEntity->lens()->setPerspectiveProjection(45.0f, 16.0f/9.0f, 0.1f, 1000.0f);
-    cameraEntity->setPosition(QVector3D(0, 0, 20.0f));
-    cameraEntity->setUpVector(QVector3D(0, 1, 0));
-    cameraEntity->setViewCenter(QVector3D(0, 0, 0));
+    m_camera->lens()->setPerspectiveProjection(45.0f, 16.0f/9.0f, 0.1f, 1000.0f);
+    m_camera->setPosition(QVector3D(0, 4, 20.0f));
+    m_camera->setUpVector(QVector3D(0, 1, 0));
+    m_camera->setViewCenter(QVector3D(0, 4, 0));
 
 
     Qt3DCore::QEntity *lightEntity = new Qt3DCore::QEntity(root);
@@ -118,13 +117,23 @@ int main(int argc, char *argv[]) {
     hLayout->addWidget(prevButton);
 
     QObject::connect(prevButton, &QPushButton::clicked, [&]() {
-        if (m_bodyIndex < m_bodies.size()) m_bodies[m_bodyIndex]->hide();
-        if (m_bodyIndex > 0) m_bodyIndex--;
-        if (m_bodyIndex < m_bodies.size()) m_bodies[m_bodyIndex]->show(Body::Model::MESH);
+//        if (m_processIndex < m_processes.size()) m_processes[m_processIndex]->hide();
+//        if (m_processIndex > 0) m_processIndex--;
+//        if (m_processIndex < m_processes.size()) m_processes[m_processIndex]->show(Body::Model::MESH);
 
-        updateHullDisplay();
+        updateSculptureDisplay();
     });
 
+
+    auto sculptureButton = new QCheckBox("Show sculpture", container);
+    sculptureButton->setChecked(true);
+    hLayout->addWidget(sculptureButton);
+
+    QObject::connect(sculptureButton, &QCheckBox::clicked, [&](bool checked) {
+        m_displaySculptures = checked;
+
+        updateSculptureDisplay();
+    });
 
     auto hullButton = new QCheckBox("Show convex hull", container);
     hLayout->addWidget(hullButton);
@@ -132,17 +141,17 @@ int main(int argc, char *argv[]) {
     QObject::connect(hullButton, &QCheckBox::clicked, [&](bool checked) {
         m_displayHulls = checked;
 
-        updateHullDisplay();
+        updateSculptureDisplay();
     });
 
-    auto rotateButton = new QPushButton("Rotate", container);
+    auto rotateButton = new QPushButton("Next step", container);
     hLayout->addWidget(rotateButton);
 
     QObject::connect(rotateButton, &QPushButton::clicked, [&]() {
-        if (m_bodyIndex < m_bodies.size()) {
+        if (m_processIndex < m_processes.size()) {
 //            QQuaternion quat = QQuaternion::fromAxisAndAngle(0, 1, 0, M_PI);
-            m_bodies[m_bodyIndex]->sculpture()->rotate(0, 1, 0, M_PI / 128);
-            m_bodies[m_bodyIndex]->updateRenderer();
+//            m_processes[m_processIndex]->sculpture()->rotate(0, 1, 0, M_PI / 128);
+//            m_processes[m_processIndex]->updateRenderer();
         }
     });
 
@@ -152,31 +161,31 @@ int main(int argc, char *argv[]) {
     hLayout->addWidget(nextButton);
 
     QObject::connect(nextButton, &QPushButton::clicked, [&]() {
-        if (m_bodyIndex < m_bodies.size()) m_bodies[m_bodyIndex]->hide();
-        if (m_bodyIndex < m_bodies.size() - 1) m_bodyIndex++;
-        if (m_bodyIndex < m_bodies.size()) m_bodies[m_bodyIndex]->show(Body::Model::MESH);
+//        if (m_processIndex < m_processes.size()) m_processes[m_processIndex]->hide();
+//        if (m_processIndex < m_processes.size() - 1) m_processIndex++;
+//        if (m_processIndex < m_processes.size()) m_processes[m_processIndex]->show(Body::Model::MESH);
 
-        updateHullDisplay();
+        updateSculptureDisplay();
     });
 
 
     // Prepare all test bodies
-    for (const std::pair<std::string, float>& path : paths) {
-        auto model = MeshLoader::loadAsMeshBody(path.first, path.second);
+    for (const std::string& path : paths) {
+        auto model = MeshLoader::loadAsMeshBody(path);
 
-//        m_sculpt = new Sculpture(model);
+        m_processes.push_back(new SculptProcess(model));
+        m_processes[m_processes.size() - 1]->linkRenderer(root, view);
+//        auto body = new Sculpture(model);
+//        body->hull(); // Induce calculation of convex hull
+//        body->setRenderer(root, view);
+//        body->hide();
 
-        auto body = new Sculpture(model);
-        body->hull(); // Induce calculation of convex hull
-        body->setRenderer(root, view);
-        body->hide();
+        m_processes[m_processes.size() - 1]->hideAll();
 
-
-        m_bodies.push_back(body);
     }
 
     // Show current body
-    if (m_bodyIndex < m_bodies.size()) m_bodies[m_bodyIndex]->show(Body::Model::MESH);
+    if (m_processIndex < m_processes.size()) m_processes[m_processIndex]->showAll();
 
 
     auto thread = std::thread(update);
@@ -188,11 +197,14 @@ int main(int argc, char *argv[]) {
     return app.exec();
 }
 
-void updateHullDisplay()
+void updateSculptureDisplay()
 {
-    if (m_bodyIndex < m_bodies.size()) {
-        if (m_displayHulls) m_bodies[m_bodyIndex]->show(Body::Model::HULL);
-        else m_bodies[m_bodyIndex]->hide(Body::Model::HULL);
+    if (m_processIndex < m_processes.size()) {
+        if (m_displaySculptures) m_processes[m_processIndex]->show(0);
+        else m_processes[m_processIndex]->hide(0);
+
+        if (m_displayHulls) m_processes[m_processIndex]->show(1, Scene::Model::HULL);
+        else m_processes[m_processIndex]->hide(1, Scene::Model::HULL);
     }
 }
 
@@ -202,12 +214,16 @@ void updateHullDisplay()
 
     while (true) {
 
-        if (m_bodyIndex < m_bodies.size()) {
-            QQuaternion quat = QQuaternion::fromAxisAndAngle(0, 1, 0, M_PI);
-            m_bodies[m_bodyIndex]->rotate(quat.scalar(), quat.x(), quat.y(), quat.z());
-        }
+        float r = 20, y = 4;
+        m_camera->setPosition(QVector3D(r * cos(theta), y, r * sin(theta)));
+        m_camera->setUpVector(QVector3D(0, 1, 0));
+        m_camera->setViewCenter(QVector3D(0, y, 0));
+//        if (m_bodyIndex < m_bodies.size()) {
+//            QQuaternion quat = QQuaternion::fromAxisAndAngle(0, 1, 0, M_PI);
+//            m_bodies[m_bodyIndex]->rotate(quat.scalar(), quat.x(), quat.y(), quat.z());
+//        }
 
-        theta += M_PI;
+        theta += M_PI / 64;
         phi += M_PI / 16;
 
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
