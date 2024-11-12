@@ -4,6 +4,8 @@
 
 #include "VertexArray.h"
 
+#include <iostream>
+
 #include <limits>
 #include <cmath>
 #include <utility>
@@ -225,7 +227,7 @@ uint32_t VertexArray::vertexCount() const
 
 uint32_t VertexArray::size() const
 {
-    return m_vertexCount * STRIDE;
+    return (m_vertexCount * STRIDE) * sizeof(float) + sizeof(uint32_t);
 }
 
 bool VertexArray::extremes(const float *axis, uint32_t &min, uint32_t &max)

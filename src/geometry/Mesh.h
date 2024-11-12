@@ -13,12 +13,17 @@
 #include <QColor>
 
 #include "VertexArray.h"
+#include "FaceArray.h"
 
 class Mesh {
 public:
 
     explicit Mesh(float vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t indexCount);
     explicit Mesh(const ConvexHull& hull);
+
+    explicit Mesh(const float *vertices, uint32_t vertexCount, const uint32_t *faceIndices, const uint32_t *faceSizes, uint32_t faceCount);
+    explicit Mesh(const VertexArray& vertices, const FaceArray& faces);
+
     ~Mesh();
 
     void scale(float scalar);
@@ -32,16 +37,16 @@ public:
     void setBaseColor(QColor color);
     void setFaceColor(uint32_t faceIdx, QColor color);
 
-    uint32_t vertexCount() const;
+    [[nodiscard]] uint32_t vertexCount() const;
     [[nodiscard]] const float* vertices() const;
 
     [[nodiscard]] float* normals() const;
     [[nodiscard]] float* colors() const;
 
-    uint32_t triangleCount() const;
+    [[nodiscard]] uint32_t triangleCount() const;
     uint32_t* indices();
 
-    uint32_t faceCount() const;
+    [[nodiscard]] uint32_t faceCount() const;
 
     [[nodiscard]] float volume() const;
 
@@ -56,15 +61,14 @@ private:
 
     VertexArray m_vertices;
 
+    FaceArray m_faces;
+
+
     uint32_t *m_indices;
     uint32_t m_indexCount;
 
     float *m_triNormals;
     float *m_normals;
-
-    uint32_t *m_faces; // Triangle indices for each face
-    uint32_t *m_faceSizes; // Size of each individual face in triangles
-    uint32_t m_faceCount; // Total number of faces
 
     float *m_colors;
 

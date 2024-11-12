@@ -14,6 +14,7 @@
 //#include "VHACD.h"
 
 #include "VertexArray.h"
+#include "FaceArray.h"
 
 class ConvexHull {
 public:
@@ -24,13 +25,11 @@ public:
     ConvexHull(const ConvexHull& rhs) = default;
     ~ConvexHull();
 
-    uint32_t vertexCount() const;
-    float* vertices() const;
+    [[nodiscard]] uint32_t vertexCount() const;
+    [[nodiscard]] VertexArray vertices() const;
 
-    uint32_t *facetSizes() const;
-    uint32_t facetCount() const;
-
-    uint32_t* triangulate(uint32_t& triangleCount) const;
+    [[nodiscard]] uint32_t facetCount() const;
+    [[nodiscard]] FaceArray faces() const;
 
 private:
 
@@ -90,12 +89,14 @@ private:
 
     VertexArray m_cloud;
 
-    float* m_vertices;
-    uint32_t m_vertexCount;
+    VertexArray m_vertices;
+    uint32_t vCount;
 
-    uint32_t *m_facets;
-    uint32_t *m_facetSizes;
-    uint32_t m_facetCount;
+    FaceArray m_faces;
+
+//    uint32_t *m_facets;
+//    uint32_t *m_facetSizes;
+//    uint32_t m_facetCount;
 
     std::vector<Facet> facets;
 

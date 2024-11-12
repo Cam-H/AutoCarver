@@ -14,19 +14,18 @@
 #include <numeric>
 
 ConvexHull::ConvexHull()
-    : m_vertices(nullptr)
-    , m_vertexCount(0)
+    : m_vertices(nullptr, 0)
+    , vCount(0)
     , m_cloud(nullptr, 0)
-    , m_facets(nullptr)
-    , m_facetSizes(nullptr)
-    , m_facetCount(0)
+    , m_faces(nullptr, nullptr, 0)
 {
 
 }
 
 ConvexHull::ConvexHull(const float* cloud, uint32_t cloudSize)
-    : m_vertices(nullptr)
-    , m_vertexCount(0)
+    : m_vertices(nullptr, 0)
+    , m_faces(nullptr, nullptr, 0)
+    , vCount(0)
     , m_cloud(cloud, cloudSize)
 
 {
@@ -35,7 +34,8 @@ ConvexHull::ConvexHull(const float* cloud, uint32_t cloudSize)
         return;
     }
 
-    m_vertices = new float[cloudSize * STRIDE];
+    // Default to minimum hull size that will not introduce potential bugs
+    m_vertices = {new float[cloudSize * STRIDE], cloudSize};
 
     std::vector<Triangle> triangles = initialApproximation();
 
@@ -48,14 +48,17 @@ ConvexHull::ConvexHull(const float* cloud, uint32_t cloudSize)
 
     for(uint32_t i = 0; i < facets.size(); i++){
         if(facets[i].onHull && !facets[i].outside.empty()){
-            for (uint8_t j = 0; j < 3; j++) m_vertices[m_vertexCount * STRIDE + j] = m_cloud.vertices()[facets[i].outside[0] * STRIDE + j];
-            m_vertexCount++;
+            for (uint8_t j = 0; j < 3; j++) m_vertices[vCount][j] = m_cloud[facets[i].outside[0]][j];
+            vCount++;
 
             std::vector<uint32_t> horizon, set;
-            calculateHorizon(&m_vertices[(m_vertexCount - 1) * STRIDE], -1, i, horizon, set);
+            calculateHorizon(m_vertices[vCount - 1], -1, i, horizon, set);
             prepareFacets(horizon, set);// Generate a strip of new facets between the apex and the horizon
         }
     }
+
+    // Adjust vertex array size to calculated hull size
+    m_vertices = VertexArray(m_vertices.vertices(), vCount);
 
     // Attach all remaining triangles to the convex hull
     uint32_t idx = 0, count = 0;
@@ -102,74 +105,48 @@ ConvexHull::ConvexHull(const float* cloud, uint32_t cloudSize)
         idx++;
     }
 
-    m_facetCount = faces.size();
-    m_facetSizes = new uint32_t[faces.size()];
-    m_facets = new uint32_t[count];
+    // Do away with working memory
+    facets.clear();
+
+    auto facetSizes = new uint32_t[faces.size()];
+    auto facets = new uint32_t[count];
 
     idx = 0;
     for (uint32_t i = 0; i < faces.size(); i++) {
-        m_facetSizes[i] = faces[i].size();
-        for (uint32_t vertex : faces[i]) m_facets[idx++] = vertex;
+        facetSizes[i] = faces[i].size();
+        for (uint32_t vertex : faces[i]) facets[idx++] = vertex;
     }
 
-    // Do away with working memory
-    facets.clear();
+    m_faces = {facets, facetSizes, (uint32_t)faces.size()};
 
 }
 
 ConvexHull::~ConvexHull()
 {
-    delete[] m_vertices;
 
-    delete[] m_facets;
-    delete[] m_facetSizes;
 }
 
 
 uint32_t ConvexHull::vertexCount() const
 {
-    return m_vertexCount;
+    return m_vertices.vertexCount();
 }
 
-float* ConvexHull::vertices() const
+VertexArray ConvexHull::vertices() const
 {
     return m_vertices;
 }
 
-uint32_t *ConvexHull::facetSizes() const
-{
-    return m_facetSizes;
-}
-
 uint32_t ConvexHull::facetCount() const
 {
-    return m_facetCount;
+    return m_faces.faceCount();
 }
 
-uint32_t* ConvexHull::triangulate(uint32_t& triangleCount) const
+FaceArray ConvexHull::faces() const
 {
-    // Calculate the number of triangles required to tesselate facets
-    triangleCount = 0;
-    for (uint32_t i = 0; i < m_facetCount; i++) {
-        triangleCount += m_facetSizes[i] - 2;
-    }
-
-    uint32_t idx = 0, fIdx = 0;
-    auto triangles = new uint32_t[3 * triangleCount];
-    for (uint32_t i = 0; i < m_facetCount; i++) {
-
-        // Triangulate facet, splitting in a fan-shape from the first vertex
-        for (uint32_t j = 0; j < m_facetSizes[i] - 2; j++) {
-            triangles[idx++] = m_facets[fIdx];
-            triangles[idx++] = m_facets[fIdx + j + 1];
-            triangles[idx++] = m_facets[fIdx + j + 2];
-        }
-
-        fIdx += m_facetSizes[i];
-    }
-
-    return triangles;
+    return m_faces;
 }
+
 
 std::vector<ConvexHull::Triangle> ConvexHull::initialApproximation(){
     std::vector<Triangle> triangles;
@@ -203,8 +180,8 @@ std::vector<ConvexHull::Triangle> ConvexHull::initialApproximation(){
 
     // Add extremities to the convex hull
     for(uint32_t extreme : extremes){
-        for (uint8_t j = 0; j < 3; j++) m_vertices[m_vertexCount * STRIDE + j] = m_cloud.vertices()[extreme * STRIDE + j];
-        m_vertexCount++;
+        for (uint8_t j = 0; j < 3; j++) m_vertices[vCount][j] = m_cloud[extreme][j];
+        vCount++;
     }
 
     // Erase extreme vertices from cloud to prevent consideration later on (can otherwise introduce precision errors)
@@ -212,11 +189,11 @@ std::vector<ConvexHull::Triangle> ConvexHull::initialApproximation(){
     for(uint32_t extreme : extremes) m_cloud.remove(extreme);
 
     // Swap vertices if needed to ensure proper winding
-    auto del = VertexArray::sub(&m_vertices[9], &m_vertices[0]), norm = new float[3];
-    VertexArray::normal(norm, &m_vertices[0], &m_vertices[3], &m_vertices[6]);
+    auto del = VertexArray::sub(m_vertices[3], m_vertices[0]), norm = new float[3];
+    VertexArray::normal(norm, m_vertices[0], m_vertices[1], m_vertices[2]);
 
     if(VertexArray::dot(norm, del) > 0){
-        VertexArray::swap(&m_vertices[0], &m_vertices[3]);
+        VertexArray::swap(m_vertices[0], m_vertices[1]);
     }
 
     // Prepare initial triangle approximation (tetrahedron)
@@ -236,7 +213,7 @@ void ConvexHull::prepareFacets(const std::vector<Triangle>& triangles){
     for(uint32_t i = 0; i < triangles.size(); i++){
 
         auto normal = new float[3];
-        VertexArray::normal(normal, &m_vertices[triangles[i].I0 * STRIDE], &m_vertices[triangles[i].I1 * STRIDE], &m_vertices[triangles[i].I2 * STRIDE]);
+        VertexArray::normal(normal, m_vertices[triangles[i].I0], m_vertices[triangles[i].I1], m_vertices[triangles[i].I2]);
 
         Facet facet = {triangles[i], normal, {}, neighbors[i], true};
         sortCloud(free, facet);
@@ -256,9 +233,9 @@ void ConvexHull::prepareFacets(const std::vector<uint32_t>& horizon, std::vector
         facets[horizon[j]].neighbors[z] = currentFacet;// Link against existing facet beyond the horizon
 
         // Prepare the new facet and link
-        Triangle triangle = {m_vertexCount - 1, lastVertex, horizon[j + 1]};
+        Triangle triangle = {vCount - 1, lastVertex, horizon[j + 1]};
         auto normal = new float[3];
-        VertexArray::normal(normal, &m_vertices[triangle.I0 * STRIDE], &m_vertices[triangle.I1 * STRIDE], &m_vertices[triangle.I2 * STRIDE]);
+        VertexArray::normal(normal, m_vertices[triangle.I0], m_vertices[triangle.I1], m_vertices[triangle.I2]);
 
         Facet facet = {triangle, normal, {}, {lastFacet, horizon[j], nextFacet}, true};
         sortCloud(set, facet);
@@ -276,7 +253,7 @@ void ConvexHull::sortCloud(std::vector<uint32_t>& free, Facet& facet){
     auto vec = new float[3];
 
     for(uint32_t i = 0; i < free.size(); i++){
-        VertexArray::sub(vec, &m_cloud.vertices()[free[i] * STRIDE], &m_vertices[facet.triangle.I0 * STRIDE]);
+        VertexArray::sub(vec, m_cloud[free[i]], m_vertices[facet.triangle.I0]);
         float test = VertexArray::dot(facet.normal, vec);
         if(test > std::numeric_limits<float>::epsilon()){//std::numeric_limits<float>::epsilon()
             if(test > value){
@@ -303,7 +280,7 @@ void ConvexHull::calculateHorizon(const float *apex, int64_t last, uint32_t curr
         return;
     }
 
-    float *vec = VertexArray::sub(apex, &m_vertices[facets[current].triangle.I0 * STRIDE]);
+    float *vec = VertexArray::sub(apex, m_vertices[facets[current].triangle.I0]);
     float test = VertexArray::dot(facets[current].normal, vec);
 
     delete vec;

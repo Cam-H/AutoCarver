@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "../geometry/Tesselation.h"
-
 enum class FileFormat
 {
     NONE = 0, OBJ, MTL, STL, PLY, STEP, SLDPRT, SLDASM

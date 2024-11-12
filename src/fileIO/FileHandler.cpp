@@ -5,7 +5,7 @@
 #include "FileHandler.h"
 
 #include <sys/stat.h>
-
+#include <algorithm>
 
 bool FileHandler::fileExists(const std::string& filepath) {
     struct stat buffer;

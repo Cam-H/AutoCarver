@@ -5,7 +5,7 @@
 #ifndef AUTOCARVER_VERTEXARRAY_H
 #define AUTOCARVER_VERTEXARRAY_H
 
-#include <iostream>
+#include <cstdint>
 
 class VertexArray {
 public:
