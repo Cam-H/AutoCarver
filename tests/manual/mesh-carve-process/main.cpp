@@ -32,7 +32,7 @@
 #include <QRandomGenerator>
 
 #include "geometry/Body.h"
-#include "fileIO/MeshLoader.h"
+#include "fileIO/MeshHandler.h"
 #include "core/Sculpture.h"
 #include "core/SculptProcess.h"
 
@@ -144,14 +144,12 @@ int main(int argc, char *argv[]) {
         updateSculptureDisplay();
     });
 
-    auto rotateButton = new QPushButton("Next step", container);
-    hLayout->addWidget(rotateButton);
+    auto stepButton = new QPushButton("Next step", container);
+    hLayout->addWidget(stepButton);
 
-    QObject::connect(rotateButton, &QPushButton::clicked, [&]() {
+    QObject::connect(stepButton, &QPushButton::clicked, [&]() {
         if (m_processIndex < m_processes.size()) {
-//            QQuaternion quat = QQuaternion::fromAxisAndAngle(0, 1, 0, M_PI);
-//            m_processes[m_processIndex]->sculpture()->rotate(0, 1, 0, M_PI / 128);
-//            m_processes[m_processIndex]->updateRenderer();
+            m_processes[m_processIndex]->next();
         }
     });
 
@@ -171,7 +169,7 @@ int main(int argc, char *argv[]) {
 
     // Prepare all test bodies
     for (const std::string& path : paths) {
-        auto model = MeshLoader::loadAsMeshBody(path);
+        auto model = MeshHandler::loadAsMeshBody(path);
 
         m_processes.push_back(new SculptProcess(model));
         m_processes[m_processes.size() - 1]->linkRenderer(root, view);
@@ -214,7 +212,7 @@ void updateSculptureDisplay()
 
     while (true) {
 
-        float r = 20, y = 4;
+        float r = 20, y = 1;
         m_camera->setPosition(QVector3D(r * cos(theta), y, r * sin(theta)));
         m_camera->setUpVector(QVector3D(0, 1, 0));
         m_camera->setViewCenter(QVector3D(0, y, 0));

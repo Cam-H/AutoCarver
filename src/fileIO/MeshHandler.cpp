@@ -2,9 +2,11 @@
 // Created by Cam on 2024-10-08.
 //
 
-#include "MeshLoader.h"
+#include "MeshHandler.h"
 
 #include <assimp/Importer.hpp>      // C++ importer interface
+#include <assimp/Exporter.hpp>      // C++ exporter interface
+
 #include <assimp/scene.h>           // Output data structure
 #include <assimp/postprocess.h>     // Post processing flags
 
@@ -12,7 +14,7 @@
 
 #include "core/Timer.h"
 
-std::shared_ptr<Mesh> MeshLoader::loadAsMeshBody(const std::string& filepath, float scalar)
+std::shared_ptr<Mesh> MeshHandler::loadAsMeshBody(const std::string& filepath, float scalar)
 {
     ScopedTimer timer(filepath + " mesh loading");
     Assimp::Importer importer;
@@ -58,4 +60,38 @@ std::shared_ptr<Mesh> MeshLoader::loadAsMeshBody(const std::string& filepath, fl
     }
 
     return std::make_shared<Mesh>(vertices, vertexCount, indices, indexCount);
+}
+
+void MeshHandler::exportMesh(const std::shared_ptr<Mesh>& mesh, const std::string& filepath)
+{
+    ScopedTimer timer(filepath + " mesh export");
+    Assimp::Exporter exporter;
+
+    auto outputMesh = new aiMesh();
+    outputMesh->mNumVertices = mesh->vertexCount();
+    outputMesh->mVertices = new aiVector3f [3 * mesh->vertexCount()];
+    memcpy(outputMesh->mVertices, mesh->vertices(), 3 * mesh->vertexCount() * sizeof(float));
+    outputMesh->mNumFaces = mesh->faceCount();
+    outputMesh->mFaces = new aiFace[mesh->faceCount()];
+    auto idxPtr = mesh->faces().faces();
+    for (uint32_t i = 0; i < mesh->faceCount(); i++) {
+        outputMesh->mFaces[i].mNumIndices = mesh->faces().faceSizes()[i];
+        outputMesh->mFaces[i].mIndices = new uint32_t[outputMesh->mFaces[i].mNumIndices];
+
+        memcpy(outputMesh->mFaces[i].mIndices, idxPtr, outputMesh->mFaces[i].mNumIndices * sizeof(uint32_t));
+        idxPtr += outputMesh->mFaces[i].mNumIndices;
+    }
+    outputMesh->mPrimitiveTypes = aiPrimitiveType_POLYGON;
+
+    std::unique_ptr<aiScene> scene(new aiScene());
+    scene->mNumMeshes = 1;
+    scene->mMeshes = new aiMesh * [] { outputMesh };
+    scene->mNumMaterials = 1;
+    scene->mMaterials = new aiMaterial * [] { new aiMaterial() };
+    scene->mRootNode = new aiNode();
+    scene->mRootNode->mNumMeshes = 1;
+    scene->mRootNode->mMeshes = new unsigned [] { 0 };
+    scene->mMetaData = new aiMetadata();
+
+    exporter.Export(scene.get(), "obj", filepath);
 }

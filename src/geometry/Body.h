@@ -21,6 +21,8 @@ public:
     explicit Body(const std::shared_ptr<Mesh> &mesh);
     explicit Body(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world, const std::shared_ptr<Mesh>& mesh);
 
+    ~Body();
+
     bool isManifold();
     float area();
     float volume();
@@ -50,7 +52,8 @@ protected:
 
     // Physics
     bool m_physEnabled;
-    rp3d::PhysicsCommon *s_phys;
+    rp3d::PhysicsCommon *phys;
+    rp3d::PhysicsWorld *world;
 
     rp3d::RigidBody *m_physBody;
     std::vector<rp3d::Collider*> m_colliders;

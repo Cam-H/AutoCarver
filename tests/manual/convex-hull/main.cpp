@@ -32,7 +32,7 @@
 #include <QRandomGenerator>
 
 #include "geometry/Body.h"
-#include "fileIO/MeshLoader.h"
+#include "fileIO/MeshHandler.h"
 
 #include "core/Scene.h"
 #include "core/Sculpture.h"
@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
 
     // Prepare all test bodies
     for (const std::string& path : paths) {
-        auto mesh = MeshLoader::loadAsMeshBody(path, 10.0f);
+        auto mesh = MeshHandler::loadAsMeshBody(path, 10.0f);
         // TODO| Note: normals not calculated properly if sufficiently small mesh is loaded
 
         // Use sculpture positioning function to conveniently transform the mesh

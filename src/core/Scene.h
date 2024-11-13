@@ -43,6 +43,7 @@ public:
 
     void update(float timestep);
 
+    void clear(uint8_t level = 0);
 
     void createBody(const std::string &filepath, rp3d::BodyType type = rp3d::BodyType::STATIC);
     void createBody(const std::shared_ptr<Mesh>& mesh, rp3d::BodyType type = rp3d::BodyType::STATIC);
@@ -50,7 +51,7 @@ public:
     uint32_t bodyCount();
 
 protected:
-    void prepareBody(Body *body);
+    void prepareBody(Body *body, uint8_t level = 0);
     RenderEntity* prepareRender(Body *body);
 
 private:
@@ -62,6 +63,12 @@ private:
 
 protected:
 
+    struct SceneEntity {
+        Body* body;
+        RenderEntity* render;
+        uint8_t level;
+    };
+
     rp3d::PhysicsCommon m_physicsCommon;
     rp3d::PhysicsWorld *m_world;
 
@@ -69,7 +76,7 @@ protected:
     Qt3DExtras::Qt3DWindow *view;
 
 //    std::vector<Body*> m_bodies;
-    std::vector<std::pair<Body*, RenderEntity*>> m_bodies;
+    std::vector<SceneEntity> m_entities;
 
     std::thread m_updateThread;
     bool m_paused;

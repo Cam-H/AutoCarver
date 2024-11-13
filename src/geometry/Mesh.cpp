@@ -290,6 +290,11 @@ uint32_t Mesh::faceCount() const
     return m_faces.faceCount();
 }
 
+FaceArray Mesh::faces() const
+{
+    return m_faces;
+}
+
 float Mesh::volume() const
 {
     float sum = 0, *val = new float[3];

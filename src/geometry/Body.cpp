@@ -15,7 +15,8 @@ Body::Body(const std::shared_ptr<Mesh> &mesh)
     , m_hull(mesh->vertices(), mesh->vertexCount())
     , m_hullOK(true)
     , m_physEnabled(false)
-    , s_phys(nullptr)
+    , phys(nullptr)
+    , world(nullptr)
     , m_physBody(nullptr)
     , m_isManifold(false)
     , m_area(0)
@@ -32,7 +33,8 @@ Body::Body(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world, const std::shar
     , m_hull(mesh->vertices(), mesh->vertexCount())
     , m_hullOK(true)
     , m_physEnabled(true)
-    , s_phys(phys)
+    , phys(phys)
+    , world(world)
     , m_physBody(world->createRigidBody(rp3d::Transform::identity()))
     , m_isManifold(false)
     , m_area(0)
@@ -45,13 +47,21 @@ Body::Body(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world, const std::shar
     prepareColliders();
 }
 
+Body::~Body()
+{
+    //TODO delete body
+    std::cout << "Body deletion\n";
+    world->destroyRigidBody(m_physBody);
+//    phys->destroyConvexMesh()
+}
+
 void Body::prepareColliders()
 {
 //    rp3d::VertexArray vertexArray(m_hull.vertices().vertices(), 3 * sizeof(float), m_hull.vertexCount(), rp3d::VertexArray::DataType::VERTEX_FLOAT_TYPE);
 //
 //    std::vector<rp3d::Message> messages;
-//    rp3d::ConvexMesh *convexMesh = s_phys->createConvexMesh(vertexArray, messages);
-//    rp3d::ConvexMeshShape *convexMeshShape = s_phys->createConvexMeshShape(convexMesh, rp3d::Vector3(1, 1, 1));
+//    rp3d::ConvexMesh *convexMesh = phys->createConvexMesh(vertexArray, messages);
+//    rp3d::ConvexMeshShape *convexMeshShape = phys->createConvexMeshShape(convexMesh, rp3d::Vector3(1, 1, 1));
 //
 //    rp3d::Transform transform = rp3d::Transform::identity();
 //

@@ -7,7 +7,7 @@
 // Rendering
 #include <Qt3DCore/QTransform>
 
-#include "fileIO/MeshLoader.h"
+#include "fileIO/MeshHandler.h"
 #include "geometry/ConvexHull.h"
 
 Scene::Scene()
@@ -22,9 +22,11 @@ Scene::Scene()
 
 Scene::~Scene()
 {
-    for (std::pair<Body*, RenderEntity*>& link : m_bodies) {
+    for (const SceneEntity& entity : m_entities) {
 //        delete link.first;
-    }
+    } // TODO deletion, develop functions to clear only specific classes of bodies
+
+    m_physicsCommon.destroyPhysicsWorld(m_world);
 }
 
 void Scene::linkRenderer(Qt3DCore::QEntity *parent, Qt3DExtras::Qt3DWindow *view)
@@ -32,11 +34,11 @@ void Scene::linkRenderer(Qt3DCore::QEntity *parent, Qt3DExtras::Qt3DWindow *view
     m_root = new Qt3DCore::QEntity(parent);
     this->view = view;
 
-    for (std::pair<Body*, RenderEntity*>& link : m_bodies) {
-        if (link.second == nullptr) { // Prepare renders for bodies added before any links
-            link.second = prepareRender(link.first);
+    for (SceneEntity& entity : m_entities) {
+        if (entity.render == nullptr) { // Prepare renders for bodies added before any links
+            entity.render = prepareRender(entity.body);
         } else {
-            link.second->setParent(parent);
+            entity.render->setParent(parent);
         }
     }
 }
@@ -65,13 +67,31 @@ void Scene::update(float timestep)
     sync();
 }
 
+void Scene::clear(uint8_t level)
+{
+    uint32_t count = 0;
+
+    for (uint32_t i = 0; i < m_entities.size(); i++) {
+        if (m_entities[i].level <= level) {
+            if (m_entities[i].body->physicsBody() != nullptr) delete m_entities[i].body;
+            if (m_entities[i].render != nullptr) m_entities[i].render->deleteLater();
+
+            std::swap(m_entities[i], m_entities[m_entities.size() - 1]);
+            count++;
+            i--;
+        }
+    }
+
+    m_entities.erase(m_entities.begin() + count);
+}
+
 void Scene::sync()
 {
-    for (const std::pair<Body*, RenderEntity*>& link : m_bodies) {
-        auto physics = link.first->physicsBody();
+    for (SceneEntity& entity : m_entities) {
+        auto physics = entity.body->physicsBody();
 
         if (physics != nullptr && m_root != nullptr && physics->getType() != rp3d::BodyType::STATIC && !physics->isSleeping()) {
-            sync(physics, link.second);
+            sync(physics, entity.render);
         }
     }
 }
@@ -89,10 +109,10 @@ void Scene::sync(rp3d::RigidBody *physics, RenderEntity *render)
 
 void Scene::translateBody(uint32_t idx, float w, float x, float y, float z)
 {
-    if (m_root == nullptr || idx >= m_bodies.size()) return;
+    if (m_root == nullptr || idx >= m_entities.size()) return;
 
-    auto physics = m_bodies[idx].first->physicsBody();
-    auto render = m_bodies[idx].second;
+    auto physics = m_entities[idx].body->physicsBody();
+    auto render = m_entities[idx].render;
 
     if (physics != nullptr) {
         rp3d::Transform transform = physics->getTransform();
@@ -108,10 +128,10 @@ void Scene::translateBody(uint32_t idx, float w, float x, float y, float z)
 }
 void Scene::rotateBody(uint32_t idx, float w, float x, float y, float z)
 {
-    if (m_root == nullptr || idx >= m_bodies.size()) return;
+    if (m_root == nullptr || idx >= m_entities.size()) return;
 
-    auto physics = m_bodies[idx].first->physicsBody();
-    auto render = m_bodies[idx].second;
+    auto physics = m_entities[idx].body->physicsBody();
+    auto render = m_entities[idx].render;
 
     if (physics != nullptr) {
         rp3d::Transform transform = physics->getTransform();
@@ -130,32 +150,32 @@ void Scene::showAll()
 {
     if (m_root == nullptr) return;
 
-    for (std::pair<Body*, RenderEntity*>& link : m_bodies) {
-        link.second->show();
+    for (SceneEntity& entity : m_entities) {
+        entity.render->show();
     }
 }
 void Scene::hideAll()
 {
     if (m_root == nullptr) return;
 
-    for (std::pair<Body*, RenderEntity*>& link : m_bodies) {
-        link.second->hide();
+    for (SceneEntity& entity : m_entities) {
+        entity.render->hide();
     }
 }
 
 void Scene::show(uint32_t idx, Model target)
 {
-    if (m_root == nullptr || idx >= m_bodies.size()) return;
+    if (m_root == nullptr || idx >= m_entities.size()) return;
 
     switch (target) {
         case Model::ALL:
-            m_bodies[idx].second->show();
+            m_entities[idx].render->show();
             break;
         case Model::MESH:
-            m_bodies[idx].second->show(0);
+            m_entities[idx].render->show(0);
             break;
         case Model::HULL:
-            m_bodies[idx].second->show(1);
+            m_entities[idx].render->show(1);
             break;
         case Model::BOUNDING_SPHERE:
             break;
@@ -163,17 +183,17 @@ void Scene::show(uint32_t idx, Model target)
 }
 void Scene::hide(uint32_t idx, Model target)
 {
-    if (m_root == nullptr || idx >= m_bodies.size()) return;
+    if (m_root == nullptr || idx >= m_entities.size()) return;
 
     switch (target) {
         case Model::ALL:
-            m_bodies[idx].second->hide();
+            m_entities[idx].render->hide();
             break;
         case Model::MESH:
-            m_bodies[idx].second->hide(0);
+            m_entities[idx].render->hide(0);
             break;
         case Model::HULL:
-            m_bodies[idx].second->hide(1);
+            m_entities[idx].render->hide(1);
             break;
         case Model::BOUNDING_SPHERE:
             break;
@@ -182,7 +202,7 @@ void Scene::hide(uint32_t idx, Model target)
 
 void Scene::createBody(const std::string &filepath, rp3d::BodyType type)
 {
-    createBody(MeshLoader::loadAsMeshBody(filepath), type);
+    createBody(MeshHandler::loadAsMeshBody(filepath), type);
 }
 
 void Scene::createBody(const std::shared_ptr<Mesh>& mesh, rp3d::BodyType type)
@@ -192,14 +212,14 @@ void Scene::createBody(const std::shared_ptr<Mesh>& mesh, rp3d::BodyType type)
     prepareBody(body);
 }
 
-void Scene::prepareBody(Body *body)
+void Scene::prepareBody(Body *body, uint8_t level)
 {
     if (m_root == nullptr) {
-        m_bodies.emplace_back(body, nullptr);
+        m_entities.push_back({body, nullptr, level});
         return;
     }
 
-    m_bodies.emplace_back(body, prepareRender(body));
+    m_entities.push_back({body, prepareRender(body), level});
 }
 
 RenderEntity* Scene::prepareRender(Body *body)
@@ -219,5 +239,5 @@ RenderEntity* Scene::prepareRender(Body *body)
 
 uint32_t Scene::bodyCount()
 {
-    return m_bodies.size();
+    return m_entities.size();
 }

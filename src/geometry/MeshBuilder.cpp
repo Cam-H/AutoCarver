@@ -21,21 +21,17 @@ std::shared_ptr<Mesh> MeshBuilder::box(float length, float width, float height){
          length, -height,  width
     };
 
-    auto indices = new uint32_t[36] {
-            0, 1, 2,
-            2, 3, 0,
-            0, 4, 5,
-            5, 1, 0,
-            1, 5, 6,
-            6, 2, 1,
-            2, 6, 7,
-            7, 3, 2,
-            3, 7, 4,
-            4, 0, 3,
-            4, 7, 6,
-            6, 5, 4
+    auto faces = new uint32_t[24] {
+            0, 1, 2, 3,
+            0, 4, 5, 1,
+            0, 3, 7, 4,
+            6, 5, 4, 7,
+            6, 2, 1, 5,
+            6, 7, 3, 2
     };
 
-    return std::make_shared<Mesh>(vertices, 8, indices, 12);
+    auto faceSizes = new uint32_t[6] { 4, 4, 4, 4, 4, 4 };
+
+    return std::make_shared<Mesh>(vertices, 8, faces, faceSizes, 6);
 
 }

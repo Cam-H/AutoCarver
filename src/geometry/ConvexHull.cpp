@@ -147,6 +147,18 @@ FaceArray ConvexHull::faces() const
     return m_faces;
 }
 
+vec3f ConvexHull::facetNormal(uint32_t idx) const
+{
+    uint32_t *loop = m_faces[idx];
+    if (loop == nullptr) return {};
+
+    vec3f a = { m_vertices[loop[0]][0], m_vertices[loop[0]][1], m_vertices[loop[0]][2]};
+    vec3f b = { m_vertices[loop[1]][0], m_vertices[loop[1]][1], m_vertices[loop[1]][2]};
+    vec3f c = { m_vertices[loop[2]][0], m_vertices[loop[2]][1], m_vertices[loop[2]][2]};
+
+    return vec3f::cross(b - a, c - a).normalized();
+}
+
 
 std::vector<ConvexHull::Triangle> ConvexHull::initialApproximation(){
     std::vector<Triangle> triangles;

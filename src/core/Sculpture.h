@@ -19,6 +19,8 @@ public:
 
     void update();
 
+    void overrwrite(const std::shared_ptr<Mesh>& sculpture);
+
     const std::shared_ptr<Mesh>& sculpture();
 
     [[nodiscard]] float width() const;

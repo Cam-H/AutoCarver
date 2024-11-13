@@ -79,6 +79,25 @@ FaceArray::~FaceArray()
     delete[] m_faceSizes;
 }
 
+uint32_t* FaceArray::operator[](uint32_t idx)
+{
+    if (idx >= m_faceCount) return nullptr;
+
+    uint32_t *idxPtr = m_faces;
+    for (uint32_t i = 0; i < idx; i++) idxPtr += m_faceSizes[i];
+
+    return idxPtr;
+}
+uint32_t* FaceArray::operator[](uint32_t idx) const
+{
+    if (idx >= m_faceCount) return nullptr;
+
+    uint32_t *idxPtr = m_faces;
+    for (uint32_t i = 0; i < idx; i++) idxPtr += m_faceSizes[i];
+
+    return idxPtr;
+}
+
 const uint32_t* FaceArray::faces() const
 {
     return m_faces;

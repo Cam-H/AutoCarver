@@ -6,6 +6,39 @@
 #define AUTOCARVER_VERTEXARRAY_H
 
 #include <cstdint>
+#include <iostream>
+
+struct vec3f {
+public:
+
+    vec3f();
+
+    vec3f(float x, float y, float z);
+
+    void normalize();
+    [[nodiscard]] vec3f normalized() const;
+
+    [[nodiscard]] float dot(const vec3f& b) const;
+    static float dot(const vec3f& a, const vec3f& b);
+
+    [[nodiscard]] vec3f cross(const vec3f& b) const;
+    static vec3f cross(const vec3f& a, const vec3f& b);
+
+
+    friend vec3f operator+(const vec3f& a, const vec3f& b);
+    friend vec3f operator-(const vec3f& a, const vec3f& b);
+    friend vec3f operator-(const vec3f& a);
+    friend vec3f operator*(const vec3f& a, float scalar);
+    friend vec3f operator*(float scalar, const vec3f& a);
+    friend vec3f operator/(const vec3f& a, float scalar);
+
+    friend std::ostream& operator<<(std::ostream& os, const vec3f& vec);
+
+public:
+    float x;
+    float y;
+    float z;
+};
 
 class VertexArray {
 public:

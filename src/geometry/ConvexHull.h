@@ -31,6 +31,8 @@ public:
     [[nodiscard]] uint32_t facetCount() const;
     [[nodiscard]] FaceArray faces() const;
 
+    [[nodiscard]] vec3f facetNormal(uint32_t idx) const;
+
 private:
 
     struct Triangle {

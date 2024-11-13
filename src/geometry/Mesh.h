@@ -48,6 +48,8 @@ public:
     uint32_t* indices();
 
     [[nodiscard]] uint32_t faceCount() const;
+    [[nodiscard]] FaceArray faces() const;
+
 
     [[nodiscard]] float volume() const;
 

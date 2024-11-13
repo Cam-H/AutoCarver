@@ -9,8 +9,8 @@ qt_add_library(AutoCarverLib
         core/Scene.cpp
 
 
-        fileIO/MeshLoader.h
-        fileIO/MeshLoader.cpp
+        fileIO/MeshHandler.h
+        fileIO/MeshHandler.cpp
 
 
         geometry/Body.h

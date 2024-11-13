@@ -20,6 +20,9 @@ public:
 
     ~FaceArray();
 
+    uint32_t* operator[](uint32_t idx);
+    uint32_t* operator[](uint32_t idx) const;
+
     [[nodiscard]] const uint32_t* faces() const;
     [[nodiscard]] const uint32_t* faceSizes() const;
     [[nodiscard]] uint32_t faceCount() const;

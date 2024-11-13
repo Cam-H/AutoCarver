@@ -10,6 +10,85 @@
 #include <cmath>
 #include <utility>
 
+vec3f::vec3f()
+    : x(0)
+    , y(0)
+    , z(0)
+{
+
+}
+
+vec3f::vec3f(float x, float y, float z)
+    : x(x)
+    , y(y)
+    , z(z)
+{
+
+}
+
+void vec3f::normalize()
+{
+    float len = 1 / sqrtf(x * x + y * y + z * z);
+    x *= len;
+    y *= len;
+    z *= len;
+}
+
+vec3f vec3f::normalized() const
+{
+    float len = 1 / sqrtf(x * x + y * y + z * z);
+    return {x * len, y * len, z * len};
+}
+
+float vec3f::dot(const vec3f& b) const
+{
+    return x * b.x + y * b.y + z * b.z;
+}
+float vec3f::dot(const vec3f& a, const vec3f& b)
+{
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+vec3f vec3f::cross(const vec3f& b) const
+{
+    return {y * b.z - b.y * z, z * b.x - x * b.z, x * b.y - y * b.x};
+}
+vec3f vec3f::cross(const vec3f& a, const vec3f& b)
+{
+    return {a.y * b.z - b.y * a.z, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+}
+
+vec3f operator+(const vec3f& a, const vec3f& b)
+{
+    return {a.x + b.x, a.y + b.y, a.z + b.z};
+}
+vec3f operator-(const vec3f& a, const vec3f& b)
+{
+    return {a.x - b.x, a.y - b.y, a.z - b.z};
+}
+vec3f operator-(const vec3f& a)
+{
+    return {-a.x, -a.y, -a.z};
+}
+vec3f operator*(const vec3f& a, float scalar)
+{
+    return {a.x * scalar, a.y * scalar, a.z * scalar};
+}
+vec3f operator*(float scalar, const vec3f& a)
+{
+    return {a.x * scalar, a.y * scalar, a.z * scalar};
+}
+vec3f operator/(const vec3f& a, float scalar)
+{
+    return {a.x / scalar, a.y / scalar, a.z / scalar};
+}
+
+std::ostream& operator<<(std::ostream& os, const vec3f& vec)
+{
+    return os << "(" << vec.x << ", " << vec.y << ", " << vec.z << ")";
+}
+//std::string operator<<(const vec3f& ve) const;
+
 VertexArray::VertexArray(const float* vertices, uint32_t vertexCount)
     : m_vertices(new float[vertexCount * STRIDE])
     , m_vertexCount(vertexCount)
