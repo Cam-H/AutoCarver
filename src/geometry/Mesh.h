@@ -10,7 +10,6 @@
 #include <cstdint>
 
 #include "ConvexHull.h"
-#include <QColor>
 
 #include "VertexArray.h"
 #include "FaceArray.h"
@@ -35,14 +34,14 @@ public:
     void yExtent(float &near, float &far);
     void zExtent(float &near, float &far);
 
-    void setBaseColor(QColor color);
-    void setFaceColor(uint32_t faceIdx, QColor color);
+    void setBaseColor(const vec3f& color);
+    void setFaceColor(uint32_t faceIdx, const vec3f& color);
 
     [[nodiscard]] uint32_t vertexCount() const;
     [[nodiscard]] const float* vertices() const;
 
-    [[nodiscard]] float* normals() const;
-    [[nodiscard]] float* colors() const;
+    [[nodiscard]] const float* normals() const;
+    [[nodiscard]] const VertexArray& colors() const;
 
     [[nodiscard]] uint32_t triangleCount() const;
     uint32_t* indices();
@@ -53,7 +52,7 @@ public:
 
     [[nodiscard]] float volume() const;
 
-    void directRepresentation(float *vertices, float *normals);
+    void directRepresentation(float *vertices, float *normals, float *colors);
 
 private:
 
@@ -66,14 +65,15 @@ private:
 
     FaceArray m_faces;
 
+    VertexArray m_faceNormals;
+    VertexArray m_vertexNormals;
 
     uint32_t *m_indices;
     uint32_t m_indexCount;
 
-    float *m_triNormals;
-    float *m_normals;
+    VertexArray m_colors;
 
-    float *m_colors;
+//    float *m_colors;
 
     const static uint8_t STRIDE = 3;
 

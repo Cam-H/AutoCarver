@@ -39,6 +39,15 @@ void RenderEntity::hide(uint32_t idx)
     if (idx < m_renders.size()) m_renders[idx]->setEnabled(false);
 }
 
+void RenderEntity::replace(uint32_t idx, const std::shared_ptr<Mesh>& replacement)
+{
+    if (replacement != nullptr && idx < m_renders.size()) {
+        meshes[idx].first = replacement;
+        generate(); // TODO split function to allow replacement of just geometry
+    }
+}
+
+
 void RenderEntity::setTranslation(QVector3D translation)
 {
     m_transform->setTranslation(translation);
@@ -67,7 +76,7 @@ void RenderEntity::add(const std::shared_ptr<Mesh>& mesh, Qt3DRender::QMaterial 
 
 void RenderEntity::generate()
 {
-    ScopedTimer("RE Gen");
+    ScopedTimer timer("QRenderer creation");
 
     // Prevent materials from being deleted alongside the old entities (wll be reused)
     for (auto& mesh : meshes) {
@@ -86,7 +95,6 @@ void RenderEntity::generate()
     }
     m_renders.clear();
 
-    ScopedTimer timer("QRenderer creation");
 
     for (const auto& mesh : meshes) {
         auto entity = new Qt3DCore::QEntity(this);
@@ -98,7 +106,7 @@ void RenderEntity::generate()
         // Mesh geometry
         auto renderer = new Qt3DRender::QGeometryRenderer(entity);
 
-        if (mesh.first->faceCount() == mesh.first->triangleCount()) {
+        if (mesh.first->colors().empty()) {
             entity->addComponent(mesh.second);
 
             renderer->setGeometry(indexedGeometry(mesh.first, renderer));
@@ -201,11 +209,11 @@ Qt3DCore::QGeometry* RenderEntity::faceGeometry(const std::shared_ptr<Mesh>& mes
     auto geometry = new Qt3DCore::QGeometry(parent);
 
     uint32_t vertexCount = 3 * mesh->triangleCount();
-    auto *vertices = new float[3 * vertexCount], *normals = new float[3 * vertexCount];
+    auto *vertices = new float[3 * vertexCount], *normals = new float[3 * vertexCount], *colors = new float[3 * vertexCount];
 
-    mesh->directRepresentation(vertices, normals);
+    mesh->directRepresentation(vertices, normals, colors);
 
-    float *attributes[3] = {vertices, normals, mesh->colors()};
+    const float *attributes[3] = {vertices, normals, colors};
     uint8_t attributeCount = 3;
 
     const auto attributeNames = {

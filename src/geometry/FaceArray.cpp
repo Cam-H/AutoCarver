@@ -164,3 +164,8 @@ uint32_t FaceArray::size() const
 {
     return (m_indexCount + m_faceCount + 2) * sizeof(uint32_t);
 }
+
+bool FaceArray::empty() const
+{
+    return m_faceCount == 0;
+}

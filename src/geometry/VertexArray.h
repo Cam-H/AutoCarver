@@ -15,6 +15,9 @@ public:
 
     vec3f(float x, float y, float z);
 
+    [[nodiscard]] float length() const;
+    static float length(const vec3f& vec);
+
     void normalize();
     [[nodiscard]] vec3f normalized() const;
 
@@ -52,8 +55,8 @@ public:
 
     ~VertexArray();
 
-    float* operator[](uint32_t idx);
-    float* operator[](uint32_t idx) const;
+//    float* operator[](uint32_t idx);
+    vec3f operator[](uint32_t idx) const;
 
 
     void scale(float scalar);
@@ -61,8 +64,9 @@ public:
     void translate(const float* translation);
     void rotate(const float* axis, float theta);
 
+    void replace(uint32_t idx, const vec3f& replacement);
     void remove(uint32_t idx);
-    static void swap(float *a, float *b);
+    void swap(uint32_t I0, uint32_t I1);
 
     float* sub(uint32_t I0, uint32_t I1);
     static float* sub(const float* a, const float* b);
@@ -82,10 +86,12 @@ public:
     static float length2(const float *a);
     static float length(const float *a);
 
+    [[nodiscard]] const float* data() const;
     [[nodiscard]] const float* vertices() const;
     [[nodiscard]] uint32_t vertexCount() const;
 
     [[nodiscard]] uint32_t size() const; // Get the size of the array in bytes
+    [[nodiscard]] bool empty() const;
 
     bool extremes(const float *axis, uint32_t &min, uint32_t &max); // Get furthest vertices (top & bottom) along axis
     bool extreme(uint32_t p1, uint32_t p2, uint32_t& max); // Get furthest vertex (perpendicular) from the provided axis

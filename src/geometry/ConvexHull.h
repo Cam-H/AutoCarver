@@ -26,10 +26,10 @@ public:
     ~ConvexHull();
 
     [[nodiscard]] uint32_t vertexCount() const;
-    [[nodiscard]] VertexArray vertices() const;
+    [[nodiscard]] const VertexArray& vertices() const;
 
     [[nodiscard]] uint32_t facetCount() const;
-    [[nodiscard]] FaceArray faces() const;
+    [[nodiscard]] const FaceArray& faces() const;
 
     [[nodiscard]] vec3f facetNormal(uint32_t idx) const;
 
@@ -69,7 +69,7 @@ private:
 
     struct Facet {
         Triangle triangle;
-        float* normal;
+        vec3f normal;
         std::vector<uint32_t> outside;
         std::vector<uint32_t> neighbors;
         bool onHull;
@@ -82,7 +82,7 @@ private:
     void prepareFacets(const std::vector<Triangle>& triangles);
     void prepareFacets(const std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
     void sortCloud(std::vector<uint32_t>& free, Facet& facet);
-    void calculateHorizon(const float *apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
+    void calculateHorizon(const vec3f& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
 
     static bool isManifold(const std::vector<Facet> &facets);
     static bool isManifold(const Facet &dest, uint32_t src);
@@ -92,7 +92,6 @@ private:
     VertexArray m_cloud;
 
     VertexArray m_vertices;
-    uint32_t vCount;
 
     FaceArray m_faces;
 
@@ -100,6 +99,7 @@ private:
 //    uint32_t *m_facetSizes;
 //    uint32_t m_facetCount;
 
+    std::vector<vec3f> w_vertices;
     std::vector<Facet> facets;
 
     const static uint8_t STRIDE = 3;

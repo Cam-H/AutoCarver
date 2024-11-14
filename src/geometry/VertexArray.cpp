@@ -26,9 +26,19 @@ vec3f::vec3f(float x, float y, float z)
 
 }
 
+float vec3f::length() const
+{
+    return sqrtf(x * x + y * y + z * z);
+}
+
+float vec3f::length(const vec3f& vec)
+{
+    return sqrtf(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+}
+
 void vec3f::normalize()
 {
-    float len = 1 / sqrtf(x * x + y * y + z * z);
+    float len = 1 / length();
     x *= len;
     y *= len;
     z *= len;
@@ -142,14 +152,14 @@ VertexArray::~VertexArray()
     delete[] m_vertices;
 }
 
-float* VertexArray::operator[](uint32_t idx)
-{
-    return &m_vertices[idx * STRIDE];
-}
+//float* VertexArray::operator[](uint32_t idx)
+//{
+//    return &m_vertices[idx * STRIDE];
+//}
 
-float* VertexArray::operator[](uint32_t idx) const
+vec3f VertexArray::operator[](uint32_t idx) const
 {
-    return &m_vertices[idx * STRIDE];
+    return {m_vertices[idx * STRIDE], m_vertices[idx * STRIDE + 1], m_vertices[idx * STRIDE + 2]};
 }
 
 void VertexArray::scale(float scalar) {
@@ -207,6 +217,15 @@ void VertexArray::rotate(const float* axis, float theta)
     }
 }
 
+void VertexArray::replace(uint32_t idx, const vec3f& replacement)
+{
+    if (idx < m_vertexCount) {
+        m_vertices[idx * STRIDE    ] = replacement.x;
+        m_vertices[idx * STRIDE + 1] = replacement.y;
+        m_vertices[idx * STRIDE + 2] = replacement.z;
+    }
+}
+
 void VertexArray::remove(uint32_t idx)
 {
     if (idx < m_vertexCount) {
@@ -216,14 +235,23 @@ void VertexArray::remove(uint32_t idx)
     }
 }
 
-void VertexArray::swap(float *a, float *b)
+void VertexArray::swap(uint32_t I0, uint32_t I1)
 {
-    for (uint8_t i = 0; i < 3; i++) {
-        float temp = a[i];
+    if (I0 > m_vertexCount || I1 > m_vertexCount) return;
 
-        a[i] = b[i];
-        b[i] = temp;
-    }
+    I0 *= STRIDE;
+    I1 *= STRIDE;
+
+    auto ptr1 = &m_vertices[I0], ptr2 = &m_vertices[I1];
+    vec3f temp = {m_vertices[I0], m_vertices[I0 + 1], m_vertices[I0 + 2]};
+    *ptr1++ = *ptr2++;
+    *ptr1++ = *ptr2++;
+    *ptr1++ = *ptr2;
+
+    ptr2 -= 2;
+    *ptr2++ = temp.x;
+    *ptr2++ = temp.y;
+    *ptr2++ = temp.z;
 }
 
 float* VertexArray::sub(uint32_t I0, uint32_t I1)
@@ -303,6 +331,11 @@ float VertexArray::length(const float *a)
     return sqrtf(length2(a));
 }
 
+const float* VertexArray::data() const
+{
+    return m_vertices;
+}
+
 const float* VertexArray::vertices() const
 {
     return m_vertices;
@@ -316,6 +349,11 @@ uint32_t VertexArray::vertexCount() const
 uint32_t VertexArray::size() const
 {
     return (m_vertexCount * STRIDE) * sizeof(float) + sizeof(uint32_t);
+}
+
+bool VertexArray::empty() const
+{
+    return m_vertexCount == 0;
 }
 
 bool VertexArray::extremes(const float *axis, uint32_t &min, uint32_t &max)

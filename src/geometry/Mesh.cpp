@@ -15,14 +15,14 @@
 Mesh::Mesh(float vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t indexCount)
     : m_vertices(vertices, vertexCount)
     , m_faces(indices, indexCount)
+    , m_faceNormals(nullptr, 0)
+    , m_vertexNormals(nullptr, 0)
     , m_indices(indices)
     , m_indexCount(indexCount)
-    , m_triNormals(nullptr)
-    , m_normals(nullptr)
-    , m_colors(nullptr)
+    , m_colors(nullptr, 0)
 {
 
-    ScopedTimer timer("Make mesh");
+//    ScopedTimer timer("Make mesh");
 
     calculateFaceNormals();
     calculateVertexNormals();
@@ -31,23 +31,22 @@ Mesh::Mesh(float vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t 
 Mesh::Mesh(const ConvexHull& hull)
         : m_vertices(hull.vertices())
         , m_faces(hull.faces())
+        , m_faceNormals(nullptr, 0)
+        , m_vertexNormals(nullptr, 0)
         , m_indexCount(0)
-        , m_triNormals(nullptr)
-        , m_normals(nullptr)
-        , m_colors(nullptr)
+        , m_colors(new float[hull.facetCount() * STRIDE], hull.facetCount())
 {
 
-    ScopedTimer timer("Convert convex hull to mesh");
+//    ScopedTimer timer("Convert convex hull to mesh");
 
     m_indexCount = m_faces.triangleCount();
     m_indices = new uint32_t[m_indexCount * STRIDE];
     m_faces.triangulation(m_indices);
 
-
-    m_colors = new float[3 * triangleCount() * STRIDE];
-    setBaseColor({200, 200, 20});
+    // Convex hull renders default to alternating yellow-orange color pattern
+    setBaseColor({0.8f, 0.8f, 0.1f});
     for (uint32_t i = 0; i < faceCount(); i+= 2) {
-        setFaceColor(i, {200, 150, 10});
+        setFaceColor(i, {0.8f, 0.6f, 0.1f});
     }
 
     calculateFaceNormals();
@@ -57,20 +56,20 @@ Mesh::Mesh(const ConvexHull& hull)
 Mesh::Mesh(const float *vertices, uint32_t vertexCount, const uint32_t *faceIndices, const uint32_t *faceSizes, uint32_t faceCount)
     : m_vertices(vertices, vertexCount)
     , m_faces(faceIndices, faceSizes, faceCount)
+    , m_faceNormals(nullptr, 0)
+    , m_vertexNormals(nullptr, 0)
     , m_indexCount(0)
-    , m_triNormals(nullptr)
-    , m_normals(nullptr)
-    , m_colors(nullptr)
+    , m_colors(nullptr, 0)
 {
-    ScopedTimer timer("Triangulation of mesh");
+//    ScopedTimer timer("Triangulation of mesh");
 
     m_indexCount = m_faces.triangleCount();
     m_indices = new uint32_t[m_indexCount * STRIDE];
     m_faces.triangulation(m_indices);
 
 
-    m_colors = new float[3 * m_indexCount * STRIDE];
-    setBaseColor({100, 100, 100});
+//    m_colors = new float[3 * m_indexCount * STRIDE];
+//    setBaseColor({100, 100, 100});
 //    for (uint32_t i = 0; i < faceCount(); i+= 2) {
 //        setFaceColor(i, {200, 150, 10});
 //    }
@@ -82,20 +81,15 @@ Mesh::Mesh(const float *vertices, uint32_t vertexCount, const uint32_t *faceIndi
 Mesh::Mesh(const VertexArray& vertices, const FaceArray& faces)
     : m_vertices(vertices)
     , m_faces(faces)
+    , m_faceNormals(nullptr, 0)
+    , m_vertexNormals(nullptr, 0)
     , m_indexCount(0)
-    , m_triNormals(nullptr)
-    , m_normals(nullptr)
-    , m_colors(nullptr)
+    , m_colors(nullptr, 0)
 {
     m_indexCount = m_faces.triangleCount();
     m_indices = new uint32_t[m_indexCount * STRIDE];
     m_faces.triangulation(m_indices);
 
-    m_colors = new float[3 * m_indexCount * STRIDE];
-    setBaseColor({100, 100, 100});
-//    for (uint32_t i = 0; i < faceCount(); i+= 2) {
-//        setFaceColor(i, {200, 150, 10});
-//    }
 
     calculateFaceNormals();
     calculateVertexNormals();
@@ -104,76 +98,81 @@ Mesh::Mesh(const VertexArray& vertices, const FaceArray& faces)
 Mesh::~Mesh()
 {
     delete[] m_indices;
-
-    delete[] m_triNormals;
-    delete[] m_normals;
-
-    delete[] m_colors;
 }
 
 
 void Mesh::calculateFaceNormals()
 {
-    delete[] m_triNormals;
+    auto normals = new float[3 * m_faces.faceCount()], ptr = normals;
+    uint32_t idx = 0;
 
-    m_triNormals = new float[3 * m_indexCount];
+    for (uint32_t i = 0; i < m_faces.faceCount(); i++) {
+        auto face = &m_faces.faces()[idx];
+        vec3f normal = m_vertices[face[0]];
 
-    for (uint32_t i = 0; i < m_indexCount; i++) {
-        QVector3D normal = QVector3D::crossProduct(
-                QVector3D(
-                        m_vertices[m_indices[3 * i + 1]][0] - m_vertices[m_indices[3 * i]][0],
-                        m_vertices[m_indices[3 * i + 1]][1] - m_vertices[m_indices[3 * i]][1],
-                        m_vertices[m_indices[3 * i + 1]][2] - m_vertices[m_indices[3 * i]][2]
-                        ),
-                QVector3D(
-                        m_vertices[m_indices[3 * i + 2]][0] - m_vertices[m_indices[3 * i]][0],
-                        m_vertices[m_indices[3 * i + 2]][1] - m_vertices[m_indices[3 * i]][1],
-                        m_vertices[m_indices[3 * i + 2]][2] - m_vertices[m_indices[3 * i]][2]
-                        )
-                ).normalized();
+        normal = (m_vertices[face[1]] - normal).cross(m_vertices[face[2]] - normal).normalized();
 
-        m_triNormals[3 * i] = normal.x();
-        m_triNormals[3 * i + 1] = normal.y();
-        m_triNormals[3 * i + 2] = normal.z();
+        *ptr++ = normal.x;
+        *ptr++ = normal.y;
+        *ptr++ = normal.z;
+
+        idx += m_faces.faceSizes()[i];
     }
+
+    m_faceNormals = {normals, m_faces.faceCount()};
+
+    delete[] normals;
 }
 
 void Mesh::calculateVertexNormals()
 {
-    delete[] m_normals;
+    auto normals = new float[m_vertices.size() * STRIDE];
+    for (uint32_t i = 0; i < m_vertices.size() * STRIDE; i++) normals[i] = 0;
 
-    m_normals = new float[m_vertices.size()];
-    for (uint32_t i = 0; i < m_vertices.size(); i++) m_normals[i] = 0;
-
-    for (uint32_t i = 0; i < 3 * m_indexCount; i++) {
-        for (uint8_t j = 0; j < 3; j++) {
-            m_normals[3 * m_indices[i] + j] += m_triNormals[(i /3) * 3 + j];
+    auto idx = m_indices;
+    for (uint32_t i = 0; i < m_faces.faceCount(); i++) {
+        for (uint32_t j = 0; j < 3 * (m_faces.faceSizes()[i] - 2); j++) {
+            normals[STRIDE * *idx    ] += m_faceNormals[i].x;
+            normals[STRIDE * *idx + 1] += m_faceNormals[i].y;
+            normals[STRIDE * *idx + 2] += m_faceNormals[i].z;
+            idx++;
         }
     }
 
     for (uint32_t i = 0; i < m_vertices.vertexCount(); i++) {
-        auto norm = 1 / (float)sqrt(pow(m_vertices[i][0], 2) + pow(m_vertices[i][1], 2) + pow(m_vertices[i][2], 2));
-        m_normals[3 * i] *= norm;
-        m_normals[3 * i + 1] *= norm;
-        m_normals[3 * i + 2] *= norm;
+        auto norm = 1 / vec3f::length({normals[3 * i], normals[3 * i + 1], normals[3 * i + 2]});
+        normals[3 * i    ] *= norm;
+        normals[3 * i + 1] *= norm;
+        normals[3 * i + 2] *= norm;
     }
+
+    m_vertexNormals = {normals, m_vertices.size()};
+    delete[] normals;
 }
 
-void Mesh::directRepresentation(float *vertices, float *normals)
+void Mesh::directRepresentation(float *vertices, float *normals, float* colors)
 {
-    uint32_t idx = 0;
-    for (uint32_t i = 0; i < m_indexCount; i++) { // For each triangle
-        for (uint32_t j = 0; j < 3; j++) { // For each vertex in the triangle
+    auto idx = m_indices;
+    for (uint32_t i = 0; i < m_faces.faceCount(); i++) { // For every face
+        for (uint32_t j = 0; j < 3 * (m_faces.faceSizes()[i] - 2); j++) { // For every triangle in the face
 
-            uint32_t vIdx = m_indices[3 * i + j];
-            for (uint8_t k = 0; k < 3; k++) vertices[idx + k] = m_vertices[vIdx][k];
+            const vec3f& vertex = m_vertices[*idx];
+            *vertices++ = vertex.x;
+            *vertices++ = vertex.y;
+            *vertices++ = vertex.z;
 
-            vIdx *= 3;
-            for (uint8_t k = 0; k < 3; k++) { // Copy components of each vector
-                normals[idx + k] = m_normals[vIdx + k];
-            }
+//            const vec3f& normal = m_vertexNormals[*idx];
+            const vec3f& normal = m_faceNormals[i];
+            *normals++ = normal.x;
+            *normals++ = normal.y;
+            *normals++ = normal.z;
 
-            idx += 3;
+            const vec3f& color = m_colors[i];
+            *colors++ = color.x;
+            *colors++ = color.y;
+            *colors++ = color.z;
+
+            idx++;
         }
     }
 }
@@ -221,38 +220,33 @@ void Mesh::zExtent(float &near, float &far)
     delete[] axis;
 }
 
-void Mesh::setBaseColor(QColor color)
+void Mesh::setBaseColor(const vec3f& color)
 {
-    ScopedTimer timer("Base color assignment");
-    float *cPtr = m_colors;
-    for (uint32_t i = 0; i < 3 * triangleCount(); i++) {
-        *cPtr++ = color.redF();
-        *cPtr++ = color.greenF();
-        *cPtr++ = color.blueF();
-    }
+    for (uint32_t i = 0; i < m_colors.vertexCount(); i++) m_colors.replace(i, color);
 }
 
-void Mesh::setFaceColor(uint32_t faceIdx, QColor color)
+void Mesh::setFaceColor(uint32_t faceIdx, const vec3f& color)
 {
-    if (faceIdx >= faceCount()) return;
+    if (faceIdx < m_colors.vertexCount()) m_colors.replace(faceIdx, color);
+//    if (faceIdx >= faceCount()) return;
 
     // Calculate offset index for the face contents
-    uint32_t idx = 0;
-    for (uint32_t i = 0; i < faceIdx; i++) {
-        idx += m_faces.faceSizes()[i];
-    }
-
-    for (uint32_t i = 0; i < m_faces.faceSizes()[faceIdx]; i++) { // For each triangle in the face
-        uint32_t triIdx = m_faces.faces()[idx + i];
-
-        for (uint8_t j = 0; j < 3; j++) { // For each vertex in the triangle
-            uint32_t vertexIdx = (3 * triIdx + j) * STRIDE;
-
-            m_colors[vertexIdx] = color.redF();
-            m_colors[vertexIdx + 1] = color.greenF();
-            m_colors[vertexIdx + 2] = color.blueF();
-        }
-    }
+//    uint32_t idx = 0;
+//    for (uint32_t i = 0; i < faceIdx; i++) {
+//        idx += m_faces.faceSizes()[i];
+//    }
+//
+//    for (uint32_t i = 0; i < m_faces.faceSizes()[faceIdx]; i++) { // For each triangle in the face
+//        uint32_t triIdx = m_faces.faces()[idx + i];
+//
+//        for (uint8_t j = 0; j < 3; j++) { // For each vertex in the triangle
+//            uint32_t vertexIdx = (3 * triIdx + j) * STRIDE;
+//
+//            m_colors[vertexIdx] = color.redF();
+//            m_colors[vertexIdx + 1] = color.greenF();
+//            m_colors[vertexIdx + 2] = color.blueF();
+//        }
+//    }
 }
 
 uint32_t Mesh::vertexCount() const
@@ -265,12 +259,12 @@ const float* Mesh::vertices() const
     return m_vertices.vertices();
 }
 
-float* Mesh::normals() const
+const float* Mesh::normals() const
 {
-    return m_normals;
+    return m_vertexNormals.vertices();
 }
 
-float* Mesh::colors() const
+const VertexArray& Mesh::colors() const
 {
     return m_colors;
 }
@@ -297,13 +291,10 @@ FaceArray Mesh::faces() const
 
 float Mesh::volume() const
 {
-    float sum = 0, *val = new float[3];
+    float sum = 0;
     for (uint32_t i = 0; i < triangleCount(); i++) {
-        VertexArray::cross(val, m_vertices[m_indices[i * STRIDE + 1]], m_vertices[m_indices[i * STRIDE + 2]]);
-        sum += VertexArray::dot(m_vertices[m_indices[i * STRIDE]], val);
+        sum += m_vertices[m_indices[i * STRIDE]].dot(vec3f::cross(m_vertices[m_indices[i * STRIDE + 1]], m_vertices[m_indices[i * STRIDE + 2]]));
     }
-
-    delete[] val;
 
     return sum / 6.0f;
 }

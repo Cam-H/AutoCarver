@@ -39,11 +39,13 @@ public:
 
     RenderEntity(Qt3DCore::QEntity *parent, Qt3DExtras::Qt3DWindow *view);
 
+    void show();
+    void hide();
+
     void show(uint32_t idx);
     void hide(uint32_t idx);
 
-    void show();
-    void hide();
+    void replace(uint32_t idx, const std::shared_ptr<Mesh>& replacement);
 
     void setTranslation(QVector3D translation);
     void setRotation(QQuaternion rotation);

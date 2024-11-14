@@ -32,6 +32,7 @@ public:
 
 
     [[nodiscard]] uint32_t size() const; // Get the size of the array in bytes
+    [[nodiscard]] bool empty() const;
 
 private:
     uint32_t *m_faces; // Loops of vertex indices that compose each face
