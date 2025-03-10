@@ -5,6 +5,7 @@
 #include "MeshHandler.h"
 
 #include <assimp/Importer.hpp>      // C++ importer interface
+//#include <assimp/Exporter.hpp>      // C++ exporter interface
 #include <assimp/Exporter.hpp>      // C++ exporter interface
 
 #include <assimp/scene.h>           // Output data structure
@@ -20,8 +21,7 @@ std::shared_ptr<Mesh> MeshHandler::loadAsMeshBody(const std::string& filepath, f
     Assimp::Importer importer;
 
     const aiScene* scene = importer.ReadFile( filepath
-                                                    , aiProcess_Triangulate
-                                                    | aiProcess_DropNormals
+                                                    ,  aiProcess_DropNormals
                                                     | aiProcess_JoinIdenticalVertices
                                                     | aiProcess_SortByPType);
 
@@ -31,14 +31,18 @@ std::shared_ptr<Mesh> MeshHandler::loadAsMeshBody(const std::string& filepath, f
         return nullptr;
     }
 
-    uint32_t vertexCount = 0, indexCount = 0;
+    uint32_t vertexCount = 0, faceCount = 0, indexCount = 0;
     for (uint32_t i = 0; i < scene->mNumMeshes; i++) {
         vertexCount += scene->mMeshes[i]->mNumVertices;
-        indexCount += scene->mMeshes[i]->mNumFaces;
+
+        faceCount += scene->mMeshes[i]->mNumFaces;
+        for (uint32_t j = 0; j < scene->mMeshes[i]->mNumFaces; j++) {
+            indexCount += scene->mMeshes[i]->mFaces[j].mNumIndices;
+        }
     }
 
     float *vertices = new float[3 * vertexCount], *vPtr = vertices;
-    uint32_t *indices = new uint32_t[3 * indexCount], *iPtr = indices, offset = 0;
+    uint32_t *faces = new uint32_t[3 * indexCount], *faceSizes = new uint32_t[faceCount], *fPtr = faces, *fsPtr = faceSizes, offset = 0;
 
     // Convert file content to a usable format
     for (uint32_t i = 0; i < scene->mNumMeshes; i++) {
@@ -49,30 +53,32 @@ std::shared_ptr<Mesh> MeshHandler::loadAsMeshBody(const std::string& filepath, f
         }
 
         for (uint32_t j = 0; j < scene->mMeshes[i]->mNumFaces; j++) {
-            *iPtr++ = scene->mMeshes[i]->mFaces[j].mIndices[0] + offset;
-            *iPtr++ = scene->mMeshes[i]->mFaces[j].mIndices[1] + offset;
-            *iPtr++ = scene->mMeshes[i]->mFaces[j].mIndices[2] + offset;
-
-            if (scene->mMeshes[i]->mFaces[j].mNumIndices != 3) std::cout << scene->mMeshes[i]->mFaces[j].mNumIndices << " - Face indices\n";
+            *fsPtr++ = scene->mMeshes[i]->mFaces[j].mNumIndices;
+            for (uint32_t k = 0; k < scene->mMeshes[i]->mFaces[j].mNumIndices; k++) {
+                *fPtr++ = scene->mMeshes[i]->mFaces[j].mIndices[k] + offset;
+            }
         }
 
         offset += scene->mMeshes[i]->mNumVertices;
     }
 
-    return std::make_shared<Mesh>(vertices, vertexCount, indices, indexCount);
+    return std::make_shared<Mesh>(vertices, vertexCount, faces, faceSizes, faceCount);
 }
 
 void MeshHandler::exportMesh(const std::shared_ptr<Mesh>& mesh, const std::string& filepath)
 {
+    std::cout << "Exporting mesh...\n";
     ScopedTimer timer(filepath + " mesh export");
     Assimp::Exporter exporter;
 
     auto outputMesh = new aiMesh();
     outputMesh->mNumVertices = mesh->vertexCount();
     outputMesh->mVertices = new aiVector3f [3 * mesh->vertexCount()];
-    memcpy(outputMesh->mVertices, mesh->vertices(), 3 * mesh->vertexCount() * sizeof(float));
+    memcpy(outputMesh->mVertices, mesh->vertices().data(), 3 * mesh->vertexCount() * sizeof(float));
     outputMesh->mNumFaces = mesh->faceCount();
     outputMesh->mFaces = new aiFace[mesh->faceCount()];
+    outputMesh->mNormals = new aiVector3f[mesh->vertexCount()];
+    memcpy(outputMesh->mNormals, mesh->vertexNormals().data(), 3 * mesh->vertexCount() * sizeof(float));
     auto idxPtr = mesh->faces().faces();
     for (uint32_t i = 0; i < mesh->faceCount(); i++) {
         outputMesh->mFaces[i].mNumIndices = mesh->faces().faceSizes()[i];
@@ -93,5 +99,6 @@ void MeshHandler::exportMesh(const std::shared_ptr<Mesh>& mesh, const std::strin
     scene->mRootNode->mMeshes = new unsigned [] { 0 };
     scene->mMetaData = new aiMetadata();
 
-    exporter.Export(scene.get(), "obj", filepath);
+
+    exporter.Export(scene.get(), "objnomtl", filepath);
 }

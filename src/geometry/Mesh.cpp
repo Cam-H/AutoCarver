@@ -177,6 +177,17 @@ void Mesh::directRepresentation(float *vertices, float *normals, float* colors)
     }
 }
 
+void Mesh::print() const
+{
+    std::cout << "==========[ MESH ]==========\n";
+
+    m_vertices.print();
+
+    m_faces.print();
+
+    std::cout << "============================\n";
+}
+
 void Mesh::scale(float scalar)
 {
     m_vertices.scale(scalar);
@@ -222,11 +233,18 @@ void Mesh::zExtent(float &near, float &far)
 
 void Mesh::setBaseColor(const vec3f& color)
 {
+    if (m_colors.empty()) m_colors = {new float[m_faces.faceCount() * STRIDE], m_faces.faceCount()};
+
     for (uint32_t i = 0; i < m_colors.vertexCount(); i++) m_colors.replace(i, color);
 }
 
 void Mesh::setFaceColor(uint32_t faceIdx, const vec3f& color)
 {
+    if (m_colors.empty()) {
+        m_colors = {new float[m_faces.faceCount() * STRIDE], m_faces.faceCount()};
+        setBaseColor({1, 1, 1});
+    }
+
     if (faceIdx < m_colors.vertexCount()) m_colors.replace(faceIdx, color);
 //    if (faceIdx >= faceCount()) return;
 
@@ -254,14 +272,18 @@ uint32_t Mesh::vertexCount() const
     return m_vertices.vertexCount();
 }
 
-const float* Mesh::vertices() const
+const VertexArray& Mesh::vertices() const
 {
-    return m_vertices.vertices();
+    return m_vertices;
 }
 
-const float* Mesh::normals() const
+const VertexArray& Mesh::faceNormals() const
 {
-    return m_vertexNormals.vertices();
+    return m_faceNormals;
+}
+const VertexArray& Mesh::vertexNormals() const
+{
+    return m_vertexNormals;
 }
 
 const VertexArray& Mesh::colors() const
@@ -284,7 +306,7 @@ uint32_t Mesh::faceCount() const
     return m_faces.faceCount();
 }
 
-FaceArray Mesh::faces() const
+const FaceArray& Mesh::faces() const
 {
     return m_faces;
 }
@@ -297,4 +319,64 @@ float Mesh::volume() const
     }
 
     return sum / 6.0f;
+}
+
+float Mesh::surfaceArea() const
+{
+    float sum = 0;
+    for (uint32_t i = 0; i < m_faces.size(); i++) sum += faceArea(i);
+
+    return sum;
+}
+
+std::vector<uint32_t> Mesh::sharedFaces(const std::shared_ptr<Mesh>& reference) const
+{
+    std::vector<uint32_t> selection;
+
+    std::vector<float> srcArea(m_faces.faceCount(), -1);
+    std::vector<float> refArea(reference->m_faces.faceCount(), -1);
+
+    for (uint32_t i = 0; i < m_faces.faceCount(); i++) {
+        for (uint32_t j = 0; j < reference->m_faces.faceCount(); j++) {
+            if (m_faces.faceSizes()[i] == reference->m_faces.faceSizes()[j]) { // Check equal number of vertices
+
+                // Check equal face area
+                if (srcArea[i] == -1) srcArea[i] = faceArea(i);
+                if (refArea[j] == -1) refArea[j] = reference->faceArea(j);
+
+                if (std::abs(srcArea[i] - refArea[j]) > 1e-6) continue;
+
+                // TODO Could be good to check face normals, perimeter too to reduce risk of incorrect matches
+
+                selection.emplace_back(i);
+                break;
+            }
+        }
+    }
+
+    return selection;
+}
+
+float Mesh::faceArea(uint32_t faceIdx) const
+{
+    uint32_t *indices = m_faces[faceIdx], count = m_faces.faceSizes()[faceIdx];
+    if (count < 3) return -1;
+
+    std::vector<vec3f> vertices(count);
+    for (uint32_t i = 0; i < count; i++) vertices[i] = m_vertices[indices[i]];
+
+    return faceArea(vertices);
+}
+
+float Mesh::faceArea(const std::vector<vec3f>& vertices)
+{
+    vec3f total = {0, 0, 0};
+    for (uint32_t i = 0; i < vertices.size(); i++) {
+        vec3f vi1 = vertices[i];
+        vec3f vi2 = (i == vertices.size() - 1) ? vertices[0] : vertices[i + 1];
+
+        total += vec3f::cross(vi1, vi2);
+    }
+
+    return std::abs(total.dot(vec3f::unitNormal(vertices[0], vertices[1], vertices[2])) / 2);
 }

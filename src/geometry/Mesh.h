@@ -38,26 +38,36 @@ public:
     void setFaceColor(uint32_t faceIdx, const vec3f& color);
 
     [[nodiscard]] uint32_t vertexCount() const;
-    [[nodiscard]] const float* vertices() const;
+    [[nodiscard]] const VertexArray& vertices() const;
 
-    [[nodiscard]] const float* normals() const;
+    [[nodiscard]] const VertexArray& faceNormals() const;
+    [[nodiscard]] const VertexArray& vertexNormals() const;
+
     [[nodiscard]] const VertexArray& colors() const;
 
     [[nodiscard]] uint32_t triangleCount() const;
     uint32_t* indices();
 
     [[nodiscard]] uint32_t faceCount() const;
-    [[nodiscard]] FaceArray faces() const;
+    [[nodiscard]] const FaceArray& faces() const;
 
 
     [[nodiscard]] float volume() const;
+    [[nodiscard]] float surfaceArea() const;
+
+    std::vector<uint32_t> sharedFaces(const std::shared_ptr<Mesh>& reference) const;
 
     void directRepresentation(float *vertices, float *normals, float *colors);
+
+    void print() const;
 
 private:
 
     void calculateFaceNormals();
     void calculateVertexNormals();
+
+    [[nodiscard]] float faceArea(uint32_t faceIdx) const;
+    [[nodiscard]] static float faceArea(const std::vector<vec3f>& vertices) ;
 
 private:
 

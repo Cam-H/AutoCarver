@@ -36,6 +36,16 @@ float vec3f::length(const vec3f& vec)
     return sqrtf(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
 }
 
+float vec3f::length2() const
+{
+    return x * x + y * y + z * z;
+}
+
+float vec3f::length2(const vec3f& vec)
+{
+    return vec.x * vec.x + vec.y * vec.y + vec.z * vec.z;
+}
+
 void vec3f::normalize()
 {
     float len = 1 / length();
@@ -68,18 +78,53 @@ vec3f vec3f::cross(const vec3f& a, const vec3f& b)
     return {a.y * b.z - b.y * a.z, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
 }
 
+vec3f vec3f::unitNormal(const vec3f& a, const vec3f& b, const vec3f& c)
+{
+    return vec3f::cross(b - a, c - a).normalized();
+}
+
+float vec3f::determinant(const vec3f& a, const vec3f& b, const vec3f& c)
+{
+    return a.x * (b.y * c.z - b.z * c.y) - a.y * (b.x * c.z - b.z * c.x) + a.z * (b.x * c.y - b.y * c.x);
+}
+
+bool vec3f::collinear(const vec3f& a, const vec3f& b, const vec3f& c)
+{
+    vec3f cp = cross(b - a, c - a);
+
+    return std::abs(cp.x) <= 1e-06 && std::abs(cp.y) <= 1e-06 && std::abs(cp.z) <= 1e-06;
+}
+
 vec3f operator+(const vec3f& a, const vec3f& b)
 {
     return {a.x + b.x, a.y + b.y, a.z + b.z};
+}
+vec3f& vec3f::operator+=(const vec3f& rhs)
+{
+    this->x += rhs.x;
+    this->y += rhs.y;
+    this->z += rhs.z;
+
+    return *this;
+}
+
+vec3f operator-(const vec3f& a)
+{
+    return {-a.x, -a.y, -a.z};
 }
 vec3f operator-(const vec3f& a, const vec3f& b)
 {
     return {a.x - b.x, a.y - b.y, a.z - b.z};
 }
-vec3f operator-(const vec3f& a)
+vec3f& vec3f::operator-=(const vec3f& rhs)
 {
-    return {-a.x, -a.y, -a.z};
+    this->x -= rhs.x;
+    this->y -= rhs.y;
+    this->z -= rhs.z;
+
+    return *this;
 }
+
 vec3f operator*(const vec3f& a, float scalar)
 {
     return {a.x * scalar, a.y * scalar, a.z * scalar};
@@ -103,7 +148,14 @@ VertexArray::VertexArray(const float* vertices, uint32_t vertexCount)
     : m_vertices(new float[vertexCount * STRIDE])
     , m_vertexCount(vertexCount)
 {
-    memcpy(m_vertices, vertices, vertexCount * STRIDE * sizeof(float));
+    memcpy(m_vertices, vertices, m_vertexCount * STRIDE * sizeof(float));
+}
+
+VertexArray::VertexArray(const std::vector<vec3f>& vertices)
+    : m_vertices(new float[vertices.size() * STRIDE])
+    , m_vertexCount(vertices.size())
+{
+    memcpy(m_vertices, vertices.data(), m_vertexCount * STRIDE * sizeof(float));
 }
 
 VertexArray::VertexArray(const VertexArray& other)
@@ -336,6 +388,11 @@ const float* VertexArray::data() const
     return m_vertices;
 }
 
+uint32_t VertexArray::length() const
+{
+    return m_vertexCount;
+}
+
 const float* VertexArray::vertices() const
 {
     return m_vertices;
@@ -428,4 +485,12 @@ void VertexArray::extents(const float *axis, float &near, float &far)
 
     near = VertexArray::dot(axis, &m_vertices[min * STRIDE]);
     far = VertexArray::dot(axis, &m_vertices[max * STRIDE]);
+}
+
+void VertexArray::print() const
+{
+    std::cout << "~~~~~ Vertices (" << m_vertexCount << ") ~~~~~\n";
+    for (uint32_t i = 0; i < m_vertexCount; i++) {
+        std::cout << m_vertices[i * STRIDE] << ", " << m_vertices[i * STRIDE + 1] << ", " << m_vertices[i * STRIDE + 2] << "\n";
+    }
 }

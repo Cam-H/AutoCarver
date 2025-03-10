@@ -35,6 +35,7 @@
 #include "fileIO/MeshHandler.h"
 #include "core/Sculpture.h"
 #include "core/SculptProcess.h"
+#include "geometry/MeshBuilder.h"
 
 uint32_t m_processIndex = 0;
 std::vector<SculptProcess*> m_processes;
@@ -49,15 +50,23 @@ Qt3DRender::QCamera *m_camera;
 void updateSculptureDisplay();
 [[noreturn]] void update();
 
+void plan(SculptProcess* process)
+{
+    process->skipConvexTrim(true);
+    process->processCut(false);
+    process->plan();
+}
+
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
 
     std::string source = "..\\res\\";
     std::vector<std::string> paths = {
 //            source + "cube.obj",
-            source + "devil.obj"
+//            source + "colplate.obj"
+            source + "devil.obj",
 //            source + "beshon.obj",
-//            source + "spot.obj",
+            source + "spot.obj"
 //            source + "teddy.obj",
 //            source + "ogre.obj",
 //            source + "bunny.obj",
@@ -71,6 +80,35 @@ int main(int argc, char *argv[]) {
 //            source + "caterpillar.obj"
     };
 
+    bool enableSculptures = true;
+
+//    for (uint32_t i = 0; i < 13; i++) {
+//        auto col = MeshHandler::loadAsMeshBody("..\\out\\step" + std::to_string(i) + ".obj");
+//        MeshHandler::exportMesh(MeshBuilder::cleaned(col->vertices(), col->faces()), "..\\out\\step" + std::to_string(i) + "C.obj");
+//    }
+auto vertices = new float[] {
+        -0.318407, 0.735962, -0.00818602,
+        -0.136813, 0.995899, -0.178975,
+        -0.142492, 0.93009, -0.5,
+        -0.321246, 0.644504, -0.5,
+        -0.5, 0.358919, -0.5,
+        -0.5, 0.476025, 0.162603
+
+};
+
+auto faces = new uint32_t[] {
+    1, 2, 3, 0,
+    4, 5, 0, 3
+};
+
+auto sizes = new uint32_t[] {4, 4};
+//auto col = std::make_shared<Mesh>(vertices, 6, faces, sizes, 2);
+//    auto col = MeshHandler::loadAsMeshBody("..\\out\\plane7.obj");
+//    MeshHandler::exportMesh(col, "..\\out\\plane7T.obj");
+//    MeshHandler::exportMesh(MeshBuilder::cleaned(col), "..\\out\\plane7C.obj");
+
+//        MeshHandler::exportMesh(MeshBuilder::cleaned(col), "..\\out\\step4C.obj");
+//    MeshHandler::exportMesh(MeshHandler::loadAsMeshBody("..\\out\\plane3.obj"), "..\\out\\plane3C.obj");
     // Root entity
     root = new Qt3DCore::QEntity();
 
@@ -118,7 +156,7 @@ int main(int argc, char *argv[]) {
 
     QObject::connect(prevButton, &QPushButton::clicked, [&]() {
 //        if (m_processIndex < m_processes.size()) m_processes[m_processIndex]->hide();
-//        if (m_processIndex > 0) m_processIndex--;
+        if (m_processIndex > 0) m_processIndex--;
 //        if (m_processIndex < m_processes.size()) m_processes[m_processIndex]->show(Body::Model::MESH);
 
         updateSculptureDisplay();
@@ -160,30 +198,38 @@ int main(int argc, char *argv[]) {
 
     QObject::connect(nextButton, &QPushButton::clicked, [&]() {
 //        if (m_processIndex < m_processes.size()) m_processes[m_processIndex]->hide();
-//        if (m_processIndex < m_processes.size() - 1) m_processIndex++;
+        if (m_processIndex < m_processes.size() - 1) m_processIndex++;
 //        if (m_processIndex < m_processes.size()) m_processes[m_processIndex]->show(Body::Model::MESH);
 
         updateSculptureDisplay();
+        plan(m_processes[m_processIndex]); // Allows meshes to be planned at user demand, rather than all at once
+
     });
 
+    if (enableSculptures) {
+        // Prepare all test bodies
+        for (const std::string& path : paths) {
+            auto model = MeshHandler::loadAsMeshBody(path);
 
-    // Prepare all test bodies
-    for (const std::string& path : paths) {
-        auto model = MeshHandler::loadAsMeshBody(path);
-
-        m_processes.push_back(new SculptProcess(model));
-        m_processes[m_processes.size() - 1]->linkRenderer(root, view);
+            m_processes.push_back(new SculptProcess(model));
+            m_processes[m_processes.size() - 1]->linkRenderer(root, view);
 //        auto body = new Sculpture(model);
 //        body->hull(); // Induce calculation of convex hull
 //        body->setRenderer(root, view);
 //        body->hide();
 
-        m_processes[m_processes.size() - 1]->hideAll();
+            m_processes[m_processes.size() - 1]->hideAll();
 
+        }
     }
 
+
+
     // Show current body
-    if (m_processIndex < m_processes.size()) m_processes[m_processIndex]->showAll();
+    if (m_processIndex < m_processes.size()) {
+        m_processes[m_processIndex]->showAll();
+        plan(m_processes[m_processIndex]);
+    }
 
 
     auto thread = std::thread(update);
@@ -212,7 +258,7 @@ void updateSculptureDisplay()
 
     while (true) {
 
-        float r = 20, y = 1;
+        float r = 6, y = 1;
         m_camera->setPosition(QVector3D(r * cos(theta), y, r * sin(theta)));
         m_camera->setUpVector(QVector3D(0, 1, 0));
         m_camera->setViewCenter(QVector3D(0, y, 0));

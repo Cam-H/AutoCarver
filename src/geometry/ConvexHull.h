@@ -21,6 +21,7 @@ public:
 
     ConvexHull();
     ConvexHull(const float* cloud, uint32_t cloudSize);
+    ConvexHull(VertexArray  cloud);
 
     ConvexHull(const ConvexHull& rhs) = default;
     ~ConvexHull();
@@ -32,6 +33,9 @@ public:
     [[nodiscard]] const FaceArray& faces() const;
 
     [[nodiscard]] vec3f facetNormal(uint32_t idx) const;
+
+    [[nodiscard]] bool isSourceConvex() const;
+    static bool isConvex(const VertexArray& test);
 
 private:
 

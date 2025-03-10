@@ -32,6 +32,26 @@ FaceArray::FaceArray(const uint32_t* faces, const uint32_t* faceSizes, uint32_t 
 
 }
 
+FaceArray::FaceArray(const std::vector<std::vector<uint32_t>>& indices)
+        : m_faceSizes(new uint32_t[indices.size()])
+        , m_faceCount(indices.size())
+        , m_indexCount(0)
+{
+    uint32_t idx = 0;
+    for (const std::vector<uint32_t>& face : indices) {
+        m_faceSizes[idx++] = face.size();
+        m_indexCount += face.size();
+    }
+
+    m_faces = new uint32_t[m_indexCount];
+    auto ptr = m_faces;
+
+    for (const std::vector<uint32_t>& face : indices) {
+        memcpy(ptr, face.data(), face.size() * sizeof(uint32_t));
+        ptr += face.size();
+    }
+}
+
 FaceArray::FaceArray(const FaceArray& other)
         : FaceArray(other.m_faces, other.m_faceSizes, other.m_faceCount)
 {
@@ -81,21 +101,31 @@ FaceArray::~FaceArray()
 
 uint32_t* FaceArray::operator[](uint32_t idx)
 {
-    if (idx >= m_faceCount) return nullptr;
-
-    uint32_t *idxPtr = m_faces;
-    for (uint32_t i = 0; i < idx; i++) idxPtr += m_faceSizes[i];
-
-    return idxPtr;
+    return idxPtr(idx);
 }
 uint32_t* FaceArray::operator[](uint32_t idx) const
 {
+    return idxPtr(idx);
+}
+
+uint32_t* FaceArray::idxPtr(uint32_t idx)
+{
     if (idx >= m_faceCount) return nullptr;
 
-    uint32_t *idxPtr = m_faces;
-    for (uint32_t i = 0; i < idx; i++) idxPtr += m_faceSizes[i];
+    uint32_t *ptr = m_faces;
+    for (uint32_t i = 0; i < idx; i++) ptr += m_faceSizes[i];
 
-    return idxPtr;
+    return ptr;
+}
+
+uint32_t* FaceArray::idxPtr(uint32_t idx) const
+{
+    if (idx >= m_faceCount) return nullptr;
+
+    uint32_t *ptr = m_faces;
+    for (uint32_t i = 0; i < idx; i++) ptr += m_faceSizes[i];
+
+    return ptr;
 }
 
 const uint32_t* FaceArray::faces() const
@@ -109,6 +139,15 @@ const uint32_t* FaceArray::faceSizes() const
 uint32_t FaceArray::faceCount() const
 {
     return m_faceCount;
+}
+
+vec3f FaceArray::normal(uint32_t idx, const VertexArray& vertices) const
+{
+    uint32_t* ptr = idxPtr(idx);
+    if (ptr == nullptr) return {};
+
+    vec3f normal = vertices[ptr[0]];
+    return (vertices[ptr[1]] - normal).cross(vertices[ptr[2]] - normal).normalized();
 }
 
 // Requires that the faces are convex
@@ -131,6 +170,16 @@ void FaceArray::triangulation(uint32_t* indices)
 uint32_t FaceArray::triangleCount() const
 {
     return m_indexCount - 2 * m_faceCount;
+}
+
+FaceArray FaceArray::triangulated()
+{
+    uint32_t count = triangleCount();
+    auto *faces = new uint32_t[3 * count];
+
+    triangulation(faces);
+
+    return {faces, count};
 }
 
 // TODO non-convex triangulation
@@ -168,4 +217,18 @@ uint32_t FaceArray::size() const
 bool FaceArray::empty() const
 {
     return m_faceCount == 0;
+}
+
+void FaceArray::print() const
+{
+    auto ptr = m_faces;
+
+    std::cout << "\n~~~~~ Faces (" << m_faceCount << "|" << triangleCount() << ") ~~~~~\n";
+    for (uint32_t i = 0; i < m_faceCount; i++) {
+        std::cout << i << "| ";
+        for (uint32_t j = 0; j < m_faceSizes[i]; j++) {
+            std::cout << *ptr++ << " ";
+        }
+        std::cout << "\n";
+    }
 }

@@ -12,28 +12,33 @@
 #include <thread>
 #include <iostream>
 #include <numeric>
+#include <utility>
 
 ConvexHull::ConvexHull()
     : m_vertices(nullptr, 0)
     , m_cloud(nullptr, 0)
     , m_faces(nullptr, nullptr, 0)
 {
-
 }
 
 ConvexHull::ConvexHull(const float* cloud, uint32_t cloudSize)
-    : m_vertices(nullptr, 0)
-    , m_faces(nullptr, nullptr, 0)
-    , m_cloud(cloud, cloudSize)
+    : ConvexHull(VertexArray{cloud, cloudSize})
 
 {
-    if(cloudSize < 4){
+}
+
+ConvexHull::ConvexHull(VertexArray cloud)
+    : m_vertices(nullptr, 0)
+    , m_faces(nullptr, nullptr, 0)
+    , m_cloud(std::move(cloud)){
+
+    if(m_cloud.vertexCount() < 4){
         std::cout << "\033[31mERROR! Can not generate a 3D convex hull with fewer than 4 vertices\033[0m\n";
         return;
     }
 
     // Default to minimum hull size that will not introduce potential bugs
-    w_vertices.reserve(cloudSize);
+    w_vertices.reserve(m_cloud.vertexCount());
 
     std::vector<Triangle> triangles = initialApproximation();
 
@@ -115,7 +120,6 @@ ConvexHull::ConvexHull(const float* cloud, uint32_t cloudSize)
     }
 
     m_faces = {facets, facetSizes, (uint32_t)faces.size()};
-
 }
 
 ConvexHull::~ConvexHull()
@@ -152,6 +156,16 @@ vec3f ConvexHull::facetNormal(uint32_t idx) const
     return vec3f::cross(m_vertices[loop[1]] - m_vertices[loop[0]], m_vertices[loop[2]] - m_vertices[loop[0]]).normalized();
 }
 
+bool ConvexHull::isSourceConvex() const
+{
+    std::cout << m_vertices.vertexCount() << " " << m_cloud.vertexCount() << " |";
+    return m_vertices.vertexCount() == m_cloud.vertexCount();
+}
+
+bool ConvexHull::isConvex(const VertexArray& test)
+{
+    return ConvexHull(test).isSourceConvex();
+}
 
 std::vector<ConvexHull::Triangle> ConvexHull::initialApproximation(){
     std::vector<Triangle> triangles;

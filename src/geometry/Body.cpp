@@ -12,7 +12,7 @@
 
 Body::Body(const std::shared_ptr<Mesh> &mesh)
     : m_mesh(mesh)
-    , m_hull(mesh->vertices(), mesh->vertexCount())
+    , m_hull(mesh->vertices())
     , m_hullOK(true)
     , m_physEnabled(false)
     , phys(nullptr)
@@ -30,7 +30,7 @@ Body::Body(const std::shared_ptr<Mesh> &mesh)
 
 Body::Body(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world, const std::shared_ptr<Mesh> &mesh)
     : m_mesh(mesh)
-    , m_hull(mesh->vertices(), mesh->vertexCount())
+    , m_hull(mesh->vertices())
     , m_hullOK(true)
     , m_physEnabled(true)
     , phys(phys)
@@ -51,7 +51,7 @@ Body::~Body()
 {
     //TODO delete body
     std::cout << "Body deletion\n";
-    world->destroyRigidBody(m_physBody);
+    if (m_physBody != nullptr) world->destroyRigidBody(m_physBody);
 //    phys->destroyConvexMesh()
 }
 

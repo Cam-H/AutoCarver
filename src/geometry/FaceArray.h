@@ -6,11 +6,16 @@
 #define AUTOCARVER_FACEARRAY_H
 
 #include <cstdint>
+#include <vector>
+
+#include "VertexArray.h"
 
 class FaceArray {
 public:
     FaceArray(const uint32_t* indices, uint32_t triangleCount);
     FaceArray(const uint32_t* faces, const uint32_t* faceSizes, uint32_t faceCount);
+
+    explicit FaceArray(const std::vector<std::vector<uint32_t>>& indices);
 
     FaceArray(const FaceArray &);
     FaceArray& operator=(const FaceArray &);
@@ -27,13 +32,23 @@ public:
     [[nodiscard]] const uint32_t* faceSizes() const;
     [[nodiscard]] uint32_t faceCount() const;
 
+    [[nodiscard]] vec3f normal(uint32_t idx, const VertexArray& vertices) const;
+
     void triangulation(uint32_t* indices); // Triangulates faces, presumes each face is convex
     [[nodiscard]] uint32_t triangleCount() const;
 
+    FaceArray triangulated();
 
     [[nodiscard]] uint32_t size() const; // Get the size of the array in bytes
     [[nodiscard]] bool empty() const;
 
+    void print() const;
+
+private:
+
+    uint32_t* idxPtr(uint32_t idx);
+    uint32_t* idxPtr(uint32_t idx) const;
+    
 private:
     uint32_t *m_faces; // Loops of vertex indices that compose each face
     uint32_t *m_faceSizes; // Size of each individual face in vertices

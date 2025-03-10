@@ -136,7 +136,7 @@ Qt3DCore::QGeometry* RenderEntity::indexedGeometry(const std::shared_ptr<Mesh>& 
 
     uint32_t vertexCount = mesh->vertexCount();
 
-    const float *attributes[] = {mesh->vertices(), mesh->normals()};
+    const float *attributes[] = {mesh->vertices().data(), mesh->vertexNormals().data()};
     uint8_t attributeCount = 2;
 
     const auto attributeNames = {
