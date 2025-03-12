@@ -39,6 +39,8 @@ public:
 
     FaceArray triangulated();
 
+    std::vector<std::vector<uint32_t>> adjacencies() const;
+
     [[nodiscard]] uint32_t size() const; // Get the size of the array in bytes
     [[nodiscard]] bool empty() const;
 
@@ -48,7 +50,9 @@ private:
 
     uint32_t* idxPtr(uint32_t idx);
     uint32_t* idxPtr(uint32_t idx) const;
-    
+
+    inline static uint64_t linkKey(uint32_t I0, uint32_t I1);
+
 private:
     uint32_t *m_faces; // Loops of vertex indices that compose each face
     uint32_t *m_faceSizes; // Size of each individual face in vertices

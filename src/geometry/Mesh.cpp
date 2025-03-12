@@ -20,6 +20,7 @@ Mesh::Mesh(float vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t 
     , m_indices(indices)
     , m_indexCount(indexCount)
     , m_colors(nullptr, 0)
+    , m_adjacencyOK(false)
 {
 
 //    ScopedTimer timer("Make mesh");
@@ -35,6 +36,7 @@ Mesh::Mesh(const ConvexHull& hull)
         , m_vertexNormals(nullptr, 0)
         , m_indexCount(0)
         , m_colors(new float[hull.facetCount() * STRIDE], hull.facetCount())
+        , m_adjacencyOK(false)
 {
 
 //    ScopedTimer timer("Convert convex hull to mesh");
@@ -267,6 +269,13 @@ void Mesh::setFaceColor(uint32_t faceIdx, const vec3f& color)
 //    }
 }
 
+void Mesh::calculateAdjacencies()
+{
+    if (m_adjacencyOK) return; // TODO prepare method to invalidate adjacencies if mesh is updated
+    m_adjacencies = m_faces.adjacencies();
+    m_adjacencyOK = true;
+}
+
 uint32_t Mesh::vertexCount() const
 {
     return m_vertices.vertexCount();
@@ -309,6 +318,122 @@ uint32_t Mesh::faceCount() const
 const FaceArray& Mesh::faces() const
 {
     return m_faces;
+}
+
+std::vector<uint32_t> Mesh::outline(const vec3f& axis) // const TODO revert back to const
+{
+    ScopedTimer timer("Mesh outline calculation");
+
+//    const std::vector<std::vector<uint32_t>>& adjacencies = m_adjacencyOK ? m_adjacencies : m_faces.adjacencies();
+    const std::vector<std::vector<uint32_t>>& adjacencies = m_faces.adjacencies();
+
+//    std::cout << "Neighbors\n";
+//    auto zz = 0;
+//    for (const auto& n : adjacencies) {
+//        std::cout << zz++ << ": ";
+//        for (uint32_t ni : n) std::cout << ni << " ";
+//        std::cout << "\n";
+//    }
+
+    std::vector<uint16_t> status = identifyHorizonFaces(axis, adjacencies);
+    std::vector<std::vector<uint32_t>> loops;
+
+    std::cout << "--> |" << m_adjacencyOK << "| " << adjacencies.size() << " " << status.size() << "\n";
+
+
+
+//    std::cout << "MID Status: ";
+//    for (unsigned short s : status) {
+//        std::cout << s << " ";
+//    } std::cout << "\n";
+
+    // Subdivide horizon faces into continuous sets
+    for (uint32_t i = 0; i < m_faces.faceCount(); i++) {
+        if (status[i] != 1) continue; // Proceed with only unhandled horizon faces
+
+        std::vector<uint32_t>& loop = loops.emplace_back();
+        status[i] = loops.size() + 1;
+        loop.push_back(i);
+
+        for (uint32_t j = 0; j < loop.size(); j++) {
+//            std::cout << "~ " << i << " " << j << " " << loop[j] << "\n";
+            for (uint32_t k = 0; k < adjacencies[loop[j]].size(); k++) {
+                uint32_t testIdx = adjacencies[loop[j]][k];
+//                std::cout << "=== " << k << " " << testIdx << " ";
+
+                // Select adjacent, unhandled faces that straddle the horizon
+                if (testIdx != std::numeric_limits<uint32_t>::max() && status[testIdx] == 1) {
+                    status[testIdx] = loops.size() + 1; // Mark face & prevent reevaluation
+                    loop.push_back(testIdx);
+                }
+
+//                std::cout << "\n";
+            }
+        }
+    }
+
+    std::cout << "Found " << loops.size() << " loops\n";
+//    for (const std::vector<uint32_t>& loop : loops) {
+//        for (uint32_t idx : loop) std::cout << idx << " ";
+//        std::cout << "\n";
+//    }
+//    std::cout << "===================================\n";
+
+    if (loops.empty()) { // Serious issue - Should not be possible for a normal mesh
+        std::cout << "SERIOUS ERROR WITH MESH!\n";
+        return {};
+    }
+
+
+//    std::cout << "Status: ";
+    for (uint32_t i = 0; i < status.size(); i++) {
+        if (status[i] > 0) status[i]--;
+//        std::cout << status[i] << " ";
+        if (status[i] > 0) {
+            setFaceColor(i, {status[i] / (float)loops.size(), 0, 1 - status[i] / (float)loops.size()});
+        }
+
+    }
+//    std::cout << "\n";
+
+    if (loops.size() > 1) {
+        // TODO composite loops to develop the outline
+        std::cout << "Multiple loops unhandled! Results are not to be trusted\n";
+        return loops[0];
+    } else {
+        return loops[0];
+    }
+}
+
+std::vector<uint16_t> Mesh::identifyHorizonFaces(const vec3f& axis, const std::vector<std::vector<uint32_t>>& adjacencies) const
+{
+    ScopedTimer("Horizon face identification");
+
+    std::vector<uint16_t> status(m_faces.faceCount(), std::numeric_limits<uint16_t>::max());
+
+    float dp1 = 0, dp2 = 0;
+
+    // Identify horizon faces (faces with normals opposite to adjacent faces, based on the provided axis)
+    for (uint32_t i = 0; i < m_faces.faceCount(); i++) {
+        if (status[i] != std::numeric_limits<uint16_t>::max()) continue;
+
+        status[i] = 0;
+
+        for (uint32_t j = 0; j < adjacencies[i].size(); j++) {
+            if (adjacencies[i][j] != std::numeric_limits<uint32_t>::max() && status[adjacencies[i][j]] != 0) {
+                dp1 = axis.dot(m_faceNormals[i]);
+                dp2 = axis.dot(m_faceNormals[adjacencies[i][j]]);
+
+                if (dp1 * dp2 < 0) {
+                    status[adjacencies[i][j]] = 1;
+                    status[i] = 1;
+                    break;
+                }
+            }
+        }
+    }
+
+    return status;
 }
 
 float Mesh::volume() const

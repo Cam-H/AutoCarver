@@ -3,10 +3,14 @@
 //
 
 #include "FaceArray.h"
+#include "core/Timer.h"
 
 #include <utility>
+#include <unordered_map>
+#include <map>
 
 #include <iostream>
+#include <limits>
 
 FaceArray::FaceArray(const uint32_t* indices, uint32_t triangleCount)
     : m_faces(new uint32_t[3 * triangleCount])
@@ -208,6 +212,45 @@ FaceArray FaceArray::triangulated()
 //
 //        loop.clear();
 //    }
+
+std::vector<std::vector<uint32_t>> FaceArray::adjacencies() const
+{
+    ScopedTimer timer("Face adjacency calculation");
+    // TODO Improve speed - takes up to 15s for a representative mesh (ogre)
+
+    std::unordered_map<uint64_t, std::pair<uint32_t, uint32_t>> links;
+    std::vector<std::vector<uint32_t>> neighbors;
+
+    for (uint32_t i = 0; i < m_faceCount; i++) {
+        neighbors.emplace_back(m_faceSizes[i], std::numeric_limits<uint32_t>::max());
+
+        auto ptr = idxPtr(i);
+        uint32_t current = m_faceSizes[i] - 1, next = 0;
+        for (; next < m_faceSizes[i]; next++) {
+            uint64_t key = linkKey(ptr[current], ptr[next]);
+
+            if (links.find(key) != links.end()) { // Generate link when the edge (key) has already been seen
+                auto link = links[key];
+
+                neighbors[link.first][link.second] = i;
+                neighbors[i][current] = link.first;
+            } else { // Record triangle with key for future reference
+                links[key] = {i, current};
+            }
+            current = next;
+        }
+    }
+
+    std::cout << "[[[[[[[[ " << links.size() << " " << neighbors.size() << "\n";
+
+    return neighbors;
+}
+
+inline uint64_t FaceArray::linkKey(uint32_t I0, uint32_t I1)
+{
+    if (I0 < I1) return ((uint64_t)I0 << 32) + I1;
+    return ((uint64_t)I1 << 32) + I0;
+}
 
 uint32_t FaceArray::size() const
 {

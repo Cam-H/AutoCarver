@@ -79,10 +79,12 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     , m_convexTrimEnable(true)
     , m_processCutEnable(true)
 {
+
     m_sculpture = new Sculpture(model, m_config.materialWidth, m_config.materialHeight);
-    prepareBody(m_sculpture, 1);
 
     prepareBody(new Body(model), 1);
+    prepareBody(m_sculpture, 1);
+
 
 
     std::cout << "Size test " << sizeof(vec3f) << "\n";
@@ -222,7 +224,7 @@ void SculptProcess::planConvexTrim()
 
     std::vector<Operation> steps;
 
-    const ConvexHull& hull = m_entities[1].body->hull();
+    const ConvexHull& hull = m_entities[0].body->hull();
 
     for (uint32_t i = 0; i < hull.facetCount(); i++) {
         uint32_t idx = hull.faces()[i][0];
@@ -269,10 +271,28 @@ void SculptProcess::planConvexTrim()
 void SculptProcess::planOutlineRefinement(float stepDg)
 {
     //TODO
+    float tpi = 1 / (2 * M_PI);
+    std::vector<vec3f> axes(std::ceil(360.0f / stepDg));
+    for (uint32_t i = 0; i < axes.size(); i++) {
+        axes[i] = { cosf(i * tpi), 0, sinf(i * tpi) };
+    }
+
+//    model->calculateAdjacencies();
+    for (const vec3f& axis : axes) {
+        std::vector<uint32_t> outline = model->outline(axis);
+        std::cout << "Updating mesh!\n";
+//        m_entities[0].render->replace(0, model);// TODO remove (Temporary force model update)
+        m_entities[0].render->generate();// TODO remove (Temporary style override for testing)
+
+        std::cout << "~~~~~~~~~~~~~~~~~\n";
+        break;
+    }
 }
 void SculptProcess::planFeatureRefinement()
 {
     //TODO
+    // Refine features based on layers?
+    // Decompose model into patches and handle separately?
 }
 
 void SculptProcess::section(const std::shared_ptr<Mesh>& mesh, const vec3f& origin, const vec3f& normal)
@@ -531,7 +551,7 @@ void SculptProcess::activate(const Result& result)
     m_sculpture->overrwrite(result.sculpture);
 //
     std::cout << result.debris.size() << " " << result.sculpture->vertexCount() << " AF\n";
-    if (!m_entities.empty()) m_entities[0].render->replace(0, result.sculpture); // Update render
+    if (!m_entities.empty()) m_entities[1].render->replace(0, result.sculpture); // Update render
 
     // Activate physics on precalculated fragments
     for (uint32_t i = 0; i < result.debris.size(); i++) {

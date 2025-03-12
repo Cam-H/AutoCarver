@@ -39,8 +39,6 @@ private:
     [[nodiscard]] static size_t hash(size_t a, size_t b, size_t c) ;
     [[nodiscard]] static size_t cantor(size_t a, size_t b) ;
 
-    static std::vector<std::vector<uint32_t>> identifyNeighbors(const FaceArray& faces);
-    static uint64_t linkKey(uint32_t I0, uint32_t I1);
 };
 
 

@@ -172,20 +172,12 @@ std::shared_ptr<Mesh> MeshBuilder::cleaned(std::vector<vec3f>& vertices, const s
 
 
     // Generate linked list of faces and their neighbors
-    std::vector<std::vector<uint32_t>> neighbors = identifyNeighbors(faces);
+    std::vector<std::vector<uint32_t>> neighbors = faces.adjacencies();
     std::vector<std::vector<uint32_t>> indices;
 
     std::cout << "XXXXXXXXXXXXXXXXXXXX\n";
     for (const vec3f& vertex : vertices) std::cout << vertex << "\n";
     faces.print();
-
-    std::cout << "Neighbors\n";
-    auto zz = 0;
-    for (const auto& n : neighbors) {
-        std::cout << zz++ << ": ";
-        for (uint32_t ni : n) std::cout << ni << " ";
-        std::cout << "\n";
-    }
 
     std::cout << "~~~~~~~~~~~~~~" << neighbors.size() << " " << faces.faceCount() << "~~~~~~~~~~~~~~\n";
 
@@ -352,7 +344,7 @@ bool MeshBuilder::isManifold(const std::shared_ptr<Mesh>& mesh)
 }
 bool MeshBuilder::isManifold(const FaceArray& faces)
 {
-    const std::vector<std::vector<uint32_t>> neighbors = identifyNeighbors(faces);
+    const std::vector<std::vector<uint32_t>> neighbors = faces.adjacencies();
 
     for (const std::vector<uint32_t>& set : neighbors) {
         if (std::find(set.begin(), set.end(), std::numeric_limits<uint32_t>::max()) != set.end()) return false;
@@ -361,38 +353,4 @@ bool MeshBuilder::isManifold(const FaceArray& faces)
     // TODO Requires checking for internal geometry and zero-thickness features for completeness
 
     return true;
-}
-
-std::vector<std::vector<uint32_t>> MeshBuilder::identifyNeighbors(const FaceArray& faces)
-{
-    std::unordered_map<uint64_t, std::pair<uint32_t, uint32_t>> links;
-    std::vector<std::vector<uint32_t>> neighbors;
-
-    for (uint32_t i = 0; i < faces.faceCount(); i++) {
-        neighbors.emplace_back(faces.faceSizes()[i], std::numeric_limits<uint32_t>::max());
-
-        auto ptr = faces[i];
-        uint32_t current = faces.faceSizes()[i] - 1, next = 0;
-        for (; next < faces.faceSizes()[i]; next++) {
-            uint64_t key = linkKey(ptr[current], ptr[next]);
-
-            if (links.find(key) != links.end()) { // Generate link when the edge (key) has already been seen
-                auto link = links[key];
-
-                neighbors[link.first][link.second] = i;
-                neighbors[i][current] = link.first;
-            } else { // Record triangle with key for future reference
-                links[key] = {i, current};
-            }
-            current = next;
-        }
-    }
-
-    return neighbors;
-}
-
-uint64_t MeshBuilder::linkKey(uint32_t I0, uint32_t I1)
-{
-    if (I0 < I1) return ((uint64_t)I0 << 32) + I1;
-    return ((uint64_t)I1 << 32) + I0;
 }

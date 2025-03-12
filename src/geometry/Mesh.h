@@ -37,6 +37,8 @@ public:
     void setBaseColor(const vec3f& color);
     void setFaceColor(uint32_t faceIdx, const vec3f& color);
 
+    void calculateAdjacencies();
+
     [[nodiscard]] uint32_t vertexCount() const;
     [[nodiscard]] const VertexArray& vertices() const;
 
@@ -51,6 +53,7 @@ public:
     [[nodiscard]] uint32_t faceCount() const;
     [[nodiscard]] const FaceArray& faces() const;
 
+    [[nodiscard]] std::vector<uint32_t> outline(const vec3f& axis);
 
     [[nodiscard]] float volume() const;
     [[nodiscard]] float surfaceArea() const;
@@ -65,6 +68,8 @@ private:
 
     void calculateFaceNormals();
     void calculateVertexNormals();
+
+    std::vector<uint16_t> identifyHorizonFaces(const vec3f& axis, const std::vector<std::vector<uint32_t>>& adjacencies) const;
 
     [[nodiscard]] float faceArea(uint32_t faceIdx) const;
     [[nodiscard]] static float faceArea(const std::vector<vec3f>& vertices) ;
@@ -82,6 +87,9 @@ private:
     uint32_t m_indexCount;
 
     VertexArray m_colors;
+
+    bool m_adjacencyOK;
+    std::vector<std::vector<uint32_t>> m_adjacencies;
 
 //    float *m_colors;
 
