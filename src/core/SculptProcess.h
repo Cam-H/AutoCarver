@@ -40,6 +40,8 @@ public:
 
     void next();
 
+    Qt3DCore::QEntity* sculpture();
+
 private:
 
 

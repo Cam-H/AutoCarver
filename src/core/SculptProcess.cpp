@@ -215,6 +215,11 @@ void SculptProcess::next()
     m_step++;
 }
 
+Qt3DCore::QEntity* SculptProcess::sculpture()
+{
+    return m_entities[0].render;
+}
+
 void SculptProcess::planConvexTrim()
 {
     struct Operation {

@@ -68,6 +68,7 @@ private:
     Qt3DCore::QTransform *m_transform;
 
     std::vector<std::pair<std::shared_ptr<Mesh>, Qt3DRender::QMaterial*>> meshes;
+public:
     std::vector<Qt3DCore::QEntity*> m_renders;
 
 //    bool m_valid;
