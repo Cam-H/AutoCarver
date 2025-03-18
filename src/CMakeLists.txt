@@ -41,7 +41,14 @@ qt_add_library(AutoCarverLib
         widgets/SceneViewWidget.h
         widgets/SceneViewWidget.cpp
 
-        core/SculptProcess.cpp core/SculptProcess.h geometry/FaceArray.cpp geometry/FaceArray.h)
+        core/SculptProcess.cpp core/SculptProcess.h geometry/FaceArray.cpp geometry/FaceArray.h
+
+        math/vec3f.h
+        math/vec3f.cpp
+        math/mat4f.h
+        math/mat4f.cpp
+
+        renderer/RenderCapture.cpp renderer/RenderCapture.h)
 
 target_link_libraries(AutoCarverLib PRIVATE
         Qt::3DCore
@@ -60,7 +67,7 @@ target_link_libraries(AutoCarverLib PRIVATE
 
 qt_add_executable(AutoCarver
         core/EntryPoint.cpp
-        )
+        robot/KinematicChain.cpp robot/KinematicChain.h robot/ArticulatedWrist.cpp robot/ArticulatedWrist.h robot/Joint.cpp robot/Joint.h robot/RevoluteJoint.cpp robot/RevoluteJoint.h robot/PrismaticJoint.cpp robot/PrismaticJoint.h)
 
 target_link_libraries(AutoCarver PRIVATE
         Qt::3DCore
