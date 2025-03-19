@@ -40,7 +40,7 @@ public:
 
     void next();
 
-    Qt3DCore::QEntity* sculpture();
+    std::shared_ptr<Mesh> sculpture();
 
 private:
 

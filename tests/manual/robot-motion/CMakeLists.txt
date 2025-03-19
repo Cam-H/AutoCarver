@@ -4,13 +4,13 @@
 cmake_minimum_required(VERSION 3.16)
 project(robotmotion LANGUAGES CXX)
 
-find_package(Qt6 REQUIRED COMPONENTS Core 3DCore 3DRender Test)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui OpenGL OpenGLWidgets Widgets Test)
 
 qt_standard_project_setup()
 
 qt_add_executable(robotmotion
         main.cpp
-        mycapture.h)
+        )
 
 set_target_properties(robotmotion PROPERTIES
         #        WIN32_EXECUTABLE TRUE
@@ -23,12 +23,38 @@ target_link_libraries(robotmotion PRIVATE
         Qt::3DRender
         Qt6::Core
         Qt6::Gui
+        Qt6::OpenGL
+        Qt6::OpenGLWidgets
         Qt6::Widgets
         Qt6::Test
         reactphysics3d
         libassimp
         AutoCarverLib
         )
+
+# Resources:
+#set(shaders_resource_files
+#        "fshader.glsl"
+#        "vshader.glsl"
+#        )
+#
+#qt6_add_resources(cube "shaders"
+#        PREFIX
+#        "/"
+#        FILES
+#        ${shaders_resource_files}
+#        )
+#
+#set(textures_resource_files
+#        "cube.png"
+#        )
+#
+#qt6_add_resources(cube "textures"
+#        PREFIX
+#        "/"
+#        FILES
+#        ${textures_resource_files}
+#        )
 
 install(TARGETS robotmotion
         BUNDLE  DESTINATION .

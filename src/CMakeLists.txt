@@ -48,7 +48,7 @@ qt_add_library(AutoCarverLib
         math/mat4f.h
         math/mat4f.cpp
 
-        renderer/RenderCapture.cpp renderer/RenderCapture.h)
+        renderer/RenderCapture.cpp renderer/RenderCapture.h renderer/SceneWidget.cpp renderer/SceneWidget.h renderer/RenderGeometry.cpp renderer/RenderGeometry.h)
 
 target_link_libraries(AutoCarverLib PRIVATE
         Qt::3DCore

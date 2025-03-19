@@ -30,13 +30,13 @@ public:
     void start();
     void pause();
 
-    void linkRenderer(Qt3DCore::QEntity *parent, Qt3DExtras::Qt3DWindow *view);
+//    void linkRenderer(Qt3DCore::QEntity *parent, Qt3DExtras::Qt3DWindow *view);
 
-    void showAll();
-    void hideAll();
-
-    void show(uint32_t idx, Model target = Model::ALL);
-    void hide(uint32_t idx, Model target = Model::ALL);
+//    void showAll();
+//    void hideAll();
+//
+//    void show(uint32_t idx, Model target = Model::ALL);
+//    void hide(uint32_t idx, Model target = Model::ALL);
 
     void translateBody(uint32_t idx, float w, float x, float y, float z);
     void rotateBody(uint32_t idx, float w, float x, float y, float z);
@@ -48,35 +48,38 @@ public:
     void createBody(const std::string &filepath, rp3d::BodyType type = rp3d::BodyType::STATIC);
     void createBody(const std::shared_ptr<Mesh>& mesh, rp3d::BodyType type = rp3d::BodyType::STATIC);
 
+    const std::vector<Body*>& bodies();
     uint32_t bodyCount();
+
+//    std::vector<const std::shared_ptr<Mesh>&> meshes();
 
 protected:
     void prepareBody(Body *body, uint8_t level = 0);
-    RenderEntity* prepareRender(Body *body);
+//    RenderEntity* prepareRender(Body *body);
 
 private:
     void update();
 
 
-    void sync();
-    static void sync(rp3d::RigidBody *physics, RenderEntity *render);
+//    void sync();
+//    static void sync(rp3d::RigidBody *physics, RenderEntity *render);
 
 protected:
 
-    struct SceneEntity {
-        Body* body;
-        RenderEntity* render;
-        uint8_t level;
-    };
+//    struct SceneEntity {
+//        Body* body;
+//        RenderEntity* render;
+//        uint8_t level;
+//    };
 
     rp3d::PhysicsCommon m_physicsCommon;
     rp3d::PhysicsWorld *m_world;
 
-    Qt3DCore::QEntity *m_root;
-    Qt3DExtras::Qt3DWindow *view;
+//    Qt3DCore::QEntity *m_root;
+//    Qt3DExtras::Qt3DWindow *view;
 
-//    std::vector<Body*> m_bodies;
-    std::vector<SceneEntity> m_entities;
+    std::vector<Body*> m_bodies;
+//    std::vector<SceneEntity> m_entities;
 
     std::thread m_updateThread;
     bool m_paused;

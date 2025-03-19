@@ -215,9 +215,9 @@ void SculptProcess::next()
     m_step++;
 }
 
-Qt3DCore::QEntity* SculptProcess::sculpture()
+std::shared_ptr<Mesh> SculptProcess::sculpture()
 {
-    return m_entities[0].render;
+    return m_bodies[0]->mesh();
 }
 
 void SculptProcess::planConvexTrim()
@@ -229,7 +229,7 @@ void SculptProcess::planConvexTrim()
 
     std::vector<Operation> steps;
 
-    const ConvexHull& hull = m_entities[0].body->hull();
+    const ConvexHull& hull = m_bodies[0]->hull();
 
     for (uint32_t i = 0; i < hull.facetCount(); i++) {
         uint32_t idx = hull.faces()[i][0];
@@ -287,7 +287,7 @@ void SculptProcess::planOutlineRefinement(float stepDg)
         std::vector<uint32_t> outline = model->outline(axis);
         std::cout << "Updating mesh!\n";
 //        m_entities[0].render->replace(0, model);// TODO remove (Temporary force model update)
-        m_entities[0].render->generate();// TODO remove (Temporary style override for testing)
+//        m_entities[0].render->generate();// TODO remove (Temporary style override for testing)
 
         std::cout << "~~~~~~~~~~~~~~~~~\n";
         break;
@@ -556,7 +556,8 @@ void SculptProcess::activate(const Result& result)
     m_sculpture->overrwrite(result.sculpture);
 //
     std::cout << result.debris.size() << " " << result.sculpture->vertexCount() << " AF\n";
-    if (!m_entities.empty()) m_entities[1].render->replace(0, result.sculpture); // Update render
+//    if (!m_entities.empty()) m_entities[1].render->replace(0, result.sculpture); // Update render
+    //TODO
 
     // Activate physics on precalculated fragments
     for (uint32_t i = 0; i < result.debris.size(); i++) {

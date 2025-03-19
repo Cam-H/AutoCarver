@@ -1,142 +1,122 @@
 #include <QApplication>
-#include <QWidget>
-#include <QHBoxLayout>
 #include <QLabel>
+#include <QSurfaceFormat>
+#include <QMainWindow>
 #include <QPushButton>
+#include <QVBoxLayout>
 #include <QCheckBox>
-#include <Qt3DCore/QEntity>
-#include <Qt3DCore/QTransform>
-#include <Qt3DRender/QCamera>
-#include <Qt3DRender/QRenderCapture>
-#include <Qt3DExtras/QPhongMaterial>
-#include <Qt3DExtras/QSphereMesh>
-#include <Qt3DExtras/QTorusMesh>
-#include <QPropertyAnimation>
-#include "qt3dwindow.h"
-//#include "orbittransformcontroller.h"
-#include "qorbitcameracontroller.h"
-#include "mycapture.h"
-Qt3DCore::QEntity *createScene()
+
+#ifndef QT_NO_OPENGL
+#include "renderer/SceneWidget.h"
+#include "fileIO/MeshHandler.h"
+#include "core/SculptProcess.h"
+
+#endif
+
+SculptProcess *scene = nullptr;
+SceneWidget *sceneWidget = nullptr;
+
+int main(int argc, char *argv[])
 {
-    // Root entity
-    Qt3DCore::QEntity *rootEntity = new Qt3DCore::QEntity;
-    // Material
-    Qt3DRender::QMaterial *material = new Qt3DExtras::QPhongMaterial(rootEntity);
-    ((Qt3DExtras::QPhongMaterial*)material)->setAmbient(QColor(0, 0, 0));
-    ((Qt3DExtras::QPhongMaterial*)material)->setDiffuse(QColor(0, 0, 0));
-    ((Qt3DExtras::QPhongMaterial*)material)->setSpecular(QColor(0, 0, 0));
-
-//    Qt3DRender::QMaterial *material = new Qt3DExtras::QPerVertexColorMaterial(rootEntity);
-
-    // Torus
-    Qt3DCore::QEntity *torusEntity = new Qt3DCore::QEntity(rootEntity);
-    Qt3DExtras::QTorusMesh *torusMesh = new Qt3DExtras::QTorusMesh;
-    torusMesh->setRadius(5);
-    torusMesh->setMinorRadius(1);
-    torusMesh->setRings(100);
-    torusMesh->setSlices(20);
-    Qt3DCore::QTransform *torusTransform = new Qt3DCore::QTransform;
-    torusTransform->setScale3D(QVector3D(1.5, 1, 0.5));
-    torusTransform->setRotation(QQuaternion::fromAxisAndAngle(QVector3D(1, 0, 0),
-                                                              45.0f));
-    torusEntity->addComponent(
-            torusMesh);
-    torusEntity->addComponent(
-            torusTransform);
-    torusEntity->addComponent(
-            material);
-    // Sphere
-    Qt3DCore::QEntity *sphereEntity = new Qt3DCore::QEntity(rootEntity);
-    Qt3DExtras::QSphereMesh *sphereMesh = new Qt3DExtras::QSphereMesh;
-    sphereMesh->setRadius(3);
-    Qt3DCore::QTransform *sphereTransform = new Qt3DCore::QTransform;
-//    OrbitTransformController *controller = new OrbitTransformController(sphereTransform);
-//    controller->setTarget(sphereTransform);
-//    controller->setRadius(20.0f);
-    QPropertyAnimation *sphereRotateTransformAnimation = new QPropertyAnimation(sphereTransform);
-//    sphereRotateTransformAnimation->setTargetObject(controller);
-    sphereRotateTransformAnimation->setPropertyName("angle");
-    sphereRotateTransformAnimation->setStartValue(QVariant::fromValue(
-            0));
-    sphereRotateTransformAnimation->setEndValue(QVariant::fromValue(
-            360));
-    sphereRotateTransformAnimation->setDuration(10000);
-    sphereRotateTransformAnimation->setLoopCount(-1);
-    sphereRotateTransformAnimation->start();
-    sphereEntity->addComponent(
-            sphereMesh);
-    sphereEntity->addComponent(
-            sphereTransform);
-    sphereEntity->addComponent(
-            material);
-    return rootEntity;
-}
-int main(int argc, char* argv[])
-{
-//    QSurfaceFormat format;
-//    format.setSamples(0); // Disables anti-aliasing
-//    format.setStereo(true); // Disables anti-aliasing, but is definitely weird
-//    QSurfaceFormat::setDefaultFormat(format);
-
     QApplication app(argc, argv);
 
+    QSurfaceFormat format;
+    format.setDepthBufferSize(24);
+    QSurfaceFormat::setDefaultFormat(format);
 
+    app.setApplicationName("cube");
+    app.setApplicationVersion("0.1");
 
-    Qt3DExtras::Qt3DWindow view;
-    Qt3DCore::QEntity *scene = createScene();
-    view.setRootEntity(scene);
-    view.resize(600,
-                600);
-    Qt3DRender::QRenderCapture* capture = new Qt3DRender::QRenderCapture;
-//    view.activeFrameGraph()->setParent(capture);
-//    view.setActiveFrameGraph(capture);
-    // Camera
-    Qt3DRender::QCamera *camera = view.camera();
-    camera->lens()->setPerspectiveProjection(45.0f, 16.0f/9.0f, 0.1f,
-                                             1000.0f);
-    camera->setPosition(QVector3D(0, 0, 40.0f));
-    camera->setViewCenter(QVector3D(0, 0, 0));
-    // For camera controls
-    Qt3DExtras::QOrbitCameraController *camController = new Qt3DExtras::QOrbitCameraController(scene);
-    camController->setLinearSpeed( 50.0f );
-    camController->setLookSpeed( 180.0f );
-    camController->setCamera(camera);
-    QWidget *container = QWidget::createWindowContainer(
-            &view);
-    container->setMinimumSize(QSize(600, 600));
-    container->setMaximumSize(QSize(600, 600));
-    QPushButton *captureButton = new QPushButton();
-    captureButton->setText("Capture");
-    QCheckBox *checkBox = new QCheckBox();
-    checkBox->setText("continuous");
-    QLabel *imageLabel = new QLabel();
-    imageLabel->setBackgroundRole(QPalette::Base);
-    imageLabel->setSizePolicy(QSizePolicy::Ignored,
-                              QSizePolicy::Ignored);
-    imageLabel->setScaledContents(true);
-    imageLabel->resize(600,
-                       600);
-    imageLabel->setMinimumSize(QSize(600, 600));
-    imageLabel->setMaximumSize(QSize(600, 600));
-    MyCapture myc(capture, imageLabel);
-    QObject::connect(captureButton, &QPushButton::pressed, &myc,
-                     &MyCapture::capture);
-    QObject::connect(checkBox, &QCheckBox::clicked, &myc,
-                     &MyCapture::setContinuous);
-    // create widget
-    QWidget *widget = new QWidget;
-    widget->setWindowTitle(QStringLiteral("RenderCapture example"));
-    QWidget* subWidget = new QWidget;
-    QVBoxLayout *vLayout = new QVBoxLayout(subWidget);
-    vLayout->addWidget(captureButton);
-    vLayout->addWidget(checkBox);
-    vLayout->addWidget(imageLabel);
-    QHBoxLayout *hLayout = new QHBoxLayout(widget);
-    hLayout->addWidget(container);
-    hLayout->addWidget(subWidget);
-    // Show window
-    widget->show();
-    widget->resize(1250,
-                   700);
+    QMainWindow window;
+    window.setWindowTitle(QStringLiteral("Auto Carver - Convex Hull Algorithm Testing"));
+
+    window.resize(1200, 700);
+
+//    QSize screenSize = view->screen()->size();
+//    container->setMinimumSize(QSize(500, 500));
+//    container->setMaximumSize(screenSize);
+
+    auto *content = new QWidget;
+    window.setCentralWidget(content);
+
+    auto *vLayout = new QVBoxLayout; // Highest-level layout for content
+    vLayout->setAlignment(Qt::AlignTop);
+    content->setLayout(vLayout);
+
+    auto *render = new QWidget;
+    render->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    auto *hRenderLayout = new QHBoxLayout; // Layout for render content
+    render->setLayout(hRenderLayout);
+
+    auto *control = new QWidget;
+    auto *hControlLayout = new QHBoxLayout;
+    control->setLayout(hControlLayout);
+
+    vLayout->addWidget(render);
+    vLayout->addWidget(control);
+
+#ifndef QT_NO_OPENGL
+
+    std::string source = R"(..\res\meshes\devil.obj)";
+    auto model = MeshHandler::loadAsMeshBody(source);
+
+    scene = new SculptProcess(model);
+    sceneWidget = new SceneWidget(scene);
+    hRenderLayout->addWidget(sceneWidget);
+
+//    auto *sw2 = new SceneWidget(new SculptProcess(model));
+//    hRenderLayout->addWidget(sw2);
+
+//    auto *imageLabel = new QLabel();
+//    imageLabel->setBackgroundRole(QPalette::Base);
+//    imageLabel->setMinimumSize(QSize(100, 100));
+//    hRenderLayout->addWidget(imageLabel);
+#else
+    QLabel note("OpenGL Support required");
+    note.show();
+#endif
+
+    auto sculptureButton = new QCheckBox("Show sculpture", control);
+    sculptureButton->setChecked(true);
+    hControlLayout->addWidget(sculptureButton);
+
+    QObject::connect(sculptureButton, &QCheckBox::clicked, [&](bool checked) {
+        if (checked) sceneWidget->show(1, Scene::Model::ALL);
+        else sceneWidget->hide(1, Scene::Model::ALL);
+    });
+
+    auto hullButton = new QCheckBox("Show convex hull", control);
+    hControlLayout->addWidget(hullButton);
+
+    QObject::connect(hullButton, &QCheckBox::clicked, [&](bool checked) {
+        if (checked) sceneWidget->show(0, Scene::Model::HULL);
+        else sceneWidget->hide(0, Scene::Model::HULL);
+    });
+
+    auto stepButton = new QPushButton("Next step", control);
+    hControlLayout->addWidget(stepButton);
+
+    QObject::connect(stepButton, &QPushButton::clicked, [&]() {
+        scene->next();
+    });
+
+    auto captureButton = new QPushButton("Capture", control);
+    hControlLayout->addWidget(captureButton);
+
+    QObject::connect(captureButton, &QPushButton::clicked, [&]() {
+//        m_rc->capture();
+        if (sceneWidget != nullptr) {
+            auto image = sceneWidget->grabFramebuffer();
+//            auto img = new uint8_t[image.width()][image.height()];
+
+            image.save("..\\out\\capture.png");
+        }
+    });
+
+//    auto thread = std::thread(update);
+
+    window.show();
+
     return app.exec();
 }

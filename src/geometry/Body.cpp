@@ -13,6 +13,7 @@
 Body::Body(const std::shared_ptr<Mesh> &mesh)
     : m_mesh(mesh)
     , m_hull(mesh->vertices())
+    , m_hullMesh(std::make_shared<Mesh>(m_hull))
     , m_hullOK(true)
     , m_physEnabled(false)
     , phys(nullptr)
@@ -31,6 +32,7 @@ Body::Body(const std::shared_ptr<Mesh> &mesh)
 Body::Body(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world, const std::shared_ptr<Mesh> &mesh)
     : m_mesh(mesh)
     , m_hull(mesh->vertices())
+    , m_hullMesh(std::make_shared<Mesh>(m_hull))
     , m_hullOK(true)
     , m_physEnabled(true)
     , phys(phys)
@@ -98,7 +100,7 @@ const std::shared_ptr<Mesh>& Body::mesh()
     return m_mesh;
 }
 
-const ConvexHull &Body::hull()
+const ConvexHull& Body::hull()
 {
     if (!m_hullOK) {
 //        m_hull(m_mesh->vertices(), m_mesh->vertexCount());
@@ -109,10 +111,16 @@ const ConvexHull &Body::hull()
     return m_hull;
 }
 
-const ConvexHull &Body::hull() const
+const ConvexHull& Body::hull() const
 {
     return m_hull;
 }
+
+const std::shared_ptr<Mesh>& Body::hullMesh()
+{
+    return m_hullMesh;
+}
+
 void Body::evaluateManifold()
 {
     //TODO

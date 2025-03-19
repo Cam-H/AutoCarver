@@ -32,6 +32,8 @@ public:
     const ConvexHull &hull();
     const ConvexHull &hull() const;
 
+    const std::shared_ptr<Mesh>& hullMesh();
+
     rp3d::RigidBody *physicsBody();
 
 private:
@@ -47,6 +49,8 @@ protected:
     std::shared_ptr<Mesh> m_mesh;
 
     ConvexHull m_hull;
+    std::shared_ptr<Mesh> m_hullMesh;
+
     bool m_hullOK;
 
 
