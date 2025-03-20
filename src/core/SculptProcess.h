@@ -49,7 +49,7 @@ private:
     void planOutlineRefinement(float stepDg);
     void planFeatureRefinement();
 
-    void section(const std::shared_ptr<Mesh>& mesh, const vec3f& origin, const vec3f& normal);
+    void section(const std::shared_ptr<Mesh>& mesh, const glm::vec3& origin, const glm::vec3& normal);
     void remove(const std::shared_ptr<Mesh>& mesh, const std::shared_ptr<Mesh>& cut);
 
     void process();

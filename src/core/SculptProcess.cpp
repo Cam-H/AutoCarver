@@ -4,6 +4,8 @@
 
 #include "SculptProcess.h"
 
+#include <glm/glm.hpp>
+
 #include "Sculpture.h"
 #include "fileIO/MeshHandler.h"
 #include "geometry/MeshBuilder.h"
@@ -83,11 +85,10 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     m_sculpture = new Sculpture(model, m_config.materialWidth, m_config.materialHeight);
 
     prepareBody(new Body(model), 1);
+    m_bodies[0]->prepareHullMesh();
+
     prepareBody(m_sculpture, 1);
 
-
-
-    std::cout << "Size test " << sizeof(vec3f) << "\n";
 
     // Create the context
     McResult status = mcCreateContext(&context, MC_DEBUG);
@@ -223,8 +224,8 @@ std::shared_ptr<Mesh> SculptProcess::sculpture()
 void SculptProcess::planConvexTrim()
 {
     struct Operation {
-        vec3f origin;
-        vec3f normal;
+        glm::vec3 origin;
+        glm::vec3 normal;
     };
 
     std::vector<Operation> steps;
@@ -238,7 +239,7 @@ void SculptProcess::planConvexTrim()
 
     // Plan initial cuts, beginning from the top and moving towards the base
     std::sort(steps.begin(), steps.end(), [](const Operation& a, const Operation& b){
-        return a.normal.dot({0, 1, 0}) > b.normal.dot({0, 1, 0});
+        return glm::dot(a.normal, {0, 1, 0}) > glm::dot(b.normal, {0, 1, 0});
     });
 
     m_results.push_back(Result{m_sculpture->mesh(), nullptr, {}});
@@ -277,13 +278,13 @@ void SculptProcess::planOutlineRefinement(float stepDg)
 {
     //TODO
     float tpi = 1 / (2 * M_PI);
-    std::vector<vec3f> axes(std::ceil(360.0f / stepDg));
+    std::vector<glm::vec3> axes(std::ceil(360.0f / stepDg));
     for (uint32_t i = 0; i < axes.size(); i++) {
         axes[i] = { cosf(i * tpi), 0, sinf(i * tpi) };
     }
 
 //    model->calculateAdjacencies();
-    for (const vec3f& axis : axes) {
+    for (const glm::vec3& axis : axes) {
         std::vector<uint32_t> outline = model->outline(axis);
         std::cout << "Updating mesh!\n";
 //        m_entities[0].render->replace(0, model);// TODO remove (Temporary force model update)
@@ -300,7 +301,7 @@ void SculptProcess::planFeatureRefinement()
     // Decompose model into patches and handle separately?
 }
 
-void SculptProcess::section(const std::shared_ptr<Mesh>& mesh, const vec3f& origin, const vec3f& normal)
+void SculptProcess::section(const std::shared_ptr<Mesh>& mesh, const glm::vec3& origin, const glm::vec3& normal)
 {
     std::cout << "\033[31m***********Sculpt Process - Section**********\033[0m\n";
 

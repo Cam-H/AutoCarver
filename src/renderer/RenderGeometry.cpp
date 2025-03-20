@@ -99,7 +99,7 @@ std::vector<const float*> RenderGeometry::attributes(const std::shared_ptr<Mesh>
         }
     } else {
 
-        size_t size = m_indexCount * sizeof(vec3f) / sizeof(float);
+        size_t size = m_indexCount * 3;
         auto *vertices = new float[size], *normals = new float[size], *colors = new float[size];
         mesh->directRepresentation(vertices, normals, colors);
 
@@ -176,6 +176,6 @@ void RenderGeometry::bindAttributes(QOpenGLShaderProgram *program)
     for (int location : locations) {
         program->enableAttributeArray(location);
         program->setAttributeBuffer(location, GL_FLOAT, offset, 3, m_stride);
-        offset += sizeof(vec3f);
+        offset += 3 * sizeof(float);
     }
 }

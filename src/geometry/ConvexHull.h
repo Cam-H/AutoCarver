@@ -32,7 +32,7 @@ public:
     [[nodiscard]] uint32_t facetCount() const;
     [[nodiscard]] const FaceArray& faces() const;
 
-    [[nodiscard]] vec3f facetNormal(uint32_t idx) const;
+    [[nodiscard]] glm::vec3 facetNormal(uint32_t idx) const;
 
     [[nodiscard]] bool isSourceConvex() const;
     static bool isConvex(const VertexArray& test);
@@ -73,7 +73,7 @@ private:
 
     struct Facet {
         Triangle triangle;
-        vec3f normal;
+        glm::vec3 normal;
         std::vector<uint32_t> outside;
         std::vector<uint32_t> neighbors;
         bool onHull;
@@ -86,7 +86,7 @@ private:
     void prepareFacets(const std::vector<Triangle>& triangles);
     void prepareFacets(const std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
     void sortCloud(std::vector<uint32_t>& free, Facet& facet);
-    void calculateHorizon(const vec3f& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
+    void calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
 
     static bool isManifold(const std::vector<Facet> &facets);
     static bool isManifold(const Facet &dest, uint32_t src);
@@ -103,7 +103,7 @@ private:
 //    uint32_t *m_facetSizes;
 //    uint32_t m_facetCount;
 
-    std::vector<vec3f> w_vertices;
+    std::vector<glm::vec3> w_vertices;
     std::vector<Facet> facets;
 
     const static uint8_t STRIDE = 3;

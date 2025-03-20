@@ -13,7 +13,7 @@
 Body::Body(const std::shared_ptr<Mesh> &mesh)
     : m_mesh(mesh)
     , m_hull(mesh->vertices())
-    , m_hullMesh(std::make_shared<Mesh>(m_hull))
+    , m_hullMesh(nullptr)
     , m_hullOK(true)
     , m_physEnabled(false)
     , phys(nullptr)
@@ -32,7 +32,7 @@ Body::Body(const std::shared_ptr<Mesh> &mesh)
 Body::Body(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world, const std::shared_ptr<Mesh> &mesh)
     : m_mesh(mesh)
     , m_hull(mesh->vertices())
-    , m_hullMesh(std::make_shared<Mesh>(m_hull))
+    , m_hullMesh(nullptr)
     , m_hullOK(true)
     , m_physEnabled(true)
     , phys(phys)
@@ -75,6 +75,11 @@ void Body::prepareColliders()
 rp3d::RigidBody *Body::physicsBody()
 {
     return m_physBody;
+}
+
+void Body::prepareHullMesh()
+{
+    if (m_hullMesh == nullptr) m_hullMesh = std::make_shared<Mesh>(m_hull);
 }
 
 bool Body::isManifold()

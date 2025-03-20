@@ -5,6 +5,8 @@
 #include "FaceArray.h"
 #include "core/Timer.h"
 
+#include <glm/glm.hpp>
+
 #include <utility>
 #include <unordered_map>
 #include <map>
@@ -145,13 +147,13 @@ uint32_t FaceArray::faceCount() const
     return m_faceCount;
 }
 
-vec3f FaceArray::normal(uint32_t idx, const VertexArray& vertices) const
+glm::vec3 FaceArray::normal(uint32_t idx, const VertexArray& vertices) const
 {
     uint32_t* ptr = idxPtr(idx);
     if (ptr == nullptr) return {};
 
-    vec3f normal = vertices[ptr[0]];
-    return (vertices[ptr[1]] - normal).cross(vertices[ptr[2]] - normal).normalized();
+    glm::vec3 normal = vertices[ptr[0]];
+    return glm::normalize(glm::cross(vertices[ptr[1]] - normal, vertices[ptr[2]] - normal));
 }
 
 // Requires that the faces are convex

@@ -17,7 +17,7 @@ VertexArray::VertexArray(const float* vertices, uint32_t vertexCount)
     memcpy(m_vertices, vertices, m_vertexCount * STRIDE * sizeof(float));
 }
 
-VertexArray::VertexArray(const std::vector<vec3f>& vertices)
+VertexArray::VertexArray(const std::vector<glm::vec3>& vertices)
     : m_vertices(new float[vertices.size() * STRIDE])
     , m_vertexCount(vertices.size())
 {
@@ -75,7 +75,7 @@ VertexArray::~VertexArray()
 //    return &m_vertices[idx * STRIDE];
 //}
 
-vec3f VertexArray::operator[](uint32_t idx) const
+glm::vec3 VertexArray::operator[](uint32_t idx) const
 {
     return {m_vertices[idx * STRIDE], m_vertices[idx * STRIDE + 1], m_vertices[idx * STRIDE + 2]};
 }
@@ -135,7 +135,7 @@ void VertexArray::rotate(const float* axis, float theta)
     }
 }
 
-void VertexArray::replace(uint32_t idx, const vec3f& replacement)
+void VertexArray::replace(uint32_t idx, const glm::vec3& replacement)
 {
     if (idx < m_vertexCount) {
         m_vertices[idx * STRIDE    ] = replacement.x;
@@ -161,7 +161,7 @@ void VertexArray::swap(uint32_t I0, uint32_t I1)
     I1 *= STRIDE;
 
     auto ptr1 = &m_vertices[I0], ptr2 = &m_vertices[I1];
-    vec3f temp = {m_vertices[I0], m_vertices[I0 + 1], m_vertices[I0 + 2]};
+    glm::vec3 temp = {m_vertices[I0], m_vertices[I0 + 1], m_vertices[I0 + 2]};
     *ptr1++ = *ptr2++;
     *ptr1++ = *ptr2++;
     *ptr1++ = *ptr2;

@@ -34,8 +34,8 @@ public:
     void yExtent(float &near, float &far);
     void zExtent(float &near, float &far);
 
-    void setBaseColor(const vec3f& color);
-    void setFaceColor(uint32_t faceIdx, const vec3f& color);
+    void setBaseColor(const glm::vec3& color);
+    void setFaceColor(uint32_t faceIdx, const glm::vec3& color);
 
     void calculateAdjacencies();
 
@@ -46,6 +46,7 @@ public:
     [[nodiscard]] const VertexArray& vertexNormals() const;
 
     [[nodiscard]] const VertexArray& colors() const;
+    [[nodiscard]] const glm::vec3& baseColor() const;
 
     [[nodiscard]] uint32_t triangleCount() const;
     uint32_t* indices();
@@ -53,7 +54,7 @@ public:
     [[nodiscard]] uint32_t faceCount() const;
     [[nodiscard]] const FaceArray& faces() const;
 
-    [[nodiscard]] std::vector<uint32_t> outline(const vec3f& axis);
+    [[nodiscard]] std::vector<uint32_t> outline(const glm::vec3& axis);
 
     [[nodiscard]] float volume() const;
     [[nodiscard]] float surfaceArea() const;
@@ -69,10 +70,10 @@ private:
     void calculateFaceNormals();
     void calculateVertexNormals();
 
-    std::vector<uint16_t> identifyHorizonFaces(const vec3f& axis, const std::vector<std::vector<uint32_t>>& adjacencies) const;
+    std::vector<uint16_t> identifyHorizonFaces(const glm::vec3& axis, const std::vector<std::vector<uint32_t>>& adjacencies) const;
 
     [[nodiscard]] float faceArea(uint32_t faceIdx) const;
-    [[nodiscard]] static float faceArea(const std::vector<vec3f>& vertices) ;
+    [[nodiscard]] static float faceArea(const std::vector<glm::vec3>& vertices) ;
 
 private:
 
@@ -87,6 +88,7 @@ private:
     uint32_t m_indexCount;
 
     VertexArray m_colors;
+    glm::vec3 m_baseColor;
 
     bool m_adjacencyOK;
     std::vector<std::vector<uint32_t>> m_adjacencies;

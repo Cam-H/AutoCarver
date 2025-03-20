@@ -6,6 +6,7 @@
 #include "ConvexHull.h"
 
 #include <QVector3D>
+#include <glm/glm.hpp>
 
 #include "Core/Timer.h"
 
@@ -83,7 +84,7 @@ ConvexHull::ConvexHull(VertexArray cloud)
             for(uint32_t i = 0; i < neighbors.size(); i++){
                 Facet& neighbor = facets[neighbors[i].second];
 
-                if(neighbor.onHull && neighbor.normal.dot(facet.normal) > 1 - 2 * std::numeric_limits<float>::epsilon()){
+                if(neighbor.onHull && glm::dot(neighbor.normal, facet.normal) > 1 - 2 * std::numeric_limits<float>::epsilon()){
 
                     uint32_t ref = std::find(neighbor.neighbors.begin(), neighbor.neighbors.end(), neighbors[i].first) - neighbor.neighbors.begin();
 
@@ -148,12 +149,12 @@ const FaceArray& ConvexHull::faces() const
     return m_faces;
 }
 
-vec3f ConvexHull::facetNormal(uint32_t idx) const
+glm::vec3 ConvexHull::facetNormal(uint32_t idx) const
 {
     uint32_t *loop = m_faces[idx];
     if (loop == nullptr) return {};
 
-    return vec3f::cross(m_vertices[loop[1]] - m_vertices[loop[0]], m_vertices[loop[2]] - m_vertices[loop[0]]).normalized();
+    return glm::normalize(glm::cross(m_vertices[loop[1]] - m_vertices[loop[0]], m_vertices[loop[2]] - m_vertices[loop[0]]));
 }
 
 bool ConvexHull::isSourceConvex() const
@@ -208,9 +209,9 @@ std::vector<ConvexHull::Triangle> ConvexHull::initialApproximation(){
 
     // Swap vertices if needed to ensure proper winding
     auto ref = w_vertices[3] - w_vertices[0];
-    auto normal = vec3f::cross(w_vertices[1] - w_vertices[0], w_vertices[2] - w_vertices[0]).normalized();
+    auto normal = glm::normalize(glm::cross(w_vertices[1] - w_vertices[0], w_vertices[2] - w_vertices[0]));
 
-    if(ref.dot(normal) > 0){
+    if(glm::dot(ref, normal) > 0){
         std::swap(w_vertices[0], w_vertices[1]);
     }
 
@@ -230,7 +231,7 @@ void ConvexHull::prepareFacets(const std::vector<Triangle>& triangles){
     std::vector<std::vector<uint32_t>> neighbors = {{2, 3, 1}, {0, 3, 2}, {1, 3, 0}, {1, 0, 2}};
     for(uint32_t i = 0; i < triangles.size(); i++){
 
-        vec3f normal = vec3f::cross(w_vertices[triangles[i].I1] - w_vertices[triangles[i].I0], w_vertices[triangles[i].I2] - w_vertices[triangles[i].I0]).normalized();
+        glm::vec3 normal = glm::normalize(glm::cross(w_vertices[triangles[i].I1] - w_vertices[triangles[i].I0], w_vertices[triangles[i].I2] - w_vertices[triangles[i].I0]));
 
         Facet facet = {triangles[i], normal, {}, neighbors[i], true};
         sortCloud(free, facet);
@@ -251,7 +252,7 @@ void ConvexHull::prepareFacets(const std::vector<uint32_t>& horizon, std::vector
 
         // Prepare the new facet and link
         Triangle triangle = {(uint32_t)w_vertices.size() - 1, lastVertex, horizon[j + 1]};
-        vec3f normal = vec3f::cross(w_vertices[triangle.I1] - w_vertices[triangle.I0], w_vertices[triangle.I2] - w_vertices[triangle.I0]).normalized();
+        glm::vec3 normal = glm::normalize(glm::cross(w_vertices[triangle.I1] - w_vertices[triangle.I0], w_vertices[triangle.I2] - w_vertices[triangle.I0]));
 
         Facet facet = {triangle, normal, {}, {lastFacet, horizon[j], nextFacet}, true};
         sortCloud(set, facet);
@@ -269,7 +270,7 @@ void ConvexHull::sortCloud(std::vector<uint32_t>& free, Facet& facet){
     auto vec = new float[3];
 
     for(uint32_t i = 0; i < free.size(); i++){
-        float test = vec3f::dot(facet.normal, m_cloud[free[i]] - w_vertices[facet.triangle.I0]);
+        float test = glm::dot(facet.normal, m_cloud[free[i]] - w_vertices[facet.triangle.I0]);
         if(test > std::numeric_limits<float>::epsilon()){//std::numeric_limits<float>::epsilon()
             if(test > value){
                 value = test;
@@ -290,12 +291,12 @@ void ConvexHull::sortCloud(std::vector<uint32_t>& free, Facet& facet){
     delete[] vec;
 }
 
-void ConvexHull::calculateHorizon(const vec3f& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon, std::vector<uint32_t>& set){
+void ConvexHull::calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon, std::vector<uint32_t>& set){
     if(!facets[current].onHull){
         return;
     }
 
-    float test = vec3f::dot(facets[current].normal, apex - w_vertices[facets[current].triangle.I0]);
+    float test = glm::dot(facets[current].normal, apex - w_vertices[facets[current].triangle.I0]);
 
     if(test > std::numeric_limits<float>::epsilon()){ // Check whether facet is visible to apex
         set.insert(set.end(), facets[current].outside.begin(), facets[current].outside.end());

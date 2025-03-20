@@ -10,13 +10,13 @@
 
 #include <vector>
 
-#include "math/vec3f.h"
+#include <glm/vec3.hpp>
 
 class VertexArray {
 public:
     VertexArray(const float* vertices, uint32_t vertexCount);
 
-    explicit VertexArray(const std::vector<vec3f>& vertices);
+    explicit VertexArray(const std::vector<glm::vec3>& vertices);
 
     VertexArray(const VertexArray &);
     VertexArray& operator=(const VertexArray &);
@@ -27,7 +27,7 @@ public:
     ~VertexArray();
 
 //    float* operator[](uint32_t idx);
-    vec3f operator[](uint32_t idx) const;
+    glm::vec3 operator[](uint32_t idx) const;
 
 
     void scale(float scalar);
@@ -35,7 +35,7 @@ public:
     void translate(const float* translation);
     void rotate(const float* axis, float theta);
 
-    void replace(uint32_t idx, const vec3f& replacement);
+    void replace(uint32_t idx, const glm::vec3& replacement);
     void remove(uint32_t idx);
     void swap(uint32_t I0, uint32_t I1);
 

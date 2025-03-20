@@ -32,7 +32,7 @@ public:
     [[nodiscard]] const uint32_t* faceSizes() const;
     [[nodiscard]] uint32_t faceCount() const;
 
-    [[nodiscard]] vec3f normal(uint32_t idx, const VertexArray& vertices) const;
+    [[nodiscard]] glm::vec3 normal(uint32_t idx, const VertexArray& vertices) const;
 
     void triangulation(uint32_t* indices); // Triangulates faces, presumes each face is convex
     [[nodiscard]] uint32_t triangleCount() const;

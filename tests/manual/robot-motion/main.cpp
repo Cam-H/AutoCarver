@@ -60,6 +60,7 @@ int main(int argc, char *argv[])
 
     std::string source = R"(..\res\meshes\devil.obj)";
     auto model = MeshHandler::loadAsMeshBody(source);
+    model->setBaseColor({1, 0, 1});
 
     scene = new SculptProcess(model);
     sceneWidget = new SceneWidget(scene);

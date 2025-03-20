@@ -4,20 +4,21 @@
 
 #include "MeshBuilder.h"
 
+#include <glm/glm.hpp>
 #include <array>
 #include <unordered_map>
 
-std::shared_ptr<Mesh> MeshBuilder::plane(float width, const vec3f& origin, const vec3f& normal)
+std::shared_ptr<Mesh> MeshBuilder::plane(float width, const glm::vec3& origin, const glm::vec3& normal)
 {
-    vec3f ref = normal.y == 1 ? vec3f{1, 0, 0} : vec3f{0, 1, 0};
+    glm::vec3 ref = normal.y == 1 ? glm::vec3{1.0f, 0.0f, 0.0f} : glm::vec3{0.0f, 1.0f, 0.0f};
     return plane(width, width, origin, normal, ref);
 }
 
-std::shared_ptr<Mesh> MeshBuilder::plane(float length, float width, const vec3f& origin, const vec3f& normal, const vec3f& ref)
+std::shared_ptr<Mesh> MeshBuilder::plane(float length, float width, const glm::vec3& origin, const glm::vec3& normal, const glm::vec3& ref)
 {
 
-    vec3f wAxis = normal.cross(ref).normalized(), lAxis = normal.cross(wAxis).normalized();
-    vec3f a = origin + wAxis * width / 2 + lAxis * length / 2, b = a - wAxis * width, c = b - lAxis * length, d = c + wAxis * width;
+    glm::vec3 wAxis = glm::normalize(glm::cross(normal, ref)), lAxis = glm::normalize(glm::cross(normal, wAxis));
+    glm::vec3 a = origin + wAxis * width * 0.5f + lAxis * length * 0.5f, b = a - wAxis * width, c = b - lAxis * length, d = c + wAxis * width;
 
 
     auto vertices = new float[12] {
@@ -69,7 +70,7 @@ std::shared_ptr<Mesh> MeshBuilder::eliminateCoincidentVertices(const std::shared
 {
 
     // Convert vertex data to a more convenient format
-    std::vector<vec3f> v(mesh->vertexCount());
+    std::vector<glm::vec3> v(mesh->vertexCount());
     for (uint32_t i = 0; i < v.size(); i++) v[i] = mesh->vertices()[i];
 
     std::vector<std::vector<uint32_t>> f;
@@ -80,12 +81,12 @@ std::shared_ptr<Mesh> MeshBuilder::eliminateCoincidentVertices(const std::shared
     return std::make_shared<Mesh>(VertexArray(v), FaceArray(f));
 }
 
-void MeshBuilder::eliminateCoincidentVertices(const FaceArray& srcFaces, std::vector<vec3f>& vertices, std::vector<std::vector<uint32_t>>& faces)
+void MeshBuilder::eliminateCoincidentVertices(const FaceArray& srcFaces, std::vector<glm::vec3>& vertices, std::vector<std::vector<uint32_t>>& faces)
 {
 
     uint32_t count = 0;
     float tolerance = 1e-3, factor = 1 / tolerance; // TODO validate such high tolerance
-    vec3f offset = 0.5f * vec3f{1, 1, 1} * tolerance;
+    glm::vec3 offset = 0.5f * glm::vec3{1.0f, 1.0f, 1.0f} * tolerance;
     std::unordered_map<size_t, uint32_t> vertexMap;
     std::vector<uint32_t> indexMap(vertices.size(), std::numeric_limits<uint32_t>::max());
 
@@ -130,7 +131,7 @@ std::shared_ptr<Mesh> MeshBuilder::cleaned(const VertexArray& vertices, const Fa
 {
 
     // Convert vertex data to a more convenient format
-    std::vector<vec3f> v(vertices.length());
+    std::vector<glm::vec3> v(vertices.length());
     for (uint32_t i = 0; i < v.size(); i++) v[i] = vertices[i];
 
     std::vector<std::vector<uint32_t>> f;
@@ -139,16 +140,16 @@ std::shared_ptr<Mesh> MeshBuilder::cleaned(const VertexArray& vertices, const Fa
     eliminateCoincidentVertices(faces, v, f);
 
     // Calculate face normals
-    std::vector<vec3f> normals;
+    std::vector<glm::vec3> normals;
     normals.reserve(f.size());
     for (std::vector<uint32_t>& face : f) {
-        normals.push_back(vec3f::unitNormal(v[face[0]], v[face[1]], v[face[2]]));
+        normals.push_back(glm::normalize(glm::cross(v[face[1]] - v[face[0]], v[face[2]] - v[face[0]])));
     }
 
     return cleaned(v, normals, FaceArray(f));
 }
 
-size_t MeshBuilder::hash(const vec3f& vec, float factor)
+size_t MeshBuilder::hash(const glm::vec3& vec, float factor)
 {
     return hash((uint32_t)(vec.x * factor), (uint32_t)(vec.y * factor), (uint32_t)(vec.z * factor));
 }
@@ -164,7 +165,7 @@ size_t MeshBuilder::cantor(size_t a, size_t b)
     return (a + b + 1) * (a + b) / 2 + b;
 }
 
-std::shared_ptr<Mesh> MeshBuilder::cleaned(std::vector<vec3f>& vertices, const std::vector<vec3f>& normals, const FaceArray& faces)
+std::shared_ptr<Mesh> MeshBuilder::cleaned(std::vector<glm::vec3>& vertices, const std::vector<glm::vec3>& normals, const FaceArray& faces)
 {
 
 //    std::cout << "\033[31mMesh Input is: " << isManifold(faces) << "\033[0m\n";
@@ -176,7 +177,7 @@ std::shared_ptr<Mesh> MeshBuilder::cleaned(std::vector<vec3f>& vertices, const s
     std::vector<std::vector<uint32_t>> indices;
 
     std::cout << "XXXXXXXXXXXXXXXXXXXX\n";
-    for (const vec3f& vertex : vertices) std::cout << vertex << "\n";
+//    for (const glm::vec3& vertex : vertices) std::cout << vertex << "\n";
     faces.print();
 
     std::cout << "~~~~~~~~~~~~~~" << neighbors.size() << " " << faces.faceCount() << "~~~~~~~~~~~~~~\n";
@@ -195,7 +196,7 @@ std::shared_ptr<Mesh> MeshBuilder::cleaned(std::vector<vec3f>& vertices, const s
         auto ptr = faces[i];
         for (uint32_t j = 0; j < faces.faceSizes()[i]; j++) face.emplace_back(ptr[j]);
 
-        std::cout << "F" << i << ": " << normals[i] << "\n|" << i << "| ";
+//        std::cout << "F" << i << ": " << normals[i] << "\n|" << i << "| ";
 
         for (unsigned int k : face) std::cout << k << " ";
         std::cout << "| ";
@@ -209,9 +210,9 @@ std::shared_ptr<Mesh> MeshBuilder::cleaned(std::vector<vec3f>& vertices, const s
             uint32_t idx = neighbors[i][j], count = faces.faceSizes()[idx], reduc = 0;
             if (count != 3) std::cout << "WARNING! Neighbors have more than 3 edges. Faces may not be cleaned properly\n";
 
-            std::cout << "DOT: " << normals[i].dot(normals[idx]) << "\n";
+//            std::cout << "DOT: " << normals[i].dot(normals[idx]) << "\n";
             // std::numeric_limits<float>::epsilon() TODO identify reasonable tolerance
-            if (normals[i].dot(normals[idx]) > 1 - 1e-6) { // If coplanar neighbors
+            if (glm::dot(normals[i], normals[idx]) > 1 - 1e-6) { // If coplanar neighbors
                 ptr = faces[idx];
 
                 std::cout << "(" << i << " " << j << " " << idx << " " << 99 << ") ";
@@ -273,15 +274,16 @@ std::shared_ptr<Mesh> MeshBuilder::cleaned(std::vector<vec3f>& vertices, const s
         std::cout << "\n";
     }
 
-    for (std::vector<uint32_t>& face: indices) {
-        for (uint32_t i = 0; i < face.size(); i++) {
-            uint32_t idx = (i + 1) % face.size();
-            if (vec3f::collinear(vertices[face[i]], vertices[face[idx]], vertices[face[(i + 2) % face.size()]])) {
-                face.erase(face.begin() + idx);
-                i--;
-            }
-        }
-    }
+    // TODO re-include collinear culling
+//    for (std::vector<uint32_t>& face: indices) {
+//        for (uint32_t i = 0; i < face.size(); i++) {
+//            uint32_t idx = (i + 1) % face.size();
+//            if (vec3f::collinear(vertices[face[i]], vertices[face[idx]], vertices[face[(i + 2) % face.size()]])) {
+//                face.erase(face.begin() + idx);
+//                i--;
+//            }
+//        }
+//    }
 
     // Remove any strays
     for (uint32_t i = 0; i < indices.size(); i++) {

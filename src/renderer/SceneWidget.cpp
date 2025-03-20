@@ -55,7 +55,7 @@ void SceneWidget::mouseMoveEvent(QMouseEvent *e)
 
         if(QGuiApplication::keyboardModifiers().testFlag(Qt::ShiftModifier)) { // Try moving camera center
             QVector3D horz = cameraRotated(QVector3D(0, 0, 1)).normalized();
-            QVector3D vert = cameraRotated(QVector3D(0, 1, 0)).normalized();
+            QVector3D vert = cameraRotated(UP_VECTOR).normalized();
 
             m_center += logf(m_radius) * m_translationSensitivity * (delta.x() * horz + delta.y() * vert);
 
@@ -93,14 +93,14 @@ void SceneWidget::calculateViewProjectionMatrix()
 
     // Apply the view matrix to the projection
     m_eye = m_center + cameraRotated(QVector3D(m_radius, 0, 0));
-    m_viewProjection.lookAt(m_eye, m_center, QVector3D(0, 1, 0));
+    m_viewProjection.lookAt(m_eye, m_center, UP_VECTOR);
 
 }
 
 QVector3D SceneWidget::cameraRotated(QVector3D base) const
 {
     base = QQuaternion::fromAxisAndAngle(0, 0, 1, m_pitch) * base; // Apply pitch to eye
-    return QQuaternion::fromAxisAndAngle(0, 1, 0, m_yaw) * base; // Apply yaw to eye
+    return QQuaternion::fromAxisAndAngle(UP_VECTOR, m_yaw) * base; // Apply yaw to eye
 }
 
 void SceneWidget::initializeGL()
@@ -112,6 +112,7 @@ void SceneWidget::initializeGL()
     addShaderProgram(R"(..\res\shaders\flat)");
 }
 
+// WARNING: Will crash if a nullptr is passed as the mesh
 SceneWidget::RenderItem& SceneWidget::getRender(const std::shared_ptr<Mesh>& mesh, bool defaultVisibility)
 {
     auto it = m_renderMap.find(mesh);
@@ -189,13 +190,13 @@ std::vector<std::shared_ptr<Mesh>> SceneWidget::select(uint32_t idx, Scene::Mode
     switch (target) {
         case Scene::Model::ALL:
             selection.push_back(m_scene->bodies()[idx]->mesh());
-            selection.push_back(m_scene->bodies()[idx]->hullMesh());
+            if (m_scene->bodies()[idx]->hullMesh() != nullptr) selection.push_back(m_scene->bodies()[idx]->hullMesh());
             break;
         case Scene::Model::MESH:
             selection.push_back(m_scene->bodies()[idx]->mesh());
             break;
         case Scene::Model::HULL:
-            selection.push_back(m_scene->bodies()[idx]->hullMesh());
+            if (m_scene->bodies()[idx]->hullMesh() != nullptr) selection.push_back(m_scene->bodies()[idx]->hullMesh());
             break;
         case Scene::Model::BOUNDING_SPHERE:
             break;
@@ -243,6 +244,7 @@ void SceneWidget::paintGL()
 void SceneWidget::render(const std::shared_ptr<Mesh> &mesh, const QMatrix4x4& transform, bool defaultVisibility)
 {
     // Identify proper settings to render the mesh
+    if (mesh == nullptr) return;
     auto item = getRender(mesh, defaultVisibility);
     if (!item.visible) return;
 
@@ -256,7 +258,8 @@ void SceneWidget::render(const std::shared_ptr<Mesh> &mesh, const QMatrix4x4& tr
     m_programs[item.programIdx]->setUniformValue("vp_matrix", m_viewProjection);
     m_programs[item.programIdx]->setUniformValue("mvp_matrix", m_viewProjection * transform);
 
-    m_programs[item.programIdx]->setUniformValue("out_color", QVector3D(1, 1, 0));
+    const glm::vec3& base = mesh->baseColor();
+    m_programs[item.programIdx]->setUniformValue("out_color", QVector3D(base.r, base.g, base.b));
 
     // Draw mesh geometry
     m_geometries[item.geometryIdx]->draw(m_programs[item.programIdx]);

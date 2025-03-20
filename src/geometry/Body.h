@@ -23,6 +23,8 @@ public:
 
     ~Body();
 
+    void prepareHullMesh();
+
     bool isManifold();
     float area();
     float volume();

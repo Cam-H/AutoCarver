@@ -9,6 +9,8 @@
 // Mesh manipulation
 
 #include <iostream>
+#include <glm/glm.hpp>
+//#include <glm/gtx/norm.hpp>
 
 #include "core/Timer.h"
 
@@ -20,6 +22,7 @@ Mesh::Mesh(float vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t 
     , m_indices(indices)
     , m_indexCount(indexCount)
     , m_colors(nullptr, 0)
+    , m_baseColor(1.0f, 1.0f, 1.0f)
     , m_adjacencyOK(false)
 {
 
@@ -36,6 +39,7 @@ Mesh::Mesh(const ConvexHull& hull)
         , m_vertexNormals(nullptr, 0)
         , m_indexCount(0)
         , m_colors(new float[hull.facetCount() * STRIDE], hull.facetCount())
+        , m_baseColor(0.8f, 0.8f, 0.1f)
         , m_adjacencyOK(false)
 {
 
@@ -46,7 +50,6 @@ Mesh::Mesh(const ConvexHull& hull)
     m_faces.triangulation(m_indices);
 
     // Convex hull renders default to alternating yellow-orange color pattern
-    setBaseColor({0.8f, 0.8f, 0.1f});
     for (uint32_t i = 0; i < faceCount(); i+= 2) {
         setFaceColor(i, {0.8f, 0.6f, 0.1f});
     }
@@ -62,6 +65,7 @@ Mesh::Mesh(const float *vertices, uint32_t vertexCount, const uint32_t *faceIndi
     , m_vertexNormals(nullptr, 0)
     , m_indexCount(0)
     , m_colors(nullptr, 0)
+    , m_baseColor(1.0f, 1.0f, 1.0f)
 {
 //    ScopedTimer timer("Triangulation of mesh");
 
@@ -87,6 +91,7 @@ Mesh::Mesh(const VertexArray& vertices, const FaceArray& faces)
     , m_vertexNormals(nullptr, 0)
     , m_indexCount(0)
     , m_colors(nullptr, 0)
+    , m_baseColor(1.0f, 1.0f, 1.0f)
 {
     m_indexCount = m_faces.triangleCount();
     m_indices = new uint32_t[m_indexCount * STRIDE];
@@ -110,9 +115,9 @@ void Mesh::calculateFaceNormals()
 
     for (uint32_t i = 0; i < m_faces.faceCount(); i++) {
         auto face = &m_faces.faces()[idx];
-        vec3f normal = m_vertices[face[0]];
+        glm::vec3 normal = m_vertices[face[0]];
 
-        normal = (m_vertices[face[1]] - normal).cross(m_vertices[face[2]] - normal).normalized();
+        normal = glm::normalize(glm::cross(m_vertices[face[1]] - normal, m_vertices[face[2]] - normal));
 
         *ptr++ = normal.x;
         *ptr++ = normal.y;
@@ -142,7 +147,7 @@ void Mesh::calculateVertexNormals()
     }
 
     for (uint32_t i = 0; i < m_vertices.vertexCount(); i++) {
-        auto norm = 1 / vec3f::length({normals[3 * i], normals[3 * i + 1], normals[3 * i + 2]});
+        auto norm = 1 / glm::length(glm::vec3{normals[3 * i], normals[3 * i + 1], normals[3 * i + 2]});
         normals[3 * i    ] *= norm;
         normals[3 * i + 1] *= norm;
         normals[3 * i + 2] *= norm;
@@ -158,18 +163,18 @@ void Mesh::directRepresentation(float *vertices, float *normals, float* colors)
     for (uint32_t i = 0; i < m_faces.faceCount(); i++) { // For every face
         for (uint32_t j = 0; j < 3 * (m_faces.faceSizes()[i] - 2); j++) { // For every triangle in the face
 
-            const vec3f& vertex = m_vertices[*idx];
+            const glm::vec3& vertex = m_vertices[*idx];
             *vertices++ = vertex.x;
             *vertices++ = vertex.y;
             *vertices++ = vertex.z;
 
 //            const vec3f& normal = m_vertexNormals[*idx];
-            const vec3f& normal = m_faceNormals[i];
+            const glm::vec3& normal = m_faceNormals[i];
             *normals++ = normal.x;
             *normals++ = normal.y;
             *normals++ = normal.z;
 
-            const vec3f& color = m_colors[i];
+            const glm::vec3& color = m_colors[i];
             *colors++ = color.x;
             *colors++ = color.y;
             *colors++ = color.z;
@@ -233,40 +238,27 @@ void Mesh::zExtent(float &near, float &far)
     delete[] axis;
 }
 
-void Mesh::setBaseColor(const vec3f& color)
+// Assign a base color to the mesh. If vertex colors are in use, overwrites colors of the original base to the new base
+void Mesh::setBaseColor(const glm::vec3& color)
 {
-    if (m_colors.empty()) m_colors = {new float[m_faces.faceCount() * STRIDE], m_faces.faceCount()};
+    if (!m_colors.empty()) {
+        for (uint32_t i = 0; i < m_colors.vertexCount(); i++) {
+            if (m_colors[i] == m_baseColor) m_colors.replace(i, color);
+        }
+    }
 
-    for (uint32_t i = 0; i < m_colors.vertexCount(); i++) m_colors.replace(i, color);
+    m_baseColor =  color;
 }
 
-void Mesh::setFaceColor(uint32_t faceIdx, const vec3f& color)
+// Assign color to the specified face. If vertex colors are not currently in use, prepares an appropriate array
+void Mesh::setFaceColor(uint32_t faceIdx, const glm::vec3& color)
 {
     if (m_colors.empty()) {
         m_colors = {new float[m_faces.faceCount() * STRIDE], m_faces.faceCount()};
-        setBaseColor({1, 1, 1});
+        for (uint32_t i = 0; i < m_colors.vertexCount(); i++) m_colors.replace(i, m_baseColor);
     }
 
     if (faceIdx < m_colors.vertexCount()) m_colors.replace(faceIdx, color);
-//    if (faceIdx >= faceCount()) return;
-
-    // Calculate offset index for the face contents
-//    uint32_t idx = 0;
-//    for (uint32_t i = 0; i < faceIdx; i++) {
-//        idx += m_faces.faceSizes()[i];
-//    }
-//
-//    for (uint32_t i = 0; i < m_faces.faceSizes()[faceIdx]; i++) { // For each triangle in the face
-//        uint32_t triIdx = m_faces.faces()[idx + i];
-//
-//        for (uint8_t j = 0; j < 3; j++) { // For each vertex in the triangle
-//            uint32_t vertexIdx = (3 * triIdx + j) * STRIDE;
-//
-//            m_colors[vertexIdx] = color.redF();
-//            m_colors[vertexIdx + 1] = color.greenF();
-//            m_colors[vertexIdx + 2] = color.blueF();
-//        }
-//    }
 }
 
 void Mesh::calculateAdjacencies()
@@ -300,6 +292,11 @@ const VertexArray& Mesh::colors() const
     return m_colors;
 }
 
+const glm::vec3& Mesh::baseColor() const
+{
+    return m_baseColor;
+}
+
 uint32_t Mesh::triangleCount() const
 {
     return m_indexCount;
@@ -320,7 +317,7 @@ const FaceArray& Mesh::faces() const
     return m_faces;
 }
 
-std::vector<uint32_t> Mesh::outline(const vec3f& axis) // const TODO revert back to const
+std::vector<uint32_t> Mesh::outline(const glm::vec3& axis) // const TODO revert back to const
 {
     ScopedTimer timer("Mesh outline calculation");
 
@@ -405,7 +402,7 @@ std::vector<uint32_t> Mesh::outline(const vec3f& axis) // const TODO revert back
     }
 }
 
-std::vector<uint16_t> Mesh::identifyHorizonFaces(const vec3f& axis, const std::vector<std::vector<uint32_t>>& adjacencies) const
+std::vector<uint16_t> Mesh::identifyHorizonFaces(const glm::vec3& axis, const std::vector<std::vector<uint32_t>>& adjacencies) const
 {
     ScopedTimer("Horizon face identification");
 
@@ -421,8 +418,8 @@ std::vector<uint16_t> Mesh::identifyHorizonFaces(const vec3f& axis, const std::v
 
         for (uint32_t j = 0; j < adjacencies[i].size(); j++) {
             if (adjacencies[i][j] != std::numeric_limits<uint32_t>::max() && status[adjacencies[i][j]] != 0) {
-                dp1 = axis.dot(m_faceNormals[i]);
-                dp2 = axis.dot(m_faceNormals[adjacencies[i][j]]);
+                dp1 = glm::dot(axis, m_faceNormals[i]);
+                dp2 = glm::dot(axis, m_faceNormals[adjacencies[i][j]]);
 
                 if (dp1 * dp2 < 0) {
                     status[adjacencies[i][j]] = 1;
@@ -440,7 +437,7 @@ float Mesh::volume() const
 {
     float sum = 0;
     for (uint32_t i = 0; i < triangleCount(); i++) {
-        sum += m_vertices[m_indices[i * STRIDE]].dot(vec3f::cross(m_vertices[m_indices[i * STRIDE + 1]], m_vertices[m_indices[i * STRIDE + 2]]));
+        sum += glm::dot(m_vertices[m_indices[i * STRIDE]], glm::cross(m_vertices[m_indices[i * STRIDE + 1]], m_vertices[m_indices[i * STRIDE + 2]]));
     }
 
     return sum / 6.0f;
@@ -487,21 +484,21 @@ float Mesh::faceArea(uint32_t faceIdx) const
     uint32_t *indices = m_faces[faceIdx], count = m_faces.faceSizes()[faceIdx];
     if (count < 3) return -1;
 
-    std::vector<vec3f> vertices(count);
+    std::vector<glm::vec3> vertices(count);
     for (uint32_t i = 0; i < count; i++) vertices[i] = m_vertices[indices[i]];
 
     return faceArea(vertices);
 }
 
-float Mesh::faceArea(const std::vector<vec3f>& vertices)
+float Mesh::faceArea(const std::vector<glm::vec3>& vertices)
 {
-    vec3f total = {0, 0, 0};
+    glm::vec3 total = {0, 0, 0};
     for (uint32_t i = 0; i < vertices.size(); i++) {
-        vec3f vi1 = vertices[i];
-        vec3f vi2 = (i == vertices.size() - 1) ? vertices[0] : vertices[i + 1];
+        glm::vec3 vi1 = vertices[i];
+        glm::vec3 vi2 = (i == vertices.size() - 1) ? vertices[0] : vertices[i + 1];
 
-        total += vec3f::cross(vi1, vi2);
+        total += glm::cross(vi1, vi2);
     }
 
-    return std::abs(total.dot(vec3f::unitNormal(vertices[0], vertices[1], vertices[2])) / 2);
+    return std::abs(glm::dot(total, glm::normalize(glm::cross(vertices[1] - vertices[0], vertices[2] - vertices[0]))) / 2);
 }

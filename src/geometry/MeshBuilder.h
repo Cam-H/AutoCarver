@@ -15,9 +15,9 @@
 class MeshBuilder {
 public:
 
-    static std::shared_ptr<Mesh> plane(float width, const vec3f& origin, const vec3f& normal);
+    static std::shared_ptr<Mesh> plane(float width, const glm::vec3& origin, const glm::vec3& normal);
 //    static std::shared_ptr<Mesh> plane(float length, float width, const vec3f& origin, const vec3f& normal, const vec3f& ref);
-    static std::shared_ptr<Mesh> plane(float length, float width, const vec3f& origin, const vec3f& normal, const vec3f& ref);
+    static std::shared_ptr<Mesh> plane(float length, float width, const glm::vec3& origin, const glm::vec3& normal, const glm::vec3& ref);
 
     static std::shared_ptr<Mesh> box(float length, float width, float height);
 
@@ -31,11 +31,11 @@ public:
 
 private:
 
-    static void eliminateCoincidentVertices(const FaceArray& srcFaces, std::vector<vec3f>& vertices, std::vector<std::vector<uint32_t>>& faces);
+    static void eliminateCoincidentVertices(const FaceArray& srcFaces, std::vector<glm::vec3>& vertices, std::vector<std::vector<uint32_t>>& faces);
 
-    static std::shared_ptr<Mesh> cleaned(std::vector<vec3f>& vertices, const std::vector<vec3f>& normals, const FaceArray& faces);
+    static std::shared_ptr<Mesh> cleaned(std::vector<glm::vec3>& vertices, const std::vector<glm::vec3>& normals, const FaceArray& faces);
 
-    [[nodiscard]] static size_t hash(const vec3f& vec, float factor);
+    [[nodiscard]] static size_t hash(const glm::vec3& vec, float factor);
     [[nodiscard]] static size_t hash(size_t a, size_t b, size_t c) ;
     [[nodiscard]] static size_t cantor(size_t a, size_t b) ;
 
