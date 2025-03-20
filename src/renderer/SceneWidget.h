@@ -10,7 +10,6 @@
 #include <QMatrix4x4>
 #include <QQuaternion>
 #include <QVector2D>
-#include <QBasicTimer>
 #include <QOpenGLShaderProgram>
 #include <QOpenGLTexture>
 
@@ -50,16 +49,19 @@ protected:
     };
 
     void mousePressEvent(QMouseEvent *e) override;
-    void mouseReleaseEvent(QMouseEvent *e) override;
-    void timerEvent(QTimerEvent *e) override;
+    void mouseMoveEvent(QMouseEvent *e) override;
+    void wheelEvent(QWheelEvent *e) override;
 
     void initializeGL() override;
     void resizeGL(int w, int h) override;
     void paintGL() override;
 
+    void calculateViewProjectionMatrix();
+    QVector3D cameraRotated(QVector3D base) const;
+
 private:
 
-    void render(const std::shared_ptr<Mesh>& mesh, bool defaultVisibility);
+    void render(const std::shared_ptr<Mesh>& mesh, const QMatrix4x4& transform, bool defaultVisibility);
 
     std::vector<std::shared_ptr<Mesh>> select(uint32_t idx, Scene::Model target);
 
@@ -71,19 +73,44 @@ private:
 
     Scene* m_scene;
 
-    QBasicTimer timer;
-
     std::vector<QOpenGLShaderProgram*> m_programs;
     uint32_t m_defaultProgramIdx;
 
     std::vector<RenderGeometry*> m_geometries;
 
-    QMatrix4x4 projection;
 
-    QVector2D mousePressPosition;
-    QVector3D rotationAxis;
-    qreal angularSpeed = 0;
-    QQuaternion rotation;
+    /* ******* CAMERA CONTROLS ******** */
+
+    // Camera perspective
+    qreal m_fov;
+    qreal m_aspect;
+    qreal m_zNear;
+    qreal m_zFar;
+
+    // Camera position
+    float m_yaw;
+    float m_pitch;
+
+    float m_radius;
+    float m_minRadius;
+    float m_maxRadius;
+
+    // Camera sensitivity
+    float m_translationSensitivity;
+    float m_rotationSensitivity;
+    float m_zoomSensitivity;
+    float m_zoomExponential;
+
+    // Inputs
+    QVector2D m_mouseLastPosition;
+
+    // Result
+    QVector3D m_center;
+    QVector3D m_eye;
+    QMatrix4x4 m_viewProjection;
+
+    const QVector3D UP_VECTOR = QVector3D(0, 1, 0);
+
 };
 
 

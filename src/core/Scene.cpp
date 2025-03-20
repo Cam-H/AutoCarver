@@ -144,43 +144,6 @@ void Scene::rotateBody(uint32_t idx, float w, float x, float y, float z)
 //    }
 }
 
-//void Scene::show(uint32_t idx, Model target)
-//{
-//    if (m_root == nullptr || idx >= m_entities.size()) return;
-//
-//    switch (target) {
-//        case Model::ALL:
-//            m_entities[idx].render->show();
-//            break;
-//        case Model::MESH:
-//            m_entities[idx].render->show(0);
-//            break;
-//        case Model::HULL:
-//            m_entities[idx].render->show(1);
-//            break;
-//        case Model::BOUNDING_SPHERE:
-//            break;
-//    }
-//}
-//void Scene::hide(uint32_t idx, Model target)
-//{
-//    if (m_root == nullptr || idx >= m_entities.size()) return;
-//
-//    switch (target) {
-//        case Model::ALL:
-//            m_entities[idx].render->hide();
-//            break;
-//        case Model::MESH:
-//            m_entities[idx].render->hide(0);
-//            break;
-//        case Model::HULL:
-//            m_entities[idx].render->hide(1);
-//            break;
-//        case Model::BOUNDING_SPHERE:
-//            break;
-//    }
-//}
-
 void Scene::createBody(const std::string &filepath, rp3d::BodyType type)
 {
     createBody(MeshHandler::loadAsMeshBody(filepath), type);
