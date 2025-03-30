@@ -32,6 +32,15 @@ qt_add_library(AutoCarverLib
         geometry/poly/CompositePolygon.cpp
 
 
+        robot/KinematicChain.cpp
+        robot/KinematicChain.h
+        robot/ArticulatedWrist.cpp
+        robot/ArticulatedWrist.h
+        robot/Joint.cpp
+        robot/Joint.h
+        robot/Robot.cpp
+        robot/Robot.h
+
         renderer/MonitorCameraController.h
         renderer/MonitorCameraController.cpp
         renderer/RenderEntity.h
@@ -62,7 +71,7 @@ target_link_libraries(AutoCarverLib PRIVATE
 
 qt_add_executable(AutoCarver
         core/EntryPoint.cpp
-        robot/KinematicChain.cpp robot/KinematicChain.h robot/ArticulatedWrist.cpp robot/ArticulatedWrist.h robot/Joint.cpp robot/Joint.h robot/RevoluteJoint.cpp robot/RevoluteJoint.h robot/PrismaticJoint.cpp robot/PrismaticJoint.h)
+        )
 
 target_link_libraries(AutoCarver PRIVATE
         Qt::3DCore

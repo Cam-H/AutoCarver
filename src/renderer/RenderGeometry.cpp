@@ -94,7 +94,7 @@ std::vector<const float*> RenderGeometry::attributes(const std::shared_ptr<Mesh>
                 return { mesh->vertices().data(), mesh->vertexNormals().data() };
             case Format::VERTEX_COLOR:
                 return { mesh->vertices().data(), mesh->colors().data() };
-            case Format::VERTEX_COLOR_NORMAL:
+            case Format::VERTEX_NORMAL_COLOR:
                 return { mesh->vertices().data(), mesh->vertexNormals().data(), mesh->colors().data() };
         }
     } else {
@@ -110,7 +110,7 @@ std::vector<const float*> RenderGeometry::attributes(const std::shared_ptr<Mesh>
                 return { vertices, normals };
             case Format::VERTEX_COLOR:
                 return { vertices, colors };
-            case Format::VERTEX_COLOR_NORMAL:
+            case Format::VERTEX_NORMAL_COLOR:
                 return { vertices, normals, colors };
         }
     }
@@ -166,7 +166,7 @@ void RenderGeometry::bindAttributes(QOpenGLShaderProgram *program)
         case Format::VERTEX_COLOR:
             locations.push_back(program->attributeLocation(COLOR_NAME));
             break;
-        case Format::VERTEX_COLOR_NORMAL:
+        case Format::VERTEX_NORMAL_COLOR:
             locations.push_back(program->attributeLocation(NORMAL_NAME));
             locations.push_back(program->attributeLocation(COLOR_NAME));
             break;

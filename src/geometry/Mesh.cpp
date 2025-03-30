@@ -297,6 +297,20 @@ const glm::vec3& Mesh::baseColor() const
     return m_baseColor;
 }
 
+glm::vec3 Mesh::faceColor(uint32_t faceIdx) const
+{
+    if (m_colors.empty() || faceIdx >= m_faces.faceCount()) {
+        return NULL_COLOR;
+    }
+
+    return m_colors[faceIdx];
+}
+
+bool Mesh::faceColorsAssigned() const
+{
+    return !m_colors.empty();
+}
+
 uint32_t Mesh::triangleCount() const
 {
     return m_indexCount;

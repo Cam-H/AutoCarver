@@ -21,6 +21,10 @@ public:
 
     static std::shared_ptr<Mesh> box(float length, float width, float height);
 
+    static std::shared_ptr<Mesh> cylinder(float radius = 1.0f, float height = 1.0f, uint32_t segments = 6);
+
+    static std::shared_ptr<Mesh> merge(const std::shared_ptr<Mesh>& a, const std::shared_ptr<Mesh>& b);
+
     static std::shared_ptr<Mesh> eliminateCoincidentVertices(const std::shared_ptr<Mesh>& mesh);
 
     static std::shared_ptr<Mesh> cleaned(const std::shared_ptr<Mesh>& mesh);

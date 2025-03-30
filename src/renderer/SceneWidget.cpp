@@ -9,8 +9,6 @@
 #include <cmath>
 #include <iostream>
 
-#include "fileIO/MeshHandler.h"
-
 SceneWidget::SceneWidget(Scene* scene, QWidget* parent)
     : m_scene(scene)
     , m_defaultProgramIdx(0)
@@ -107,9 +105,11 @@ void SceneWidget::initializeGL()
 {
     initializeOpenGLFunctions();
 
-    glClearColor(0, 0, 0, 1);
+    glClearColor(0.3, 0.3, 0.3, 1);
 
     addShaderProgram(R"(..\res\shaders\flat)");
+    addShaderProgram(R"(..\res\shaders\color)");
+
 }
 
 // WARNING: Will crash if a nullptr is passed as the mesh
@@ -117,9 +117,9 @@ SceneWidget::RenderItem& SceneWidget::getRender(const std::shared_ptr<Mesh>& mes
 {
     auto it = m_renderMap.find(mesh);
     if (it == m_renderMap.end()) { // Mesh has not been processed yet
-        auto item = RenderItem{ (uint32_t)m_geometries.size(),m_defaultProgramIdx, defaultVisibility };
+        auto item = RenderItem{ (uint32_t)m_geometries.size(),m_defaultProgramIdx + mesh->faceColorsAssigned(), defaultVisibility };
         m_renderMap[mesh] = item;
-        m_geometries.push_back(new RenderGeometry(mesh, RenderGeometry::Format::VERTEX_NORMAL));
+        m_geometries.push_back(new RenderGeometry(mesh, mesh->faceColorsAssigned() ? RenderGeometry::Format::VERTEX_NORMAL_COLOR : RenderGeometry::Format::VERTEX_NORMAL));
         return m_renderMap[mesh];
     }
 
@@ -164,21 +164,36 @@ void SceneWidget::setDefaultShaderProgram(uint32_t idx)
 
 void SceneWidget::show(uint32_t idx, Scene::Model target)
 {
-    std::vector<std::shared_ptr<Mesh>> sources = select(idx, target);
-    for (const std::shared_ptr<Mesh>& source : sources) {
-        getRender(source).visible = true;
+    show(select(idx, target));
+}
+void SceneWidget::showAll(Scene::Model target)
+{
+    show(selectAll(target));
+}
+void SceneWidget::show(const std::vector<std::shared_ptr<Mesh>>& selection)
+{
+    for (const std::shared_ptr<Mesh>& mesh : selection) {
+        getRender(mesh).visible = true;
     }
 
-    if (!sources.empty()) update();
+    if (!selection.empty()) update();
 }
+
 void SceneWidget::hide(uint32_t idx, Scene::Model target)
 {
-    std::vector<std::shared_ptr<Mesh>> sources = select(idx, target);
-    for (const std::shared_ptr<Mesh>& source : sources) {
-        getRender(source).visible = false;
+    hide(select(idx, target));
+}
+void SceneWidget::hideAll(Scene::Model target)
+{
+    hide(selectAll(target));
+}
+void SceneWidget::hide(const std::vector<std::shared_ptr<Mesh>>& selection)
+{
+    for (const std::shared_ptr<Mesh>& mesh : selection) {
+        getRender(mesh).visible = false;
     }
 
-    if (!sources.empty()) update();
+    if (!selection.empty()) update();
 }
 
 std::vector<std::shared_ptr<Mesh>> SceneWidget::select(uint32_t idx, Scene::Model target)
@@ -197,6 +212,32 @@ std::vector<std::shared_ptr<Mesh>> SceneWidget::select(uint32_t idx, Scene::Mode
             break;
         case Scene::Model::HULL:
             if (m_scene->bodies()[idx]->hullMesh() != nullptr) selection.push_back(m_scene->bodies()[idx]->hullMesh());
+            break;
+        case Scene::Model::BOUNDING_SPHERE:
+            break;
+    }
+
+    return selection;
+}
+
+std::vector<std::shared_ptr<Mesh>> SceneWidget::selectAll(Scene::Model target)
+{
+    std::vector<std::shared_ptr<Mesh>> selection;
+
+    switch (target) {
+        case Scene::Model::ALL:
+            for (Body* body : m_scene->bodies()) selection.push_back(body->mesh());
+            for (Body* body : m_scene->bodies()) {
+                if (body->hullMesh() != nullptr) selection.push_back(body->hullMesh());
+            }
+            break;
+        case Scene::Model::MESH:
+            for (Body* body : m_scene->bodies()) selection.push_back(body->mesh());
+            break;
+        case Scene::Model::HULL:
+            for (Body* body : m_scene->bodies()) {
+                if (body->hullMesh() != nullptr) selection.push_back(body->hullMesh());
+            }
             break;
         case Scene::Model::BOUNDING_SPHERE:
             break;
@@ -225,13 +266,36 @@ void SceneWidget::paintGL()
     glEnable(GL_CULL_FACE);
 
 
+
+
     if (m_scene != nullptr) {
         const std::vector<Body*>& bodies = m_scene->bodies();
 
         for (Body* body : bodies) {
 
+            glm::mat4x4 trans = body->getTransform();
+
+
             // TODO get transform from body
             QMatrix4x4 transform;
+            for (int i = 0; i < 4; i++) transform.setRow(i, QVector4D(trans[i][0], trans[i][1], trans[i][2], trans[i][3]));
+
+//            static float x = 0;
+//            QVector4D nv = transform.row(2);
+//            nv.setW(x+=0.01f);
+//            transform.setRow(2, nv);
+
+//            std::cout << "QTransform:\n"
+//                    << transform.row(0)[0] << " " << transform.row(0)[1] << " " << transform.row(0)[2] << " " << transform.row(0)[3] << "\n"
+//                    << transform.row(1)[0] << " " << transform.row(1)[1] << " " << transform.row(1)[2] << " " << transform.row(1)[3] << "\n"
+//                    << transform.row(2)[0] << " " << transform.row(2)[1] << " " << transform.row(2)[2] << " " << transform.row(2)[3] << "\n"
+//                    << transform.row(3)[0] << " " << transform.row(3)[1] << " " << transform.row(3)[2] << " " << transform.row(3)[3] << "\n";
+//
+//            std::cout << "GLM Transform:\n"
+//                    << trans[0][0] << " " << trans[0][1] << " " << trans[0][2] << " " << trans[0][3] << "\n"
+//                    << trans[1][0] << " " << trans[1][1] << " " << trans[1][2] << " " << trans[1][3] << "\n"
+//                    << trans[2][0] << " " << trans[2][1] << " " << trans[2][2] << " " << trans[2][3] << "\n"
+//                    << trans[3][0] << " " << trans[3][1] << " " << trans[3][2] << " " << trans[3][3] << "\n";
 //    transform.translate(0.0, 0.0, -5.0);
 //    transform.rotate(rotation);
 

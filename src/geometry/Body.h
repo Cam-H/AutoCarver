@@ -11,9 +11,11 @@
 // Mesh manipulation
 
 #include <vector>
+#include <glm/glm.hpp>
 
 #include "Mesh.h"
 #include "ConvexHull.h"
+
 
 class Body {
 public:
@@ -22,6 +24,9 @@ public:
     explicit Body(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world, const std::shared_ptr<Mesh>& mesh);
 
     ~Body();
+
+    void setTransform(glm::mat4x4 transform);
+    const glm::mat4x4& getTransform();
 
     void prepareHullMesh();
 
@@ -55,6 +60,7 @@ protected:
 
     bool m_hullOK;
 
+    glm::mat4x4 m_transform;
 
     // Physics
     bool m_physEnabled;

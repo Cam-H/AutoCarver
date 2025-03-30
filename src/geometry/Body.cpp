@@ -57,6 +57,16 @@ Body::~Body()
 //    phys->destroyConvexMesh()
 }
 
+void Body::setTransform(glm::mat4x4 transform)
+{
+    m_transform = transform;
+}
+
+const glm::mat4x4& Body::getTransform()
+{
+    return m_transform;
+}
+
 void Body::prepareColliders()
 {
 //    rp3d::VertexArray vertexArray(m_hull.vertices().vertices(), 3 * sizeof(float), m_hull.vertexCount(), rp3d::VertexArray::DataType::VERTEX_FLOAT_TYPE);

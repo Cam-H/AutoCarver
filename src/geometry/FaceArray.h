@@ -37,6 +37,8 @@ public:
     void triangulation(uint32_t* indices); // Triangulates faces, presumes each face is convex
     [[nodiscard]] uint32_t triangleCount() const;
 
+    [[nodiscard]] uint32_t indexCount() const;
+
     FaceArray triangulated();
 
     std::vector<std::vector<uint32_t>> adjacencies() const;

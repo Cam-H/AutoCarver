@@ -14,6 +14,9 @@
 #include "VertexArray.h"
 #include "FaceArray.h"
 
+static glm::vec3 NULL_COLOR = { 1.0f, 0.0f, 1.0f };
+
+
 class Mesh {
 public:
 
@@ -47,6 +50,8 @@ public:
 
     [[nodiscard]] const VertexArray& colors() const;
     [[nodiscard]] const glm::vec3& baseColor() const;
+    [[nodiscard]] glm::vec3 faceColor(uint32_t faceIdx) const;
+    bool faceColorsAssigned() const;
 
     [[nodiscard]] uint32_t triangleCount() const;
     uint32_t* indices();

@@ -15,6 +15,7 @@
 
 #include "geometry/Body.h"
 #include "renderer/RenderEntity.h"
+#include "robot/Robot.h"
 
 
 class Scene {
@@ -29,6 +30,7 @@ public:
 
     void start();
     void pause();
+    void stop();
 
 //    void linkRenderer(Qt3DCore::QEntity *parent, Qt3DExtras::Qt3DWindow *view);
 
@@ -41,12 +43,12 @@ public:
     void translateBody(uint32_t idx, float w, float x, float y, float z);
     void rotateBody(uint32_t idx, float w, float x, float y, float z);
 
-    void update(float timestep);
-
     void clear(uint8_t level = 0);
 
     void createBody(const std::string &filepath, rp3d::BodyType type = rp3d::BodyType::STATIC);
     void createBody(const std::shared_ptr<Mesh>& mesh, rp3d::BodyType type = rp3d::BodyType::STATIC);
+
+    std::shared_ptr<Robot> createRobot(KinematicChain* kinematics);
 
     const std::vector<Body*>& bodies();
     uint32_t bodyCount();
@@ -58,6 +60,7 @@ protected:
 //    RenderEntity* prepareRender(Body *body);
 
 private:
+    void run();
     void update();
 
 
@@ -79,9 +82,11 @@ protected:
 //    Qt3DExtras::Qt3DWindow *view;
 
     std::vector<Body*> m_bodies;
+    std::vector<std::shared_ptr<Robot>> m_robots;
 //    std::vector<SceneEntity> m_entities;
 
-    std::thread m_updateThread;
+    std::unique_ptr<std::thread> m_updateThread;
+    bool m_running;
     bool m_paused;
 //    std::vector<Qt3DRender::QMesh*> m_meshes;
 //    std::vector<rp3d::RigidBody*> m_physBodies;

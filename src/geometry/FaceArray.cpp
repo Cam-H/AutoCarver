@@ -178,6 +178,11 @@ uint32_t FaceArray::triangleCount() const
     return m_indexCount - 2 * m_faceCount;
 }
 
+uint32_t FaceArray::indexCount() const
+{
+    return m_indexCount;
+}
+
 FaceArray FaceArray::triangulated()
 {
     uint32_t count = triangleCount();

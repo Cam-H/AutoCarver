@@ -34,11 +34,11 @@ public:
     void createDefaultShaderProgram(const std::string& name);
     void setDefaultShaderProgram(uint32_t idx);
 
-//    void showAll();
-//    void hideAll();
-
     void show(uint32_t idx, Scene::Model target = Scene::Model::ALL);
     void hide(uint32_t idx, Scene::Model target = Scene::Model::ALL);
+
+    void showAll(Scene::Model target = Scene::Model::ALL);
+    void hideAll(Scene::Model target = Scene::Model::ALL);
 
 protected:
 
@@ -63,7 +63,11 @@ private:
 
     void render(const std::shared_ptr<Mesh>& mesh, const QMatrix4x4& transform, bool defaultVisibility);
 
+    void show(const std::vector<std::shared_ptr<Mesh>>& selection);
+    void hide(const std::vector<std::shared_ptr<Mesh>>& selection);
+
     std::vector<std::shared_ptr<Mesh>> select(uint32_t idx, Scene::Model target);
+    std::vector<std::shared_ptr<Mesh>> selectAll(Scene::Model target);
 
     RenderItem& getRender(const std::shared_ptr<Mesh>& mesh, bool defaultVisibility = true);
 

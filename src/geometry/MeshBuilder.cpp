@@ -66,6 +66,97 @@ std::shared_ptr<Mesh> MeshBuilder::box(float length, float width, float height)
 
 }
 
+std::shared_ptr<Mesh> MeshBuilder::cylinder(float radius, float height, uint32_t segments){
+    uint32_t vertexCount = 2 * segments, faceCount = 2 + segments;
+
+    // Generate vertices to approximate a cylinder
+    auto *vertices = new float[3 * vertexCount], *vPtr = vertices;
+
+    float theta = 0;
+    float inc = 2 * M_PI / segments;
+    while(theta < 2 * M_PI - 1e-6){
+        *vPtr++ = radius * cosf(theta);
+        *vPtr++ = 0;
+        *vPtr++ = radius * sinf(theta);
+
+        *vPtr++ = radius * cosf(theta);
+        *vPtr++ = height;
+        *vPtr++ = radius * sinf(theta);
+
+        theta += inc;
+    }
+
+    auto *faces = new uint32_t[2 * vertexCount + 4 * segments], *fPtr = faces;
+    auto *faceSizes = new uint32_t[faceCount], *fsPtr = faceSizes;
+
+    // Generate flat faces
+    for(uint32_t i = 0; i < vertexCount; i+=2) *fPtr++ = i;
+    for(uint32_t i = 1; i < vertexCount; i+=2) *fPtr++ = vertexCount - i;
+
+    *fsPtr++ = vertexCount / 2;
+    *fsPtr++ = vertexCount / 2;
+
+    // Generate ~cylindrical faces
+    for (uint32_t i = 0; i < segments; i++) {
+        *fPtr++ = 2 * i;
+        *fPtr++ = 2 * i + 1;
+        *fPtr++ = (2 * i + 3) % (2 * segments);
+        *fPtr++ = (2 * i + 2) % (2 * segments);
+        *fsPtr++ = 4;
+    }
+
+    return std::make_shared<Mesh>(vertices, vertexCount, faces, faceSizes, faceCount);
+
+}
+
+std::shared_ptr<Mesh> MeshBuilder::merge(const std::shared_ptr<Mesh>& a, const std::shared_ptr<Mesh>& b)
+{
+    // Some values directly from the meshes
+    uint32_t aVC = a->vertexCount(), bVC = b->vertexCount();
+    uint32_t aFC = a->faceCount(), bFC = b->faceCount();
+    uint32_t aIC = a->faces().indexCount(), bIC = b->faces().indexCount();
+
+    // Copy vertex data directly
+    uint32_t vertexCount = aVC + bVC;
+    auto *vertices = new float[3 * vertexCount], *vPtr = vertices;
+
+    const float *aVPtr = a->vertices().data(), *bVPtr = b->vertices().data();
+    for (uint32_t i = 0; i < 3 * aVC; i++) *vPtr++ = *aVPtr++;
+    for (uint32_t i = 0; i < 3 * bVC; i++) *vPtr++ = *bVPtr++;
+
+
+    // Count the number of face indices required
+    uint32_t faceCount = aFC + bFC, indexCount = aIC + bIC;
+    auto *faceSizes = new uint32_t[faceCount], *fsPtr = faceSizes;
+
+    const uint32_t *aFSPtr = a->faces().faceSizes(), *bFSPtr = b->faces().faceSizes();
+    for (uint32_t i = 0; i < aFC; i++) *fsPtr++ = *aFSPtr++;
+    for (uint32_t i = 0; i < bFC; i++) *fsPtr++ = *bFSPtr++;
+
+
+    // Copy face data
+    auto *faces = new uint32_t[indexCount], *fPtr = faces;
+    const uint32_t *aPtr = a->faces().faces(), *bPtr = b->faces().faces();
+    for (uint32_t i = 0; i < aIC; i++) *fPtr++ = *aPtr++;
+    for (uint32_t i = 0; i < bIC; i++) *fPtr++ = aVC + *bPtr++;
+
+
+    // Create the merged mesh
+    auto mesh = std::make_shared<Mesh>(vertices, vertexCount, faces, faceSizes, faceCount);
+
+    // Copy colors
+    mesh->setBaseColor(a->baseColor());
+    if (a->faceColorsAssigned())
+        for (uint32_t i = 0; i < aFC; i++) mesh->setFaceColor(i, a->faceColor(i));
+
+    if (b->faceColorsAssigned())
+        for (uint32_t i = 0; i < bFC; i++) mesh->setFaceColor(aFC + i, b->faceColor(i));
+    else
+        for (uint32_t i = 0; i < bFC; i++) mesh->setFaceColor(aFC + i, b->baseColor());
+
+    return mesh;
+}
+
 std::shared_ptr<Mesh> MeshBuilder::eliminateCoincidentVertices(const std::shared_ptr<Mesh>& mesh)
 {
 

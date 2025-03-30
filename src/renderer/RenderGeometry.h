@@ -16,7 +16,7 @@ class RenderGeometry : protected QOpenGLFunctions
 public:
 
     enum class Format {
-        VERTEX = 0, VERTEX_NORMAL, VERTEX_COLOR, VERTEX_COLOR_NORMAL
+        VERTEX = 0, VERTEX_NORMAL, VERTEX_COLOR, VERTEX_NORMAL_COLOR
     };
 
     explicit RenderGeometry(const std::shared_ptr<Mesh>& mesh, RenderGeometry::Format format = RenderGeometry::Format::VERTEX, bool indexVertices = false);

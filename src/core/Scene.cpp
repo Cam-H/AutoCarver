@@ -12,7 +12,8 @@
 
 Scene::Scene()
     : m_world(m_physicsCommon.createPhysicsWorld())
-    , m_updateThread()
+    , m_updateThread(nullptr)
+    , m_running(false)
     , m_paused(false)
 {
 
@@ -47,23 +48,44 @@ void Scene::start()
 //    auto thread = std::thread(update, meshTransform);
 
 //auto thread = std::thread(this->update);
+    m_running = true;
+    m_paused = false;
+    m_updateThread = std::make_unique<std::thread>(&Scene::run, this);
+//    std::make_shared<std::thread>(update());
+//    std::thread th(update());
+//std::thread(update);
 }
 
 void Scene::pause()
 {
+    m_paused = !m_paused;
+}
 
+void Scene::stop()
+{
+    m_running = false;
+}
+
+void Scene::run()
+{
+    while (m_running) {
+        if (!m_paused) update();
+
+        std::this_thread::sleep_for(std::chrono::nanoseconds(100000));
+    }
 }
 
 void Scene::update()
 {
+    for (auto robot : m_robots) robot->update();
 
 }
 
-void Scene::update(float timestep)
-{
-    m_world->update(timestep);
-//    sync();
-}
+//void Scene::update(float timestep)
+//{
+//    m_world->update(timestep);
+////    sync();
+//}
 
 void Scene::clear(uint8_t level)
 {
@@ -155,6 +177,20 @@ void Scene::createBody(const std::shared_ptr<Mesh>& mesh, rp3d::BodyType type)
     body->physicsBody()->setType(type);
 
     prepareBody(body);
+}
+
+std::shared_ptr<Robot> Scene::createRobot(KinematicChain* kinematics)
+{
+    auto robot = std::make_shared<Robot>(kinematics);
+
+    robot->prepareLinks(&m_physicsCommon, m_world);
+
+    for (Body* link : robot->links()) {
+        m_bodies.push_back(link);
+    }
+
+    m_robots.push_back(robot);
+    return robot;
 }
 
 void Scene::prepareBody(Body *body, uint8_t level)
