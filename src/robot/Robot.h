@@ -24,10 +24,7 @@ public:
 
     void moveTo(const glm::vec3& position, const glm::vec3& euler = {0.0f, 1.0f, 0.0f});
 
-//    KinematicChain& kinematics();
-
     const std::vector<Body*>& links();
-//    Joint& getJoint(uint32_t idx);
 
     float getJointValue(uint32_t idx);
     float getJointValueDg(uint32_t idx);

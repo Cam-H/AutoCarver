@@ -30,16 +30,23 @@ public:
     Joint& getJoint(uint32_t idx);
     const std::vector<Joint>& getJoints();
 
-    std::vector<glm::mat4> jointHTMs();
     std::vector<glm::mat4> jointTransforms();
 
-    std::vector<glm::mat4> jointHTMs(const std::vector<float>& values);
-    std::vector<glm::mat3> jointHRMs(const std::vector<float>& values);
+protected:
+    std::vector<glm::mat4> jointHTMs();
 
-//    std::vector<glm::mat4> jointTransforms();
+    std::vector<glm::mat3> jointHRMs(const std::vector<float>& values);
+    std::vector<glm::mat4> jointHTMs(const std::vector<float>& values);
+
+    bool ikValidation(const std::vector<float>& values);
+    bool ikValidation(const std::vector<float>& values, const glm::vec3& position, const glm::quat& rotation);
 
 protected:
     std::vector<Joint> m_joints;
+
+    // YZ Transformation to correct difference in coordinate systems
+    glm::mat3 m_axisTransform3;
+    glm::mat4 m_axisTransform4;
 
 };
 

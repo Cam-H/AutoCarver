@@ -14,10 +14,7 @@
 
 Robot::Robot(KinematicChain* kinematics)
     : m_kinematics(kinematics)
-    , m_transform(1, 0, 0, 0,
-                  0, 0, 1, 0,
-                  0, -1, 0, 0,
-                  0, 0, 0, 1)
+    , m_transform(1.0f)
 {
 
 }
@@ -81,24 +78,14 @@ void Robot::updateTransforms()
 {
     const std::vector<glm::mat4> transforms = m_kinematics->jointTransforms();
     for (uint32_t i = 0; i < transforms.size(); i++) { // -1 if no EOAT
-        m_links[i]->setTransform(transforms[i]);
+        m_links[i]->setTransform(transforms[i] * m_transform);// TODO validate & include transform to position requests
     }
 }
-
-//KinematicChain& Robot::kinematics()
-//{
-//    return m_kinematics;
-//}
 
 const std::vector<Body*>& Robot::links()
 {
     return m_links;
 }
-
-//Joint& Robot::getJoint(uint32_t idx)
-//{
-//    return m_kinematics.getJoint(idx);
-//}
 
 float Robot::getJointValue(uint32_t idx)
 {
@@ -114,27 +101,13 @@ glm::vec3 Robot::getEOATPosition() const
     if (m_links.empty()) return {};
 
     const glm::mat4& transform = m_links[m_links.size() - 1]->getTransform();
-//            std::cout << " GLM Transform:\n"
-//                  << transform[0][0] << " " << transform[0][1] << " " << transform[0][2] << " " << transform[0][3] << "\n"
-//                  << transform[1][0] << " " << transform[1][1] << " " << transform[1][2] << " " << transform[1][3] << "\n"
-//                  << transform[2][0] << " " << transform[2][1] << " " << transform[2][2] << " " << transform[2][3] << "\n"
-//                  << transform[3][0] << " " << transform[3][1] << " " << transform[3][2] << " " << transform[3][3] << "\n";
-
-
     return { transform[0][3], transform[1][3], transform[2][3] };
 }
 
 glm::vec3 Robot::getEOATEuler() const
 {
+    if (m_links.empty()) return {};
+
     const glm::mat4& transform = m_links[m_links.size() - 1]->getTransform();
-    glm::mat3 rotation = {
-            transform[0][0], transform[0][1], transform[0][2],
-            transform[1][0], transform[1][1], transform[1][2],
-            transform[2][0], transform[2][1], transform[2][2]
-    };
-
-    glm::vec3 t = glm::eulerAngles(glm::quat_cast(rotation));
-    std::cout << "CEEuler: " << t.x << " " << t.y << " "<< t.z << "\n";
-
-    return glm::eulerAngles(glm::quat_cast(rotation));
+    return glm::eulerAngles(glm::quat_cast(transform));
 }
