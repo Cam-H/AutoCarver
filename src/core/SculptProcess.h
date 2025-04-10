@@ -68,7 +68,7 @@ private:
     Configuration m_config;
 
     std::shared_ptr<Mesh> model;
-    Sculpture *m_sculpture;
+    std::shared_ptr<Sculpture> m_sculpture;
 
     bool m_planned;
     bool m_convexTrimEnable;

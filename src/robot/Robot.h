@@ -24,7 +24,7 @@ public:
 
     void moveTo(const glm::vec3& position, const glm::vec3& euler = {0.0f, 1.0f, 0.0f});
 
-    const std::vector<Body*>& links();
+    const std::vector<std::shared_ptr<Body>>& links();
 
     float getJointValue(uint32_t idx);
     float getJointValueDg(uint32_t idx);
@@ -43,7 +43,7 @@ private:
     glm::mat4 m_transform;
 
     // Maps to the joints of the kinematic chain
-    std::vector<Body*> m_links;
+    std::vector<std::shared_ptr<Body>> m_links;
 };
 
 

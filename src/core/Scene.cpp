@@ -166,17 +166,19 @@ void Scene::rotateBody(uint32_t idx, float w, float x, float y, float z)
 //    }
 }
 
-void Scene::createBody(const std::string &filepath, rp3d::BodyType type)
+std::shared_ptr<Body> Scene::createBody(const std::string &filepath, rp3d::BodyType type)
 {
-    createBody(MeshHandler::loadAsMeshBody(filepath), type);
+    return createBody(MeshHandler::loadAsMeshBody(filepath), type);
 }
 
-void Scene::createBody(const std::shared_ptr<Mesh>& mesh, rp3d::BodyType type)
+std::shared_ptr<Body> Scene::createBody(const std::shared_ptr<Mesh>& mesh, rp3d::BodyType type)
 {
-    auto body = new Body(&m_physicsCommon, m_world, mesh);
+    auto body = std::make_shared<Body>(&m_physicsCommon, m_world, mesh);
     body->physicsBody()->setType(type);
 
     prepareBody(body);
+
+    return body;
 }
 
 std::shared_ptr<Robot> Scene::createRobot(KinematicChain* kinematics)
@@ -185,7 +187,7 @@ std::shared_ptr<Robot> Scene::createRobot(KinematicChain* kinematics)
 
     robot->prepareLinks(&m_physicsCommon, m_world);
 
-    for (Body* link : robot->links()) {
+    for (const auto& link : robot->links()) {
         m_bodies.push_back(link);
     }
 
@@ -193,7 +195,7 @@ std::shared_ptr<Robot> Scene::createRobot(KinematicChain* kinematics)
     return robot;
 }
 
-void Scene::prepareBody(Body *body, uint8_t level)
+void Scene::prepareBody(const std::shared_ptr<Body>& body, uint8_t level)
 {
 //    if (m_root == nullptr) {
 //        m_entities.push_back({body, nullptr, level});
@@ -219,7 +221,7 @@ void Scene::prepareBody(Body *body, uint8_t level)
 //    return render;
 //}
 
-const std::vector<Body*>& Scene::bodies()
+const std::vector<std::shared_ptr<Body>>& Scene::bodies()
 {
     return m_bodies;
 }

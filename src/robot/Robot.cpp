@@ -37,13 +37,13 @@ void Robot::prepareLinks(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world)
         }
 
 
-        m_links.push_back(new Body(phys, world, mesh));
+        m_links.push_back(std::make_shared<Body>(phys, world, mesh));
         m_links[m_links.size() - 1]->prepareHullMesh();
     }
 
     auto eoatMesh = MeshBuilder::box(0.2f, 0.1f, 0.05f);
     eoatMesh->setBaseColor({0, 0, 1});
-    m_links.push_back(new Body(phys, world, eoatMesh));
+    m_links.push_back(std::make_shared<Body>(phys, world, eoatMesh));
 
     updateTransforms();
 }
@@ -82,7 +82,7 @@ void Robot::updateTransforms()
     }
 }
 
-const std::vector<Body*>& Robot::links()
+const std::vector<std::shared_ptr<Body>>& Robot::links()
 {
     return m_links;
 }

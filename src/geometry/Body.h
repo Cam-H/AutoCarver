@@ -25,9 +25,12 @@ public:
 
     ~Body();
 
+    void setMesh(const std::shared_ptr<Mesh>& mesh, bool recalculateHull = false);
+
     void setTransform(glm::mat4x4 transform);
     const glm::mat4x4& getTransform();
 
+    void updateHull();
     void prepareHullMesh();
 
     bool isManifold();
@@ -42,6 +45,9 @@ public:
     const std::shared_ptr<Mesh>& hullMesh();
 
     rp3d::RigidBody *physicsBody();
+
+    bool collides(const std::shared_ptr<Body>& body);
+    bool collision(const std::shared_ptr<Body>& body, glm::vec3& offset);
 
 private:
 

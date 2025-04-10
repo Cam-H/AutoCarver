@@ -45,18 +45,18 @@ public:
 
     void clear(uint8_t level = 0);
 
-    void createBody(const std::string &filepath, rp3d::BodyType type = rp3d::BodyType::STATIC);
-    void createBody(const std::shared_ptr<Mesh>& mesh, rp3d::BodyType type = rp3d::BodyType::STATIC);
+    std::shared_ptr<Body> createBody(const std::string &filepath, rp3d::BodyType type = rp3d::BodyType::STATIC);
+    std::shared_ptr<Body> createBody(const std::shared_ptr<Mesh>& mesh, rp3d::BodyType type = rp3d::BodyType::STATIC);
 
     std::shared_ptr<Robot> createRobot(KinematicChain* kinematics);
 
-    const std::vector<Body*>& bodies();
+    const std::vector<std::shared_ptr<Body>>& bodies();
     uint32_t bodyCount();
 
 //    std::vector<const std::shared_ptr<Mesh>&> meshes();
 
 protected:
-    void prepareBody(Body *body, uint8_t level = 0);
+    void prepareBody(const std::shared_ptr<Body>& body, uint8_t level = 0);
 //    RenderEntity* prepareRender(Body *body);
 
 private:
@@ -81,7 +81,7 @@ protected:
 //    Qt3DCore::QEntity *m_root;
 //    Qt3DExtras::Qt3DWindow *view;
 
-    std::vector<Body*> m_bodies;
+    std::vector<std::shared_ptr<Body>> m_bodies;
     std::vector<std::shared_ptr<Robot>> m_robots;
 //    std::vector<SceneEntity> m_entities;
 

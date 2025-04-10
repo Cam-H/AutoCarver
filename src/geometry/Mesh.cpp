@@ -32,13 +32,13 @@ Mesh::Mesh(float vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t 
     calculateVertexNormals();
 }
 
-Mesh::Mesh(const ConvexHull& hull)
+Mesh::Mesh(const ConvexHull& hull, bool applyColorPattern)
         : m_vertices(hull.vertices())
         , m_faces(hull.faces())
         , m_faceNormals(nullptr, 0)
         , m_vertexNormals(nullptr, 0)
         , m_indexCount(0)
-        , m_colors(new float[hull.facetCount() * STRIDE], hull.facetCount())
+        , m_colors(applyColorPattern ? new float[hull.facetCount() * STRIDE] : nullptr, applyColorPattern * hull.facetCount())
         , m_baseColor(0.8f, 0.8f, 0.1f)
         , m_adjacencyOK(false)
 {
@@ -50,8 +50,10 @@ Mesh::Mesh(const ConvexHull& hull)
     m_faces.triangulation(m_indices);
 
     // Convex hull renders default to alternating yellow-orange color pattern
-    for (uint32_t i = 0; i < faceCount(); i+= 2) {
-        setFaceColor(i, {0.8f, 0.6f, 0.1f});
+    if (applyColorPattern) {
+        for (uint32_t i = 0; i < faceCount(); i+= 2) {
+            setFaceColor(i, {0.8f, 0.6f, 0.1f});
+        }
     }
 
     calculateFaceNormals();

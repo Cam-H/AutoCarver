@@ -82,9 +82,9 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     , m_processCutEnable(true)
 {
 
-    m_sculpture = new Sculpture(model, m_config.materialWidth, m_config.materialHeight);
+    m_sculpture = std::make_shared<Sculpture>(model, m_config.materialWidth, m_config.materialHeight);
 
-    prepareBody(new Body(model), 1);
+    prepareBody(std::make_shared<Body>((model)), 1);
     m_bodies[0]->prepareHullMesh();
 
     prepareBody(m_sculpture, 1);

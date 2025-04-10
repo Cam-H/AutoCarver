@@ -21,7 +21,7 @@ class Mesh {
 public:
 
     explicit Mesh(float vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t indexCount);
-    explicit Mesh(const ConvexHull& hull);
+    explicit Mesh(const ConvexHull& hull, bool applyColorPattern = true);
 
     explicit Mesh(const float *vertices, uint32_t vertexCount, const uint32_t *faceIndices, const uint32_t *faceSizes, uint32_t faceCount);
     explicit Mesh(const VertexArray& vertices, const FaceArray& faces);

@@ -17,6 +17,7 @@
 
 ConvexHull::ConvexHull()
     : m_vertices(nullptr, 0)
+    , m_center()
     , m_cloud(nullptr, 0)
     , m_faces(nullptr, nullptr, 0)
 {
@@ -30,6 +31,7 @@ ConvexHull::ConvexHull(const float* cloud, uint32_t cloudSize)
 
 ConvexHull::ConvexHull(VertexArray cloud)
     : m_vertices(nullptr, 0)
+    , m_center()
     , m_faces(nullptr, nullptr, 0)
     , m_cloud(std::move(cloud)){
 
@@ -108,6 +110,8 @@ ConvexHull::ConvexHull(VertexArray cloud)
         idx++;
     }
 
+    // TODO record vertex connections
+
     // Do away with working memory
     facets.clear();
 
@@ -121,6 +125,12 @@ ConvexHull::ConvexHull(VertexArray cloud)
     }
 
     m_faces = {facets, facetSizes, (uint32_t)faces.size()};
+
+    // Caluclate convex hull center
+    for (uint32_t i = 0; i < m_vertices.vertexCount(); i++) {
+        m_center += m_vertices[i];
+    }
+    m_center = m_center * (1 / (float)m_vertices.vertexCount());
 }
 
 ConvexHull::~ConvexHull()
@@ -166,6 +176,60 @@ bool ConvexHull::isSourceConvex() const
 bool ConvexHull::isConvex(const VertexArray& test)
 {
     return ConvexHull(test).isSourceConvex();
+}
+
+Simplex ConvexHull::gjkIntersection(const ConvexHull& body, const glm::mat4& transform, std::pair<uint32_t, uint32_t>& idx) const
+{
+
+    // Develop the initial axis
+    glm::vec3 axis = m_center - body.m_center, next;
+    if (idx.first != std::numeric_limits<uint32_t>::max() && idx.second != std::numeric_limits<uint32_t>::max()) {
+        axis = m_vertices[idx.first] - body.m_vertices[idx.second];
+    }
+
+    Simplex simplex(gjkSupport(body, axis, idx));
+
+    axis = -simplex[0];
+
+    int limit = (int)(vertexCount() + body.vertexCount()) / 2;
+    while (limit-- > 0) {
+        next = gjkSupport(body, axis, idx);
+
+        // Check whether collision is impossible
+        if (glm::dot (axis, next) <= 0) return simplex;
+
+        simplex.add(next);
+
+        // Check whether the collision is certain
+        if (simplex.evaluate(axis)) return simplex;
+    }
+
+    std::cout << "CH GJK Error!\n";
+}
+
+glm::vec3 ConvexHull::gjkSupport(const ConvexHull& body, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx) const
+{
+    idx.first = walk(axis, idx.first);
+    idx.second = body.walk(-axis, idx.second);
+
+    return m_vertices[idx.first] - body.m_vertices[idx.second];
+}
+
+uint32_t ConvexHull::walk(const glm::vec3& axis, uint32_t startIndex) const
+{
+    uint32_t index = startIndex;
+
+    // TODO actually walk
+    float value = std::numeric_limits<float>::lowest(), temp;
+    for (uint32_t i = 0; i < m_vertices.vertexCount(); i++) {
+        temp = glm::dot(axis, m_vertices[i]);
+        if (temp > value) {
+            value = temp;
+            index = i;
+        }
+    }
+
+    return index;
 }
 
 std::vector<ConvexHull::Triangle> ConvexHull::initialApproximation(){

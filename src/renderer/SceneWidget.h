@@ -59,6 +59,8 @@ protected:
     void calculateViewProjectionMatrix();
     QVector3D cameraRotated(QVector3D base) const;
 
+    void updateRenderGeometry(const std::shared_ptr<Mesh>& mesh);
+
 private:
 
     void render(const std::shared_ptr<Mesh>& mesh, const QMatrix4x4& transform, bool defaultVisibility);
@@ -71,11 +73,13 @@ private:
 
     RenderItem& getRender(const std::shared_ptr<Mesh>& mesh, bool defaultVisibility = true);
 
+protected:
+
+    Scene* m_scene;
+
 private:
 
     std::unordered_map<std::shared_ptr<Mesh>, RenderItem> m_renderMap;
-
-    Scene* m_scene;
 
     std::vector<QOpenGLShaderProgram*> m_programs;
     uint32_t m_defaultProgramIdx;

@@ -226,16 +226,16 @@ std::vector<std::shared_ptr<Mesh>> SceneWidget::selectAll(Scene::Model target)
 
     switch (target) {
         case Scene::Model::ALL:
-            for (Body* body : m_scene->bodies()) selection.push_back(body->mesh());
-            for (Body* body : m_scene->bodies()) {
+            for (const std::shared_ptr<Body>& body : m_scene->bodies()) selection.push_back(body->mesh());
+            for (const std::shared_ptr<Body>& body : m_scene->bodies()) {
                 if (body->hullMesh() != nullptr) selection.push_back(body->hullMesh());
             }
             break;
         case Scene::Model::MESH:
-            for (Body* body : m_scene->bodies()) selection.push_back(body->mesh());
+            for (const std::shared_ptr<Body>& body : m_scene->bodies()) selection.push_back(body->mesh());
             break;
         case Scene::Model::HULL:
-            for (Body* body : m_scene->bodies()) {
+            for (const std::shared_ptr<Body>& body : m_scene->bodies()) {
                 if (body->hullMesh() != nullptr) selection.push_back(body->hullMesh());
             }
             break;
@@ -244,6 +244,14 @@ std::vector<std::shared_ptr<Mesh>> SceneWidget::selectAll(Scene::Model target)
     }
 
     return selection;
+}
+
+void SceneWidget::updateRenderGeometry(const std::shared_ptr<Mesh>& mesh)
+{
+    auto item = getRender(mesh);
+    // TODO properly delete
+    m_geometries[item.geometryIdx] = new RenderGeometry(mesh, mesh->faceColorsAssigned() ? RenderGeometry::Format::VERTEX_NORMAL_COLOR : RenderGeometry::Format::VERTEX_NORMAL);
+
 }
 
 void SceneWidget::resizeGL(int w, int h)
@@ -269,9 +277,9 @@ void SceneWidget::paintGL()
 
 
     if (m_scene != nullptr) {
-        const std::vector<Body*>& bodies = m_scene->bodies();
+        const std::vector<std::shared_ptr<Body>>& bodies = m_scene->bodies();
 
-        for (Body* body : bodies) {
+        for (const std::shared_ptr<Body>& body : bodies) {
 
             glm::mat4x4 trans = body->getTransform();
 
