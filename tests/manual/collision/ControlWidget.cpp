@@ -37,7 +37,6 @@ void ControlWidget::keyPressEvent(QKeyEvent *e)
 
 
         bool result = m_scene->bodies()[0]->collision(m_scene->bodies()[1], offset);
-        std::cout << offset.x << " " << offset.y << " " << offset.z << "\n";
         if (result) {
             m_scene->bodies()[0]->mesh()->translate(offset.x, offset.y, offset.z);
             m_scene->bodies()[0]->updateHull();

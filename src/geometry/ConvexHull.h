@@ -17,6 +17,8 @@
 #include "FaceArray.h"
 #include "Simplex.h"
 
+class EPA;
+
 class ConvexHull {
 public:
 
@@ -38,7 +40,10 @@ public:
     [[nodiscard]] bool isSourceConvex() const;
     static bool isConvex(const VertexArray& test);
 
+    [[nodiscard]] uint32_t walk(const glm::vec3& axis, uint32_t startIndex = 0) const;
+
     [[nodiscard]] Simplex gjkIntersection(const ConvexHull& body, const glm::mat4& transform, std::pair<uint32_t, uint32_t>& idx) const;
+    [[nodiscard]] EPA epaIntersection(const ConvexHull& body, const glm::mat4& transform, std::pair<uint32_t, uint32_t>& idx) const;
 
 private:
 
@@ -92,9 +97,6 @@ private:
     void calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
 
     glm::vec3 gjkSupport(const ConvexHull& body, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx) const;
-
-
-    uint32_t walk(const glm::vec3& axis, uint32_t startIndex = 0) const;
 
     static bool isManifold(const std::vector<Facet> &facets);
     static bool isManifold(const Facet &dest, uint32_t src);

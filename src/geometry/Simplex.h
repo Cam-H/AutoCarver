@@ -8,18 +8,25 @@
 #include <glm/glm.hpp>
 #include <array>
 
+class ConvexHull;
+
 class Simplex {
 public:
 
-    explicit Simplex(const glm::vec3& start);
-//    Simplex(uint32_t a, uint32_t b);
-//    Simplex(uint32_t a, uint32_t b, uint32_t c);
+    struct Vertex {
+        glm::vec3 val;
+        std::pair<uint32_t, uint32_t> idx;
+    };
 
-    void add(const glm::vec3& vertex);
+    explicit Simplex(const Vertex& start);
 
-    glm::vec3 operator[](uint32_t idx) const;
+    void add(const Vertex& vertex);
 
-    uint32_t size() const;
+    void correctWinding();
+
+    Vertex operator[](uint32_t idx) const;
+
+    [[nodiscard]] uint32_t size() const;
 
     bool evaluate(glm::vec3& axis);
     void evaluateLine(glm::vec3& axis);
@@ -27,22 +34,12 @@ public:
     void evaluateTriangle(glm::vec3& axis);
     bool evaluateTetrahedron(glm::vec3& axis3);
 
-    bool colliding() const;
-    glm::vec3 overlap() const;
-
-    void evaluateOffset();
-    const glm::vec3& offset() const;
+    [[nodiscard]] bool colliding() const;
 
 private:
-//    const glm::vec3& vertex(uint32_t idx);
-    glm::vec3 projectOnTriangle();
-    glm::vec3 projectOnTetrahedron();
-
-private:
-    std::array<glm::vec3, 4> vertices;
+    std::array<Vertex, 4> vertices;
     uint32_t m_size;
 
-    glm::vec3 m_offset;
     bool m_colliding;
 };
 

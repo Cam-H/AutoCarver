@@ -52,7 +52,9 @@ qt_add_library(AutoCarverLib
 
         core/SculptProcess.cpp core/SculptProcess.h geometry/FaceArray.cpp geometry/FaceArray.h
 
-        renderer/RenderCapture.cpp renderer/RenderCapture.h renderer/SceneWidget.cpp renderer/SceneWidget.h renderer/RenderGeometry.cpp renderer/RenderGeometry.h geometry/Simplex.cpp geometry/Simplex.h)
+        renderer/RenderCapture.cpp renderer/RenderCapture.h renderer/SceneWidget.cpp renderer/SceneWidget.h renderer/RenderGeometry.cpp renderer/RenderGeometry.h
+        geometry/Simplex.cpp geometry/Simplex.h geometry/EPA.cpp geometry/EPA.h
+        )
 
 target_link_libraries(AutoCarverLib PRIVATE
         Qt::3DCore

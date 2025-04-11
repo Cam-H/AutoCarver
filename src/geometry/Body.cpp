@@ -9,6 +9,7 @@
 #include <unordered_map>
 
 #include "../core/Timer.h"
+#include "EPA.h"
 
 Body::Body(const std::shared_ptr<Mesh> &mesh)
     : m_mesh(mesh)
@@ -127,11 +128,10 @@ bool Body::collision(const std::shared_ptr<Body>& body, glm::vec3& offset)
     // TODO caching last index
     std::pair<uint32_t, uint32_t> nearest = { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() };
 
-    Simplex simplex = m_hull.gjkIntersection(body->m_hull, transform, nearest);
-    simplex.evaluateOffset();
+    EPA epa = m_hull.epaIntersection(body->m_hull, transform, nearest);
+    offset = epa.colliding() ? epa.overlap() : epa.offset();
 
-    offset = simplex.offset();
-    return simplex.colliding();
+    return epa.colliding();
 }
 
 void Body::updateHull()

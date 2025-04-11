@@ -5,6 +5,9 @@
 
 #include "ConvexHull.h"
 
+#include "EPA.h"
+
+
 #include <QVector3D>
 #include <glm/glm.hpp>
 
@@ -187,24 +190,30 @@ Simplex ConvexHull::gjkIntersection(const ConvexHull& body, const glm::mat4& tra
         axis = m_vertices[idx.first] - body.m_vertices[idx.second];
     }
 
-    Simplex simplex(gjkSupport(body, axis, idx));
+    Simplex simplex({ gjkSupport(body, axis, idx), idx });
 
-    axis = -simplex[0];
+    axis = -simplex[0].val;
 
-    int limit = (int)(vertexCount() + body.vertexCount()) / 2;
+    int limit = (int)(vertexCount() + body.vertexCount());
     while (limit-- > 0) {
         next = gjkSupport(body, axis, idx);
 
         // Check whether collision is impossible
         if (glm::dot (axis, next) <= 0) return simplex;
 
-        simplex.add(next);
+        simplex.add({ next, idx });
 
         // Check whether the collision is certain
         if (simplex.evaluate(axis)) return simplex;
     }
 
     std::cout << "CH GJK Error!\n";
+    return Simplex(Simplex::Vertex{});
+}
+
+EPA ConvexHull::epaIntersection(const ConvexHull& body, const glm::mat4& transform, std::pair<uint32_t, uint32_t>& idx) const
+{
+    return { *this, body, gjkIntersection(body, transform, idx) };
 }
 
 glm::vec3 ConvexHull::gjkSupport(const ConvexHull& body, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx) const

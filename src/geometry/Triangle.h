@@ -8,6 +8,8 @@
 #include <QVector2D>
 #include <QVector3D>
 
+#include <glm/glm.hpp>
+
 class Triangle {
 public:
 
@@ -38,11 +40,13 @@ public:
     static float cross(const QVector2D &pivot, const QVector2D &a, const QVector2D &b);
     static float cross(const QVector2D &v1, const QVector2D &v2);
 
+    static glm::vec3 barycentric(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& p);
+
     static bool encloses(const QVector2D& a, const QVector2D& b, const QVector2D& c, const QVector2D& p);
 
-    uint32_t m_I0;
-    uint32_t m_I1;
-    uint32_t m_I2;
+    uint32_t I0;
+    uint32_t I1;
+    uint32_t I2;
 };
 
 

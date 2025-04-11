@@ -4,10 +4,12 @@
 
 #include "Triangle.h"
 
+#include <iostream>
+
 Triangle::Triangle(uint32_t I0, uint32_t I1, uint32_t I2)
-    : m_I0(I0)
-    , m_I1(I1)
-    , m_I2(I2)
+    : I0(I0)
+    , I1(I1)
+    , I2(I2)
 {
 }
 
@@ -15,12 +17,12 @@ uint32_t Triangle::operator[](uint32_t i) const
 {
     switch(i){
         case 2:
-            return m_I2;
+            return I2;
         case 1:
-            return m_I1;
+            return I1;
         case 0:
         default:
-            return m_I0;
+            return I0;
     }
 }
 
@@ -28,20 +30,20 @@ uint32_t& Triangle::operator[](uint32_t i)
 {
     switch(i){
         case 2:
-            return m_I2;
+            return I2;
         case 1:
-            return m_I1;
+            return I1;
         case 0:
         default:
-            return m_I0;
+            return I0;
     }
 }
 
 uint32_t Triangle::last(uint32_t a, uint32_t b)
 {
-    if (m_I0 != a && m_I0 != b) return m_I0;
-    if (m_I1 != a && m_I1 != b) return m_I1;
-    return m_I2;
+    if (I0 != a && I0 != b) return I0;
+    if (I1 != a && I1 != b) return I1;
+    return I2;
 }
 
 float Triangle::signedArea(const QVector2D& a, const QVector2D& b, const QVector2D& c)
@@ -71,6 +73,24 @@ float Triangle::cross(const QVector2D &pivot, const QVector2D &a, const QVector2
 float Triangle::cross(const QVector2D &v1, const QVector2D &v2)
 {
     return v1.x() * v2.y() - v2.x() * v1.y();
+}
+
+glm::vec3 Triangle::barycentric(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& p)
+{
+    glm::vec3 ab = b - a, ac = c - a, ap = p - a;
+    float d00 = glm::dot(ab, ab), d01 = glm::dot(ab, ac);
+    float d11 = glm::dot(ac, ac);
+    float d20 = glm::dot(ap, ab), d21 = glm::dot(ap, ac);
+    float den = 1 / (d00 * d11 - d01 * d01);
+
+    float v = (d11 * d20 - d01 * d21) * den;
+    float w = (d00 * d21 - d01 * d20) * den;
+
+    return {
+            v,
+            w,
+            1.0f - v - w
+    };
 }
 
 bool Triangle::encloses(const QVector2D& a, const QVector2D& b, const QVector2D& c, const QVector2D& p)
