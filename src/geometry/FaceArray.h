@@ -41,7 +41,8 @@ public:
 
     FaceArray triangulated();
 
-    std::vector<std::vector<uint32_t>> adjacencies() const;
+    [[nodiscard]] std::vector<std::vector<uint32_t>> edgeList() const;
+    [[nodiscard]] std::vector<std::vector<uint32_t>> adjacencies() const;
 
     [[nodiscard]] uint32_t size() const; // Get the size of the array in bytes
     [[nodiscard]] bool empty() const;

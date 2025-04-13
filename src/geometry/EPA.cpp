@@ -10,14 +10,32 @@
 #include "Simplex.h"
 #include "fileIO/MeshHandler.h"
 
-EPA::EPA(const ConvexHull& a, const ConvexHull& b, Simplex simplex)
+EPA::EPA()
     : m_colliding(false)
     , m_offset()
+    , m_nearest(std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max())
+    , m_aLocal()
+    , m_aWorld()
+    , m_bLocal()
+    , m_bWorld()
+{
+
+}
+
+EPA::EPA(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, const glm::mat4& relativeTransform, Simplex simplex)
+    : m_colliding(false)
+    , m_offset()
+    , m_nearest(std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max())
+    , m_aLocal()
+    , m_aWorld()
+    , m_bLocal()
+    , m_bWorld()
 {
     std::vector<std::pair<float, uint32_t>> order;
 
     // Expand the input simplex, ensuring the algorithm starts with a tetrahedron
-    expandSimplex(a, b, simplex);
+    expandSimplex(a, b, relativeTransform, simplex);
+    if (!isValid(simplex)) return;
 
     // Prepare the initial set of facets from the simplex
     prepareFacets(simplex, order);
@@ -32,8 +50,8 @@ EPA::EPA(const ConvexHull& a, const ConvexHull& b, Simplex simplex)
         }
 
         // Find next vertex to expand to, based on current shortest overlap. Verify it protrudes from the reference facet
-        auto vertex = support(a, b, facet.normal, vertices[facet.triangle.I0].idx);
-        if (glm::dot(facet.normal, vertex.val - vertices[facet.triangle.I0].val) <= 0) break;
+        auto vertex = support(a, b, relativeTransform, facet.normal, vertices[facet.triangle.I0].idx);
+        if (glm::dot(facet.normal, vertex.val - vertices[facet.triangle.I0].val) <= 1e-6) break;
 
         vertices.push_back(vertex);
 
@@ -47,18 +65,28 @@ EPA::EPA(const ConvexHull& a, const ConvexHull& b, Simplex simplex)
     uint32_t idx = order[0].second;
     const Triangle& tri = facets[idx].triangle;
 
-    // Calculate the projection of the origin on to the nearest facet
-    glm::vec3 proj = glm::dot(facets[idx].normal, vertices[tri.I0].val) * facets[idx].normal;
-
-    // Calculate the barycentric co-ordinates of the intersection point
-    glm::vec3 bary = Triangle::barycentric(vertices[tri.I0].val, vertices[tri.I1].val, vertices[tri.I2].val, proj);
-
-    // TODO Calculate local vertices, global vertices from the barycentric co-ordinates
-
 
     // Record collision results
     m_colliding = order[0].first < 0;
-    m_offset = -proj;
+
+    // Calculate the projection of the origin on to the nearest facet
+    glm::vec3 proj = glm::dot(facets[idx].normal, vertices[tri.I0].val) * facets[idx].normal;
+    m_offset = glm::mat3(transform) * -proj;
+
+    // Calculate the barycentric co-ordinates of the intersection point
+    glm::vec3 bary = Triangle::clampedBarycentric(vertices[tri.I0].val, vertices[tri.I1].val, vertices[tri.I2].val, proj);
+
+    // Calculate the closest points (locally) on the colliders
+    m_aLocal = bary.x * a.vertices()[vertices[tri.I0].idx.first] + bary.y * a.vertices()[vertices[tri.I1].idx.first] + bary.z * a.vertices()[vertices[tri.I2].idx.first];
+    m_bLocal = bary.x * b.vertices()[vertices[tri.I0].idx.second] + bary.y * b.vertices()[vertices[tri.I1].idx.second] + bary.z * b.vertices()[vertices[tri.I2].idx.second];
+
+    // Calculate the world positions from the local points
+    glm::vec4 temp =  transform * glm::vec4(m_aLocal.x, m_aLocal.y, m_aLocal.z, 1.0);
+    m_aWorld = { temp.x, temp.y, temp.z };
+
+    temp = transform * relativeTransform * glm::vec4(m_bLocal.x, m_bLocal.y, m_bLocal.z, 1.0);
+    m_bWorld = { temp.x, temp.y, temp.z };
+
 
     m_nearest = vertices[tri.I0].idx;
 }
@@ -82,12 +110,15 @@ void EPA::exportState(const std::string& path)
     MeshHandler::exportMesh(std::make_shared<Mesh>(vx, vertices.size(), fx, facets.size()), path);
 }
 
-Simplex::Vertex EPA::support(const ConvexHull& a, const ConvexHull& b, const glm::vec3& axis, std::pair<uint32_t, uint32_t> idx)
+Simplex::Vertex EPA::support(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, const glm::vec3& axis, std::pair<uint32_t, uint32_t> idx)
 {
     idx.first = a.walk(axis, idx.first);
-    idx.second = b.walk(-axis, idx.second);
+    idx.second = b.walk(-axis * glm::mat3(transform), idx.second);
 
-    return { a.vertices()[idx.first] - b.vertices()[idx.second], idx };
+    glm::vec4 vec = transform * glm::vec4(b.vertices()[idx.second].x, b.vertices()[idx.second].y, b.vertices()[idx.second].z, 1.0f);
+
+
+    return { a.vertices()[idx.first] - glm::vec3{ vec.x, vec.y, vec.z }, idx };
 }
 
 glm::vec3 EPA::normal(uint32_t a, uint32_t b, uint32_t c)
@@ -95,8 +126,7 @@ glm::vec3 EPA::normal(uint32_t a, uint32_t b, uint32_t c)
     return glm::normalize(glm::cross(vertices[b].val - vertices[a].val, vertices[c].val - vertices[a].val));
 }
 
-
-void EPA::expandSimplex(const ConvexHull& a, const ConvexHull& b, Simplex& simplex)
+void EPA::expandSimplex(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, Simplex& simplex)
 {
     switch (simplex.size()) {
         case 1: // Point case
@@ -111,31 +141,31 @@ void EPA::expandSimplex(const ConvexHull& a, const ConvexHull& b, Simplex& simpl
             };
 
             for (const glm::vec3& direction : searchDirections) {
-                Simplex::Vertex vertex = support(a, b, direction, simplex[0].idx);
+                Simplex::Vertex vertex = support(a, b, transform, direction, simplex[0].idx);
 
                 glm::vec3 delta = vertex.val - simplex[0].val;
-                if (glm::dot(delta, delta) >= 0) {
+                if (glm::dot(delta, delta) >= 1e-6) {
                     simplex.add(vertex);
                     break;
                 }
             }
         }
+        if (simplex.size() < 2) break; // Stop if for some reason the point case failed
         case 2: // Line case
         {
             glm::vec3 line = glm::normalize(simplex[1].val - simplex[0].val);
 
             // Create reasonable initial search direction
-            glm::vec3 ref = line.x >= 0.57735f ? glm::vec3{ line.y, -line.x, 0 } : glm::vec3{ 0, line.z, -line.y };
+            glm::vec3 ref = line.x * line.x == 1 ? glm::vec3{ 0, 1, 0 } : glm::vec3{ 1, 0, 0 };
             glm::vec3 axis = glm::normalize(glm::cross(line, ref));
 
-            glm::quat rotation = glm::angleAxis((float)M_PI / 3, line);
-
+            glm::quat rotation = glm::angleAxis(2.0f / 3.0f  * (float)M_PI, line);
 
             // Find a vertex off the line to expand to
-            for (uint32_t i = 0; i < 6; i++) {
-                Simplex::Vertex vertex = support(a, b, axis, simplex[0].idx);
+            for (uint32_t i = 0; i < 3; i++) {
+                Simplex::Vertex vertex = support(a, b, transform, axis, simplex[0].idx);
 
-                if (glm::dot(axis, vertex.val - simplex[0].val)  >= 0) {
+                if (std::abs(glm::dot(axis, vertex.val - simplex[0].val)) >= 1e-6) {
                     simplex.add(vertex);
                     break;
                 }
@@ -144,21 +174,41 @@ void EPA::expandSimplex(const ConvexHull& a, const ConvexHull& b, Simplex& simpl
                 axis = rotation * axis;
             }
         }
+        if (simplex.size() < 3) break; // Stop if for some reason the line case failed
         case 3: // Triangle case
         {
             glm::vec3 axis = glm::normalize(glm::cross(simplex[1].val - simplex[0].val, simplex[2].val - simplex[0].val));
 
-            Simplex::Vertex vertex = support(a, b, axis, simplex[0].idx);
+            Simplex::Vertex vertex = support(a, b, transform, axis, simplex[0].idx);
+            float delta = std::abs(glm::dot(axis, vertex.val - simplex[0].val));
 
-            if (glm::dot(axis, vertex.val - simplex[0].val) <= 0) {
-                vertex = support(a, b, -axis, simplex[0].idx);
+            // Try the opposite direction of the plane in case the triangle is extreme
+            if (delta <= 1e-6) {
+                vertex = support(a, b, transform, -axis, simplex[0].idx);
+                delta = std::abs(glm::dot(axis, vertex.val - simplex[0].val));
             }
 
-            simplex.add(vertex);
+            // Confirm selected vertex is off the plane
+            if (delta >= 1e-6) {
+                simplex.add(vertex);
+            }
         }
     }
 
     simplex.correctWinding();
+}
+
+// Debug method to check correctness of algorithm input
+bool EPA::isValid(const Simplex& simplex)
+{
+    if (simplex.size() != 4) {
+        std::cout << "IS: " << simplex.size() << "\n";
+        for (uint32_t i = 0; i < simplex.size(); i++) {
+            std::cout << simplex[i].idx.first << " " << simplex[i].idx.second << " " << simplex[i].val.x << " " << simplex[i].val.y << " " << simplex[i].val.z << "\n";
+        }
+    }
+
+    return simplex.size() == 4;
 }
 
 void EPA::prepareFacets(const Simplex& simplex, std::vector<std::pair<float, uint32_t>>& order)
@@ -199,11 +249,16 @@ void EPA::prepareFacets(const std::vector<uint32_t>& horizon, std::vector<std::p
         facets[horizon[j]].neighbors[z] = currentFacet;// Link against existing facet beyond the horizon
 
         // Prepare the new facet and link
-        Triangle triangle = {(uint32_t)vertices.size() - 1, lastVertex, horizon[j + 1] }; // TODO check swap
+        Triangle triangle = {(uint32_t)vertices.size() - 1, lastVertex, horizon[j + 1] };
         glm::vec3 norm = normal(triangle.I0, triangle.I1, triangle.I2);
 
         Facet facet = {triangle, norm, glm::dot(norm, -vertices[triangle.I0].val), {lastFacet, horizon[j], nextFacet}, true };
         order.emplace_back(facet.value, facets.size());
+
+        if (std::isnan(facet.value)) {
+            std::cout << "EPA BR " << norm.x << " " << norm.y << " " << norm.z << " | " << triangle.I0 << " " << triangle.I1 << " " << triangle.I2
+                << "\n" << lastFacet << " " << horizon[j] << " " << nextFacet << "\n";
+        }
 
         facets.push_back(facet);
         lastVertex = horizon[j + 1];
@@ -223,7 +278,7 @@ void EPA::calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t current
 
     float test = glm::dot(facets[current].normal, apex - vertices[facets[current].triangle.I0].val);
 
-    if(test > std::numeric_limits<float>::epsilon()){ // Check whether facet is visible to apex
+    if(test > 1e-6){ // Check whether facet is visible to apex
         facets[current].onHull = false;
 
         // Identify neighbors to visit
@@ -239,7 +294,6 @@ void EPA::calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t current
 
         return;
     }
-
 
     uint32_t index = std::find(facets[current].neighbors.begin(), facets[current].neighbors.end(), last) - facets[current].neighbors.begin();
 
@@ -261,7 +315,30 @@ glm::vec3 EPA::offset() const
     return m_colliding ? glm::vec3() : m_offset;
 }
 
-std::pair<uint32_t, uint32_t> EPA::nearest() const
+const std::pair<uint32_t, uint32_t>& EPA::nearest() const
 {
     return m_nearest;
+}
+
+const glm::vec3& EPA::colliderAClosestLocal() const
+{
+    return m_aLocal;
+}
+const glm::vec3& EPA::colliderAClosest() const
+{
+    return m_aWorld;
+}
+
+const glm::vec3& EPA::colliderBClosestLocal() const
+{
+    return m_bLocal;
+}
+const glm::vec3& EPA::colliderBClosest() const
+{
+    return m_bWorld;
+}
+
+float EPA::distance() const
+{
+    return glm::length(m_aWorld - m_bWorld);
 }

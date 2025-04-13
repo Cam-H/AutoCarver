@@ -134,6 +134,8 @@ ConvexHull::ConvexHull(VertexArray cloud)
         m_center += m_vertices[i];
     }
     m_center = m_center * (1 / (float)m_vertices.vertexCount());
+
+    m_walks = m_faces.edgeList();
 }
 
 ConvexHull::~ConvexHull()
@@ -184,19 +186,14 @@ bool ConvexHull::isConvex(const VertexArray& test)
 Simplex ConvexHull::gjkIntersection(const ConvexHull& body, const glm::mat4& transform, std::pair<uint32_t, uint32_t>& idx) const
 {
 
-    // Develop the initial axis
-    glm::vec3 axis = m_center - body.m_center, next;
-    if (idx.first != std::numeric_limits<uint32_t>::max() && idx.second != std::numeric_limits<uint32_t>::max()) {
-        axis = m_vertices[idx.first] - body.m_vertices[idx.second];
-    }
-
-    Simplex simplex({ gjkSupport(body, axis, idx), idx });
+    glm::vec3 axis = initialAxis(body, idx), next;
+    Simplex simplex({ gjkSupport(body, transform, axis, idx), idx });
 
     axis = -simplex[0].val;
 
     int limit = (int)(vertexCount() + body.vertexCount());
     while (limit-- > 0) {
-        next = gjkSupport(body, axis, idx);
+        next = gjkSupport(body, transform, axis, idx);
 
         // Check whether collision is impossible
         if (glm::dot (axis, next) <= 0) return simplex;
@@ -211,32 +208,60 @@ Simplex ConvexHull::gjkIntersection(const ConvexHull& body, const glm::mat4& tra
     return Simplex(Simplex::Vertex{});
 }
 
-EPA ConvexHull::epaIntersection(const ConvexHull& body, const glm::mat4& transform, std::pair<uint32_t, uint32_t>& idx) const
+EPA ConvexHull::epaIntersection(const ConvexHull& body, const glm::mat4& transform, const glm::mat4& relativeTransform, std::pair<uint32_t, uint32_t>& idx) const
 {
-    return { *this, body, gjkIntersection(body, transform, idx) };
+    return { *this, body, transform, relativeTransform, gjkIntersection(body, relativeTransform, idx) };
 }
 
-glm::vec3 ConvexHull::gjkSupport(const ConvexHull& body, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx) const
+glm::vec3 ConvexHull::initialAxis(const ConvexHull& body, std::pair<uint32_t, uint32_t>& idx) const
+{
+    if (idx.first != std::numeric_limits<uint32_t>::max() && idx.second != std::numeric_limits<uint32_t>::max()) {
+        return m_vertices[idx.first] - body.m_vertices[idx.second];
+    }
+
+    idx = { 0, 0 };
+
+    return m_center - body.m_center;
+}
+
+glm::vec3 ConvexHull::gjkSupport(const ConvexHull& body, const glm::mat4& transform, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx) const
 {
     idx.first = walk(axis, idx.first);
-    idx.second = body.walk(-axis, idx.second);
+    idx.second = body.walk(-axis * glm::mat3(transform), idx.second);
 
-    return m_vertices[idx.first] - body.m_vertices[idx.second];
+    glm::vec4 vec = transform * glm::vec4(body.m_vertices[idx.second].x, body.m_vertices[idx.second].y, body.m_vertices[idx.second].z, 1.0f);
+
+    return m_vertices[idx.first] - glm::vec3{ vec.x, vec.y, vec.z };
 }
 
-uint32_t ConvexHull::walk(const glm::vec3& axis, uint32_t startIndex) const
+uint32_t ConvexHull::walk(const glm::vec3& axis, uint32_t index) const
 {
-    uint32_t index = startIndex;
+    uint32_t i = 0, j = 0;
 
-    // TODO actually walk
-    float value = std::numeric_limits<float>::lowest(), temp;
-    for (uint32_t i = 0; i < m_vertices.vertexCount(); i++) {
-        temp = glm::dot(axis, m_vertices[i]);
-        if (temp > value) {
-            value = temp;
-            index = i;
+    while (i == 0) { // Only true when arriving at a fresh vertex
+        for (; i < m_walks[index].size(); i++) { // Iterate through adjacent vertices
+            if (glm::dot(axis, m_vertices[m_walks[index][i]] - m_vertices[index]) > 1e-6) { // Move to the first adjacent vertex along the axis
+                index = m_walks[index][i];
+                i = 0;
+                break;
+            }
+        }
+
+        // For debugging
+        if (j++ > 10000) {
+            std::cout << "\033[31mERROR! Failed to walk to a final destination!\033[0m\n";
+            break;
         }
     }
+
+//    float value = std::numeric_limits<float>::lowest(), temp;
+//    for (uint32_t i = 0; i < m_vertices.vertexCount(); i++) {
+//        temp = glm::dot(axis, m_vertices[i]);
+//        if (temp > value) {
+//            value = temp;
+//            index = i;
+//        }
+//    }
 
     return index;
 }

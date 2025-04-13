@@ -3,12 +3,28 @@
 //
 
 #include "ControlWidget.h"
+#include "geometry/MeshBuilder.h"
+#include "geometry/EPA.h"
+
+ControlWidget::ControlWidget(Scene* scene, QWidget* parent)
+        : SceneWidget(scene, parent)
+{
+    auto sphere = MeshBuilder::box(0.1f, 0.1f, 0.1f);
+    sphere->setBaseColor({0, 0, 1});
+
+    m_points.push_back(scene->createBody(sphere));
+
+    sphere = MeshBuilder::box(0.1f, 0.1f, 0.1f);
+    sphere->setBaseColor({0, 1, 0});
+
+    m_points.push_back(scene->createBody(sphere));
+}
 
 void ControlWidget::keyPressEvent(QKeyEvent *e)
 {
     if (m_scene == nullptr || m_scene->bodyCount() < 2) return;
 
-    float delta = 0.05f;
+    float delta = 0.05f, rDel = M_PI / 64, theta = 0;
     glm::vec3 offset = {};
     switch (e->key()) {
         case Qt::Key::Key_Up:
@@ -29,24 +45,35 @@ void ControlWidget::keyPressEvent(QKeyEvent *e)
         case Qt::Key::Key_D:
             offset += glm::vec3(-delta, 0, 0);
             break;
+        case Qt::Key::Key_Q:
+            theta += rDel;
+            break;
+        case Qt::Key::Key_E:
+            theta -= rDel;
+            break;
     }
 
-    if (glm::length(offset) > 0) {
-        m_scene->bodies()[1]->mesh()->translate(offset.x, offset.y, offset.z);
-        m_scene->bodies()[1]->updateHull();
+//    static glm::vec3 pos = {};
+//    pos += offset;
 
+    uint32_t idx1 = !QGuiApplication::keyboardModifiers().testFlag(Qt::ShiftModifier), idx2 = (idx1 == 0);
 
-        bool result = m_scene->bodies()[0]->collision(m_scene->bodies()[1], offset);
-        if (result) {
-            m_scene->bodies()[0]->mesh()->translate(offset.x, offset.y, offset.z);
-            m_scene->bodies()[0]->updateHull();
-            updateRenderGeometry(m_scene->bodies()[0]->mesh());
+    if (glm::length(offset) > 0 || theta != 0) {
+        m_scene->bodies()[idx1]->globalTranslate(offset);
+        if (theta != 0) m_scene->bodies()[idx1]->globalRotate(glm::vec3{1, 0, 0}, theta);
 
+        EPA result = m_scene->bodies()[0]->collision(m_scene->bodies()[1]);
+        if (result.colliding()) {
+            m_scene->bodies()[idx2]->translate((idx1 ? 1.0f : -1.0f) * result.overlap());
         }
 
-        m_scene->bodies()[1]->mesh()->setBaseColor(result ? glm::vec3{1, 0, 0} : glm::vec3{1, 1, 1});
+        m_scene->bodies()[idx1]->mesh()->setBaseColor(result.colliding() ? glm::vec3{1, 0, 0} : glm::vec3{1, 1, 1});
+        updateRenderGeometry(m_scene->bodies()[idx1]->mesh());
+        m_scene->bodies()[idx2]->mesh()->setBaseColor(result.colliding() ? glm::vec3{0.6, 0, 0} : glm::vec3{1, 1, 1});
+        updateRenderGeometry(m_scene->bodies()[idx2]->mesh());
 
-        updateRenderGeometry(m_scene->bodies()[1]->mesh());
+        m_points[0]->setPosition(result.colliderAClosest());
+        m_points[1]->setPosition(result.colliderBClosest());
 
         update();
     }

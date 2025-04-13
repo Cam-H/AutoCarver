@@ -27,6 +27,16 @@ public:
 
     void setMesh(const std::shared_ptr<Mesh>& mesh, bool recalculateHull = false);
 
+    void setPosition(const glm::vec3& position);
+
+    void translate(const glm::vec3& translation);
+    void rotate(const glm::vec3& axis, float theta);
+
+    void globalTranslate(const glm::vec3& translation);
+    void globalRotate(const glm::vec3& axis, float theta);
+
+    void transform(const glm::mat4x4& transform);
+
     void setTransform(glm::mat4x4 transform);
     const glm::mat4x4& getTransform();
 
@@ -49,7 +59,12 @@ public:
     bool collides(const std::shared_ptr<Body>& body);
     bool collision(const std::shared_ptr<Body>& body, glm::vec3& offset);
 
+    EPA collision(const std::shared_ptr<Body>& body);
+
 private:
+
+    void cacheCollision(const std::shared_ptr<Body>& body, const std::pair<uint32_t, uint32_t>& start);
+    std::pair<uint32_t, uint32_t> cachedCollision(const std::shared_ptr<Body>& body);
 
     void prepareColliders();
 

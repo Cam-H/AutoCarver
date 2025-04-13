@@ -283,22 +283,18 @@ void SceneWidget::paintGL()
 
             glm::mat4x4 trans = body->getTransform();
 
-
-            // TODO get transform from body
             QMatrix4x4 transform;
-            for (int i = 0; i < 4; i++) transform.setRow(i, QVector4D(trans[i][0], trans[i][1], trans[i][2], trans[i][3]));
+            for (int i = 0; i < 4; i++) transform.setColumn(i, QVector4D(trans[i][0], trans[i][1], trans[i][2], trans[i][3]));
 
-//            static float x = 0;
-//            QVector4D nv = transform.row(2);
-//            nv.setW(x+=0.01f);
-//            transform.setRow(2, nv);
+            // For robot - Wrong TODO
+//            for (int i = 0; i < 4; i++) transform.setRow(i, QVector4D(trans[i][0], trans[i][1], trans[i][2], trans[i][3]));
 
 //            std::cout << "QTransform:\n"
 //                    << transform.row(0)[0] << " " << transform.row(0)[1] << " " << transform.row(0)[2] << " " << transform.row(0)[3] << "\n"
 //                    << transform.row(1)[0] << " " << transform.row(1)[1] << " " << transform.row(1)[2] << " " << transform.row(1)[3] << "\n"
 //                    << transform.row(2)[0] << " " << transform.row(2)[1] << " " << transform.row(2)[2] << " " << transform.row(2)[3] << "\n"
 //                    << transform.row(3)[0] << " " << transform.row(3)[1] << " " << transform.row(3)[2] << " " << transform.row(3)[3] << "\n";
-//
+
 //            std::cout << "GLM Transform:\n"
 //                    << trans[0][0] << " " << trans[0][1] << " " << trans[0][2] << " " << trans[0][3] << "\n"
 //                    << trans[1][0] << " " << trans[1][1] << " " << trans[1][2] << " " << trans[1][3] << "\n"
@@ -329,6 +325,7 @@ void SceneWidget::render(const std::shared_ptr<Mesh> &mesh, const QMatrix4x4& tr
     m_programs[item.programIdx]->setUniformValue("u_transform", transform);
     m_programs[item.programIdx]->setUniformValue("vp_matrix", m_viewProjection);
     m_programs[item.programIdx]->setUniformValue("mvp_matrix", m_viewProjection * transform);
+    m_programs[item.programIdx]->setUniformValue("n_matrix", transform.normalMatrix());
 
     const glm::vec3& base = mesh->baseColor();
     m_programs[item.programIdx]->setUniformValue("out_color", QVector3D(base.r, base.g, base.b));

@@ -10,6 +10,6 @@ varying vec3 color;
 void main()
 {
     float intensity = (dot(normal, vec3(0.0, 1.0, 0.0)) + 1.0) * 0.5;
-    gl_FragColor = vec4(color * intensity, 1.0);
+    gl_FragColor = vec4(0.1 * color + 0.9 * color * intensity, 1.0);
 }
 

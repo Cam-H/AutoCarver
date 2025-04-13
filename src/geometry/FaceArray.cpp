@@ -220,6 +220,34 @@ FaceArray FaceArray::triangulated()
 //        loop.clear();
 //    }
 
+std::vector<std::vector<uint32_t>> FaceArray::edgeList() const
+{
+    std::vector<uint64_t> pairs;
+    uint32_t pre = m_faces[0], *ptr = m_faces;
+
+    // Generate a complete list of edges by vertex index
+    for (uint32_t i = 0; i < m_faceCount; i++) {
+        for (uint32_t j = 0; j < m_faceSizes[i] - 1; j++) {
+            uint64_t value = (uint64_t)*ptr++ << 32;
+            pairs.emplace_back(value | *ptr);
+        }
+
+        pairs.emplace_back(((uint64_t)*ptr++ << 32) | pre);
+        pre = *ptr;
+    }
+
+    // Sort doubly-connected edge list for easier access
+    std::sort(pairs.begin(), pairs.end());
+
+    // Convert to a more convenient format
+    std::vector<std::vector<uint32_t>> edges((pairs[pairs.size() - 1] >> 32) + 1);
+    for (uint64_t pair : pairs) {
+        edges[pair >> 32].emplace_back(pair & 0xFFFF);
+    }
+
+    return edges;
+}
+
 std::vector<std::vector<uint32_t>> FaceArray::adjacencies() const
 {
     ScopedTimer timer("Face adjacency calculation");

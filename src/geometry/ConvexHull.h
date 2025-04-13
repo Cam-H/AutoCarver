@@ -40,10 +40,10 @@ public:
     [[nodiscard]] bool isSourceConvex() const;
     static bool isConvex(const VertexArray& test);
 
-    [[nodiscard]] uint32_t walk(const glm::vec3& axis, uint32_t startIndex = 0) const;
+    [[nodiscard]] uint32_t walk(const glm::vec3& axis, uint32_t index = 0) const;
 
     [[nodiscard]] Simplex gjkIntersection(const ConvexHull& body, const glm::mat4& transform, std::pair<uint32_t, uint32_t>& idx) const;
-    [[nodiscard]] EPA epaIntersection(const ConvexHull& body, const glm::mat4& transform, std::pair<uint32_t, uint32_t>& idx) const;
+    [[nodiscard]] EPA epaIntersection(const ConvexHull& body, const glm::mat4& transform, const glm::mat4& relativeTransform, std::pair<uint32_t, uint32_t>& idx) const;
 
 private:
 
@@ -96,7 +96,8 @@ private:
     void sortCloud(std::vector<uint32_t>& free, Facet& facet);
     void calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
 
-    glm::vec3 gjkSupport(const ConvexHull& body, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx) const;
+    glm::vec3 initialAxis(const ConvexHull& body, std::pair<uint32_t, uint32_t>& idx) const;
+    glm::vec3 gjkSupport(const ConvexHull& body, const glm::mat4& transform, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx) const;
 
     static bool isManifold(const std::vector<Facet> &facets);
     static bool isManifold(const Facet &dest, uint32_t src);
@@ -106,7 +107,6 @@ private:
     VertexArray m_cloud;
 
     VertexArray m_vertices;
-    glm::vec3 m_center;
 
     FaceArray m_faces;
 
@@ -116,6 +116,10 @@ private:
 
     std::vector<glm::vec3> w_vertices;
     std::vector<Facet> facets;
+
+
+    glm::vec3 m_center;
+    std::vector<std::vector<uint32_t>> m_walks;
 
     const static uint8_t STRIDE = 3;
 

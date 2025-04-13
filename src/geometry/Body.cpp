@@ -7,6 +7,8 @@
 #include <utility>
 
 #include <unordered_map>
+#include <glm/gtc/matrix_transform.hpp>
+//#include <glm/gtc/matrix_inverse.hpp>
 
 #include "../core/Timer.h"
 #include "EPA.h"
@@ -68,6 +70,38 @@ void Body::setMesh(const std::shared_ptr<Mesh>& mesh, bool recalculateHull) {
     if (recalculateHull) updateHull();
 }
 
+void Body::setPosition(const glm::vec3& position)
+{
+    m_transform[3][0] = position.x;
+    m_transform[3][1] = position.y;
+    m_transform[3][2] = position.z;
+
+}
+
+void Body::translate(const glm::vec3& translation)
+{
+    m_transform = glm::translate(m_transform, translation);
+
+}
+void Body::rotate(const glm::vec3& axis, float theta)
+{
+    m_transform = glm::rotate(m_transform, theta, axis);
+}
+
+void Body::globalTranslate(const glm::vec3& translation)
+{
+    m_transform = glm::translate(glm::mat4(1.0f), translation) * m_transform;
+}
+void Body::globalRotate(const glm::vec3& axis, float theta)
+{
+    m_transform = glm::rotate(glm::mat4(1.0f), theta, axis) * m_transform;
+}
+
+void Body::transform(const glm::mat4x4& transform)
+{
+    m_transform = m_transform * transform;
+}
+
 void Body::setTransform(glm::mat4x4 transform)
 {
     m_transform = transform;
@@ -102,36 +136,51 @@ bool Body::collides(const std::shared_ptr<Body>& body)
 {
     if (!m_hullOK || !body->m_hullOK) return false;
 
-    // TODO Handle transform properly
-    glm::mat4 transform;
+    glm::mat4 relative = glm::inverse(m_transform) * body->m_transform;
 
-    // TODO caching last index
-    std::pair<uint32_t, uint32_t> nearest = { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() };
+    std::pair<uint32_t, uint32_t> nearest = cachedCollision(body);
 
-    Simplex simplex = m_hull.gjkIntersection(body->m_hull, transform, nearest);
-//    std::cout << "C: " << offset.x << " " << offset.y << " " << offset.z << "\n";
-//
-//    return glm::dot(offset, offset) != 0;
+    Simplex simplex = m_hull.gjkIntersection(body->m_hull, relative, nearest);
+
+    cacheCollision(body, simplex[0].idx);
 
     return simplex.colliding();
-//    return m_hull.collides(body->m_hull, body->m_transform);
-
 }
 
 bool Body::collision(const std::shared_ptr<Body>& body, glm::vec3& offset)
 {
     if (!m_hullOK || !body->m_hullOK) return false;
 
-    // TODO Handle transform properly
-    glm::mat4 transform;
 
-    // TODO caching last index
-    std::pair<uint32_t, uint32_t> nearest = { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() };
-
-    EPA epa = m_hull.epaIntersection(body->m_hull, transform, nearest);
+    EPA epa = collision(body);
     offset = epa.colliding() ? epa.overlap() : epa.offset();
 
     return epa.colliding();
+}
+
+EPA Body::collision(const std::shared_ptr<Body>& body)
+{
+    if (!m_hullOK || !body->m_hullOK) return {};
+
+    glm::mat4 relative = glm::inverse(m_transform) * body->m_transform;
+
+    std::pair<uint32_t, uint32_t> nearest = cachedCollision(body);
+
+    EPA epa = m_hull.epaIntersection(body->m_hull, m_transform, relative, nearest);
+    cacheCollision(body, epa.nearest());
+
+    return epa;
+}
+
+void Body::cacheCollision(const std::shared_ptr<Body>& body, const std::pair<uint32_t, uint32_t>& start)
+{
+
+}
+
+std::pair<uint32_t, uint32_t> Body::cachedCollision(const std::shared_ptr<Body>& body)
+{
+    // TODO caching last index
+    return { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() };
 }
 
 void Body::updateHull()

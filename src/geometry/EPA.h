@@ -17,15 +17,23 @@ class ConvexHull;
 class EPA {
 public:
 
-    EPA(const ConvexHull& a, const ConvexHull& b, Simplex simplex);
+    EPA();
+    EPA(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, const glm::mat4& relativeTransform, Simplex simplex);
 
-    bool colliding() const;
+    [[nodiscard]] bool colliding() const;
 
-    glm::vec3 overlap() const;
-    glm::vec3 offset() const;
+    [[nodiscard]] glm::vec3 overlap() const;
+    [[nodiscard]] glm::vec3 offset() const;
 
-    std::pair<uint32_t, uint32_t> nearest() const;
+    [[nodiscard]] const std::pair<uint32_t, uint32_t>& nearest() const;
 
+    [[nodiscard]] const glm::vec3& colliderAClosestLocal() const;
+    [[nodiscard]] const glm::vec3& colliderAClosest() const;
+
+    [[nodiscard]] const glm::vec3& colliderBClosestLocal() const;
+    [[nodiscard]] const glm::vec3& colliderBClosest() const;
+
+    [[nodiscard]] float distance() const;
 
 private:
 
@@ -38,11 +46,13 @@ private:
         bool onHull;
     };
 
-    static Simplex::Vertex support(const ConvexHull& a, const ConvexHull& b, const glm::vec3& axis, std::pair<uint32_t, uint32_t> idx);
+    static Simplex::Vertex support(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, const glm::vec3& axis, std::pair<uint32_t, uint32_t> idx);
 
     glm::vec3 normal(uint32_t a, uint32_t b, uint32_t c);
 
-    void expandSimplex(const ConvexHull& a, const ConvexHull& b, Simplex& simplex);
+    static void expandSimplex(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, Simplex& simplex);
+    static bool isValid(const Simplex& simplex);
+
     void prepareFacets(const Simplex& simplex, std::vector<std::pair<float, uint32_t>>& order);
     void prepareFacets(const std::vector<uint32_t>& horizon, std::vector<std::pair<float, uint32_t>>& order);
 
@@ -60,6 +70,12 @@ private:
     glm::vec3 m_offset;
 
     std::pair<uint32_t, uint32_t> m_nearest;
+
+    glm::vec3 m_aLocal;
+    glm::vec3 m_aWorld;
+
+    glm::vec3 m_bLocal;
+    glm::vec3 m_bWorld;
 
 };
 
