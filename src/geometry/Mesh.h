@@ -8,6 +8,7 @@
 // Mesh manipulation
 
 #include <cstdint>
+#include <vector>
 
 #include "ConvexHull.h"
 
@@ -24,6 +25,7 @@ public:
     explicit Mesh(const ConvexHull& hull, bool applyColorPattern = true);
 
     explicit Mesh(const float *vertices, uint32_t vertexCount, const uint32_t *faceIndices, const uint32_t *faceSizes, uint32_t faceCount);
+    explicit Mesh(const std::vector<glm::vec3>& vertices, const std::vector<Triangle>& faces);
     explicit Mesh(const VertexArray& vertices, const FaceArray& faces);
 
     ~Mesh();

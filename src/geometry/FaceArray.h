@@ -9,12 +9,14 @@
 #include <vector>
 
 #include "VertexArray.h"
+#include "Triangle.h"
 
 class FaceArray {
 public:
     FaceArray(const uint32_t* indices, uint32_t triangleCount);
     FaceArray(const uint32_t* faces, const uint32_t* faceSizes, uint32_t faceCount);
 
+    explicit FaceArray(const std::vector<Triangle>& faces);
     explicit FaceArray(const std::vector<std::vector<uint32_t>>& indices);
 
     FaceArray(const FaceArray &);

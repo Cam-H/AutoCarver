@@ -9,12 +9,13 @@
 ControlWidget::ControlWidget(Scene* scene, QWidget* parent)
         : SceneWidget(scene, parent)
 {
-    auto sphere = MeshBuilder::box(0.1f, 0.1f, 0.1f);
+
+    auto sphere = MeshBuilder::icosphere(0.08f);
     sphere->setBaseColor({0, 0, 1});
 
     m_points.push_back(scene->createBody(sphere));
 
-    sphere = MeshBuilder::box(0.1f, 0.1f, 0.1f);
+    sphere = MeshBuilder::icosphere(0.08f);
     sphere->setBaseColor({0, 1, 0});
 
     m_points.push_back(scene->createBody(sphere));
@@ -52,9 +53,6 @@ void ControlWidget::keyPressEvent(QKeyEvent *e)
             theta -= rDel;
             break;
     }
-
-//    static glm::vec3 pos = {};
-//    pos += offset;
 
     uint32_t idx1 = !QGuiApplication::keyboardModifiers().testFlag(Qt::ShiftModifier), idx2 = (idx1 == 0);
 

@@ -86,6 +86,24 @@ Mesh::Mesh(const float *vertices, uint32_t vertexCount, const uint32_t *faceIndi
     calculateVertexNormals();
 }
 
+Mesh::Mesh(const std::vector<glm::vec3>& vertices, const std::vector<Triangle>& faces)
+    : m_vertices(vertices)
+    , m_faces(faces)
+    , m_faceNormals(nullptr, 0)
+    , m_vertexNormals(nullptr, 0)
+    , m_indexCount(0)
+    , m_colors(nullptr, 0)
+    , m_baseColor(1.0f, 1.0f, 1.0f)
+{
+
+    m_indexCount = m_faces.triangleCount();
+    m_indices = new uint32_t[m_indexCount * STRIDE];
+    memcpy(m_indices, m_faces.faces(), m_indexCount * STRIDE * sizeof(uint32_t));
+
+    calculateFaceNormals();
+    calculateVertexNormals();
+}
+
 Mesh::Mesh(const VertexArray& vertices, const FaceArray& faces)
     : m_vertices(vertices)
     , m_faces(faces)

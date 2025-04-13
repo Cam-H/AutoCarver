@@ -109,6 +109,117 @@ std::shared_ptr<Mesh> MeshBuilder::cylinder(float radius, float height, uint32_t
 
 }
 
+std::shared_ptr<Mesh> MeshBuilder::icosahedron(float radius){
+    std::vector<glm::vec3> vertices;
+    std::vector<Triangle> faces;
+
+    icosahedron(radius, vertices, faces);
+
+    return std::make_shared<Mesh>(vertices, faces);
+}
+
+void MeshBuilder::icosahedron(float radius, std::vector<glm::vec3>& vertices, std::vector<Triangle>& faces)
+{
+
+    vertices.reserve(12);
+    faces.reserve(20);
+
+    // Prepare icosahedron vertices
+    auto t = (float)(1 + sqrt(5) / 2);
+
+    vertices.emplace_back(-1, t, 0);
+    vertices.emplace_back(1, t, 0);
+    vertices.emplace_back(-1, -t, 0);
+    vertices.emplace_back(1, -t, 0);
+
+    vertices.emplace_back(0, -1, t);
+    vertices.emplace_back(0, 1, t);
+    vertices.emplace_back(0, -1, -t);
+    vertices.emplace_back(0, 1, -t);
+
+    vertices.emplace_back(t, 0, -1);
+    vertices.emplace_back(t, 0, 1);
+    vertices.emplace_back(-t, 0, -1);
+    vertices.emplace_back(-t, 0, 1);
+
+    // Bring all vertices on to the unit sphere and scale by parameter
+    for (glm::vec3& vertex : vertices) vertex = radius * glm::normalize(vertex);
+
+    // Triangulate the icosahedron
+    faces.emplace_back(0,  11, 5);
+    faces.emplace_back(0,  5,  1);
+    faces.emplace_back(0,  1,  7);
+    faces.emplace_back(0,  7,  10);
+    faces.emplace_back(0,  10, 11);
+
+    faces.emplace_back(1,  5,  9);
+    faces.emplace_back(5,  11, 4);
+    faces.emplace_back(11, 10, 2);
+    faces.emplace_back(10, 7,  6);
+    faces.emplace_back(7,  1,  8);
+
+    faces.emplace_back(3, 9, 4);
+    faces.emplace_back(3, 4, 2);
+    faces.emplace_back(3, 2, 6);
+    faces.emplace_back(3, 6, 8);
+    faces.emplace_back(3, 8, 9);
+
+    faces.emplace_back(4, 9, 5);
+    faces.emplace_back(2, 4, 11);
+    faces.emplace_back(6, 2, 10);
+    faces.emplace_back(8, 6, 7);
+    faces.emplace_back(9, 8, 1);
+}
+
+
+std::shared_ptr<Mesh> MeshBuilder::icosphere(float radius, uint8_t subdivisions)
+{
+    uint32_t vertexCount = 10 * (uint32_t)pow(2, 2 * subdivisions) + 2;
+
+    std::vector<glm::vec3> vertices;
+    vertices.reserve(vertexCount);
+
+    std::vector<Triangle> faces;
+//    faces.reserve(20 * 4 * subdivisions);
+
+    icosahedron(radius, vertices, faces);
+
+
+    // Refine the icosahedron through subdivision of faces
+    std::map<uint64_t, uint32_t> table;
+    for(uint8_t i = 0; i < subdivisions; i++){
+        uint32_t triangleCount = faces.size();
+
+        for(uint32_t j = 0; j < triangleCount; j++){
+            uint32_t a = getMidPoint(vertices, table, faces[j].I0, faces[j].I1, radius);
+            uint32_t b = getMidPoint(vertices, table, faces[j].I1, faces[j].I2, radius);
+            uint32_t c = getMidPoint(vertices, table, faces[j].I2, faces[j].I0, radius);
+
+            faces.emplace_back(faces[j].I0, a, c);
+            faces.emplace_back(faces[j].I1, b, a);
+            faces.emplace_back(faces[j].I2, c, b);
+            faces[j] = Triangle{a, b, c};
+        }
+    }
+
+
+    return std::make_shared<Mesh>(vertices, faces);
+}
+
+uint32_t MeshBuilder::getMidPoint(std::vector<glm::vec3>& vertices, std::map<uint64_t, uint32_t> &table, uint64_t iA, uint64_t iB, float scalar){
+
+    uint64_t key = iA > iB ? (iA << 32) + iB : (iB << 32) + iA;
+
+    auto it = table.find(key);
+    if(it == table.end()){
+        vertices.push_back(scalar * glm::normalize(vertices[iA] + vertices[iB]));
+        table[key] = vertices.size() - 1;
+        return vertices.size() - 1;
+    }
+
+    return table[key];
+}
+
 std::shared_ptr<Mesh> MeshBuilder::merge(const std::shared_ptr<Mesh>& a, const std::shared_ptr<Mesh>& b)
 {
     // Some values directly from the meshes

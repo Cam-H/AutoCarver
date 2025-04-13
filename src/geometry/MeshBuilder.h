@@ -9,8 +9,10 @@
 
 #include "VertexArray.h"
 #include "FaceArray.h"
+#include "Triangle.h"
 
 #include <vector>
+#include <map>
 
 class MeshBuilder {
 public:
@@ -23,6 +25,10 @@ public:
 
     static std::shared_ptr<Mesh> cylinder(float radius = 1.0f, float height = 1.0f, uint32_t segments = 6);
 
+    static std::shared_ptr<Mesh> icosahedron(float radius = 1.0f);
+    static std::shared_ptr<Mesh> icosphere(float radius = 1.0f, uint8_t subdivisions = 1);
+
+
     static std::shared_ptr<Mesh> merge(const std::shared_ptr<Mesh>& a, const std::shared_ptr<Mesh>& b);
 
     static std::shared_ptr<Mesh> eliminateCoincidentVertices(const std::shared_ptr<Mesh>& mesh);
@@ -34,6 +40,9 @@ public:
     static bool isManifold(const FaceArray& faces);
 
 private:
+
+    static void icosahedron(float radius, std::vector<glm::vec3>& vertices, std::vector<Triangle>& faces);
+    static uint32_t getMidPoint(std::vector<glm::vec3>& vertices, std::map<uint64_t, uint32_t> &table, uint64_t iA, uint64_t iB, float scalar);
 
     static void eliminateCoincidentVertices(const FaceArray& srcFaces, std::vector<glm::vec3>& vertices, std::vector<std::vector<uint32_t>>& faces);
 

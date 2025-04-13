@@ -38,7 +38,6 @@ std::shared_ptr<Mesh> randomMesh()
 
     // Generate a cloud of count vertices within a cube around the origin
     uint32_t count = rng.global()->bounded(4, 12);
-    std::cout << "C: " << count << "\n";
     auto *cloud = new float[3 * count], *ptr = cloud;
     for (uint32_t j = 0; j < 3 * count; j++) *ptr++ =  (float)rng.global()->bounded(2.0) - 1.0f;
 
@@ -62,9 +61,6 @@ int main(int argc, char *argv[])
 
     window.resize(1200, 700);
 
-//    QSize screenSize = view->screen()->size();
-//    container->setMinimumSize(QSize(500, 500));
-//    container->setMaximumSize(screenSize);
 
     auto *content = new QWidget;
     window.setCentralWidget(content);
@@ -91,29 +87,21 @@ int main(int argc, char *argv[])
     scene = new Scene();
 
     base = MeshBuilder::box(2, 2, 1);
-//    base = randomMesh();
 
     test = MeshBuilder::cylinder(0.5, 2, 6);
-//    test = randomMesh();
     test->translate(0.5, 0.5, 0.5);
 
     bodies.push_back(scene->createBody(base));
     bodies.push_back(scene->createBody(test));
 
-//    auto box = MeshBuilder::box(2, 2, 1);
-//    box->translate(3, 0, 0);
-//    scene->createBody(box);
 
     sceneWidget = new ControlWidget(scene);
     sceneWidget->setFocusPolicy(Qt::StrongFocus); // Enable keyboard focus
 
     hRenderLayout->addWidget(sceneWidget);
 
-//    sceneWidget
-
     sceneWidget->update();
 
-//    scene->start();
 #else
     QLabel note("OpenGL Support required");
     note.show();
@@ -127,15 +115,7 @@ int main(int argc, char *argv[])
             body->setMesh(randomMesh(), true);
         }
 
-        std::cout << "Generated\n";
         sceneWidget->update();
-    });
-
-    auto pushButton = new QCheckBox("Push with collision", control);
-    hControlLayout->addWidget(pushButton);
-
-    QObject::connect(pushButton, &QCheckBox::clicked, [&](bool checked) {
-
     });
 
     window.show();

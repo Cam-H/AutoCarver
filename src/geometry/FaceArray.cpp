@@ -38,6 +38,17 @@ FaceArray::FaceArray(const uint32_t* faces, const uint32_t* faceSizes, uint32_t 
 
 }
 
+FaceArray::FaceArray(const std::vector<Triangle>& faces)
+    : m_faceSizes(new uint32_t[faces.size()])
+    , m_faceCount(faces.size())
+    , m_indexCount(3 * faces.size())
+{
+    m_faces = new uint32_t[m_indexCount];
+
+    for (uint32_t i = 0; i < m_faceCount; i++) m_faceSizes[i] = 3;
+    memcpy(m_faces, faces.data(), m_faceCount * sizeof(Triangle));
+}
+
 FaceArray::FaceArray(const std::vector<std::vector<uint32_t>>& indices)
         : m_faceSizes(new uint32_t[indices.size()])
         , m_faceCount(indices.size())
