@@ -54,6 +54,9 @@ void ControlWidget::keyPressEvent(QKeyEvent *e)
         case Qt::Key::Key_E:
             theta -= rDel;
             break;
+        case Qt::Key::Key_Space:
+            handleCollision();
+            return;
     }
 
     uint32_t idx1 = !QGuiApplication::keyboardModifiers().testFlag(Qt::ShiftModifier), idx2 = (idx1 == 0);
@@ -62,20 +65,25 @@ void ControlWidget::keyPressEvent(QKeyEvent *e)
         m_scene->bodies()[idx1]->globalTranslate(offset);
         if (theta != 0) m_scene->bodies()[idx1]->rotate(glm::vec3{1, 0, 0}, theta);
 
-        EPA result = m_scene->bodies()[0]->collision(m_scene->bodies()[1]);
-        if (result.colliding()) {
-            m_scene->bodies()[idx2]->translate((idx1 ? 1.0f : -1.0f) * result.overlap());
-        }
+        handleCollision(idx2);
+    }
+}
 
-        m_scene->bodies()[idx1]->mesh()->setBaseColor(result.colliding() ? glm::vec3{1, 0, 0} : glm::vec3{1, 1, 1});
-        updateRenderGeometry(m_scene->bodies()[idx1]->mesh());
-        m_scene->bodies()[idx2]->mesh()->setBaseColor(result.colliding() ? glm::vec3{0.6, 0, 0} : glm::vec3{1, 1, 1});
-        updateRenderGeometry(m_scene->bodies()[idx2]->mesh());
+void ControlWidget::handleCollision(uint32_t active)
+{
 
-        m_scene->bodies()[2]->setPosition(result.colliderAClosest());
-        m_scene->bodies()[3]->setPosition(result.colliderBClosest());
-
-        update();
+    EPA result = m_scene->bodies()[0]->collision(m_scene->bodies()[1]);
+    if (result.colliding()) {
+        m_scene->bodies()[active]->translate((!active ? 1.0f : -1.0f) * result.overlap());
     }
 
+    m_scene->bodies()[!active]->mesh()->setBaseColor(result.colliding() ? glm::vec3{1, 0, 0} : glm::vec3{1, 1, 1});
+    updateRenderGeometry(m_scene->bodies()[!active]->mesh());
+    m_scene->bodies()[active]->mesh()->setBaseColor(result.colliding() ? glm::vec3{0.6, 0, 0} : glm::vec3{1, 1, 1});
+    updateRenderGeometry(m_scene->bodies()[active]->mesh());
+
+    m_scene->bodies()[2]->setPosition(result.colliderAClosest());
+    m_scene->bodies()[3]->setPosition(result.colliderBClosest());
+
+    update();
 }

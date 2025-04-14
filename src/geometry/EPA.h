@@ -11,6 +11,7 @@
 
 class ConvexHull;
 
+#include "VertexArray.h"
 #include "Triangle.h"
 #include "Simplex.h"
 
@@ -58,7 +59,8 @@ private:
 
     void calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon);
 
-    glm::vec3 barycentric(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& p);
+    [[nodiscard]] glm::vec3 barycentric(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& p);
+    [[nodiscard]] static glm::vec3 fromBarycentric(const VertexArray& va, const Triangle& triangle, const glm::vec3& bary);
 
     void exportState(const std::string& path);
 private:

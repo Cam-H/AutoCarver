@@ -73,12 +73,16 @@ EPA::EPA(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, c
     glm::vec3 proj = glm::dot(facets[idx].normal, vertices[tri.I0].val) * facets[idx].normal;
     m_offset = glm::mat3(transform) * -proj;
 
+    // TODO - Barycentric does not always give a reliable result for closest points. Need to evaluate closest of triangle-line or triangle-triangle
     // Calculate the barycentric co-ordinates of the intersection point
     glm::vec3 bary = Triangle::clampedBarycentric(vertices[tri.I0].val, vertices[tri.I1].val, vertices[tri.I2].val, proj);
 
+    Triangle triA = { vertices[tri.I0].idx.first, vertices[tri.I1].idx.first, vertices[tri.I2].idx.first };
+    Triangle triB = { vertices[tri.I0].idx.second, vertices[tri.I1].idx.second, vertices[tri.I2].idx.second };
+
     // Calculate the closest points (locally) on the colliders
-    m_aLocal = bary.x * a.vertices()[vertices[tri.I0].idx.first] + bary.y * a.vertices()[vertices[tri.I1].idx.first] + bary.z * a.vertices()[vertices[tri.I2].idx.first];
-    m_bLocal = bary.x * b.vertices()[vertices[tri.I0].idx.second] + bary.y * b.vertices()[vertices[tri.I1].idx.second] + bary.z * b.vertices()[vertices[tri.I2].idx.second];
+    m_aLocal = fromBarycentric(a.vertices(), triA, bary);
+    m_bLocal = fromBarycentric(b.vertices(), triB, bary);
 
     // Calculate the world positions from the local points
     glm::vec4 temp =  transform * glm::vec4(m_aLocal.x, m_aLocal.y, m_aLocal.z, 1.0);
@@ -87,8 +91,12 @@ EPA::EPA(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, c
     temp = transform * relativeTransform * glm::vec4(m_bLocal.x, m_bLocal.y, m_bLocal.z, 1.0);
     m_bWorld = { temp.x, temp.y, temp.z };
 
-
     m_nearest = vertices[tri.I0].idx;
+}
+
+glm::vec3 EPA::fromBarycentric(const VertexArray& va, const Triangle& triangle, const glm::vec3& bary)
+{
+    return bary.x * va[triangle.I0] + bary.y * va[triangle.I1] + bary.z * va[triangle.I2];
 }
 
 void EPA::exportState(const std::string& path)
@@ -131,7 +139,11 @@ void EPA::expandSimplex(const ConvexHull& a, const ConvexHull& b, const glm::mat
     switch (simplex.size()) {
         case 1: // Point case
         {
+//            glm::vec4 temp = transform * glm::vec4(b.center().x, b.center().y, b.center().z, 1.0f);
+//            glm::vec3 axis = glm::vec3{temp.x, temp.y, temp.z} - a.center();
             static const glm::vec3 searchDirections[6] = {
+//                                axis,
+//                                -axis,
                             {  1.0f,  0.0f,  0.0f },
                             { -1.0f,  0.0f,  0.0f },
                             {  0.0f,  1.0f,  0.0f },
@@ -204,7 +216,7 @@ bool EPA::isValid(const Simplex& simplex)
     if (simplex.size() != 4) {
         std::cout << "IS: " << simplex.size() << "\n";
         for (uint32_t i = 0; i < simplex.size(); i++) {
-            std::cout << simplex[i].idx.first << " " << simplex[i].idx.second << " " << simplex[i].val.x << " " << simplex[i].val.y << " " << simplex[i].val.z << "\n";
+            std::cout << simplex[i].idx.first << " " << simplex[i].idx.second << " (" << simplex[i].val.x << ", " << simplex[i].val.y << ", " << simplex[i].val.z << ")\n";
         }
     }
 

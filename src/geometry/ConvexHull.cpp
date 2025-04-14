@@ -172,6 +172,11 @@ glm::vec3 ConvexHull::facetNormal(uint32_t idx) const
     return glm::normalize(glm::cross(m_vertices[loop[1]] - m_vertices[loop[0]], m_vertices[loop[2]] - m_vertices[loop[0]]));
 }
 
+glm::vec3 ConvexHull::center() const
+{
+    return m_center;
+}
+
 bool ConvexHull::isSourceConvex() const
 {
     std::cout << m_vertices.vertexCount() << " " << m_cloud.vertexCount() << " |";

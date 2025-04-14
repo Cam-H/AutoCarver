@@ -21,6 +21,7 @@ public:
 //    using SceneWidget::SceneWidget;
     ControlWidget(const std::shared_ptr<Scene>& scene = nullptr, QWidget* parent = nullptr);
 
+    void handleCollision(uint32_t active = 0);
 
 protected:
     void keyPressEvent(QKeyEvent *e) override;

@@ -37,6 +37,8 @@ public:
 
     [[nodiscard]] glm::vec3 facetNormal(uint32_t idx) const;
 
+    [[nodiscard]] glm::vec3 center() const;
+
     [[nodiscard]] bool isSourceConvex() const;
     static bool isConvex(const VertexArray& test);
 

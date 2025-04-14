@@ -30,8 +30,6 @@ std::shared_ptr<Mesh> test;
 ControlWidget *sceneWidget = nullptr;
 std::shared_ptr<Scene> scene = nullptr;
 
-std::vector<std::shared_ptr<Body>> bodies;
-
 std::shared_ptr<Mesh> randomMesh()
 {
     static QRandomGenerator rng;
@@ -91,22 +89,8 @@ int main(int argc, char *argv[])
     test = MeshBuilder::cylinder(0.5, 2, 6);
     test->translate(0.5, 0.5, 0.5);
 
-    bodies.push_back(scene->createBody(base));
-    bodies.push_back(scene->createBody(test));
-
-//    auto body = bodies[1];
-//    body->translate({1, 2, 3});
-//    body->serialize("../out/body.bin");
-//
-////    auto body = std::make_shared<Body>("../out/body.bin");
-//    body->deserialize("../out/body.bin");
-//    auto tt = body->getTransform();
-//
-//    std::cout << tt[0][0] << " " << tt[1][0] << " " << tt[2][0] << " " << tt[3][0] << "\n"
-//              << tt[0][1] << " " << tt[1][1] << " " << tt[2][1] << " " << tt[3][1] << "\n"
-//              << tt[0][2] << " " << tt[1][2] << " " << tt[2][2] << " " << tt[3][2] << "\n"
-//              << tt[0][3] << " " << tt[1][3] << " " << tt[2][3] << " " << tt[3][3] << "\n";
-
+    scene->createBody(base);
+    scene->createBody(test);
 
     sceneWidget = new ControlWidget(scene);
     sceneWidget->setFocusPolicy(Qt::StrongFocus); // Enable keyboard focus
@@ -124,9 +108,8 @@ int main(int argc, char *argv[])
     hControlLayout->addWidget(randomButton);
 
     QObject::connect(randomButton, &QPushButton::clicked, [&]() {
-        for (auto &body : bodies) {
-            body->setMesh(randomMesh(), true);
-        }
+        scene->bodies()[0]->setMesh(randomMesh(), true);
+        scene->bodies()[1]->setMesh(randomMesh(), true);
 
         sceneWidget->update();
     });
@@ -151,6 +134,8 @@ int main(int argc, char *argv[])
 
         if (scene->deserialize("../out/scene.bin")) std::cout << "Deserialization complete!\n";
         else std::cout << "Deserialization failed!\n";
+
+        sceneWidget->handleCollision();
 
         sceneWidget->update();
     });
