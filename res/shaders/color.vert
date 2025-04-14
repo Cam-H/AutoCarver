@@ -4,11 +4,11 @@ precision mediump int;
 precision mediump float;
 #endif
 
-uniform mat4 u_transform;
-uniform mat4 vp_matrix;
+uniform mat4 mvp_matrix;
+uniform mat3 n_matrix;
 
 attribute vec4 a_position;
-attribute vec4 a_normal;
+attribute vec3 a_normal;
 attribute vec3 a_color;
 
 varying vec3 normal;
@@ -17,10 +17,9 @@ varying vec3 color;
 void main()
 {
     // Calculate vertex position in screen space
-    gl_Position = vp_matrix * u_transform * a_position;
+    gl_Position = mvp_matrix * a_position;
 
-    vec4 temp = u_transform * a_normal;
-    normal = vec3(temp.x, temp.y, temp.z);
+    normal = n_matrix * a_normal;
 
     color = a_color;
 

@@ -71,10 +71,10 @@ glm::mat4x4 Joint::calculateHTM(float value) const
     float ca = cosf(m_parameters.alpha), sa = sinf(m_parameters.alpha);
 
     auto htm = glm::mat4x4(
-            ct, -st * ca, st * sa, m_parameters.len * ct,
-            st, ct * ca, -ct * sa, m_parameters.len * st,
-            0, sa, ca, dist,
-            0, 0, 0, 1
+            ct, st, 0, 0,
+            -st * ca, ct * ca, sa, 0,
+            st * sa, -ct * sa, ca, 0,
+            m_parameters.len * ct, m_parameters.len * st, dist, 1
     );
 
     return htm;
@@ -92,9 +92,9 @@ glm::mat3x3 Joint::calculateHRM(float value) const
     float ca = cosf(m_parameters.alpha), sa = sinf(m_parameters.alpha);
 
     return {
-            ct, -st * ca, st * sa,
-            st, ct * ca, -ct * sa,
-            0, sa, ca
+            ct, st, 0,
+            -st * ca, ct * ca, sa,
+            st * sa, -ct * sa, ca
     };
 }
 
@@ -110,8 +110,8 @@ glm::mat4x4 Joint::localRotationMatrix() const
     float ct = cosf(m_value), st = sinf(m_value);
 
     return {
-            ct, -st, 0, 0,
-            st, ct, 0, 0,
+            ct, st, 0, 0,
+            -st, ct, 0, 0,
             0, 0, 1, 0,
             0, 0, 0, 1
     };

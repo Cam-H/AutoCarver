@@ -54,15 +54,12 @@ bool Scene::deserialize(std::ifstream& file)
 
     uint32_t bodyCount = Serializer::readUint(file);
 
-    std::cout << "->BC: " << bodyCount << "\n";
     for (uint32_t i = 0; i < bodyCount; i++) {
         auto body = std::make_shared<Body>((std::shared_ptr<Mesh>)nullptr);
         if (!body->deserialize(file)) return false;
 
         m_bodies.push_back(body);
     }
-
-    std::cout << "dddSerialization complete\n";
 
 
     // TODO serialize robots

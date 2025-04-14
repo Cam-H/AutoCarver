@@ -78,7 +78,7 @@ void Robot::updateTransforms()
 {
     const std::vector<glm::mat4> transforms = m_kinematics->jointTransforms();
     for (uint32_t i = 0; i < transforms.size(); i++) { // -1 if no EOAT
-        m_links[i]->setTransform(transforms[i] * m_transform);// TODO validate & include transform to position requests
+        m_links[i]->setTransform(m_transform * transforms[i]);
     }
 }
 
@@ -101,7 +101,7 @@ glm::vec3 Robot::getEOATPosition() const
     if (m_links.empty()) return {};
 
     const glm::mat4& transform = m_links[m_links.size() - 1]->getTransform();
-    return { transform[0][3], transform[1][3], transform[2][3] };
+    return { transform[3][0], transform[3][1], transform[3][2] };
 }
 
 glm::vec3 Robot::getEOATEuler() const

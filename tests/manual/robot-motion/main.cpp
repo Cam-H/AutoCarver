@@ -18,7 +18,7 @@
 
 #endif
 
-SculptProcess *scene = nullptr;
+std::shared_ptr<SculptProcess> scene = nullptr;
 SceneWidget *sceneWidget = nullptr;
 std::shared_ptr<Robot> robot = nullptr;
 
@@ -72,7 +72,8 @@ int main(int argc, char *argv[])
 
     model->setBaseColor({1, 0, 1});
 
-    scene = new SculptProcess(model);
+
+    scene = std::make_shared<SculptProcess>(model);
     robot = scene->createRobot(new ArticulatedWrist(0.8, 2, 2, 1));
 
     auto box = MeshBuilder::box(2, 2, 1);

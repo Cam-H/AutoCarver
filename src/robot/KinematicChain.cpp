@@ -12,11 +12,11 @@
 
 KinematicChain::KinematicChain()
     : m_axisTransform3(1, 0, 0,
-                       0, 0, -1,
-                       0, 1, 0)
+                       0, 0, 1,
+                       0, -1, 0)
     , m_axisTransform4(1, 0, 0, 0,
-                       0, 0, 1, 0,
-                       0, -1, 0, 0,
+                       0, 0, -1, 0,
+                       0, 1, 0, 0,
                        0, 0, 0, 1)
 {
 
@@ -54,14 +54,14 @@ std::vector<float> KinematicChain::invkin(const glm::mat4& transform)
     glm::vec3 scale;
     glm::vec3 skew;
     glm::vec4 perspective;
-    glm::decompose(transform * m_axisTransform4, scale, rotation, translation, skew,perspective);
+    glm::decompose(m_axisTransform4 * transform, scale, rotation, translation, skew,perspective);
 
     return invkin(translation, rotation);
 }
 
 std::vector<float> KinematicChain::invkin(const glm::vec3& position, const glm::vec3& euler)
 {
-    return invkin(position * m_axisTransform3, glm::quat_cast(glm::mat3_cast(glm::quat(euler)) * m_axisTransform3));
+    return invkin(m_axisTransform3 * position, glm::quat_cast(m_axisTransform3 * glm::mat3_cast(glm::quat(euler))));
 }
 
 std::vector<float> KinematicChain::invkin(const glm::vec3& position, const glm::quat& rotation)
@@ -90,8 +90,8 @@ std::vector<glm::mat4> KinematicChain::jointHTMs()
     std::vector<glm::mat4> transforms { glm::mat4(1.0f) };
 
     for (uint32_t i = 0; i < m_joints.size(); i++) {
-        transforms.push_back(m_joints[i].getHTM() * transforms[i]);
-        transforms[i] = m_joints[i].localRotationMatrix() * transforms[i];
+        transforms.push_back(transforms[i] * m_joints[i].getHTM());
+        transforms[i] = transforms[i] * m_joints[i].localRotationMatrix();
     }
 
     return transforms;
@@ -103,7 +103,7 @@ std::vector<glm::mat3> KinematicChain::jointHRMs(const std::vector<float>& value
     uint32_t count = std::min(values.size(), m_joints.size());
 
     for (uint32_t i = 0; i < count; i++) {
-        matrices.push_back(m_joints[i].calculateHRM(values[i]) * matrices[i]);
+        matrices.push_back(matrices[i] * m_joints[i].calculateHRM(values[i]));
     }
 
     return matrices;
@@ -115,7 +115,7 @@ std::vector<glm::mat4> KinematicChain::jointHTMs(const std::vector<float>& value
     uint32_t count = std::min(values.size(), m_joints.size());
 
     for (uint32_t i = 0; i < count; i++) {
-        transforms.push_back(m_joints[i].calculateHTM(values[i]) * transforms[i]);
+        transforms.push_back(transforms[i] * m_joints[i].calculateHTM(values[i]));
     }
 
     return transforms;
@@ -128,7 +128,7 @@ bool KinematicChain::ikValidation(const std::vector<float>& values)
             std::cout << "\033[31mFailed to solve for the specified position! Out of range!\033[0m\n";
             return false;
         } else if (!m_joints[i].withinLimits(values[i])) {
-            std::cout << "\033[31mFailed to solve for the specified position! Robot motion is limited!\033[0m\n";
+            std::cout << "\033[31mFailed to solve for the specified position! Robot mobility is limited!\033[0m\n";
             return false;
         }
     }
@@ -144,7 +144,7 @@ bool KinematicChain::ikValidation(const std::vector<float>& values, const glm::v
     auto transform = jointHTMs(values)[values.size() - 1];
 
     // Verify the calculated iks result in the specified position
-    glm::vec3 delta = position - glm::vec3{ transform[0][3], transform[1][3], transform[2][3] };
+    glm::vec3 delta = position - glm::vec3{ transform[3][0], transform[3][1], transform[3][2] };
     if (glm::dot(delta, delta) < 1e-3) {
         std::cout << "\033[31mFailed to solve! Specified position does not match calculated result! Delta: "
             << "[" << delta.x << ", " << delta.y << ", " << delta.z << "]\033[0m\n";
@@ -175,7 +175,7 @@ std::vector<glm::mat4> KinematicChain::jointTransforms()
 {
     std::vector<glm::mat4> transforms = jointHTMs();
     for (glm::mat4& transform : transforms) {
-        transform = transform * m_axisTransform4;
+        transform = m_axisTransform4 * transform;
     }
 
     return transforms;

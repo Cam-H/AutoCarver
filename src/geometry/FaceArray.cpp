@@ -46,8 +46,6 @@ FaceArray::FaceArray(const std::vector<Triangle>& faces)
 {
     m_faces = new uint32_t[m_indexCount];
 
-    std::cout << "DEF: " << m_faceCount << " " << m_indexCount << " " << triangleCount() << "\n";
-
     for (uint32_t i = 0; i < m_faceCount; i++) m_faceSizes[i] = 3;
     memcpy(m_faces, faces.data(), m_faceCount * sizeof(Triangle));
 }
@@ -143,8 +141,6 @@ FaceArray FaceArray::deserialize(std::ifstream& file)
 {
     // Read face details
     uint32_t faceCount = Serializer::readUint(file), indexCount = Serializer::readUint(file);
-
-    std::cout << faceCount << " " << indexCount << "...\n";
 
     // Read face data
     FaceArray fa(faceCount, indexCount);

@@ -42,9 +42,8 @@ std::vector<float> ArticulatedWrist::invkin(const glm::vec3& position, const glm
     float d1 = m_joints[0].getParameters().dist;
     float d6 = m_joints[5].getParameters().dist;
 
-
     // Identify the center of the spherical wrist
-    glm::vec3 Oc = position - glm::vec3{0, 0, d6} * rotation;
+    glm::vec3 Oc = position - rotation * glm::vec3{0, 0, d6};
 
     // Calculate corresponding joint angles for the first 3 joints
     values[0] = atan2f(Oc.y, Oc.x);
@@ -65,11 +64,11 @@ std::vector<float> ArticulatedWrist::invkin(const glm::vec3& position, const glm
     // Calculate rotation matrix of wrist to match desired rotation
     std::vector<glm::mat3> rotations = jointHRMs({ values[0], values[1], values[2] });
     auto R03 = rotations[rotations.size() - 1];
-    auto R36 = glm::toMat3(rotation) * glm::transpose(R03);
+    auto R36 = glm::transpose(R03) * glm::toMat3(rotation);
 
-    values[3] = atan2f(R36[1][2], R36[0][2]);
-    values[4] = atan2f(sqrtf(R36[0][2] * R36[0][2] + R36[1][2] * R36[1][2]), R36[2][2]);
-    values[5] = atan2f(R36[2][1], -R36[2][0]);
+    values[3] = atan2f(R36[2][1], R36[2][0]);
+    values[4] = atan2f(sqrtf(R36[2][0] * R36[2][0] + R36[2][1] * R36[2][1]), R36[2][2]);
+    values[5] = atan2f(R36[1][2], -R36[0][2]);
 
 
     // Verify the solved rotation joints are valid
