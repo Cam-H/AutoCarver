@@ -9,7 +9,7 @@
 #include <cmath>
 #include <iostream>
 
-SceneWidget::SceneWidget(Scene* scene, QWidget* parent)
+SceneWidget::SceneWidget(const std::shared_ptr<Scene>& scene, QWidget* parent)
     : m_scene(scene)
     , m_defaultProgramIdx(0)
     , m_fov(60.0)
@@ -246,6 +246,12 @@ std::vector<std::shared_ptr<Mesh>> SceneWidget::selectAll(Scene::Model target)
     return selection;
 }
 
+void SceneWidget::clear()
+{
+    m_geometries.clear();
+    m_renderMap.clear();
+}
+
 void SceneWidget::updateRenderGeometry(const std::shared_ptr<Mesh>& mesh)
 {
     auto item = getRender(mesh);
@@ -280,7 +286,6 @@ void SceneWidget::paintGL()
         const std::vector<std::shared_ptr<Body>>& bodies = m_scene->bodies();
 
         for (const std::shared_ptr<Body>& body : bodies) {
-
             glm::mat4x4 trans = body->getTransform();
 
             QMatrix4x4 transform;
@@ -307,6 +312,7 @@ void SceneWidget::paintGL()
             render(body->hullMesh(), transform, false);
         }
     }
+
 }
 
 void SceneWidget::render(const std::shared_ptr<Mesh> &mesh, const QMatrix4x4& transform, bool defaultVisibility)

@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <fstream>
 
 #include <vector>
 
@@ -25,6 +26,9 @@ public:
     VertexArray& operator=(VertexArray &&) noexcept;
 
     ~VertexArray();
+
+    bool serialize(std::ofstream& file);
+    static VertexArray deserialize(std::ifstream& file);
 
 //    float* operator[](uint32_t idx);
     glm::vec3 operator[](uint32_t idx) const;
@@ -63,6 +67,7 @@ public:
     [[nodiscard]] const float* vertices() const;
     [[nodiscard]] uint32_t vertexCount() const;
 
+    [[nodiscard]] static uint32_t stride() ;
     [[nodiscard]] uint32_t size() const; // Get the size of the array in bytes
     [[nodiscard]] bool empty() const;
 
@@ -73,6 +78,10 @@ public:
     void extents(const float *axis, float &near, float &far);
 
     void print() const;
+
+private:
+
+    VertexArray(uint32_t vertexCount);
 
 private:
     float *m_vertices;

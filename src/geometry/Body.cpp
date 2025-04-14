@@ -15,13 +15,8 @@
 
 Body::Body(const std::shared_ptr<Mesh> &mesh)
     : m_mesh(mesh)
-    , m_hull(mesh->vertices())
     , m_hullMesh(nullptr)
-    , m_hullOK(true)
-    , m_physEnabled(false)
-    , phys(nullptr)
-    , world(nullptr)
-    , m_physBody(nullptr)
+    , m_hullOK(false)
     , m_isManifold(false)
     , m_area(0)
     , m_volume(0)
@@ -31,17 +26,13 @@ Body::Body(const std::shared_ptr<Mesh> &mesh)
     , m_transform(1.0f)
 {
 
+    updateHull();
 }
 
-Body::Body(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world, const std::shared_ptr<Mesh> &mesh)
-    : m_mesh(mesh)
-    , m_hull(mesh->vertices())
+Body::Body(const std::string& filename)
+    : m_mesh(nullptr)
     , m_hullMesh(nullptr)
-    , m_hullOK(true)
-    , m_physEnabled(true)
-    , phys(phys)
-    , world(world)
-    , m_physBody(world->createRigidBody(rp3d::Transform::identity()))
+    , m_hullOK(false)
     , m_isManifold(false)
     , m_area(0)
     , m_volume(0)
@@ -50,16 +41,64 @@ Body::Body(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world, const std::shar
     , m_volumeOK(false)
     , m_transform(1.0f)
 {
+    Serializable::deserialize(filename);
 
-    prepareColliders();
+    updateHull();
 }
 
 Body::~Body()
 {
     //TODO delete body
     std::cout << "Body deletion\n";
-    if (m_physBody != nullptr) world->destroyRigidBody(m_physBody);
+//    if (m_physBody != nullptr) world->destroyRigidBody(m_physBody);
 //    phys->destroyConvexMesh()
+}
+
+//void Body::serialize(const std::string& filename)
+//{
+//    std::ofstream file(filename, std::ios::binary);
+//    if (!file.is_open()) {
+//        std::cerr << "Error: Failed to open file for Body writing.\n";
+//        return;
+//    }
+//
+//    serialize(file);
+//
+//    file.close();
+//    std::cout << "Body serialized successfully\n";
+//}
+
+bool Body::serialize(const std::string& filename)
+{
+    return Serializable::serialize(filename);
+}
+bool Body::serialize(std::ofstream& file)
+{
+    if (!m_mesh->serialize(file)) return false;
+
+    Serializer::writeTransform(file, m_transform);
+
+    return true;
+}
+
+bool Body::deserialize(const std::string& filename)
+{
+    return Serializable::deserialize(filename);
+}
+bool Body::deserialize(std::ifstream& file)
+{
+    m_mesh = std::make_shared<Mesh>(file);// TODO develop method to share meshes
+
+    if (m_mesh != nullptr && m_mesh->vertexCount() > 0 && m_mesh->faceCount() > 0) {
+
+        updateHull();
+
+        setTransform(Serializer::readTransform(file));
+
+        return true;
+    }
+
+    return false;
 }
 
 void Body::setMesh(const std::shared_ptr<Mesh>& mesh, bool recalculateHull) {
@@ -112,26 +151,6 @@ const glm::mat4x4& Body::getTransform()
     return m_transform;
 }
 
-void Body::prepareColliders()
-{
-//    rp3d::VertexArray vertexArray(m_hull.vertices().vertices(), 3 * sizeof(float), m_hull.vertexCount(), rp3d::VertexArray::DataType::VERTEX_FLOAT_TYPE);
-//
-//    std::vector<rp3d::Message> messages;
-//    rp3d::ConvexMesh *convexMesh = phys->createConvexMesh(vertexArray, messages);
-//    rp3d::ConvexMeshShape *convexMeshShape = phys->createConvexMeshShape(convexMesh, rp3d::Vector3(1, 1, 1));
-//
-//    rp3d::Transform transform = rp3d::Transform::identity();
-//
-////    rp3d::Collider *collider =
-//    m_physBody->addCollider(convexMeshShape, transform);
-
-}
-
-rp3d::RigidBody *Body::physicsBody()
-{
-    return m_physBody;
-}
-
 bool Body::collides(const std::shared_ptr<Body>& body)
 {
     if (!m_hullOK || !body->m_hullOK) return false;
@@ -150,7 +169,6 @@ bool Body::collides(const std::shared_ptr<Body>& body)
 bool Body::collision(const std::shared_ptr<Body>& body, glm::vec3& offset)
 {
     if (!m_hullOK || !body->m_hullOK) return false;
-
 
     EPA epa = collision(body);
     offset = epa.colliding() ? epa.overlap() : epa.offset();
@@ -185,7 +203,11 @@ std::pair<uint32_t, uint32_t> Body::cachedCollision(const std::shared_ptr<Body>&
 
 void Body::updateHull()
 {
-    m_hull = ConvexHull(m_mesh->vertices());
+    m_hullOK = false;
+
+    if (m_mesh != nullptr) m_hull = ConvexHull(m_mesh->vertices());
+
+    m_hullOK = m_hull.vertexCount() >= 4;
 
     // Create new mesh for rendering the hull, if one is already in use (replacement)
     if (m_hullMesh != nullptr) m_hullMesh = std::make_shared<Mesh>(m_hull);
@@ -222,9 +244,7 @@ const std::shared_ptr<Mesh>& Body::mesh()
 const ConvexHull& Body::hull()
 {
     if (!m_hullOK) {
-//        m_hull(m_mesh->vertices(), m_mesh->vertexCount());
-//        m_hull = ConvexHull(m_mesh->vertices(), m_mesh->vertexCount());
-        m_hullOK = true;
+        updateHull();
     }
 
     return m_hull;

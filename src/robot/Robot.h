@@ -10,12 +10,12 @@
 #include "KinematicChain.h"
 #include "geometry/Body.h"
 
-class Robot {
+class Robot { // TODO make serializable
 public:
 
     Robot(KinematicChain* kinematics);
 
-    void prepareLinks(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world);
+    void prepareLinks();
 
     void update();
 

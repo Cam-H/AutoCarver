@@ -4,6 +4,7 @@
 
 #include "FaceArray.h"
 #include "core/Timer.h"
+#include "fileIO/Serializable.h"
 
 #include <glm/glm.hpp>
 
@@ -44,6 +45,8 @@ FaceArray::FaceArray(const std::vector<Triangle>& faces)
     , m_indexCount(3 * faces.size())
 {
     m_faces = new uint32_t[m_indexCount];
+
+    std::cout << "DEF: " << m_faceCount << " " << m_indexCount << " " << triangleCount() << "\n";
 
     for (uint32_t i = 0; i < m_faceCount; i++) m_faceSizes[i] = 3;
     memcpy(m_faces, faces.data(), m_faceCount * sizeof(Triangle));
@@ -110,10 +113,45 @@ FaceArray& FaceArray::operator=(FaceArray&& other) noexcept
     return *this;
 }
 
+FaceArray::FaceArray(uint32_t faceCount, uint32_t indexCount)
+    : m_faceCount(faceCount)
+    , m_indexCount(indexCount)
+    , m_faceSizes(new uint32_t[faceCount])
+    , m_faces(new uint32_t[indexCount])
+{
+}
+
 FaceArray::~FaceArray()
 {
     delete[] m_faces;
     delete[] m_faceSizes;
+}
+
+bool FaceArray::serialize(std::ofstream& file)
+{
+    Serializer::writeUint(file, m_faceCount);
+    Serializer::writeUint(file, m_indexCount);
+
+//    file.write(reinterpret_cast<const char*>(&m_faceCount), sizeof(uint32_t));
+//    file.write(reinterpret_cast<const char*>(&m_indexCount), sizeof(uint32_t));
+    file.write(reinterpret_cast<const char*>(m_faceSizes), m_faceCount * sizeof(uint32_t));
+    file.write(reinterpret_cast<const char*>(m_faces), m_indexCount * sizeof(uint32_t));
+
+    return true;
+}
+FaceArray FaceArray::deserialize(std::ifstream& file)
+{
+    // Read face details
+    uint32_t faceCount = Serializer::readUint(file), indexCount = Serializer::readUint(file);
+
+    std::cout << faceCount << " " << indexCount << "...\n";
+
+    // Read face data
+    FaceArray fa(faceCount, indexCount);
+    file.read(reinterpret_cast<char*>(fa.m_faceSizes), faceCount * sizeof(uint32_t));
+    file.read(reinterpret_cast<char*>(fa.m_faces), indexCount * sizeof(uint32_t));
+
+    return fa;
 }
 
 uint32_t* FaceArray::operator[](uint32_t idx)

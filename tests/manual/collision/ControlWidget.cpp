@@ -6,19 +6,21 @@
 #include "geometry/MeshBuilder.h"
 #include "geometry/EPA.h"
 
-ControlWidget::ControlWidget(Scene* scene, QWidget* parent)
+ControlWidget::ControlWidget(const std::shared_ptr<Scene>& scene, QWidget* parent)
         : SceneWidget(scene, parent)
 {
 
     auto sphere = MeshBuilder::icosphere(0.08f);
     sphere->setBaseColor({0, 0, 1});
-
-    m_points.push_back(scene->createBody(sphere));
+    scene->createBody(sphere);
 
     sphere = MeshBuilder::icosphere(0.08f);
     sphere->setBaseColor({0, 1, 0});
+    scene->createBody(sphere);
 
-    m_points.push_back(scene->createBody(sphere));
+//    for (uint32_t i = 0; i < sphere->faceCount(); i += 2) {
+//        sphere->setFaceColor(i, {1, 0, 1});
+//    }
 }
 
 void ControlWidget::keyPressEvent(QKeyEvent *e)
@@ -58,7 +60,7 @@ void ControlWidget::keyPressEvent(QKeyEvent *e)
 
     if (glm::length(offset) > 0 || theta != 0) {
         m_scene->bodies()[idx1]->globalTranslate(offset);
-        if (theta != 0) m_scene->bodies()[idx1]->globalRotate(glm::vec3{1, 0, 0}, theta);
+        if (theta != 0) m_scene->bodies()[idx1]->rotate(glm::vec3{1, 0, 0}, theta);
 
         EPA result = m_scene->bodies()[0]->collision(m_scene->bodies()[1]);
         if (result.colliding()) {
@@ -70,8 +72,8 @@ void ControlWidget::keyPressEvent(QKeyEvent *e)
         m_scene->bodies()[idx2]->mesh()->setBaseColor(result.colliding() ? glm::vec3{0.6, 0, 0} : glm::vec3{1, 1, 1});
         updateRenderGeometry(m_scene->bodies()[idx2]->mesh());
 
-        m_points[0]->setPosition(result.colliderAClosest());
-        m_points[1]->setPosition(result.colliderBClosest());
+        m_scene->bodies()[2]->setPosition(result.colliderAClosest());
+        m_scene->bodies()[3]->setPosition(result.colliderBClosest());
 
         update();
     }

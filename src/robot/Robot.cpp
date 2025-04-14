@@ -20,7 +20,7 @@ Robot::Robot(KinematicChain* kinematics)
 }
 
 // Prepare links based on the kinematic chain
-void Robot::prepareLinks(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world)
+void Robot::prepareLinks()
 {
     float height = 0.8f;
     for (const Joint& joint : m_kinematics->getJoints()) {
@@ -37,13 +37,13 @@ void Robot::prepareLinks(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world)
         }
 
 
-        m_links.push_back(std::make_shared<Body>(phys, world, mesh));
+        m_links.push_back(std::make_shared<Body>(mesh));
         m_links[m_links.size() - 1]->prepareHullMesh();
     }
 
     auto eoatMesh = MeshBuilder::box(0.2f, 0.1f, 0.05f);
     eoatMesh->setBaseColor({0, 0, 1});
-    m_links.push_back(std::make_shared<Body>(phys, world, eoatMesh));
+    m_links.push_back(std::make_shared<Body>(eoatMesh));
 
     updateTransforms();
 }

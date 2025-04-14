@@ -3,6 +3,7 @@
 //
 
 #include "VertexArray.h"
+#include "fileIO/Serializable.h"
 
 #include <iostream>
 
@@ -69,6 +70,35 @@ VertexArray::~VertexArray()
 {
     delete[] m_vertices;
 }
+
+VertexArray::VertexArray(uint32_t vertexCount)
+    : m_vertices(new float[vertexCount * STRIDE])
+    , m_vertexCount(vertexCount)
+{
+}
+
+bool VertexArray::serialize(std::ofstream& file)
+{
+    Serializer::writeUint(file, m_vertexCount);
+//    file.write(reinterpret_cast<const char*>(&m_vertexCount), sizeof(uint32_t));
+    file.write(reinterpret_cast<const char*>(m_vertices), m_vertexCount * stride());
+
+    return true;
+}
+
+VertexArray VertexArray::deserialize(std::ifstream& file)
+{
+
+    // Read vertex count
+    uint32_t vertexCount = Serializer::readUint(file);
+
+    // Read vertex data
+    VertexArray va(vertexCount);
+    file.read(reinterpret_cast<char*>(va.m_vertices), vertexCount * VertexArray::stride());
+
+    return va;
+}
+
 
 //float* VertexArray::operator[](uint32_t idx)
 //{
@@ -269,9 +299,13 @@ uint32_t VertexArray::vertexCount() const
     return m_vertexCount;
 }
 
+uint32_t VertexArray::stride() {
+    return STRIDE * sizeof(float);
+}
+
 uint32_t VertexArray::size() const
 {
-    return (m_vertexCount * STRIDE) * sizeof(float) + sizeof(uint32_t);
+    return m_vertexCount * stride() + sizeof(uint32_t);
 }
 
 bool VertexArray::empty() const

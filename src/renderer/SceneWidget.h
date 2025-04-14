@@ -27,7 +27,7 @@ Q_OBJECT
 
 public:
     using QOpenGLWidget::QOpenGLWidget;
-    SceneWidget(Scene* scene = nullptr, QWidget* parent = nullptr);
+    SceneWidget(const std::shared_ptr<Scene>& scene = nullptr, QWidget* parent = nullptr);
     ~SceneWidget();
 
     void addShaderProgram(const std::string& name);
@@ -39,6 +39,8 @@ public:
 
     void showAll(Scene::Model target = Scene::Model::ALL);
     void hideAll(Scene::Model target = Scene::Model::ALL);
+
+    void clear();
 
 protected:
 
@@ -75,7 +77,7 @@ private:
 
 protected:
 
-    Scene* m_scene;
+    std::shared_ptr<Scene> m_scene;
 
 private:
 

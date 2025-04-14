@@ -28,6 +28,48 @@ Scene::~Scene()
     m_physicsCommon.destroyPhysicsWorld(m_world);
 }
 
+
+bool Scene::serialize(const std::string& filename)
+{
+    return Serializable::serialize(filename);
+}
+bool Scene::serialize(std::ofstream& file)
+{
+
+    Serializer::writeUint(file, m_bodies.size());
+    for (const std::shared_ptr<Body>& body : m_bodies) {
+        if (!body->serialize(file)) return false;
+    }
+
+    return true;
+}
+
+bool Scene::deserialize(const std::string& filename)
+{
+    return Serializable::deserialize(filename);
+}
+bool Scene::deserialize(std::ifstream& file)
+{
+    m_bodies.clear();
+
+    uint32_t bodyCount = Serializer::readUint(file);
+
+    std::cout << "->BC: " << bodyCount << "\n";
+    for (uint32_t i = 0; i < bodyCount; i++) {
+        auto body = std::make_shared<Body>((std::shared_ptr<Mesh>)nullptr);
+        if (!body->deserialize(file)) return false;
+
+        m_bodies.push_back(body);
+    }
+
+    std::cout << "dddSerialization complete\n";
+
+
+    // TODO serialize robots
+
+    return true;
+}
+
 //void Scene::linkRenderer(Qt3DCore::QEntity *parent, Qt3DExtras::Qt3DWindow *view)
 //{
 //    m_root = new Qt3DCore::QEntity(parent);
@@ -105,67 +147,6 @@ void Scene::clear(uint8_t level)
 //    m_entities.erase(m_entities.begin() + count);
 }
 
-//void Scene::sync()
-//{
-//    for (SceneEntity& entity : m_entities) {
-//        auto physics = entity.body->physicsBody();
-//
-//        if (physics != nullptr && m_root != nullptr && physics->getType() != rp3d::BodyType::STATIC && !physics->isSleeping()) {
-//            sync(physics, entity.render);
-//        }
-//    }
-//}
-
-//void Scene::sync(rp3d::RigidBody *physics, RenderEntity *render)
-//{
-//    const reactphysics3d::Transform& transform = physics->getTransform();
-//    const reactphysics3d::Vector3& position = transform.getPosition();
-//    const reactphysics3d::Quaternion& orientation = transform.getOrientation();
-//
-//    render->setTranslation({position.x, position.y, position.z});
-//    render->setRotation(QQuaternion(orientation.w, orientation.x, orientation.y, orientation.z));
-//}
-
-
-void Scene::translateBody(uint32_t idx, float w, float x, float y, float z)
-{
-//    if (m_root == nullptr || idx >= m_entities.size()) return;
-//
-//    auto physics = m_entities[idx].body->physicsBody();
-//    auto render = m_entities[idx].render;
-//
-//    if (physics != nullptr) {
-//        rp3d::Transform transform = physics->getTransform();
-//        transform.setPosition(transform.getPosition() + rp3d::Vector3{x, y, z});
-//        physics->setTransform(transform);
-//
-//        const rp3d::Vector3& position = transform.getPosition();
-//        render->setTranslation({position.x, position.y, position.z});
-//    } else{
-//        Qt3DCore::QTransform *transform = render->transformation();
-//        transform->setTranslation(transform->translation() + QVector3D{x, y, z});
-//    }
-}
-void Scene::rotateBody(uint32_t idx, float w, float x, float y, float z)
-{
-//    if (m_root == nullptr || idx >= m_entities.size()) return;
-//
-//    auto physics = m_entities[idx].body->physicsBody();
-//    auto render = m_entities[idx].render;
-//
-//    if (physics != nullptr) {
-//        rp3d::Transform transform = physics->getTransform();
-//        transform.setOrientation(transform.getOrientation() * rp3d::Quaternion(rp3d::Vector3(x, y, z), w));
-//        physics->setTransform(transform);
-//
-//        const rp3d::Quaternion& orientation = transform.getOrientation();
-//        render->setRotation(QQuaternion(orientation.w, orientation.x, orientation.y, orientation.z));
-//    } else {
-//        Qt3DCore::QTransform *transform = render->transformation();
-//        transform->setRotation(transform->rotation() * QQuaternion(w, x, y, z));
-//    }
-}
-
 std::shared_ptr<Body> Scene::createBody(const std::string &filepath, rp3d::BodyType type)
 {
     return createBody(MeshHandler::loadAsMeshBody(filepath), type);
@@ -173,8 +154,10 @@ std::shared_ptr<Body> Scene::createBody(const std::string &filepath, rp3d::BodyT
 
 std::shared_ptr<Body> Scene::createBody(const std::shared_ptr<Mesh>& mesh, rp3d::BodyType type)
 {
-    auto body = std::make_shared<Body>(&m_physicsCommon, m_world, mesh);
-    body->physicsBody()->setType(type);
+    if (mesh == nullptr) return nullptr;
+
+    auto body = std::make_shared<Body>(mesh);
+//    body->physicsBody()->setType(type);
 
     prepareBody(body);
 
@@ -185,7 +168,7 @@ std::shared_ptr<Robot> Scene::createRobot(KinematicChain* kinematics)
 {
     auto robot = std::make_shared<Robot>(kinematics);
 
-    robot->prepareLinks(&m_physicsCommon, m_world);
+    robot->prepareLinks();
 
     for (const auto& link : robot->links()) {
         m_bodies.push_back(link);

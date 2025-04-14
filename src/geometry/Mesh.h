@@ -10,6 +10,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "fileIO/Serializable.h"
+
 #include "ConvexHull.h"
 
 #include "VertexArray.h"
@@ -18,7 +20,7 @@
 static glm::vec3 NULL_COLOR = { 1.0f, 0.0f, 1.0f };
 
 
-class Mesh {
+class Mesh : public Serializable {
 public:
 
     explicit Mesh(float vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t indexCount);
@@ -28,7 +30,16 @@ public:
     explicit Mesh(const std::vector<glm::vec3>& vertices, const std::vector<Triangle>& faces);
     explicit Mesh(const VertexArray& vertices, const FaceArray& faces);
 
+    explicit Mesh(const std::string& filename);
+    explicit Mesh(std::ifstream& file);
+
     ~Mesh();
+
+    bool serialize(const std::string& filename) override;
+    bool serialize(std::ofstream& file) override;
+
+    bool deserialize(const std::string& filename) override;
+    bool deserialize(std::ifstream& file) override;
 
     void scale(float scalar);
     void scale(float x, float y, float z);
@@ -73,6 +84,8 @@ public:
     void print() const;
 
 private:
+
+    void initialize(bool prepareIndexing = true);
 
     void calculateFaceNormals();
     void calculateVertexNormals();

@@ -19,15 +19,13 @@ Q_OBJECT
 
 public:
 //    using SceneWidget::SceneWidget;
-    ControlWidget(Scene* scene = nullptr, QWidget* parent = nullptr);
+    ControlWidget(const std::shared_ptr<Scene>& scene = nullptr, QWidget* parent = nullptr);
 
 
 protected:
     void keyPressEvent(QKeyEvent *e) override;
 
 private:
-
-    std::vector<std::shared_ptr<Body>> m_points;
 
 };
 

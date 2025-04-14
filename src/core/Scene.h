@@ -12,13 +12,15 @@
 
 #include <vector>
 #include <thread>
+#include <fstream>
 
+#include "fileIO/Serializable.h"
 #include "geometry/Body.h"
 #include "renderer/RenderEntity.h"
 #include "robot/Robot.h"
 
 
-class Scene {
+class Scene : public Serializable {
 public:
 
     enum class Model {
@@ -28,20 +30,15 @@ public:
     Scene();
     ~Scene();
 
+    bool serialize(const std::string& filename) override;
+    bool serialize(std::ofstream& file) override;
+
+    bool deserialize(const std::string& filename) override;
+    bool deserialize(std::ifstream& file) override;
+
     void start();
     void pause();
     void stop();
-
-//    void linkRenderer(Qt3DCore::QEntity *parent, Qt3DExtras::Qt3DWindow *view);
-
-//    void showAll();
-//    void hideAll();
-//
-//    void show(uint32_t idx, Model target = Model::ALL);
-//    void hide(uint32_t idx, Model target = Model::ALL);
-
-    void translateBody(uint32_t idx, float w, float x, float y, float z);
-    void rotateBody(uint32_t idx, float w, float x, float y, float z);
 
     void clear(uint8_t level = 0);
 
@@ -57,7 +54,6 @@ public:
 
 protected:
     void prepareBody(const std::shared_ptr<Body>& body, uint8_t level = 0);
-//    RenderEntity* prepareRender(Body *body);
 
 private:
     void run();

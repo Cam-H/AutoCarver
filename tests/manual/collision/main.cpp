@@ -28,7 +28,7 @@ std::shared_ptr<Mesh> base;
 std::shared_ptr<Mesh> test;
 
 ControlWidget *sceneWidget = nullptr;
-Scene *scene = nullptr;
+std::shared_ptr<Scene> scene = nullptr;
 
 std::vector<std::shared_ptr<Body>> bodies;
 
@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 
 #ifndef QT_NO_OPENGL
 
-    scene = new Scene();
+    scene = std::make_shared<Scene>();
 
     base = MeshBuilder::box(2, 2, 1);
 
@@ -93,6 +93,19 @@ int main(int argc, char *argv[])
 
     bodies.push_back(scene->createBody(base));
     bodies.push_back(scene->createBody(test));
+
+//    auto body = bodies[1];
+//    body->translate({1, 2, 3});
+//    body->serialize("../out/body.bin");
+//
+////    auto body = std::make_shared<Body>("../out/body.bin");
+//    body->deserialize("../out/body.bin");
+//    auto tt = body->getTransform();
+//
+//    std::cout << tt[0][0] << " " << tt[1][0] << " " << tt[2][0] << " " << tt[3][0] << "\n"
+//              << tt[0][1] << " " << tt[1][1] << " " << tt[2][1] << " " << tt[3][1] << "\n"
+//              << tt[0][2] << " " << tt[1][2] << " " << tt[2][2] << " " << tt[3][2] << "\n"
+//              << tt[0][3] << " " << tt[1][3] << " " << tt[2][3] << " " << tt[3][3] << "\n";
 
 
     sceneWidget = new ControlWidget(scene);
@@ -114,6 +127,30 @@ int main(int argc, char *argv[])
         for (auto &body : bodies) {
             body->setMesh(randomMesh(), true);
         }
+
+        sceneWidget->update();
+    });
+
+
+    auto saveButton = new QPushButton("Save State", control);
+    hControlLayout->addWidget(saveButton);
+
+    QObject::connect(saveButton, &QPushButton::clicked, [&]() {
+        if (scene->serialize("../out/scene.bin")) std::cout << "Serialization complete!\n";
+        else std::cout << "Serialization failed!\n";
+
+        sceneWidget->update();
+    });
+
+
+    auto restoreButton = new QPushButton("Restore State", control);
+    hControlLayout->addWidget(restoreButton);
+
+    QObject::connect(restoreButton, &QPushButton::clicked, [&]() {
+        sceneWidget->clear();
+
+        if (scene->deserialize("../out/scene.bin")) std::cout << "Deserialization complete!\n";
+        else std::cout << "Deserialization failed!\n";
 
         sceneWidget->update();
     });

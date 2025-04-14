@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <fstream>
 
 #include "VertexArray.h"
 #include "Triangle.h"
@@ -26,6 +27,9 @@ public:
     FaceArray& operator=(FaceArray &&) noexcept;
 
     ~FaceArray();
+
+    bool serialize(std::ofstream& file);
+    static FaceArray deserialize(std::ifstream& file);
 
     uint32_t* operator[](uint32_t idx);
     uint32_t* operator[](uint32_t idx) const;
@@ -52,6 +56,8 @@ public:
     void print() const;
 
 private:
+
+    FaceArray(uint32_t faceCount, uint32_t indexCount);
 
     uint32_t* idxPtr(uint32_t idx);
     uint32_t* idxPtr(uint32_t idx) const;

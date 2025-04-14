@@ -8,6 +8,7 @@
 
 // Mesh manipulation
 
+#include <fstream>
 #include <iostream>
 #include <glm/glm.hpp>
 //#include <glm/gtx/norm.hpp>
@@ -25,11 +26,7 @@ Mesh::Mesh(float vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t 
     , m_baseColor(1.0f, 1.0f, 1.0f)
     , m_adjacencyOK(false)
 {
-
-//    ScopedTimer timer("Make mesh");
-
-    calculateFaceNormals();
-    calculateVertexNormals();
+    initialize(false);
 }
 
 Mesh::Mesh(const ConvexHull& hull, bool applyColorPattern)
@@ -43,12 +40,6 @@ Mesh::Mesh(const ConvexHull& hull, bool applyColorPattern)
         , m_adjacencyOK(false)
 {
 
-//    ScopedTimer timer("Convert convex hull to mesh");
-
-    m_indexCount = m_faces.triangleCount();
-    m_indices = new uint32_t[m_indexCount * STRIDE];
-    m_faces.triangulation(m_indices);
-
     // Convex hull renders default to alternating yellow-orange color pattern
     if (applyColorPattern) {
         for (uint32_t i = 0; i < faceCount(); i+= 2) {
@@ -56,8 +47,7 @@ Mesh::Mesh(const ConvexHull& hull, bool applyColorPattern)
         }
     }
 
-    calculateFaceNormals();
-    calculateVertexNormals();
+    initialize();
 }
 
 Mesh::Mesh(const float *vertices, uint32_t vertexCount, const uint32_t *faceIndices, const uint32_t *faceSizes, uint32_t faceCount)
@@ -69,21 +59,7 @@ Mesh::Mesh(const float *vertices, uint32_t vertexCount, const uint32_t *faceIndi
     , m_colors(nullptr, 0)
     , m_baseColor(1.0f, 1.0f, 1.0f)
 {
-//    ScopedTimer timer("Triangulation of mesh");
-
-    m_indexCount = m_faces.triangleCount();
-    m_indices = new uint32_t[m_indexCount * STRIDE];
-    m_faces.triangulation(m_indices);
-
-
-//    m_colors = new float[3 * m_indexCount * STRIDE];
-//    setBaseColor({100, 100, 100});
-//    for (uint32_t i = 0; i < faceCount(); i+= 2) {
-//        setFaceColor(i, {200, 150, 10});
-//    }
-
-    calculateFaceNormals();
-    calculateVertexNormals();
+    initialize();
 }
 
 Mesh::Mesh(const std::vector<glm::vec3>& vertices, const std::vector<Triangle>& faces)
@@ -100,8 +76,7 @@ Mesh::Mesh(const std::vector<glm::vec3>& vertices, const std::vector<Triangle>& 
     m_indices = new uint32_t[m_indexCount * STRIDE];
     memcpy(m_indices, m_faces.faces(), m_indexCount * STRIDE * sizeof(uint32_t));
 
-    calculateFaceNormals();
-    calculateVertexNormals();
+    initialize(false);
 }
 
 Mesh::Mesh(const VertexArray& vertices, const FaceArray& faces)
@@ -113,10 +88,46 @@ Mesh::Mesh(const VertexArray& vertices, const FaceArray& faces)
     , m_colors(nullptr, 0)
     , m_baseColor(1.0f, 1.0f, 1.0f)
 {
-    m_indexCount = m_faces.triangleCount();
-    m_indices = new uint32_t[m_indexCount * STRIDE];
-    m_faces.triangulation(m_indices);
+    initialize();
+}
 
+
+Mesh::Mesh(const std::string& filename)
+    : m_vertices(nullptr, 0)
+    , m_faces(nullptr, nullptr, 0)
+    , m_faceNormals(nullptr, 0)
+    , m_vertexNormals(nullptr, 0)
+    , m_indexCount(0)
+    , m_colors(nullptr, 0)
+    , m_baseColor(1.0f, 1.0f, 1.0f)
+{
+    Serializable::deserialize(filename);
+    initialize();
+}
+
+Mesh::Mesh(std::ifstream& file)
+    : m_vertices(nullptr, 0)
+    , m_faces(nullptr, nullptr, 0)
+    , m_faceNormals(nullptr, 0)
+    , m_vertexNormals(nullptr, 0)
+    , m_indexCount(0)
+    , m_colors(nullptr, 0)
+    , m_baseColor(1.0f, 1.0f, 1.0f)
+{
+
+    if (Mesh::deserialize(file)) initialize();
+    else std::cerr << "Failed to deserialize mesh properly!\n";
+}
+
+
+
+void Mesh::initialize(bool prepareIndexing)
+{
+    if (prepareIndexing) {
+        m_indexCount = m_faces.triangleCount();
+        m_indices = new uint32_t[m_indexCount * STRIDE];
+        m_faces.triangulation(m_indices);
+    }
 
     calculateFaceNormals();
     calculateVertexNormals();
@@ -127,6 +138,48 @@ Mesh::~Mesh()
     delete[] m_indices;
 }
 
+bool Mesh::serialize(const std::string& filename)
+{
+    return Serializable::serialize(filename);
+}
+bool Mesh::serialize(std::ofstream& file)
+{
+    if (m_vertices.serialize(file) && m_faces.serialize(file)) {
+
+        Serializer::writeVec3(file, m_baseColor);
+        Serializer::writeBool(file, faceColorsAssigned());
+
+        if (faceColorsAssigned()) return m_colors.serialize(file);
+
+        return true;
+    }
+
+    return false;
+}
+
+bool Mesh::deserialize(const std::string& filename)
+{
+    return Serializable::deserialize(filename);
+}
+bool Mesh::deserialize(std::ifstream& file)
+{
+    m_vertices = VertexArray::deserialize(file);
+    m_faces = FaceArray::deserialize(file);
+
+    if (m_vertices.vertexCount() > 0 && m_faces.faceCount() > 0) {
+
+        m_baseColor = Serializer::readVec3(file);
+        bool faceColors = Serializer::readBool(file);
+
+        if (faceColors) {
+            m_colors = VertexArray::deserialize(file);
+        }
+
+        return true;
+    }
+
+    return false;
+}
 
 void Mesh::calculateFaceNormals()
 {

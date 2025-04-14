@@ -5,25 +5,33 @@
 #ifndef AUTOCARVER_BODY_H
 #define AUTOCARVER_BODY_H
 
-// Physics simulation
-#include <reactphysics3d/reactphysics3d.h>
+#include <fstream>
 
 // Mesh manipulation
 
 #include <vector>
 #include <glm/glm.hpp>
 
+#include "fileIO/Serializable.h"
+
 #include "Mesh.h"
 #include "ConvexHull.h"
 
 
-class Body {
+class Body : public Serializable {
 public:
 
     explicit Body(const std::shared_ptr<Mesh> &mesh);
-    explicit Body(rp3d::PhysicsCommon *phys, rp3d::PhysicsWorld *world, const std::shared_ptr<Mesh>& mesh);
+
+    explicit Body(const std::string& filename);
 
     ~Body();
+
+    bool serialize(const std::string& filename) override;
+    bool serialize(std::ofstream& file) override;
+
+    bool deserialize(const std::string& filename) override;
+    bool deserialize(std::ifstream& file) override;
 
     void setMesh(const std::shared_ptr<Mesh>& mesh, bool recalculateHull = false);
 
@@ -54,8 +62,6 @@ public:
 
     const std::shared_ptr<Mesh>& hullMesh();
 
-    rp3d::RigidBody *physicsBody();
-
     bool collides(const std::shared_ptr<Body>& body);
     bool collision(const std::shared_ptr<Body>& body, glm::vec3& offset);
 
@@ -65,8 +71,6 @@ private:
 
     void cacheCollision(const std::shared_ptr<Body>& body, const std::pair<uint32_t, uint32_t>& start);
     std::pair<uint32_t, uint32_t> cachedCollision(const std::shared_ptr<Body>& body);
-
-    void prepareColliders();
 
     void evaluateManifold();
     void calculateArea();
@@ -83,13 +87,6 @@ protected:
 
     glm::mat4x4 m_transform;
 
-    // Physics
-    bool m_physEnabled;
-    rp3d::PhysicsCommon *phys;
-    rp3d::PhysicsWorld *world;
-
-    rp3d::RigidBody *m_physBody;
-    std::vector<rp3d::Collider*> m_colliders;
 
     bool m_isManifold;
     float m_area;
