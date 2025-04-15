@@ -214,6 +214,7 @@ std::vector<std::shared_ptr<Mesh>> SceneWidget::select(uint32_t idx, Scene::Mode
             if (m_scene->bodies()[idx]->hullMesh() != nullptr) selection.push_back(m_scene->bodies()[idx]->hullMesh());
             break;
         case Scene::Model::BOUNDING_SPHERE:
+            if (m_scene->bodies()[idx]->bSphereMesh() != nullptr) selection.push_back(m_scene->bodies()[idx]->bSphereMesh());
             break;
     }
 
@@ -240,6 +241,9 @@ std::vector<std::shared_ptr<Mesh>> SceneWidget::selectAll(Scene::Model target)
             }
             break;
         case Scene::Model::BOUNDING_SPHERE:
+            for (const std::shared_ptr<Body>& body : m_scene->bodies()) {
+                if (body->hullMesh() != nullptr) selection.push_back(body->bSphereMesh());
+            }
             break;
     }
 
@@ -310,6 +314,8 @@ void SceneWidget::paintGL()
 
             render(body->mesh(), transform, true);
             render(body->hullMesh(), transform, false);
+            render(body->bSphereMesh(), transform, false);
+
         }
     }
 

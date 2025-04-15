@@ -16,6 +16,7 @@
 #include "VertexArray.h"
 #include "FaceArray.h"
 #include "Simplex.h"
+#include "Triangle.h"
 
 class EPA;
 
@@ -27,7 +28,6 @@ public:
     ConvexHull(VertexArray  cloud);
 
     ConvexHull(const ConvexHull& rhs) = default;
-    ~ConvexHull();
 
     [[nodiscard]] uint32_t vertexCount() const;
     [[nodiscard]] const VertexArray& vertices() const;
@@ -49,38 +49,6 @@ public:
 
 private:
 
-    struct Triangle {
-        uint32_t I0;
-        uint32_t I1;
-        uint32_t I2;
-
-        uint32_t operator[](uint32_t i) const
-        {
-            switch(i){
-                case 2:
-                    return I2;
-                case 1:
-                    return I1;
-                case 0:
-                default:
-                    return I0;
-            }
-        }
-
-        uint32_t& operator[](uint32_t i)
-        {
-            switch(i){
-                case 2:
-                    return I2;
-                case 1:
-                    return I1;
-                case 0:
-                default:
-                    return I0;
-            }
-        }
-    };
-
     struct Facet {
         Triangle triangle;
         glm::vec3 normal;
@@ -92,6 +60,7 @@ private:
     };
 
     std::vector<Triangle> initialApproximation();
+    glm::vec3 wNormal(const Triangle& triangle);
 
     void prepareFacets(const std::vector<Triangle>& triangles);
     void prepareFacets(const std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
@@ -100,9 +69,6 @@ private:
 
     glm::vec3 initialAxis(const ConvexHull& body, std::pair<uint32_t, uint32_t>& idx) const;
     glm::vec3 gjkSupport(const ConvexHull& body, const glm::mat4& transform, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx) const;
-
-    static bool isManifold(const std::vector<Facet> &facets);
-    static bool isManifold(const Facet &dest, uint32_t src);
 
 private:
 

@@ -24,7 +24,7 @@ class Scene : public Serializable {
 public:
 
     enum class Model {
-        ALL = 0, MESH, HULL, BOUNDING_SPHERE
+        ALL = 0, MESH, HULL, BOUNDING_SPHERE, AABB
     };
 
     Scene();
@@ -59,33 +59,17 @@ private:
     void run();
     void update();
 
-
-//    void sync();
-//    static void sync(rp3d::RigidBody *physics, RenderEntity *render);
-
 protected:
-
-//    struct SceneEntity {
-//        Body* body;
-//        RenderEntity* render;
-//        uint8_t level;
-//    };
 
     rp3d::PhysicsCommon m_physicsCommon;
     rp3d::PhysicsWorld *m_world;
 
-//    Qt3DCore::QEntity *m_root;
-//    Qt3DExtras::Qt3DWindow *view;
-
     std::vector<std::shared_ptr<Body>> m_bodies;
     std::vector<std::shared_ptr<Robot>> m_robots;
-//    std::vector<SceneEntity> m_entities;
 
     std::unique_ptr<std::thread> m_updateThread;
     bool m_running;
     bool m_paused;
-//    std::vector<Qt3DRender::QMesh*> m_meshes;
-//    std::vector<rp3d::RigidBody*> m_physBodies;
 
 };
 

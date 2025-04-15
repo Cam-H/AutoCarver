@@ -54,7 +54,7 @@ qt_add_library(AutoCarverLib
 
         renderer/RenderCapture.cpp renderer/RenderCapture.h renderer/SceneWidget.cpp renderer/SceneWidget.h renderer/RenderGeometry.cpp renderer/RenderGeometry.h
         geometry/Simplex.cpp geometry/Simplex.h geometry/EPA.cpp geometry/EPA.h
-        fileIO/Serializable.cpp fileIO/Serializable.h fileIO/Serializer.cpp fileIO/Serializer.h)
+        fileIO/Serializable.cpp fileIO/Serializable.h fileIO/Serializer.cpp fileIO/Serializer.h geometry/Sphere.cpp geometry/Sphere.h)
 
 target_link_libraries(AutoCarverLib PRIVATE
         Qt::3DCore

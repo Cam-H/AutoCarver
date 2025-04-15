@@ -38,7 +38,7 @@ ConvexHull::ConvexHull(VertexArray cloud)
     , m_faces(nullptr, nullptr, 0)
     , m_cloud(std::move(cloud)){
 
-    if(m_cloud.vertexCount() < 4){
+    if (m_cloud.vertexCount() < 4) {
         std::cout << "\033[31mERROR! Can not generate a 3D convex hull with fewer than 4 vertices\033[0m\n";
         return;
     }
@@ -48,15 +48,15 @@ ConvexHull::ConvexHull(VertexArray cloud)
 
     std::vector<Triangle> triangles = initialApproximation();
 
-    if(triangles.empty()){
+    if (triangles.empty()) {
         return;
     }
 
     // Initial pass to sort point cloud between tetrahedral facets
     prepareFacets(triangles);
 
-    for(uint32_t i = 0; i < facets.size(); i++){
-        if(facets[i].onHull && !facets[i].outside.empty()){
+    for (uint32_t i = 0; i < facets.size(); i++) {
+        if (facets[i].onHull && !facets[i].outside.empty()) {
             w_vertices.push_back(m_cloud[facets[i].outside[0]]);
 
             std::vector<uint32_t> horizon, set;
@@ -138,12 +138,6 @@ ConvexHull::ConvexHull(VertexArray cloud)
     m_walks = m_faces.edgeList();
 }
 
-ConvexHull::~ConvexHull()
-{
-
-}
-
-
 uint32_t ConvexHull::vertexCount() const
 {
     return m_vertices.vertexCount();
@@ -169,7 +163,7 @@ glm::vec3 ConvexHull::facetNormal(uint32_t idx) const
     uint32_t *loop = m_faces[idx];
     if (loop == nullptr) return {};
 
-    return glm::normalize(glm::cross(m_vertices[loop[1]] - m_vertices[loop[0]], m_vertices[loop[2]] - m_vertices[loop[0]]));
+    return Triangle::normal(m_vertices[loop[0]], m_vertices[loop[1]], m_vertices[loop[2]]);
 }
 
 glm::vec3 ConvexHull::center() const
@@ -271,14 +265,14 @@ uint32_t ConvexHull::walk(const glm::vec3& axis, uint32_t index) const
     return index;
 }
 
-std::vector<ConvexHull::Triangle> ConvexHull::initialApproximation(){
+std::vector<Triangle> ConvexHull::initialApproximation(){
     std::vector<Triangle> triangles;
 
     // Find a pair of extreme points of the point cloud
-    std::vector<uint32_t> extremes = {0, 0, 0, 0};
+    std::vector<uint32_t> extremes = { 0, 0, 0, 0 };
     float axes[9] = { 1, 0, 0, 0, 1, 0, 0, 0, 1}, *ptr = axes;
-    for(uint8_t i = 0; i < 3; i++){
-        if(m_cloud.extremes(ptr, extremes[0], extremes[1])){
+    for (uint8_t i = 0; i < 3; i++) {
+        if (m_cloud.extremes(ptr, extremes[0], extremes[1])) {
             break;
         }
 
@@ -286,55 +280,60 @@ std::vector<ConvexHull::Triangle> ConvexHull::initialApproximation(){
     }
 
     // Prepare a maximal tetrahedron - exits early if the cloud is degenerate in some dimension
-    if(extremes[0] == extremes[1]){
+    if (extremes[0] == extremes[1]) {
         std::cout << "\033[31mERROR! Can not generate a 3D convex hull from the cloud! The cloud is 0D degenerate\033[0m\n";
         return triangles;
     }
 
-    if(!m_cloud.extreme(extremes[0], extremes[1], extremes[2])){
+    if (!m_cloud.extreme(extremes[0], extremes[1], extremes[2])) {
         std::cout << "\033[31mERROR! Can not generate a 3D convex hull from the cloud! The cloud is 1D degenerate\033[0m\n";
         return triangles;
     }
 
-    if(!m_cloud.extreme(extremes[0], extremes[1], extremes[2], extremes[3])){
+    if (!m_cloud.extreme(extremes[0], extremes[1], extremes[2], extremes[3])) {
         std::cout << "\033[31mERROR! Can not generate a 3D convex hull from the cloud! The cloud is 2D degenerate\033[0m\n";
         return triangles;
     }
 
     // Add extremities to the convex hull
-    for(uint32_t extreme : extremes){
+    for (uint32_t extreme : extremes) {
         w_vertices.push_back(m_cloud[extreme]);
     }
 
     // Erase extreme vertices from cloud to prevent consideration later on (can otherwise introduce precision errors)
-    std::sort(extremes.begin(), extremes.end(), [](uint32_t a, uint32_t b){return b < a;});
-    for(uint32_t extreme : extremes) m_cloud.remove(extreme);
+    std::sort(extremes.begin(), extremes.end(), [](uint32_t a, uint32_t b){ return b < a; });
+    for (uint32_t extreme : extremes) m_cloud.remove(extreme);
 
     // Swap vertices if needed to ensure proper winding
     auto ref = w_vertices[3] - w_vertices[0];
-    auto normal = glm::normalize(glm::cross(w_vertices[1] - w_vertices[0], w_vertices[2] - w_vertices[0]));
+    auto normal = Triangle::normal(w_vertices[0], w_vertices[1], w_vertices[2]);
 
-    if(glm::dot(ref, normal) > 0){
+    if (glm::dot(ref, normal) > 0) {
         std::swap(w_vertices[0], w_vertices[1]);
     }
 
     // Prepare initial triangle approximation (tetrahedron)
-    triangles.push_back({0, 1, 2});
-    triangles.push_back({0, 2, 3});
-    triangles.push_back({0, 3, 1});
-    triangles.push_back({3, 2, 1});
+    triangles.emplace_back(0, 1, 2);
+    triangles.emplace_back(0, 2, 3);
+    triangles.emplace_back(0, 3, 1);
+    triangles.emplace_back(3, 2, 1);
 
     return triangles;
+}
+
+glm::vec3 ConvexHull::wNormal(const Triangle& triangle)
+{
+    return Triangle::normal(w_vertices[triangle.I0], w_vertices[triangle.I1], w_vertices[triangle.I2]);
 }
 
 void ConvexHull::prepareFacets(const std::vector<Triangle>& triangles){
     std::vector<uint32_t> free(m_cloud.vertexCount());
     std::iota(free.begin(), free.end(), 0);
 
-    std::vector<std::vector<uint32_t>> neighbors = {{2, 3, 1}, {0, 3, 2}, {1, 3, 0}, {1, 0, 2}};
-    for(uint32_t i = 0; i < triangles.size(); i++){
+    std::vector<std::vector<uint32_t>> neighbors = { { 2, 3, 1 }, { 0, 3, 2 }, { 1, 3, 0 }, { 1, 0, 2 } };
+    for (uint32_t i = 0; i < triangles.size(); i++) {
 
-        glm::vec3 normal = glm::normalize(glm::cross(w_vertices[triangles[i].I1] - w_vertices[triangles[i].I0], w_vertices[triangles[i].I2] - w_vertices[triangles[i].I0]));
+        glm::vec3 normal = wNormal(triangles[i]);
 
         Facet facet = {triangles[i], normal, {}, neighbors[i], true};
         sortCloud(free, facet);
@@ -346,7 +345,7 @@ void ConvexHull::prepareFacets(const std::vector<uint32_t>& horizon, std::vector
 
     // Create a chain of triangular facets between the apex and its respective horizon
     uint32_t lastVertex = horizon[horizon.size() - 1], lastFacet = facets.size() + (horizon.size() / 2) - 1, start = facets.size();
-    for(uint32_t j = 0; j < horizon.size(); j += 2){
+    for (uint32_t j = 0; j < horizon.size(); j += 2) {
 
         // Identify neighbors for linking
         uint32_t currentFacet = facets.size(), nextFacet = (currentFacet + 1 - start) % (horizon.size() / 2) + start;
@@ -354,8 +353,8 @@ void ConvexHull::prepareFacets(const std::vector<uint32_t>& horizon, std::vector
         facets[horizon[j]].neighbors[z] = currentFacet;// Link against existing facet beyond the horizon
 
         // Prepare the new facet and link
-        Triangle triangle = {(uint32_t)w_vertices.size() - 1, lastVertex, horizon[j + 1]};
-        glm::vec3 normal = glm::normalize(glm::cross(w_vertices[triangle.I1] - w_vertices[triangle.I0], w_vertices[triangle.I2] - w_vertices[triangle.I0]));
+        Triangle triangle = { (uint32_t)w_vertices.size() - 1, lastVertex, horizon[j + 1] };
+        glm::vec3 normal = wNormal(triangle);
 
         Facet facet = {triangle, normal, {}, {lastFacet, horizon[j], nextFacet}, true};
         sortCloud(set, facet);
@@ -370,16 +369,15 @@ void ConvexHull::sortCloud(std::vector<uint32_t>& free, Facet& facet){
     float value = -1;
     int64_t peak = -1;
 
-    auto vec = new float[3];
-
-    for(uint32_t i = 0; i < free.size(); i++){
+    for (uint32_t i = 0; i < free.size(); i++) { // Iterate through unsorted cloud
         float test = glm::dot(facet.normal, m_cloud[free[i]] - w_vertices[facet.triangle.I0]);
-        if(test > std::numeric_limits<float>::epsilon()){//std::numeric_limits<float>::epsilon()
-            if(test > value){
+        if (test > 1e-6) {//std::numeric_limits<float>::epsilon()
+            if (test > value) {
                 value = test;
                 peak = (int64_t)facet.outside.size();
             }
 
+            // Assign the free vertex to this facet
             facet.outside.push_back(free[i]);
             std::swap(free[i--], free[free.size() - 1]);
             free.pop_back();
@@ -387,33 +385,31 @@ void ConvexHull::sortCloud(std::vector<uint32_t>& free, Facet& facet){
     }
 
     // Identify the furthest point in the cloud (for refinement step)
-    if(peak > 0){
+    if (peak > 0) {
         std::swap(facet.outside[peak], facet.outside[0]);
     }
-
-    delete[] vec;
 }
 
 void ConvexHull::calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon, std::vector<uint32_t>& set){
-    if(!facets[current].onHull){
+    if (!facets[current].onHull) {
         return;
     }
 
     float test = glm::dot(facets[current].normal, apex - w_vertices[facets[current].triangle.I0]);
 
-    if(test > std::numeric_limits<float>::epsilon()){ // Check whether facet is visible to apex
+    if (test > 1e-6) { // Check whether facet is visible to apex
         set.insert(set.end(), facets[current].outside.begin(), facets[current].outside.end());
         facets[current].outside.clear();
         facets[current].onHull = false;
 
         // Identify neighbors to visit
-        std::vector<uint32_t> neighbors = {0, 0, 0};
+        std::vector<uint32_t> neighbors = { 0, 0, 0 };
         uint32_t start = last == -1 ? 0 : std::find(facets[current].neighbors.begin(), facets[current].neighbors.end(), last) - facets[current].neighbors.begin();
         neighbors[0] = facets[current].neighbors[start];
         neighbors[1] = facets[current].neighbors[(start + 1) % 3];
         neighbors[2] = facets[current].neighbors[(start + 2) % 3];
 
-        for(uint32_t neighbor : neighbors){
+        for (uint32_t neighbor : neighbors) {
             calculateHorizon(apex, current, neighbor, horizon, set);
         }
 
@@ -427,59 +423,6 @@ void ConvexHull::calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t 
     horizon.push_back(facets[current].triangle[index]);// Encode next vertex on horizon
 }
 
-bool ConvexHull::isManifold(const std::vector<Facet> &facets)
-{
-    bool manifold = true;
-
-    for (uint32_t i = 0; i < facets.size(); i++) {
-        if (!facets[i].onHull) continue;
-
-        for (uint32_t neighbor : facets[i].neighbors) {
-            if (facets[neighbor].onHull && !isManifold(facets[neighbor], i)) {
-                manifold = false;
-            }
-        }
-    }
-
-    return manifold;
-}
-
-bool ConvexHull::isManifold(const Facet &dest, uint32_t src)
-{
-    return std::find(dest.neighbors.begin(), dest.neighbors.end(), src) != dest.neighbors.end();
-}
-
-//std::vector<std::pair<glm::vec3, glm::vec3>> ConvexHull::getAxes() const {
-//    std::vector<std::pair<glm::vec3, glm::vec3>> axes;
-//
-//    for(uint32_t i = 0; i < m_Breaks.size(); i++){
-//        axes.emplace_back(m_Vertices[m_Triangles[m_Breaks[i] - 1].m_I0], m_Normals[i]);
-//    }
-//
-//    return axes;
-//}
-//bool closestPointRaySegment(const glm::vec3& origin, const glm::vec3& normal, const glm::vec3& p1, const glm::vec3& p2, glm::vec3& nearest){
-//    glm::vec3 direction = p2 - p1;
-//    glm::vec3 r = origin - p1;
-//
-//    float e = glm::dot(direction, direction);
-//    float f = glm::dot(direction, r);
-//
-//    // Assumed no degenerate
-//    float c = glm::dot(normal, r);
-//    float b = glm::dot(normal, direction);
-//    float den = e - b * b;
-//
-//    float s = 0;
-//    if(den != 0){
-//        s = (b * f - c * e) / den;
-//    }
-//
-//    float t = (b * s + f) / e;
-//    nearest = p1 + direction * t;
-//
-//    return t >= 0 && t <= 1;
-//}
 //bool ConvexHull::raycast(const glm::vec3& origin, const glm::vec3& direction, float& t) const {
 //    bool hit = false;
 //

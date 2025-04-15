@@ -313,6 +313,11 @@ bool VertexArray::empty() const
     return m_vertexCount == 0;
 }
 
+std::vector<glm::vec3> VertexArray::toVector() const
+{
+    return { (glm::vec3*)m_vertices, (glm::vec3*)m_vertices + m_vertexCount };
+}
+
 bool VertexArray::extremes(const float *axis, uint32_t &min, uint32_t &max)
 {
     float minValue = std::numeric_limits<float>::max();

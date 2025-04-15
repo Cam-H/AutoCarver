@@ -40,6 +40,8 @@ public:
     static float cross(const QVector2D &pivot, const QVector2D &a, const QVector2D &b);
     static float cross(const QVector2D &v1, const QVector2D &v2);
 
+    static glm::vec3 normal(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c);
+
     static glm::vec3 barycentric(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& p);
     static glm::vec3 clampedBarycentric(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& p);
 

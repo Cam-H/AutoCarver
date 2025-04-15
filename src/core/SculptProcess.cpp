@@ -85,7 +85,7 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     m_sculpture = std::make_shared<Sculpture>(model, m_config.materialWidth, m_config.materialHeight);
 
     prepareBody(std::make_shared<Body>((model)), 1);
-    m_bodies[0]->prepareHullMesh();
+    m_bodies[0]->prepareColliderVisuals();
 
     prepareBody(m_sculpture, 1);
 

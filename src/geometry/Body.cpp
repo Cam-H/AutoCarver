@@ -12,6 +12,7 @@
 
 #include "../core/Timer.h"
 #include "EPA.h"
+#include "MeshBuilder.h"
 
 Body::Body(const std::shared_ptr<Mesh> &mesh)
     : m_mesh(mesh)
@@ -24,9 +25,10 @@ Body::Body(const std::shared_ptr<Mesh> &mesh)
     , m_areaOK(false)
     , m_volumeOK(false)
     , m_transform(1.0f)
+    , m_colliderVisualsEnable(false)
 {
 
-    updateHull();
+    updateColliders();
 }
 
 Body::Body(const std::string& filename)
@@ -40,33 +42,12 @@ Body::Body(const std::string& filename)
     , m_areaOK(false)
     , m_volumeOK(false)
     , m_transform(1.0f)
+    , m_colliderVisualsEnable(false)
 {
     Serializable::deserialize(filename);
 
-    updateHull();
+    updateColliders();
 }
-
-Body::~Body()
-{
-    //TODO delete body
-    std::cout << "Body deletion\n";
-//    if (m_physBody != nullptr) world->destroyRigidBody(m_physBody);
-//    phys->destroyConvexMesh()
-}
-
-//void Body::serialize(const std::string& filename)
-//{
-//    std::ofstream file(filename, std::ios::binary);
-//    if (!file.is_open()) {
-//        std::cerr << "Error: Failed to open file for Body writing.\n";
-//        return;
-//    }
-//
-//    serialize(file);
-//
-//    file.close();
-//    std::cout << "Body serialized successfully\n";
-//}
 
 bool Body::serialize(const std::string& filename)
 {
@@ -91,7 +72,7 @@ bool Body::deserialize(std::ifstream& file)
 
     if (m_mesh != nullptr && m_mesh->vertexCount() > 0 && m_mesh->faceCount() > 0) {
 
-        updateHull();
+        updateColliders();
 
         setTransform(Serializer::readTransform(file));
 
@@ -101,12 +82,12 @@ bool Body::deserialize(std::ifstream& file)
     return false;
 }
 
-void Body::setMesh(const std::shared_ptr<Mesh>& mesh, bool recalculateHull) {
+void Body::setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate) {
     if (mesh == nullptr) return;
 
     m_mesh = mesh;
 
-    if (recalculateHull) updateHull();
+    if (doColliderUpdate) updateColliders();
 }
 
 void Body::setPosition(const glm::vec3& position)
@@ -201,21 +182,42 @@ std::pair<uint32_t, uint32_t> Body::cachedCollision(const std::shared_ptr<Body>&
     return { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() };
 }
 
-void Body::updateHull()
+void Body::updateColliders()
 {
     m_hullOK = false;
 
-    if (m_mesh != nullptr) m_hull = ConvexHull(m_mesh->vertices());
+    if (m_mesh == nullptr) return;
 
+    m_hull = ConvexHull(m_mesh->vertices());
     m_hullOK = m_hull.vertexCount() >= 4;
 
-    // Create new mesh for rendering the hull, if one is already in use (replacement)
-    if (m_hullMesh != nullptr) m_hullMesh = std::make_shared<Mesh>(m_hull);
+    m_boundingSphere = Sphere::enclose(m_hull.vertices());
+
+    // Create new mesh for colliders, if one is already in use (replacement)
+    if (m_colliderVisualsEnable) {
+        prepareHullVisual();
+        prepareSphereVisual();
+    }
 }
 
-void Body::prepareHullMesh()
+void Body::prepareColliderVisuals()
 {
-    if (m_hullMesh == nullptr) m_hullMesh = std::make_shared<Mesh>(m_hull);
+    if (!m_colliderVisualsEnable) {
+        prepareHullVisual();
+        prepareSphereVisual();
+    }
+
+    m_colliderVisualsEnable = true;
+}
+
+void Body::prepareHullVisual()
+{
+    m_hullMesh = std::make_shared<Mesh>(m_hull);
+}
+void Body::prepareSphereVisual()
+{
+    m_sphereMesh = MeshBuilder::icosphere(m_boundingSphere.radius);
+    m_sphereMesh->translate(m_boundingSphere.center.x, m_boundingSphere.center.y, m_boundingSphere.center.z);
 }
 
 bool Body::isManifold()
@@ -241,23 +243,24 @@ const std::shared_ptr<Mesh>& Body::mesh()
     return m_mesh;
 }
 
-const ConvexHull& Body::hull()
-{
-    if (!m_hullOK) {
-        updateHull();
-    }
-
-    return m_hull;
-}
-
 const ConvexHull& Body::hull() const
 {
     return m_hull;
 }
 
+const Sphere& Body::boundingSphere() const
+{
+    return m_boundingSphere;
+}
+
 const std::shared_ptr<Mesh>& Body::hullMesh()
 {
     return m_hullMesh;
+}
+
+const std::shared_ptr<Mesh>& Body::bSphereMesh()
+{
+    return m_sphereMesh;
 }
 
 void Body::evaluateManifold()

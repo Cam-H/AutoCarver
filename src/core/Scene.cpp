@@ -21,10 +21,6 @@ Scene::Scene()
 
 Scene::~Scene()
 {
-//    for (const SceneEntity& entity : m_entities) {
-////        delete link.first;
-//    } // TODO deletion, develop functions to clear only specific classes of bodies
-
     m_physicsCommon.destroyPhysicsWorld(m_world);
 }
 
@@ -67,32 +63,12 @@ bool Scene::deserialize(std::ifstream& file)
     return true;
 }
 
-//void Scene::linkRenderer(Qt3DCore::QEntity *parent, Qt3DExtras::Qt3DWindow *view)
-//{
-//    m_root = new Qt3DCore::QEntity(parent);
-//    this->view = view;
-//
-//    for (SceneEntity& entity : m_entities) {
-//        if (entity.render == nullptr) { // Prepare renders for bodies added before any links
-//            entity.render = prepareRender(entity.body);
-//        } else {
-//            entity.render->setParent(parent);
-//        }
-//    }
-//}
-
 void Scene::start()
 {
-//    if (!m_updateThread.joinable()) m_updateThread = std::thread(update);
-//    auto thread = std::thread(update, meshTransform);
-
-//auto thread = std::thread(this->update);
     m_running = true;
     m_paused = false;
+
     m_updateThread = std::make_unique<std::thread>(&Scene::run, this);
-//    std::make_shared<std::thread>(update());
-//    std::thread th(update());
-//std::thread(update);
 }
 
 void Scene::pause()
@@ -123,7 +99,6 @@ void Scene::update()
 //void Scene::update(float timestep)
 //{
 //    m_world->update(timestep);
-////    sync();
 //}
 
 void Scene::clear(uint8_t level)
@@ -185,21 +160,6 @@ void Scene::prepareBody(const std::shared_ptr<Body>& body, uint8_t level)
 //    m_entities.push_back({body, prepareRender(body), level});
     m_bodies.push_back(body);
 }
-
-//RenderEntity* Scene::prepareRender(Body *body)
-//{
-//    auto render = new RenderEntity(m_root, view);
-//    render->add(body->mesh());
-//
-//    render->add(std::make_shared<Mesh>(body->hull()));
-////    if (body->) render->add(std::make_shared<Mesh>(m_hull)); TODO conditional
-//
-//    render->generate();
-//
-//    render->hide(1); // Hide convex hull by default
-//
-//    return render;
-//}
 
 const std::vector<std::shared_ptr<Body>>& Scene::bodies()
 {

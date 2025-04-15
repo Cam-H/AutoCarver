@@ -38,7 +38,7 @@ void Robot::prepareLinks()
 
 
         m_links.push_back(std::make_shared<Body>(mesh));
-        m_links[m_links.size() - 1]->prepareHullMesh();
+        m_links[m_links.size() - 1]->prepareColliderVisuals();
     }
 
     auto eoatMesh = MeshBuilder::box(0.2f, 0.1f, 0.05f);

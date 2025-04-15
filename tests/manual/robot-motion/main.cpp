@@ -227,6 +227,14 @@ int main(int argc, char *argv[])
         else sceneWidget->hideAll(Scene::Model::HULL);
     });
 
+    auto bSphereButton = new QCheckBox("Show bounding sphere", control);
+    hControlLayout->addWidget(bSphereButton);
+
+    QObject::connect(bSphereButton, &QCheckBox::clicked, [&](bool checked) {
+        if (checked) sceneWidget->showAll(Scene::Model::BOUNDING_SPHERE);
+        else sceneWidget->hideAll(Scene::Model::BOUNDING_SPHERE);
+    });
+
     auto stepButton = new QPushButton("Next step", control);
     hControlLayout->addWidget(stepButton);
 

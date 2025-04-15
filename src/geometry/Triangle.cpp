@@ -75,6 +75,11 @@ float Triangle::cross(const QVector2D &v1, const QVector2D &v2)
     return v1.x() * v2.y() - v2.x() * v1.y();
 }
 
+glm::vec3 Triangle::normal(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
+{
+    return glm::normalize(glm::cross(b - a, c - a));
+}
+
 glm::vec3 Triangle::barycentric(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& p)
 {
     glm::vec3 ab = b - a, ac = c - a, ap = p - a;

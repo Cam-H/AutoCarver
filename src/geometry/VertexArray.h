@@ -71,6 +71,8 @@ public:
     [[nodiscard]] uint32_t size() const; // Get the size of the array in bytes
     [[nodiscard]] bool empty() const;
 
+    [[nodiscard]] std::vector<glm::vec3> toVector() const;
+
     bool extremes(const float *axis, uint32_t &min, uint32_t &max); // Get furthest vertices (top & bottom) along axis
     bool extreme(uint32_t p1, uint32_t p2, uint32_t& max); // Get furthest vertex (perpendicular) from the provided axis
     bool extreme(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max); // Get furthest vertex from the plane formed by provided indices

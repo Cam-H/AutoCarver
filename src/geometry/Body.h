@@ -16,16 +16,14 @@
 
 #include "Mesh.h"
 #include "ConvexHull.h"
+#include "Sphere.h"
 
 
 class Body : public Serializable {
 public:
 
     explicit Body(const std::shared_ptr<Mesh> &mesh);
-
     explicit Body(const std::string& filename);
-
-    ~Body();
 
     bool serialize(const std::string& filename) override;
     bool serialize(std::ofstream& file) override;
@@ -33,7 +31,7 @@ public:
     bool deserialize(const std::string& filename) override;
     bool deserialize(std::ifstream& file) override;
 
-    void setMesh(const std::shared_ptr<Mesh>& mesh, bool recalculateHull = false);
+    void setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate = false);
 
     void setPosition(const glm::vec3& position);
 
@@ -48,8 +46,8 @@ public:
     void setTransform(glm::mat4x4 transform);
     const glm::mat4x4& getTransform();
 
-    void updateHull();
-    void prepareHullMesh();
+    void updateColliders();
+    void prepareColliderVisuals();
 
     bool isManifold();
     float area();
@@ -57,10 +55,11 @@ public:
 
     const std::shared_ptr<Mesh>& mesh();
 
-    const ConvexHull &hull();
     const ConvexHull &hull() const;
+    const Sphere& boundingSphere() const;
 
     const std::shared_ptr<Mesh>& hullMesh();
+    const std::shared_ptr<Mesh>& bSphereMesh();
 
     bool collides(const std::shared_ptr<Body>& body);
     bool collision(const std::shared_ptr<Body>& body, glm::vec3& offset);
@@ -68,6 +67,10 @@ public:
     EPA collision(const std::shared_ptr<Body>& body);
 
 private:
+
+    void prepareHullVisual();
+    void prepareSphereVisual();
+
 
     void cacheCollision(const std::shared_ptr<Body>& body, const std::pair<uint32_t, uint32_t>& start);
     std::pair<uint32_t, uint32_t> cachedCollision(const std::shared_ptr<Body>& body);
@@ -81,9 +84,13 @@ protected:
     std::shared_ptr<Mesh> m_mesh;
 
     ConvexHull m_hull;
-    std::shared_ptr<Mesh> m_hullMesh;
-
     bool m_hullOK;
+
+    Sphere m_boundingSphere;
+
+    std::shared_ptr<Mesh> m_hullMesh;
+    std::shared_ptr<Mesh> m_sphereMesh;
+    bool m_colliderVisualsEnable;
 
     glm::mat4x4 m_transform;
 
