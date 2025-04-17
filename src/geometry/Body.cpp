@@ -14,7 +14,15 @@
 #include "EPA.h"
 #include "MeshBuilder.h"
 
-Body::Body(const std::shared_ptr<Mesh> &mesh)
+Body::Body(const std::string& filename)
+        : Body((const std::shared_ptr<Mesh>&)nullptr)
+{
+    Serializable::deserialize(filename);
+
+    updateColliders();
+}
+
+Body::Body(const std::shared_ptr<Mesh>& mesh)
     : m_mesh(mesh)
     , m_hullMesh(nullptr)
     , m_hullOK(false)
@@ -24,27 +32,9 @@ Body::Body(const std::shared_ptr<Mesh> &mesh)
     , m_isManifoldOK(false)
     , m_areaOK(false)
     , m_volumeOK(false)
-    , m_transform(1.0f)
     , m_colliderVisualsEnable(false)
+    , Transformable()
 {
-
-    updateColliders();
-}
-
-Body::Body(const std::string& filename)
-    : m_mesh(nullptr)
-    , m_hullMesh(nullptr)
-    , m_hullOK(false)
-    , m_isManifold(false)
-    , m_area(0)
-    , m_volume(0)
-    , m_isManifoldOK(false)
-    , m_areaOK(false)
-    , m_volumeOK(false)
-    , m_transform(1.0f)
-    , m_colliderVisualsEnable(false)
-{
-    Serializable::deserialize(filename);
 
     updateColliders();
 }
@@ -88,48 +78,6 @@ void Body::setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate) {
     m_mesh = mesh;
 
     if (doColliderUpdate) updateColliders();
-}
-
-void Body::setPosition(const glm::vec3& position)
-{
-    m_transform[3][0] = position.x;
-    m_transform[3][1] = position.y;
-    m_transform[3][2] = position.z;
-
-}
-
-void Body::translate(const glm::vec3& translation)
-{
-    m_transform = glm::translate(m_transform, translation);
-
-}
-void Body::rotate(const glm::vec3& axis, float theta)
-{
-    m_transform = glm::rotate(m_transform, theta, axis);
-}
-
-void Body::globalTranslate(const glm::vec3& translation)
-{
-    m_transform = glm::translate(glm::mat4(1.0f), translation) * m_transform;
-}
-void Body::globalRotate(const glm::vec3& axis, float theta)
-{
-    m_transform = glm::rotate(glm::mat4(1.0f), theta, axis) * m_transform;
-}
-
-void Body::transform(const glm::mat4x4& transform)
-{
-    m_transform = m_transform * transform;
-}
-
-void Body::setTransform(glm::mat4x4 transform)
-{
-    m_transform = transform;
-}
-
-const glm::mat4x4& Body::getTransform()
-{
-    return m_transform;
 }
 
 bool Body::collides(const std::shared_ptr<Body>& body)

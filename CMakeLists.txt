@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #set(-DASSIMP_WARNINGS_AS_ERRORS OFF)
 
-find_package(Qt6 REQUIRED COMPONENTS 3DCore 3DExtras 3DInput 3DRender Core Gui OpenGL OpenGLWidgets Widgets)
+find_package(Qt6 REQUIRED COMPONENTS 3DCore 3DExtras 3DInput 3DRender Core Gui UiTools OpenGL OpenGLWidgets Widgets)
 
 qt_standard_project_setup()
 

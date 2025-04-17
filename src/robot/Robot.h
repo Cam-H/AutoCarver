@@ -10,7 +10,10 @@
 #include "KinematicChain.h"
 #include "geometry/Body.h"
 
-class Robot { // TODO make serializable
+#include "geometry/Transformable.h"
+#include "planning/Trajectory.h"
+
+class Robot : public Transformable { // TODO make serializable
 public:
 
     Robot(KinematicChain* kinematics);
@@ -23,6 +26,8 @@ public:
     void setJointValueDg(uint32_t idx, float value);
 
     void moveTo(const glm::vec3& position, const glm::vec3& euler = {0.0f, 1.0f, 0.0f});
+
+    void traverse(const Trajectory& trajectory);
 
     const std::vector<std::shared_ptr<Body>>& links();
 
@@ -40,10 +45,10 @@ protected:
 private:
 
     KinematicChain* m_kinematics;
-    glm::mat4 m_transform;
 
     // Maps to the joints of the kinematic chain
     std::vector<std::shared_ptr<Body>> m_links;
+
 };
 
 

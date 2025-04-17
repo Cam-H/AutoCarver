@@ -9,6 +9,11 @@
 #include <cmath>
 #include <iostream>
 
+SceneWidget::SceneWidget(QWidget* parent)
+    : SceneWidget(nullptr, parent)
+{
+}
+
 SceneWidget::SceneWidget(const std::shared_ptr<Scene>& scene, QWidget* parent)
     : m_scene(scene)
     , m_defaultProgramIdx(0)
@@ -38,6 +43,14 @@ SceneWidget::~SceneWidget()
     makeCurrent();
 //    delete geometries; TODO clean
     doneCurrent();
+}
+
+void SceneWidget::setScene(const std::shared_ptr<Scene>& scene)
+{
+    if (m_scene != scene) clear();
+    m_scene = scene;
+
+    update();
 }
 
 void SceneWidget::mousePressEvent(QMouseEvent *e)
@@ -198,7 +211,7 @@ void SceneWidget::hide(const std::vector<std::shared_ptr<Mesh>>& selection)
 
 std::vector<std::shared_ptr<Mesh>> SceneWidget::select(uint32_t idx, Scene::Model target)
 {
-    if (idx >= m_scene->bodyCount()) return {};
+    if (m_scene == nullptr || idx >= m_scene->bodyCount()) return {};
 
     std::vector<std::shared_ptr<Mesh>> selection;
 
@@ -223,6 +236,8 @@ std::vector<std::shared_ptr<Mesh>> SceneWidget::select(uint32_t idx, Scene::Mode
 
 std::vector<std::shared_ptr<Mesh>> SceneWidget::selectAll(Scene::Model target)
 {
+    if (m_scene == nullptr) return {};
+
     std::vector<std::shared_ptr<Mesh>> selection;
 
     switch (target) {

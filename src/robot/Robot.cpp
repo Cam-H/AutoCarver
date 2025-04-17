@@ -14,7 +14,7 @@
 
 Robot::Robot(KinematicChain* kinematics)
     : m_kinematics(kinematics)
-    , m_transform(1.0f)
+    , Transformable()
 {
 
 }
@@ -72,6 +72,11 @@ void Robot::moveTo(const glm::vec3& position, const glm::vec3& euler)
 {
     m_kinematics->moveTo(position, euler);
     update();
+}
+
+void Robot::traverse(const Trajectory& trajectory)
+{
+
 }
 
 void Robot::updateTransforms()

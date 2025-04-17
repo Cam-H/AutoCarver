@@ -18,12 +18,14 @@
 #include "ConvexHull.h"
 #include "Sphere.h"
 
+#include "Transformable.h"
 
-class Body : public Serializable {
+
+class Body : public Serializable, public Transformable {
 public:
 
-    explicit Body(const std::shared_ptr<Mesh> &mesh);
     explicit Body(const std::string& filename);
+    explicit Body(const std::shared_ptr<Mesh>& mesh);
 
     bool serialize(const std::string& filename) override;
     bool serialize(std::ofstream& file) override;
@@ -32,19 +34,6 @@ public:
     bool deserialize(std::ifstream& file) override;
 
     void setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate = false);
-
-    void setPosition(const glm::vec3& position);
-
-    void translate(const glm::vec3& translation);
-    void rotate(const glm::vec3& axis, float theta);
-
-    void globalTranslate(const glm::vec3& translation);
-    void globalRotate(const glm::vec3& axis, float theta);
-
-    void transform(const glm::mat4x4& transform);
-
-    void setTransform(glm::mat4x4 transform);
-    const glm::mat4x4& getTransform();
 
     void updateColliders();
     void prepareColliderVisuals();
@@ -91,8 +80,6 @@ protected:
     std::shared_ptr<Mesh> m_hullMesh;
     std::shared_ptr<Mesh> m_sphereMesh;
     bool m_colliderVisualsEnable;
-
-    glm::mat4x4 m_transform;
 
 
     bool m_isManifold;

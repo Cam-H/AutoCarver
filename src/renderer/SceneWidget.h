@@ -27,8 +27,11 @@ Q_OBJECT
 
 public:
     using QOpenGLWidget::QOpenGLWidget;
+    SceneWidget(QWidget* parent = nullptr);
     SceneWidget(const std::shared_ptr<Scene>& scene = nullptr, QWidget* parent = nullptr);
     ~SceneWidget();
+
+    void setScene(const std::shared_ptr<Scene>& scene);
 
     void addShaderProgram(const std::string& name);
     void createDefaultShaderProgram(const std::string& name);

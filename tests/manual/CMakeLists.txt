@@ -2,6 +2,7 @@
 add_subdirectory(collision)
 add_subdirectory(mesh-carve-process)
 add_subdirectory(robot-motion)
+add_subdirectory(robot-pathing)
 
 #add_subdirectory(polygon-tesselation)
 

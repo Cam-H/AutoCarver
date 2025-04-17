@@ -54,7 +54,11 @@ qt_add_library(AutoCarverLib
 
         renderer/RenderCapture.cpp renderer/RenderCapture.h renderer/SceneWidget.cpp renderer/SceneWidget.h renderer/RenderGeometry.cpp renderer/RenderGeometry.h
         geometry/Simplex.cpp geometry/Simplex.h geometry/EPA.cpp geometry/EPA.h
-        fileIO/Serializable.cpp fileIO/Serializable.h fileIO/Serializer.cpp fileIO/Serializer.h geometry/Sphere.cpp geometry/Sphere.h)
+        fileIO/Serializable.cpp fileIO/Serializable.h fileIO/Serializer.cpp fileIO/Serializer.h geometry/Sphere.cpp geometry/Sphere.h renderer/LineChartWidget.cpp renderer/LineChartWidget.h renderer/UiLoader.cpp renderer/UiLoader.h geometry/Transformable.cpp geometry/Transformable.h
+
+        robot/planning/PathPlanner.cpp robot/planning/PathPlanner.h
+        robot/planning/Trajectory.cpp robot/planning/Trajectory.h
+        )
 
 target_link_libraries(AutoCarverLib PRIVATE
         Qt::3DCore
@@ -63,6 +67,7 @@ target_link_libraries(AutoCarverLib PRIVATE
         Qt::3DRender
         Qt6::Core
         Qt6::Gui
+        Qt::UiTools
         Qt6::OpenGL
         Qt6::OpenGLWidgets
         Qt6::Widgets
@@ -82,6 +87,7 @@ target_link_libraries(AutoCarver PRIVATE
         Qt::3DRender
         Qt6::Core
         Qt6::Gui
+        Qt::UiTools
         Qt6::OpenGL
         Qt6::OpenGLWidgets
         Qt6::Widgets
