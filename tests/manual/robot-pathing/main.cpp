@@ -103,18 +103,19 @@ int main(int argc, char *argv[])
     sceneWidget->setScene(scene);
 
     plotWidget = widget->findChild<LineChartWidget*>("graphWidget");
+    plotWidget->ylim(-10, 10);
+
     {
         std::vector<float> y(200);
 
         for (uint32_t i = 0; i < y.size(); i++) y[i] = i * 0.1f;
         plotWidget->plot(y);
 
-        for (uint32_t i = 0; i < y.size(); i++) y[i] = 5.0f * cosf(i * M_PI * 0.05f);
-        plotWidget->plot(y);
+        for (uint32_t i = 0; i < y.size(); i++) y[i] = 5.0f * cosf(i * M_PI * 0.04f);
+        plotWidget->plot(y, "Sinusoid");
 
     }
 
-    plotWidget->ylim();
     plotWidget->update();
 
 

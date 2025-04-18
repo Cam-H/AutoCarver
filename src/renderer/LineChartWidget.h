@@ -12,7 +12,12 @@
 #include <QBrush>
 #include <QPen>
 
+#include <QMouseEvent>
+#include <QResizeEvent>
+
 struct Series {
+    QString name;
+
     float* x;
     float* y;
     uint32_t count;
@@ -31,9 +36,19 @@ public:
     ~LineChartWidget();
 
     void clear();
+    void zero();
+
+    void reset();
 
     void plot(const std::vector<float>& y);
+    void plot(const std::vector<float>& y, const QString& name);
+
     void plot(const std::vector<float>& y, QPen pen);
+    void plot(const std::vector<float>& y, const QString& name, QPen pen);
+
+    void showLegend(bool visible);
+
+    void setT(float t);
 
     void xlim();
     void ylim();
@@ -43,19 +58,37 @@ public:
 
 
 protected:
-    void paintEvent(QPaintEvent *event) override;
+    void mousePressEvent(QMouseEvent *e) override;
+    void mouseMoveEvent(QMouseEvent *e) override;
 
+    void resizeEvent(QResizeEvent *event) override;
+    void paintEvent(QPaintEvent *event) override;
 private:
+
+    void drawXMinor(QPainter& painter);
+    void drawYMinor(QPainter& painter);
+
+    void drawLegend(QPainter& painter);
+
+    void updateTransforms();
 
     [[nodiscard]] inline int xTransform(float x) const;
     [[nodiscard]] inline int yTransform(float y) const;
 
 private:
 
-    std::vector<Series> m_series;
+    bool m_legendEnable;
 
+    std::vector<Series> m_series;
+    float m_t;
+
+    float m_xMin, m_xMax, m_xMag;
     float m_yMin, m_yMax, m_yMag;
-    int m_yOff;
+    int m_xOff, m_yOff;
+
+    float m_xMinor, m_yMinor;
+
+    QPoint m_translation, m_mouseLast;
 
     uint32_t m_penIdx;
     const std::array<QPen, 12> s_pens = {
