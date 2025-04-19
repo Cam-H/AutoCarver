@@ -26,6 +26,7 @@ public:
     void setJointValueDg(uint32_t idx, float value);
 
     void moveTo(const glm::vec3& position, const glm::vec3& euler = {0.0f, 1.0f, 0.0f});
+    void moveTo(const Waypoint& waypoint, bool inDg = false);
 
     void traverse(const Trajectory& trajectory);
 

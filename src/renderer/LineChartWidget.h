@@ -40,6 +40,9 @@ public:
 
     void reset();
 
+    void setX(const std::vector<float>& x);
+    void setT(float t);
+
     void plot(const std::vector<float>& y);
     void plot(const std::vector<float>& y, const QString& name);
 
@@ -48,7 +51,6 @@ public:
 
     void showLegend(bool visible);
 
-    void setT(float t);
 
     void xlim();
     void ylim();
@@ -79,6 +81,7 @@ private:
 
     bool m_legendEnable;
 
+    std::vector<float> m_x;
     std::vector<Series> m_series;
     float m_t;
 

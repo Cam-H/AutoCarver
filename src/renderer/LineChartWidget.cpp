@@ -40,6 +40,8 @@ LineChartWidget::~LineChartWidget()
 
 void LineChartWidget::clear()
 {
+    m_penIdx = 0;
+
     for (Series& series : m_series) {
         delete[] series.x;
         delete[] series.y;
@@ -49,7 +51,7 @@ void LineChartWidget::clear()
 
 void LineChartWidget::zero()
 {
-    m_xOff = m_yOff = 0;
+    m_translation = {};
 }
 
 void LineChartWidget::reset()
@@ -57,7 +59,8 @@ void LineChartWidget::reset()
     clear();
     zero();
 
-    m_penIdx = 0;
+    m_x.clear();
+
     m_t = 1.0f;
     m_xMin = m_xMax = m_yMin = m_yMax = -1.0f;
     m_xMag = m_yMag = 1.0f;
@@ -122,6 +125,13 @@ void LineChartWidget::plot(const std::vector<float>& y, const QString& name, QPe
 void LineChartWidget::showLegend(bool visible)
 {
     m_legendEnable = visible;
+}
+
+void LineChartWidget::setX(const std::vector<float>& x)
+{
+    m_x = x;
+
+    xlim(x[0], x[x.size() - 1]);
 }
 
 void LineChartWidget::setT(float t)
@@ -229,7 +239,7 @@ void LineChartWidget::paintEvent(QPaintEvent *)
     painter.translate(m_translation);
 
     // Draw minor axes
-    painter.setPen({ Qt::darkGray, 1.0f });
+    painter.setPen({ Qt::darkGray, 0.5f });
     drawXMinor(painter);
     drawYMinor(painter);
 
@@ -237,9 +247,26 @@ void LineChartWidget::paintEvent(QPaintEvent *)
     for (const Series& series : m_series) {
         painter.setPen(series.pen);
 
-        if (series.x == nullptr) {
-            float tStep = m_t / (float)series.count;
-            int x, y, lx = xTransform(0.0f), ly = yTransform(series.y[0]);
+        float tStep = m_t / (float)series.count;
+        int x, y, lx, ly;
+
+        if (series.x != nullptr) { // Use series-specific x-coordinates
+
+        } else if (m_x.size() == series.count) { // Use a special x-coordinate set for plotting (for non-linear)
+            lx = xTransform(m_x[0]);
+            ly = yTransform(series.y[0]);
+            for (int i = 1; i < series.count; i++) {
+                x = xTransform(m_x[i]);
+                y = yTransform(series.y[i]);
+
+                painter.drawLine(lx, ly, x, y);
+
+                lx = x;
+                ly = y;
+            }
+        } else { // Use the base t as the plotted x-coordinate
+            lx = xTransform(0.0f);
+            ly = yTransform(series.y[0]);
             for (int i = 1; i < series.count; i++) {
                 x = xTransform(i * tStep);
                 y = yTransform(series.y[i]);
@@ -317,8 +344,9 @@ void LineChartWidget::drawYMinor(QPainter& painter)
 
 void LineChartWidget::drawLegend(QPainter& painter)
 {
+    const static QString line = "■ "; // ---  ⎯⎯⎯  ───  ━━━
     auto fm = QFontMetrics(painter.font());
-    int margin = 2, width = 0, offset = fm.horizontalAdvance("---");
+    int margin = 2, width = 0, offset = fm.horizontalAdvance(line);
 
     for (const Series& series : m_series) {
         auto advance = fm.horizontalAdvance(series.name);
@@ -336,7 +364,7 @@ void LineChartWidget::drawLegend(QPainter& painter)
 
         painter.setPen(series.pen);
         bounds = QRect(x - offset, y, offset, fm.height());
-        painter.drawText(bounds, Qt::AlignLeft | Qt::AlignTop, "---");
+        painter.drawText(bounds, Qt::AlignLeft | Qt::AlignTop, line);
 
         y += fm.height();
     }

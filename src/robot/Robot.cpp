@@ -74,6 +74,18 @@ void Robot::moveTo(const glm::vec3& position, const glm::vec3& euler)
     update();
 }
 
+void Robot::moveTo(const Waypoint& waypoint, bool inDg)
+{
+    uint32_t end = std::min(m_kinematics->jointCount(), (uint32_t)waypoint.values.size());
+
+    if (inDg)
+        for (uint32_t i = 0; i < end; i++) m_kinematics->getJoint(i).setValue(M_PI * waypoint.values[i] / 180);
+    else
+        for (uint32_t i = 0; i < end; i++) m_kinematics->getJoint(i).setValue(waypoint.values[i]);
+
+    update();
+}
+
 void Robot::traverse(const Trajectory& trajectory)
 {
 

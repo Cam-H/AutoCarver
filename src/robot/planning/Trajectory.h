@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <cstdint>
+#include <functional>
 
 struct Waypoint {
     std::vector<float> values;
@@ -25,19 +26,42 @@ class JointTrajectory {
 public:
 
     JointTrajectory(float start, float end);
-    JointTrajectory(const std::vector<float>& waypoints);
+    JointTrajectory(const std::vector<float>& waypoints, TrajectorySolverType solver = TrajectorySolverType::LINEAR);
 
-//    float interpolate(float t) const;
-    [[nodiscard]] float interpolate(uint32_t step, float t) const;
+    void updateCoefficients();
 
-    void setVelocityEndpoints(float vo, float vf);
-    void setAccelerationEndpoints(float ao, float af);
+//    void setVelocityEndpoints(float vo, float vf);
+//    void setAccelerationEndpoints(float ao, float af);
 
+    [[nodiscard]] float position(uint32_t step, float t) const;
+    [[nodiscard]] float velocity(uint32_t step, float t) const;
+    [[nodiscard]] float acceleration(uint32_t step, float t) const;
 
+    [[nodiscard]] float maxVelocity() const;
+    [[nodiscard]] float maxAcceleration() const;
+
+    [[nodiscard]] float maxVelocity(uint32_t step) const;
+    [[nodiscard]] float maxAcceleration(uint32_t step) const;
+
+    [[nodiscard]] std::vector<float> pTrajectory(float tStep = 0.05f) const;
+    [[nodiscard]] std::vector<float> vTrajectory(float tStep = 0.05f) const;
+    [[nodiscard]] std::vector<float> aTrajectory(float tStep = 0.05f) const;
+
+    [[nodiscard]] std::vector<float> t(float tStep = 0.05f) const;
+
+private:
+
+    void prepareLinearCoefficients();
+    void prepareCubicCoefficients();
+    void prepareQuinticCoefficients();
+
+    [[nodiscard]] std::vector<float> trajectory(const std::function<float (uint32_t, float)>& func, float tStep = 0.05f) const;
 
 private:
 
     std::vector<float> m_waypoints;
+    std::vector<float> m_coeffs;
+    TrajectorySolverType m_solver;
 
 };
 
@@ -48,19 +72,23 @@ public:
     Trajectory(const Waypoint& start, const Waypoint& end, TrajectorySolverType solverType);
     Trajectory(const std::vector<Waypoint>& waypoints, TrajectorySolverType solverType);
 
-    void setEndpoints(const std::vector<float> endpoints);
+//    void setEndpoints(const std::vector<float> endpoints);
 //
     bool complete();
+    [[nodiscard]] uint32_t dimensions() const;
 
 
     [[nodiscard]] Waypoint next();
     [[nodiscard]] Waypoint evaluate(float t) const;
+
+    [[nodiscard]] const JointTrajectory& jointTrajectory(uint32_t idx);
 
 
 private:
     std::vector<Waypoint> m_waypoints;
 
     TrajectorySolverType m_solver;
+    uint32_t m_jointCount;
 //    std::vector<float> m_endpoints;
 
     float m_t;
@@ -69,5 +97,6 @@ private:
     std::vector<JointTrajectory> m_jointTrajectories;
 };
 
+const static JointTrajectory NULL_TRAJECTORY = JointTrajectory(0, 0);
 
 #endif //AUTOCARVER_TRAJECTORY_H

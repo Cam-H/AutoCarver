@@ -41,8 +41,13 @@ std::vector<Waypoint> m_waypoints = {
 };
 std::pair<int, int> m_selection = { 0, 0 };
 Trajectory* m_trajectory = nullptr;
+std::vector<float> m_x = {};
+uint32_t m_xIdx = 0;
+bool m_inputEnable = true;
 
 LineChartWidget *plotWidget = nullptr;
+
+std::unique_ptr<std::thread> updateThread;
 
 
 static std::string toString(const Waypoint& waypoint)
@@ -103,20 +108,7 @@ int main(int argc, char *argv[])
     sceneWidget->setScene(scene);
 
     plotWidget = widget->findChild<LineChartWidget*>("graphWidget");
-    plotWidget->ylim(-10, 10);
-
-    {
-        std::vector<float> y(200);
-
-        for (uint32_t i = 0; i < y.size(); i++) y[i] = i * 0.1f;
-        plotWidget->plot(y);
-
-        for (uint32_t i = 0; i < y.size(); i++) y[i] = 5.0f * cosf(i * M_PI * 0.04f);
-        plotWidget->plot(y, "Sinusoid");
-
-    }
-
-    plotWidget->update();
+    plotWidget->ylim(-180, 180);
 
 
     qlw = widget->findChild<QListWidget*>("waypointWidget");
@@ -139,6 +131,8 @@ int main(int argc, char *argv[])
         std::string name = "j" + std::to_string(i) + "Field";
         auto *jointField = jiw->findChild<QSpinBox*>(name.c_str());
         QObject::connect(jointField, &QSpinBox::valueChanged, [jointField, i](int value) {
+            if (!m_inputEnable) return;
+
             robot->setJointValueDg(i, (float)value);
 
             robot->update();
@@ -173,6 +167,7 @@ int main(int argc, char *argv[])
     QObject::connect(waypointButton, &QPushButton::clicked, [&]() {
         m_waypoints.push_back(m_waypoints[qlw->currentRow()]);
         qlw->addItem(toString(m_waypoints[qlw->currentRow()]).c_str());
+        qlw->setCurrentRow(m_waypoints.size() - 1);
     });
 
     // Handle selection of waypoints for trajectory
@@ -200,20 +195,78 @@ int main(int argc, char *argv[])
     // Handle request to generate/follow a trajectory
     auto *trajectoryButton = widget->findChild<QPushButton*>("trajectoryButton");
     QObject::connect(trajectoryButton, &QPushButton::clicked, [&]() {
-        if (m_selection.first != m_selection.second) {
+        if (m_waypoints.size() > 1) {
             delete m_trajectory;
 
-//            m_trajectory = new Trajectory(m_waypoints[m_selection.first], m_waypoints[m_selection.second], TrajectorySolverType::LINEAR);
-//            robot->traverse(*m_trajectory);
-//            JointTrajectory jt(0, 180);
-            std::vector<float> y(100);
-            for (uint32_t i = 0; i < y.size(); i++) {
-//                y[i] = jt.interpolate(0, 0.01f * i);
-                y[i] = cosf(i * M_PI * 0.01f);
-            }
-            // TODO plot
+            m_trajectory = new Trajectory(m_waypoints, TrajectorySolverType::CUBIC);
+            m_x = m_trajectory->jointTrajectory(0).t();
+            m_xIdx = 0;
+
+            plotWidget->setX(m_x);
+
             plotWidget->clear();
-            plotWidget->plot(y);
+            plotWidget->zero();
+
+            for (uint32_t i = 0; i < m_trajectory->dimensions(); i++) {
+                std::string name = "j" + std::to_string(i);
+                plotWidget->plot(m_trajectory->jointTrajectory(i).pTrajectory(0.05f), (name + "Position").c_str());
+                plotWidget->plot(m_trajectory->jointTrajectory(i).vTrajectory(0.05f), (name + "Velocity").c_str());
+            }
+
+            m_inputEnable = false;
+
+//            for (auto* field : jointFields) {
+//                field->setEnabled(false);
+//            }
+
+            qlw->setCurrentRow(m_waypoints.size() - 1);
+
+
+
+//            robot->traverse(*m_trajectory);
+//            auto points = std::vector<float>{ 0, 180, 90, 45, 180 };
+//            JointTrajectory jt(points, TrajectorySolverType::CUBIC);
+//
+//            std::cout << "MV: " << jt.maxVelocity() << " " << jt.maxAcceleration() << "\n";
+//            plotWidget->setX(jt.t());
+//
+//            plotWidget->clear();
+//            plotWidget->zero();
+//
+//            plotWidget->plot(jt.pTrajectory(0.05f), "Position");
+//            plotWidget->plot(jt.vTrajectory(0.05f), "Velocity");
+//            plotWidget->plot(jt.aTrajectory(0.05f), "Acceleration");
+
+            plotWidget->ylim();
+
+            plotWidget->update();
+        }
+    });
+
+    // Handle updating robot
+    updateThread = std::make_unique<std::thread>([](){
+        while (true) {
+            if (m_xIdx < m_x.size()) {
+                Waypoint wp = m_trajectory->evaluate(m_x[m_xIdx]);
+
+                robot->moveTo(wp, true);
+                sceneWidget->update();
+
+                for (uint32_t i = 0; i < jointFields.size(); i++) {
+                    jointFields[i]->setValue((int)robot->getJointValueDg(i));
+                }
+
+                m_xIdx++;
+            } else if (!m_inputEnable && m_xIdx == m_x.size()) {
+                for (uint32_t i = 0; i < jointFields.size(); i++) {
+                    jointFields[i]->setValue((int)robot->getJointValueDg(i));
+                    jointFields[i]->setEnabled(true);
+                }
+                m_inputEnable = true;
+                m_xIdx++;
+            }
+
+            std::this_thread::sleep_for(std::chrono::nanoseconds(80000000));
         }
     });
 
@@ -229,53 +282,6 @@ int main(int argc, char *argv[])
 
     widget->show();
 
+
     return app.exec();
-
-
-//
-//    auto robotButton = new QCheckBox("Show mesh", control);
-//    robotButton->setChecked(true);
-//    hControlLayout->addWidget(robotButton);
-//
-//    QObject::connect(robotButton, &QCheckBox::clicked, [&](bool checked) {
-//        if (checked) sceneWidget->showAll(Scene::Model::MESH);
-//        else sceneWidget->hideAll(Scene::Model::MESH);
-//    });
-//
-//    auto hullButton = new QCheckBox("Show convex hull", control);
-//    hControlLayout->addWidget(hullButton);
-//
-//    QObject::connect(hullButton, &QCheckBox::clicked, [&](bool checked) {
-//        if (checked) sceneWidget->showAll(Scene::Model::HULL);
-//        else sceneWidget->hideAll(Scene::Model::HULL);
-//    });
-//
-//    auto bSphereButton = new QCheckBox("Show bounding sphere", control);
-//    hControlLayout->addWidget(bSphereButton);
-//
-//    QObject::connect(bSphereButton, &QCheckBox::clicked, [&](bool checked) {
-//        if (checked) sceneWidget->showAll(Scene::Model::BOUNDING_SPHERE);
-//        else sceneWidget->hideAll(Scene::Model::BOUNDING_SPHERE);
-//    });
-//
-//    auto stepButton = new QPushButton("Next step", control);
-//    hControlLayout->addWidget(stepButton);
-//
-//    QObject::connect(stepButton, &QPushButton::clicked, [&]() {
-//        scene->next();
-//    });
-//
-//    auto captureButton = new QPushButton("Capture", control);
-//    hControlLayout->addWidget(captureButton);
-//
-//    QObject::connect(captureButton, &QPushButton::clicked, [&]() {
-////        m_rc->capture();
-//        if (sceneWidget != nullptr) {
-//            auto image = sceneWidget->grabFramebuffer();
-////            auto img = new uint8_t[image.width()][image.height()];
-//
-//            image.save("..\\out\\capture.png");
-//        }
-//    });
-//
 }
