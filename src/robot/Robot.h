@@ -20,15 +20,16 @@ public:
 
     void prepareLinks();
 
+    void step();
     void update();
 
     void setJointValue(uint32_t idx, float value);
     void setJointValueDg(uint32_t idx, float value);
 
     void moveTo(const glm::vec3& position, const glm::vec3& euler = {0.0f, 1.0f, 0.0f});
-    void moveTo(const Waypoint& waypoint, bool inDg = false);
+    void moveTo(const Waypoint& waypoint);
 
-    void traverse(const Trajectory& trajectory);
+    void traverse(const std::shared_ptr<Trajectory>& trajectory);
 
     const std::vector<std::shared_ptr<Body>>& links();
 
@@ -37,6 +38,8 @@ public:
 
     [[nodiscard]] glm::vec3 getEOATPosition() const;
     [[nodiscard]] glm::vec3 getEOATEuler() const;
+
+    bool inTransit();
 
 
 protected:
@@ -49,6 +52,9 @@ private:
 
     // Maps to the joints of the kinematic chain
     std::vector<std::shared_ptr<Body>> m_links;
+
+    //
+    std::shared_ptr<Trajectory> m_currentTrajectory;
 
 };
 

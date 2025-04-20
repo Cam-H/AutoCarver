@@ -35,6 +35,9 @@ public:
 
     void setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate = false);
 
+    void setLayer(uint32_t layer);
+    void setMask(uint32_t mask);
+
     void updateColliders();
     void prepareColliderVisuals();
 
@@ -49,6 +52,13 @@ public:
 
     const std::shared_ptr<Mesh>& hullMesh();
     const std::shared_ptr<Mesh>& bSphereMesh();
+
+
+    [[nodiscard]] uint32_t layer() const;
+    [[nodiscard]] uint32_t mask() const;
+    [[nodiscard]] bool scan(const std::shared_ptr<Body>& body) const;
+
+    bool boundaryCollision(const std::shared_ptr<Body>& body);
 
     bool collides(const std::shared_ptr<Body>& body);
     bool collision(const std::shared_ptr<Body>& body, glm::vec3& offset);
@@ -76,6 +86,9 @@ protected:
     bool m_hullOK;
 
     Sphere m_boundingSphere;
+
+    uint32_t m_layer;
+    uint32_t m_mask;
 
     std::shared_ptr<Mesh> m_hullMesh;
     std::shared_ptr<Mesh> m_sphereMesh;

@@ -28,10 +28,11 @@ public:
 
     explicit Mesh(const float *vertices, uint32_t vertexCount, const uint32_t *faceIndices, const uint32_t *faceSizes, uint32_t faceCount);
     explicit Mesh(const std::vector<glm::vec3>& vertices, const std::vector<Triangle>& faces);
-    explicit Mesh(const VertexArray& vertices, const FaceArray& faces);
 
     explicit Mesh(const std::string& filename);
     explicit Mesh(std::ifstream& file);
+
+    explicit Mesh(VertexArray vertices, FaceArray faces);
 
     ~Mesh();
 
@@ -53,6 +54,11 @@ public:
     void setBaseColor(const glm::vec3& color);
     void setFaceColor(uint32_t faceIdx, const glm::vec3& color);
 
+    void applyColorOverride(const glm::vec3& color);
+    void setColorOverride(const glm::vec3& color);
+    void enableColorOverride(bool enable = true);
+    void disableColorOverride();
+
     void calculateAdjacencies();
 
     [[nodiscard]] uint32_t vertexCount() const;
@@ -64,7 +70,10 @@ public:
     [[nodiscard]] const VertexArray& colors() const;
     [[nodiscard]] const glm::vec3& baseColor() const;
     [[nodiscard]] glm::vec3 faceColor(uint32_t faceIdx) const;
-    bool faceColorsAssigned() const;
+    [[nodiscard]] const glm::vec3& colorOverride() const;
+
+    [[nodiscard]] bool faceColorsAssigned() const;
+    [[nodiscard]] bool colorOverrideEnabled() const;
 
     [[nodiscard]] uint32_t triangleCount() const;
     uint32_t* indices();
@@ -84,6 +93,8 @@ public:
     void print() const;
 
 private:
+
+    explicit Mesh();
 
     void initialize(bool prepareIndexing = true);
 
@@ -109,6 +120,8 @@ private:
 
     VertexArray m_colors;
     glm::vec3 m_baseColor;
+    glm::vec3 m_colorOverride;
+    bool m_colorOverrideEnable;
 
     bool m_adjacencyOK;
     std::vector<std::vector<uint32_t>> m_adjacencies;

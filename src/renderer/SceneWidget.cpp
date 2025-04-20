@@ -344,19 +344,20 @@ void SceneWidget::render(const std::shared_ptr<Mesh> &mesh, const QMatrix4x4& tr
     if (!item.visible) return;
 
     // Handle rendering
-
-    m_programs[item.programIdx]->bind();
+    auto *program = m_programs[item.programIdx];
+    if (mesh->colorOverrideEnabled()) program = m_programs[0]; // Use a flat shader instead in case of color override
+    program->bind();
 
     // TODO manage uniforms better
     // Set modelview-projection matrix
-    m_programs[item.programIdx]->setUniformValue("u_transform", transform);
-    m_programs[item.programIdx]->setUniformValue("vp_matrix", m_viewProjection);
-    m_programs[item.programIdx]->setUniformValue("mvp_matrix", m_viewProjection * transform);
-    m_programs[item.programIdx]->setUniformValue("n_matrix", transform.normalMatrix());
+    program->setUniformValue("u_transform", transform);
+    program->setUniformValue("vp_matrix", m_viewProjection);
+    program->setUniformValue("mvp_matrix", m_viewProjection * transform);
+    program->setUniformValue("n_matrix", transform.normalMatrix());
 
-    const glm::vec3& base = mesh->baseColor();
-    m_programs[item.programIdx]->setUniformValue("out_color", QVector3D(base.r, base.g, base.b));
+    const glm::vec3& color = mesh->colorOverrideEnabled() ? mesh->colorOverride() : mesh->baseColor();
+    program->setUniformValue("out_color", QVector3D(color.r, color.g, color.b));
 
     // Draw mesh geometry
-    m_geometries[item.geometryIdx]->draw(m_programs[item.programIdx]);
+    m_geometries[item.geometryIdx]->draw(program);
 }

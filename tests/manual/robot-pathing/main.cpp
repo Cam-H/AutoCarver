@@ -36,13 +36,12 @@ QListWidget* qlw;
 std::vector<QSpinBox*> jointFields;
 
 std::vector<Waypoint> m_waypoints = {
-        { std::vector<float>{ 0, 0, 0, 0, 0, 0 }, false },
-        { std::vector<float>{ 180, 50, -25, 0, -50, 0 }, false }
+        { std::vector<float>{ 0, 0, 0, 0, 0, 0 }, M_PI / 180, false },
+        { std::vector<float>{ 180, 50, -25, 0, -50, 0 }, M_PI / 180, false }
 };
 std::pair<int, int> m_selection = { 0, 0 };
-Trajectory* m_trajectory = nullptr;
+std::shared_ptr<Trajectory> m_trajectory = nullptr;
 std::vector<float> m_x = {};
-uint32_t m_xIdx = 0;
 bool m_inputEnable = true;
 
 LineChartWidget *plotWidget = nullptr;
@@ -135,7 +134,7 @@ int main(int argc, char *argv[])
 
             robot->setJointValueDg(i, (float)value);
 
-            robot->update();
+            scene->step();
             sceneWidget->update();
 
             jointField->setValue((int)robot->getJointValueDg(i));
@@ -195,12 +194,13 @@ int main(int argc, char *argv[])
     // Handle request to generate/follow a trajectory
     auto *trajectoryButton = widget->findChild<QPushButton*>("trajectoryButton");
     QObject::connect(trajectoryButton, &QPushButton::clicked, [&]() {
-        if (m_waypoints.size() > 1) {
-            delete m_trajectory;
+        if (m_inputEnable && m_waypoints.size() > 1) {
 
-            m_trajectory = new Trajectory(m_waypoints, TrajectorySolverType::CUBIC);
+            m_trajectory = std::make_shared<Trajectory>(m_waypoints, TrajectorySolverType::CUBIC);
+            robot->traverse(m_trajectory);
+            robot->step();
+
             m_x = m_trajectory->jointTrajectory(0).t();
-            m_xIdx = 0;
 
             plotWidget->setX(m_x);
 
@@ -215,27 +215,7 @@ int main(int argc, char *argv[])
 
             m_inputEnable = false;
 
-//            for (auto* field : jointFields) {
-//                field->setEnabled(false);
-//            }
-
             qlw->setCurrentRow(m_waypoints.size() - 1);
-
-
-
-//            robot->traverse(*m_trajectory);
-//            auto points = std::vector<float>{ 0, 180, 90, 45, 180 };
-//            JointTrajectory jt(points, TrajectorySolverType::CUBIC);
-//
-//            std::cout << "MV: " << jt.maxVelocity() << " " << jt.maxAcceleration() << "\n";
-//            plotWidget->setX(jt.t());
-//
-//            plotWidget->clear();
-//            plotWidget->zero();
-//
-//            plotWidget->plot(jt.pTrajectory(0.05f), "Position");
-//            plotWidget->plot(jt.vTrajectory(0.05f), "Velocity");
-//            plotWidget->plot(jt.aTrajectory(0.05f), "Acceleration");
 
             plotWidget->ylim();
 
@@ -246,24 +226,20 @@ int main(int argc, char *argv[])
     // Handle updating robot
     updateThread = std::make_unique<std::thread>([](){
         while (true) {
-            if (m_xIdx < m_x.size()) {
-                Waypoint wp = m_trajectory->evaluate(m_x[m_xIdx]);
+            scene->step();
 
-                robot->moveTo(wp, true);
+            if (robot->inTransit()) {
                 sceneWidget->update();
 
                 for (uint32_t i = 0; i < jointFields.size(); i++) {
                     jointFields[i]->setValue((int)robot->getJointValueDg(i));
                 }
 
-                m_xIdx++;
-            } else if (!m_inputEnable && m_xIdx == m_x.size()) {
+            } else if (!m_inputEnable) {
                 for (uint32_t i = 0; i < jointFields.size(); i++) {
                     jointFields[i]->setValue((int)robot->getJointValueDg(i));
-                    jointFields[i]->setEnabled(true);
                 }
                 m_inputEnable = true;
-                m_xIdx++;
             }
 
             std::this_thread::sleep_for(std::chrono::nanoseconds(80000000));

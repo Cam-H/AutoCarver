@@ -11,6 +11,7 @@
 
 struct Waypoint {
     std::vector<float> values;
+    float toRad;
     bool collides;
 };
 
@@ -68,14 +69,17 @@ private:
 class Trajectory {
 public:
 
-
     Trajectory(const Waypoint& start, const Waypoint& end, TrajectorySolverType solverType);
     Trajectory(const std::vector<Waypoint>& waypoints, TrajectorySolverType solverType);
 
 //    void setEndpoints(const std::vector<float> endpoints);
-//
-    bool complete();
+
     [[nodiscard]] uint32_t dimensions() const;
+
+    [[nodiscard]] float tStep() const;
+    [[nodiscard]] float t() const;
+
+    [[nodiscard]] bool complete() const;
 
 
     [[nodiscard]] Waypoint next();

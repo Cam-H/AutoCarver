@@ -26,6 +26,8 @@ Body::Body(const std::shared_ptr<Mesh>& mesh)
     : m_mesh(mesh)
     , m_hullMesh(nullptr)
     , m_hullOK(false)
+    , m_layer(1)
+    , m_mask(1)
     , m_isManifold(false)
     , m_area(0)
     , m_volume(0)
@@ -80,9 +82,37 @@ void Body::setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate) {
     if (doColliderUpdate) updateColliders();
 }
 
+void Body::setLayer(uint32_t layer)
+{
+    m_layer = layer;
+}
+void Body::setMask(uint32_t mask)
+{
+    m_mask = mask;
+}
+
+uint32_t Body::layer() const
+{
+    return m_layer;
+}
+uint32_t Body::mask() const
+{
+    return m_mask;
+}
+
+bool Body::scan(const std::shared_ptr<Body>& body) const
+{
+    return ((m_mask & body->m_layer) > 0);
+}
+
+bool Body::boundaryCollision(const std::shared_ptr<Body>& body)
+{
+    return scan(body) && m_boundingSphere.intersects(body->m_boundingSphere);
+}
+
 bool Body::collides(const std::shared_ptr<Body>& body)
 {
-    if (!m_hullOK || !body->m_hullOK) return false;
+    if (!m_hullOK || !body->m_hullOK || !boundaryCollision(body)) return false;
 
     glm::mat4 relative = glm::inverse(m_transform) * body->m_transform;
 
@@ -97,7 +127,7 @@ bool Body::collides(const std::shared_ptr<Body>& body)
 
 bool Body::collision(const std::shared_ptr<Body>& body, glm::vec3& offset)
 {
-    if (!m_hullOK || !body->m_hullOK) return false;
+    if (!m_hullOK || !body->m_hullOK || !boundaryCollision(body)) return false;
 
     EPA epa = collision(body);
     offset = epa.colliding() ? epa.overlap() : epa.offset();
@@ -107,7 +137,7 @@ bool Body::collision(const std::shared_ptr<Body>& body, glm::vec3& offset)
 
 EPA Body::collision(const std::shared_ptr<Body>& body)
 {
-    if (!m_hullOK || !body->m_hullOK) return {};
+    if (!m_hullOK || !body->m_hullOK || !boundaryCollision(body)) return {};
 
     glm::mat4 relative = glm::inverse(m_transform) * body->m_transform;
 

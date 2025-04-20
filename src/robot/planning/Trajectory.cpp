@@ -240,20 +240,32 @@ Trajectory::Trajectory(const std::vector<Waypoint>& waypoints, TrajectorySolverT
     }
 }
 
-bool Trajectory::complete()
-{
-    return m_t >= (float)m_waypoints.size();
-}
+
 
 uint32_t Trajectory::dimensions() const
 {
     return m_jointCount;
 }
 
+float Trajectory::tStep() const
+{
+    return m_tStep;
+}
+float Trajectory::t() const
+{
+    return m_t;
+}
+
+bool Trajectory::complete() const
+{
+    return m_t >= (float)m_waypoints.size() - 1;
+}
 Waypoint Trajectory::next()
 {
+    auto wp =  evaluate(m_t);
     m_t += m_tStep;
-    return evaluate(m_t);
+
+    return wp;
 }
 
 Waypoint Trajectory::evaluate(float t) const
@@ -269,7 +281,7 @@ Waypoint Trajectory::evaluate(float t) const
 
     for (const JointTrajectory& jt : m_jointTrajectories) values.emplace_back(jt.position(idx, t));
 
-    return { values };
+    return { values, m_waypoints[0].toRad };
 }
 
 const JointTrajectory& Trajectory::jointTrajectory(uint32_t idx)

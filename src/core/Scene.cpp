@@ -76,6 +76,25 @@ void Scene::pause()
     m_paused = !m_paused;
 }
 
+void Scene::step()
+{
+    // Update robots
+    for (const std::shared_ptr<Robot>& robot : m_robots) robot->step();
+
+    // Check for robot collisions with the environment
+    for (const std::shared_ptr<Robot>& robot : m_robots) {
+        for (const std::shared_ptr<Body>& link: robot->links()) {
+            bool collision = false;
+            for (const std::shared_ptr<Body>& body : m_bodies) {
+                collision |= link->collides(body);
+            }
+
+            link->mesh()->enableColorOverride(collision);
+        }
+    }
+
+}
+
 void Scene::stop()
 {
     m_running = false;
@@ -84,7 +103,10 @@ void Scene::stop()
 void Scene::run()
 {
     while (m_running) {
-        if (!m_paused) update();
+        if (!m_paused) {
+            step();
+            update();
+        }
 
         std::this_thread::sleep_for(std::chrono::nanoseconds(100000));
     }
@@ -92,7 +114,9 @@ void Scene::run()
 
 void Scene::update()
 {
-    for (auto robot : m_robots) robot->update();
+    for (const std::shared_ptr<Robot>& robot : m_robots) robot->update();
+
+
 
 }
 

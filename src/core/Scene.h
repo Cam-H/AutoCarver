@@ -38,6 +38,7 @@ public:
 
     void start();
     void pause();
+    void step();
     void stop();
 
     void clear(uint8_t level = 0);
