@@ -13,6 +13,7 @@ public:
     Transformable();
 
     void setPosition(const glm::vec3& position);
+    void setRotation(const glm::vec3& euler);
 
     void translate(const glm::vec3& translation);
     void rotate(const glm::vec3& axis, float theta);
@@ -24,6 +25,9 @@ public:
 
     void setTransform(glm::mat4x4 transform);
     const glm::mat4x4& getTransform();
+
+    [[nodiscard]] glm::vec3 position() const;
+    [[nodiscard]] glm::vec3 up() const;
 
 protected:
 

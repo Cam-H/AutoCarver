@@ -194,12 +194,12 @@ Simplex ConvexHull::gjkIntersection(const ConvexHull& body, const glm::mat4& tra
     while (limit-- > 0) {
         next = gjkSupport(body, transform, axis, idx);
 
-        // Check whether collision is impossible
+        // Check whether cs is impossible
         if (glm::dot (axis, next) <= 0) return simplex;
 
         simplex.add({ next, idx });
 
-        // Check whether the collision is certain
+        // Check whether the cs is certain
         if (simplex.evaluate(axis)) return simplex;
     }
 
@@ -421,6 +421,86 @@ void ConvexHull::calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t 
 
     horizon.push_back(current);// Encode information about adjacent facet for linking purposes
     horizon.push_back(facets[current].triangle[index]);// Encode next vertex on horizon
+}
+
+ConvexHull ConvexHull::fragment(const glm::vec3& origin, const glm::vec3& normal) const
+{
+
+    // Find vertex intersections of hull with plane
+    std::vector<bool> above(m_vertices.vertexCount());
+    std::vector<glm::vec3> set = intersection(origin, normal, above);
+
+    // Exit if no edges intersect with the plane
+    if (set.empty()) {
+        return *this;
+    }
+
+    // Attach vertices on the positive side of the plane
+    for (uint32_t i = 0; i < above.size(); i++) if (above[i]) set.push_back(m_vertices[i]);
+
+    return { VertexArray(set) };
+}
+
+std::pair<ConvexHull, ConvexHull> ConvexHull::fragments(const glm::vec3& origin, const glm::vec3& normal) const
+{
+    std::vector<bool> above(m_vertices.vertexCount());
+    std::vector<glm::vec3> setA = intersection(origin, normal, above);
+
+    // Exit if no edges intersect with the plane
+    if (setA.empty()) {
+        return { *this, {} };
+    }
+
+    std::vector<glm::vec3> setB = setA;
+
+    // Attach vertices to respective fragments
+    for (uint32_t i = 0; i < above.size(); i++) {
+        if (above[i]) setA.push_back(m_vertices[i]);
+        else setB.push_back(m_vertices[i]);
+    }
+
+    return { VertexArray(setA), VertexArray(setB) };
+}
+
+// TODO Improvement: Leverage walk to calculate intersection in-place
+std::vector<glm::vec3> ConvexHull::intersection(const glm::vec3& origin, const glm::vec3& normal, std::vector<bool>& above) const
+{
+
+    float d = glm::dot(origin, normal);
+
+    // Determine which vertices are above the cut plane
+    for (uint32_t i = 0; i < m_vertices.vertexCount(); i++) {
+        above[i] = glm::dot(normal, origin - m_vertices[i]) <= 0;
+    }
+
+    // Find vertices on the cut plane
+    std::vector<glm::vec3> intersection;
+    for (uint32_t i = 0; i < m_vertices.vertexCount(); i++) {
+        for (uint32_t j : m_walks[i]) {
+            if (i < j && above[i] != above[j]) { // Skip repeated edges, edges that do not cross the plane
+                glm::vec3 vertex = m_vertices[i], edge = m_vertices[j] - vertex;
+                float t = (d - glm::dot(normal, vertex)) / glm::dot(normal, edge);
+                intersection.emplace_back(vertex + edge * t);
+            }
+        }
+    }
+
+    return intersection;
+}
+
+uint32_t ConvexHull::step(const glm::vec3& normal, const glm::vec3& axis, uint32_t index) const
+{
+    uint32_t next = std::numeric_limits<uint32_t>::max();
+//    float
+    for (uint32_t walk : m_walks[index]) {
+        if (glm::dot(normal, m_vertices[walk] - m_vertices[index]) > 0 ) {
+            if (next == std::numeric_limits<uint32_t>::max()) {
+
+            }
+        }
+    }
+
+    return next;
 }
 
 //bool ConvexHull::raycast(const glm::vec3& origin, const glm::vec3& direction, float& t) const {

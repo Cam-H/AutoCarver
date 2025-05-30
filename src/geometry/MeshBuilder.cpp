@@ -28,10 +28,13 @@ std::shared_ptr<Mesh> MeshBuilder::plane(float length, float width, const glm::v
         d.x, d.y, d.z
     };
 
-    auto faces = new uint32_t[4] { 0, 1, 2, 3 };
-    auto faceSizes = new uint32_t[1] { 4 };
+    auto faces = new uint32_t[8] {
+        0, 1, 2, 3,
+        0, 3, 2, 1
+    };
+    auto faceSizes = new uint32_t[2] { 4, 4 };
 
-    return std::make_shared<Mesh>(vertices, 4, faces, faceSizes, 1);
+    return std::make_shared<Mesh>(vertices, 4, faces, faceSizes, 2);
 }
 
 std::shared_ptr<Mesh> MeshBuilder::box(float length, float width, float height)

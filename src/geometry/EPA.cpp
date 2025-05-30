@@ -66,7 +66,7 @@ EPA::EPA(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, c
     const Triangle& tri = facets[idx].triangle;
 
 
-    // Record collision results
+    // Record cs results
     m_colliding = order[0].first < 0;
 
     // Calculate the projection of the origin on to the nearest facet

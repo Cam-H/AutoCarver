@@ -258,7 +258,7 @@ float Trajectory::t() const
 
 bool Trajectory::complete() const
 {
-    return m_t >= (float)m_waypoints.size() - 1;
+    return m_t - (float)m_waypoints.size() + 1 > m_tStep;
 }
 Waypoint Trajectory::next()
 {

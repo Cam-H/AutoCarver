@@ -37,7 +37,7 @@ std::vector<QSpinBox*> jointFields;
 
 std::vector<Waypoint> m_waypoints = {
         { std::vector<float>{ 0, 0, 0, 0, 0, 0 }, M_PI / 180, false },
-        { std::vector<float>{ 180, 50, -25, 0, -50, 0 }, M_PI / 180, false }
+        { std::vector<float>{ 180, 55, -25, 0, -50, 0 }, M_PI / 180, false }
 };
 std::pair<int, int> m_selection = { 0, 0 };
 std::shared_ptr<Trajectory> m_trajectory = nullptr;
@@ -102,6 +102,10 @@ int main(int argc, char *argv[])
     robot = scene->createRobot(new ArticulatedWrist(0.8, 2, 2, 1));
     robot->translate({1, 0, 0});
     robot->update();
+
+    auto body = scene->createBody(MeshBuilder::box(5.0f, 5.0f, 0.1f));
+    body->mesh()->setBaseColor({0.6f, 0.6f, 0.6f});
+    body->translate({0, -0.5f, 0});
 
     sceneWidget = widget->findChild<SceneWidget*>("sceneWidget");
     sceneWidget->setScene(scene);

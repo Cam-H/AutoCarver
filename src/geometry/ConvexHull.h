@@ -47,6 +47,9 @@ public:
     [[nodiscard]] Simplex gjkIntersection(const ConvexHull& body, const glm::mat4& transform, std::pair<uint32_t, uint32_t>& idx) const;
     [[nodiscard]] EPA epaIntersection(const ConvexHull& body, const glm::mat4& transform, const glm::mat4& relativeTransform, std::pair<uint32_t, uint32_t>& idx) const;
 
+    [[nodiscard]] ConvexHull fragment(const glm::vec3& origin, const glm::vec3& normal) const;
+    [[nodiscard]] std::pair<ConvexHull, ConvexHull> fragments(const glm::vec3& origin, const glm::vec3& normal) const;
+
 private:
 
     struct Facet {
@@ -62,6 +65,8 @@ private:
     std::vector<Triangle> initialApproximation();
     glm::vec3 wNormal(const Triangle& triangle);
 
+    [[nodiscard]] uint32_t step(const glm::vec3& normal, const glm::vec3& axis, uint32_t index) const;
+
     void prepareFacets(const std::vector<Triangle>& triangles);
     void prepareFacets(const std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
     void sortCloud(std::vector<uint32_t>& free, Facet& facet);
@@ -69,6 +74,9 @@ private:
 
     glm::vec3 initialAxis(const ConvexHull& body, std::pair<uint32_t, uint32_t>& idx) const;
     glm::vec3 gjkSupport(const ConvexHull& body, const glm::mat4& transform, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx) const;
+
+    std::vector<glm::vec3> intersection(const glm::vec3& origin, const glm::vec3& normal, std::vector<bool>& above) const;
+
 
 private:
 
