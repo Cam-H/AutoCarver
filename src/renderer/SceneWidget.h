@@ -12,6 +12,7 @@
 #include <QVector2D>
 #include <QOpenGLShaderProgram>
 #include <QOpenGLTexture>
+#include <QTimer>
 
 #include <vector>
 #include <unordered_map>
@@ -32,6 +33,8 @@ public:
     ~SceneWidget();
 
     void setScene(const std::shared_ptr<Scene>& scene);
+    void setCameraPosition(const QVector3D& position);
+    void setCameraFocus(const QVector3D& position);
 
     void addShaderProgram(const std::string& name);
     void createDefaultShaderProgram(const std::string& name);
@@ -42,6 +45,13 @@ public:
 
     void showAll(Scene::Model target = Scene::Model::ALL);
     void hideAll(Scene::Model target = Scene::Model::ALL);
+
+
+    void start();
+    void pause();
+
+    void setUpdateInterval(std::chrono::milliseconds msec);
+    void setTargetFPS(uint32_t target);
 
     void clear();
 
@@ -68,6 +78,10 @@ protected:
 
 private:
 
+    void setCameraOrientation(QVector3D axis);
+
+    void paint();
+
     void render(const std::shared_ptr<Mesh>& mesh, const QMatrix4x4& transform, bool defaultVisibility);
 
     void show(const std::vector<std::shared_ptr<Mesh>>& selection);
@@ -83,6 +97,9 @@ protected:
     std::shared_ptr<Scene> m_scene;
 
 private:
+
+    QTimer *m_timer;
+    std::chrono::milliseconds m_interval;
 
     std::unordered_map<std::shared_ptr<Mesh>, RenderItem> m_renderMap;
 

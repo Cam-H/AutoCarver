@@ -16,6 +16,8 @@ SceneWidget::SceneWidget(QWidget* parent)
 
 SceneWidget::SceneWidget(const std::shared_ptr<Scene>& scene, QWidget* parent)
     : m_scene(scene)
+    , m_timer(nullptr)
+    , m_interval(1000 / 60)
     , m_defaultProgramIdx(0)
     , m_fov(60.0)
     , m_aspect(1.0)
@@ -51,6 +53,29 @@ void SceneWidget::setScene(const std::shared_ptr<Scene>& scene)
     m_scene = scene;
 
     update();
+}
+
+void SceneWidget::setCameraPosition(const QVector3D& position)
+{
+    setCameraOrientation(m_center - position);
+    calculateViewProjectionMatrix();
+}
+
+void SceneWidget::setCameraFocus(const QVector3D& position)
+{
+    setCameraOrientation(position - m_eye);
+    m_center = position;
+
+    calculateViewProjectionMatrix();
+}
+
+void SceneWidget::setCameraOrientation(QVector3D axis)
+{
+    m_radius = axis.length();
+    axis /= m_radius;
+
+    m_yaw = 180.0f / (float)M_PI * atan2f(axis.z(), -axis.x());
+    m_pitch = 180.0f / (float)M_PI * acosf(QVector3D::dotProduct(UP_VECTOR, axis)) - 90.0f;
 }
 
 void SceneWidget::mousePressEvent(QMouseEvent *e)
@@ -242,27 +267,56 @@ std::vector<std::shared_ptr<Mesh>> SceneWidget::selectAll(Scene::Model target)
 
     switch (target) {
         case Scene::Model::ALL:
-            for (const std::shared_ptr<Body>& body : m_scene->bodies()) selection.push_back(body->mesh());
-            for (const std::shared_ptr<Body>& body : m_scene->bodies()) {
+            for (const std::shared_ptr<RigidBody>& body : m_scene->bodies()) selection.push_back(body->mesh());
+            for (const std::shared_ptr<RigidBody>& body : m_scene->bodies()) {
                 if (body->hullMesh() != nullptr) selection.push_back(body->hullMesh());
             }
             break;
         case Scene::Model::MESH:
-            for (const std::shared_ptr<Body>& body : m_scene->bodies()) selection.push_back(body->mesh());
+            for (const std::shared_ptr<RigidBody>& body : m_scene->bodies()) selection.push_back(body->mesh());
             break;
         case Scene::Model::HULL:
-            for (const std::shared_ptr<Body>& body : m_scene->bodies()) {
+            for (const std::shared_ptr<RigidBody>& body : m_scene->bodies()) {
                 if (body->hullMesh() != nullptr) selection.push_back(body->hullMesh());
             }
             break;
         case Scene::Model::BOUNDING_SPHERE:
-            for (const std::shared_ptr<Body>& body : m_scene->bodies()) {
+            for (const std::shared_ptr<RigidBody>& body : m_scene->bodies()) {
                 if (body->hullMesh() != nullptr) selection.push_back(body->bSphereMesh());
             }
             break;
     }
 
     return selection;
+}
+
+void SceneWidget::start()
+{
+    if (m_timer == nullptr) {
+        m_timer = new QTimer(this);
+        connect(m_timer, &QTimer::timeout, this, &SceneWidget::paint);
+    }
+
+    m_timer->start(m_interval);
+}
+void SceneWidget::pause()
+{
+    m_timer->stop();
+}
+
+void SceneWidget::setUpdateInterval(std::chrono::milliseconds msec)
+{
+    m_interval = msec;
+    if (m_timer != nullptr && m_timer->isActive()) start();
+}
+void SceneWidget::setTargetFPS(uint32_t target)
+{
+    setUpdateInterval(std::chrono::milliseconds(1000 / target));
+}
+
+void SceneWidget::paint()
+{
+    update();
 }
 
 void SceneWidget::clear()
@@ -289,6 +343,9 @@ void SceneWidget::resizeGL(int w, int h)
 
 void SceneWidget::paintGL()
 {
+
+    calculateViewProjectionMatrix();
+
     // Clear color and depth buffer
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -302,9 +359,9 @@ void SceneWidget::paintGL()
 
 
     if (m_scene != nullptr) {
-        const std::vector<std::shared_ptr<Body>>& bodies = m_scene->bodies();
+        const std::vector<std::shared_ptr<RigidBody>>& bodies = m_scene->bodies();
 
-        for (const std::shared_ptr<Body>& body : bodies) {
+        for (const std::shared_ptr<RigidBody>& body : bodies) {
             glm::mat4x4 trans = body->getTransform();
 
             QMatrix4x4 transform;
