@@ -83,8 +83,11 @@ public:
 
     [[nodiscard]] std::vector<uint32_t> outline(const glm::vec3& axis);
 
-    [[nodiscard]] float volume() const;
     [[nodiscard]] float surfaceArea() const;
+
+    [[nodiscard]] float volume() const;
+    [[nodiscard]] glm::vec3 centroid() const;
+    [[nodiscard]] glm::mat3x3 inertiaTensor() const;
 
     std::vector<uint32_t> sharedFaces(const std::shared_ptr<Mesh>& reference) const;
 
@@ -105,6 +108,9 @@ private:
 
     [[nodiscard]] float faceArea(uint32_t faceIdx) const;
     [[nodiscard]] static float faceArea(const std::vector<glm::vec3>& vertices) ;
+
+    static float tetrahedronVolume(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c);
+    static glm::mat3x3 tetrahedronInertiaTensor(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c);
 
 private:
 

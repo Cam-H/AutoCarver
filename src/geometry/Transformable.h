@@ -17,6 +17,7 @@ public:
 
     void translate(const glm::vec3& translation);
     void rotate(const glm::vec3& axis, float theta);
+    void rotate(const glm::vec3& w);
 
     void globalTranslate(const glm::vec3& translation);
     void globalRotate(const glm::vec3& axis, float theta);

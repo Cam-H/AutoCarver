@@ -171,6 +171,11 @@ glm::vec3 ConvexHull::center() const
     return m_center;
 }
 
+bool ConvexHull::empty() const
+{
+    return m_vertices.vertexCount() == 0;
+}
+
 bool ConvexHull::isSourceConvex() const
 {
     std::cout << m_vertices.vertexCount() << " " << m_cloud.vertexCount() << " |";

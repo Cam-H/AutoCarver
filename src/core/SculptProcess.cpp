@@ -84,7 +84,7 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
 
     m_sculpture = std::make_shared<Sculpture>(model, m_config.materialWidth, m_config.materialHeight);
 
-    prepareBody(std::make_shared<Body>((model)), 1);
+    prepareBody(std::make_shared<RigidBody>((model)), 1);
     m_bodies[0]->prepareColliderVisuals();
 
     prepareBody(m_sculpture, 1);
@@ -563,8 +563,8 @@ void SculptProcess::activate(const Result& result)
     // Activate physics on precalculated fragments
     for (uint32_t i = 0; i < result.debris.size(); i++) {
 
-//        prepareBody(new Body(&m_physicsCommon, m_world, fragments[i]));
-////        prepareBody(new Body(fragments[i]));
+//        prepareBody(new RigidBody(&m_physicsCommon, m_world, fragments[i]));
+////        prepareBody(new RigidBody(fragments[i]));
     }
 }
 

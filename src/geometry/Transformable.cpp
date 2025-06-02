@@ -4,10 +4,14 @@
 
 #include "Transformable.h"
 
+#include <iostream>
+
 #include <glm/gtc/matrix_transform.hpp>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_decompose.hpp>
+#include <glm/gtx/euler_angles.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 Transformable::Transformable()
     : m_transform(1.0f)
@@ -47,6 +51,18 @@ void Transformable::translate(const glm::vec3& translation)
 void Transformable::rotate(const glm::vec3& axis, float theta)
 {
     m_transform = glm::rotate(m_transform, theta, axis);
+}
+
+void Transformable::rotate(const glm::vec3& w)
+{
+//    if (glm::dot(w, w) <= 1e-6) return;
+
+    m_transform = m_transform * glm::eulerAngleXYZ(w.x, w.y, w.z);
+
+//    m_transform = m_transform * glm::eulerAngleXYX(w.x, w.y, w.z);
+//    m_transform = m_transform * glm::eulerAngleXZX(w.x, w.y, w.z);
+//    m_transform = m_transform * glm::eulerAngleXZY(w.x, w.y, w.z);
+
 }
 
 void Transformable::globalTranslate(const glm::vec3& translation)

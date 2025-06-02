@@ -8,14 +8,12 @@
 #include <Qt3DCore/QEntity>
 #include <Qt3DExtras/Qt3DWindow>
 
-#include <reactphysics3d/reactphysics3d.h>
-
 #include <vector>
 #include <thread>
 #include <fstream>
 
 #include "fileIO/Serializable.h"
-#include "geometry/Body.h"
+#include "geometry/RigidBody.h"
 #include "renderer/RenderEntity.h"
 #include "robot/Robot.h"
 
@@ -38,23 +36,26 @@ public:
 
     void start();
     void pause();
-    void step();
+    void step(float delta);
     void stop();
+
+    void connect(void(*function)());
 
     void clear(uint8_t level = 0);
 
-    std::shared_ptr<Body> createBody(const std::string &filepath, rp3d::BodyType type = rp3d::BodyType::STATIC);
-    std::shared_ptr<Body> createBody(const std::shared_ptr<Mesh>& mesh, rp3d::BodyType type = rp3d::BodyType::STATIC);
+    std::shared_ptr<RigidBody> createBody(const std::string &filepath, RigidBody::Type type = RigidBody::Type::STATIC);
+    std::shared_ptr<RigidBody> createBody(const std::shared_ptr<Mesh>& mesh, RigidBody::Type type = RigidBody::Type::STATIC);
+    std::shared_ptr<RigidBody> createBody(const ConvexHull& hull, RigidBody::Type type = RigidBody::Type::STATIC);
 
     std::shared_ptr<Robot> createRobot(KinematicChain* kinematics);
 
-    const std::vector<std::shared_ptr<Body>>& bodies();
+    const std::vector<std::shared_ptr<RigidBody>>& bodies();
     uint32_t bodyCount();
 
 //    std::vector<const std::shared_ptr<Mesh>&> meshes();
 
 protected:
-    void prepareBody(const std::shared_ptr<Body>& body, uint8_t level = 0);
+    void prepareBody(const std::shared_ptr<RigidBody>& body, uint8_t level = 0);
 
 private:
     void run();
@@ -62,15 +63,16 @@ private:
 
 protected:
 
-    rp3d::PhysicsCommon m_physicsCommon;
-    rp3d::PhysicsWorld *m_world;
 
-    std::vector<std::shared_ptr<Body>> m_bodies;
+
+    std::vector<std::shared_ptr<RigidBody>> m_bodies;
     std::vector<std::shared_ptr<Robot>> m_robots;
 
     std::unique_ptr<std::thread> m_updateThread;
     bool m_running;
     bool m_paused;
+
+    std::vector<void(*)()> callbacks;
 
 };
 

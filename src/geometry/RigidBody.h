@@ -2,8 +2,8 @@
 // Created by Cam on 2024-09-20.
 //
 
-#ifndef AUTOCARVER_BODY_H
-#define AUTOCARVER_BODY_H
+#ifndef AUTOCARVER_RIGIDBODY_H
+#define AUTOCARVER_RIGIDBODY_H
 
 #include <fstream>
 
@@ -21,11 +21,16 @@
 #include "Transformable.h"
 
 
-class Body : public Serializable, public Transformable {
+class RigidBody : public Serializable, public Transformable {
 public:
 
-    explicit Body(const std::string& filename);
-    explicit Body(const std::shared_ptr<Mesh>& mesh);
+    enum class Type {
+        STATIC = 0, KINEMATIC, DYNAMIC
+    };
+
+    explicit RigidBody(const std::string& filename);
+    explicit RigidBody(const std::shared_ptr<Mesh>& mesh);
+    explicit RigidBody(const ConvexHull& hull);
 
     bool serialize(const std::string& filename) override;
     bool serialize(std::ofstream& file) override;
@@ -33,17 +38,35 @@ public:
     bool deserialize(const std::string& filename) override;
     bool deserialize(std::ifstream& file) override;
 
+    void setType(Type type);
+
     void setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate = false);
 
     void setLayer(uint32_t layer);
     void setMask(uint32_t mask);
 
+    void setDensity(float density);
+
+    void step(float delta);
+
     void updateColliders();
     void prepareColliderVisuals();
 
+    Type getType() const;
+
     bool isManifold();
     float area();
+
     float volume();
+    float density() const;
+    float mass();
+    glm::vec3 centroid();
+    glm::mat3x3 inertiaTensor();
+
+    void setLinearVelocity(glm::vec3 velocity);
+    [[nodiscard]] const glm::vec3& getLinearVelocity() const;
+    void setAngularVelocity(glm::vec3 velocity);
+    [[nodiscard]] const glm::vec3& getAngularVelocity() const;
 
     const std::shared_ptr<Mesh>& mesh();
 
@@ -56,14 +79,14 @@ public:
 
     [[nodiscard]] uint32_t layer() const;
     [[nodiscard]] uint32_t mask() const;
-    [[nodiscard]] bool scan(const std::shared_ptr<Body>& body) const;
+    [[nodiscard]] bool scan(const std::shared_ptr<RigidBody>& body) const;
 
-    bool boundaryCollision(const std::shared_ptr<Body>& body);
+    bool boundaryCollision(const std::shared_ptr<RigidBody>& body);
 
-    bool collides(const std::shared_ptr<Body>& body);
-    bool collision(const std::shared_ptr<Body>& body, glm::vec3& offset);
+    bool collides(const std::shared_ptr<RigidBody>& body);
+    bool collision(const std::shared_ptr<RigidBody>& body, glm::vec3& offset);
 
-    EPA collision(const std::shared_ptr<Body>& body);
+    EPA collision(const std::shared_ptr<RigidBody>& body);
 
 private:
 
@@ -71,14 +94,18 @@ private:
     void prepareSphereVisual();
 
 
-    void cacheCollision(const std::shared_ptr<Body>& body, const std::pair<uint32_t, uint32_t>& start);
-    std::pair<uint32_t, uint32_t> cachedCollision(const std::shared_ptr<Body>& body);
+    void cacheCollision(const std::shared_ptr<RigidBody>& body, const std::pair<uint32_t, uint32_t>& start);
+    std::pair<uint32_t, uint32_t> cachedCollision(const std::shared_ptr<RigidBody>& body);
 
     void evaluateManifold();
     void calculateArea();
     void calculateVolume();
+    void calculateMass();
+    void calculateInertiaTensor();
 
 protected:
+
+    Type m_type;
 
     std::shared_ptr<Mesh> m_mesh;
 
@@ -98,10 +125,19 @@ protected:
     bool m_isManifold;
     float m_area;
     float m_volume;
+    float m_density;
+    float m_mass;
+    glm::mat3x3 m_inertiaTensor;
 
     bool m_isManifoldOK;
     bool m_areaOK;
     bool m_volumeOK;
+    bool m_massOK;
+    bool m_inertiaTensorOK;
+
+    glm::vec3 m_linearVelocity;
+    glm::vec3 m_angularVelocity;
+
 
 private:
 
@@ -110,4 +146,4 @@ private:
 };
 
 
-#endif //AUTOCARVER_BODY_H
+#endif //AUTOCARVER_RIGIDBODY_H

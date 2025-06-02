@@ -39,6 +39,7 @@ public:
 
     [[nodiscard]] glm::vec3 center() const;
 
+    [[nodiscard]] bool empty() const;
     [[nodiscard]] bool isSourceConvex() const;
     static bool isConvex(const VertexArray& test);
 

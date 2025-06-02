@@ -515,16 +515,6 @@ std::vector<uint16_t> Mesh::identifyHorizonFaces(const glm::vec3& axis, const st
     return status;
 }
 
-float Mesh::volume() const
-{
-    float sum = 0;
-    for (uint32_t i = 0; i < triangleCount(); i++) {
-        sum += glm::dot(m_vertices[m_indices[i * STRIDE]], glm::cross(m_vertices[m_indices[i * STRIDE + 1]], m_vertices[m_indices[i * STRIDE + 2]]));
-    }
-
-    return sum / 6.0f;
-}
-
 float Mesh::surfaceArea() const
 {
     float sum = 0;
@@ -532,6 +522,85 @@ float Mesh::surfaceArea() const
 
     return sum;
 }
+
+float Mesh::volume() const
+{
+    float sum = 0;
+    for (uint32_t i = 0; i < triangleCount(); i++) {
+        sum += tetrahedronVolume(m_vertices[m_indices[i * STRIDE]], m_vertices[m_indices[i * STRIDE + 1]], m_vertices[m_indices[i * STRIDE + 2]]);
+    }
+
+    return sum / 6.0f;
+}
+
+float Mesh::tetrahedronVolume(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
+{
+    return glm::dot(a, glm::cross(b, c));
+}
+
+glm::vec3 Mesh::centroid() const
+{
+    float sum = 0;
+    glm::vec3 centroid(0.0f);
+
+    for (uint32_t i = 0; i < triangleCount(); i++) {
+        glm::vec3 a = m_vertices[m_indices[i * STRIDE]];
+        glm::vec3 b = m_vertices[m_indices[i * STRIDE + 1]];
+        glm::vec3 c = m_vertices[m_indices[i * STRIDE + 2]];
+
+        glm::vec3 center = (a + b + c) * (1.0f / 3);
+        float area = Triangle::area(a, b, c);
+
+        centroid += center * area;
+        sum += area;
+    }
+
+    return centroid / sum;
+}
+
+glm::mat3x3 Mesh::inertiaTensor() const
+{
+    glm::mat3x3 it(0.0f);
+
+    for (uint32_t i = 0; i < triangleCount(); i++) {
+        it += tetrahedronInertiaTensor(m_vertices[m_indices[i * STRIDE]], m_vertices[m_indices[i * STRIDE + 1]], m_vertices[m_indices[i * STRIDE + 2]]);
+    }
+
+    // Apply Parallel Axis Theorem to change frame to the centroid
+    glm::vec3 c = centroid();
+    float v = volume();
+
+    float Ixy = it[0][1] + v * c.x * c.y, Ixz = it[0][2] + v * c.x * c.z, Iyz = it[1][2] + v * c.y * c.z;
+
+    it = {
+            it[0][0] - v * (c.y*c.y + c.z*c.z), Ixy, Ixz,
+            Ixy, it[1][1] - v * (c.x*c.x + c.z*c.z), Iyz,
+            Ixz, Iyz, it[2][2] - v * (c.x*c.x + c.y*c.y)
+    };
+
+    return it;
+}
+
+glm::mat3x3 Mesh::tetrahedronInertiaTensor(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
+{
+    glm::vec3 t = a + b + c;
+
+    float px = (a.x * t.x + b.x * b.x + b.x * c.x + c.x * c.x) / 60;
+    float py = (a.y * t.y + b.y * b.y + b.y * c.y + c.y * c.y) / 60;
+    float pz = (a.z * t.z + b.z * b.z + b.z * c.z + c.z * c.z) / 60;
+
+
+    float ap = -(t.y * t.z + a.y * a.z + b.y * b.z + c.y * c.z) / 120;
+    float bp = -(t.x * t.z + a.x * a.z + b.x * b.z + c.x * c.z) / 120;
+    float cp = -(t.x * t.y + a.x * a.y + b.x * b.y + c.x * c.y) / 120;
+
+    return tetrahedronVolume(a, b, c) * glm::mat3x3(
+            py + pz, bp, cp,
+            bp, px + pz, ap,
+            cp, ap, px + py
+    );
+}
+
 
 std::vector<uint32_t> Mesh::sharedFaces(const std::shared_ptr<Mesh>& reference) const
 {
@@ -581,6 +650,8 @@ float Mesh::faceArea(const std::vector<glm::vec3>& vertices)
 
         total += glm::cross(vi1, vi2);
     }
+
+
 
     return std::abs(glm::dot(total, glm::normalize(glm::cross(vertices[1] - vertices[0], vertices[2] - vertices[0]))) / 2);
 }

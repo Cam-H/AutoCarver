@@ -41,7 +41,7 @@ void Robot::prepareLinks()
         }
 
 
-        auto link = std::make_shared<Body>(mesh);
+        auto link = std::make_shared<RigidBody>(mesh);
         link->setLayer(layer);
         link->setMask(mask);
         link->prepareColliderVisuals();
@@ -53,7 +53,7 @@ void Robot::prepareLinks()
 
     auto eoatMesh = MeshBuilder::box(0.2f, 0.1f, 0.05f);
     eoatMesh->setBaseColor({0, 0, 1});
-    m_links.push_back(std::make_shared<Body>(eoatMesh));
+    m_links.push_back(std::make_shared<RigidBody>(eoatMesh));
 
     // Block collisions of last joint with EOAT
     m_links[m_links.size() - 2]->setLayer(0b0100);
@@ -115,7 +115,7 @@ void Robot::updateTransforms()
     }
 }
 
-const std::vector<std::shared_ptr<Body>>& Robot::links()
+const std::vector<std::shared_ptr<RigidBody>>& Robot::links()
 {
     return m_links;
 }

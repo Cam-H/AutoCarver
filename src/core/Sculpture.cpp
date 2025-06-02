@@ -7,7 +7,7 @@
 #include "geometry/MeshBuilder.h"
 
 Sculpture::Sculpture(const std::shared_ptr<Mesh> &model, float width, float height)
-    : Body(MeshBuilder::box(width, width, height))
+    : RigidBody(MeshBuilder::box(width, width, height))
     , model(model)
     , m_width(width)
     , m_height(height)

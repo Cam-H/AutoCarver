@@ -32,6 +32,9 @@ public:
 
     static float area(const QVector3D& a, const QVector3D& b, const QVector3D& c);
 
+    static float area(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c);
+
+
     static QVector3D normal(const QVector3D& a, const QVector3D& b, const QVector3D& c)
     {
         return QVector3D::crossProduct(b - a, c - a).normalized();

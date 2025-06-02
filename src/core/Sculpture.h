@@ -8,9 +8,9 @@
 #include <vector>
 
 #include "geometry/Mesh.h"
-#include "geometry/Body.h"
+#include "geometry/RigidBody.h"
 
-class Sculpture : public Body {
+class Sculpture : public RigidBody {
 public:
 
     Sculpture(const std::shared_ptr<Mesh> &model, float width = 2.0f, float height = 6.0f);
@@ -39,7 +39,7 @@ private:
 
     std::shared_ptr<Mesh> model;
 
-//    std::vector<Body*> m_fragments;
+//    std::vector<RigidBody*> m_fragments;
 
     float m_width;
     float m_height;

@@ -13,8 +13,8 @@ qt_add_library(AutoCarverLib
         fileIO/MeshHandler.cpp
 
 
-        geometry/Body.h
-        geometry/Body.cpp
+        geometry/RigidBody.h
+        geometry/RigidBody.cpp
         geometry/ConvexHull.h
         geometry/ConvexHull.cpp
         geometry/Mesh.h
@@ -58,6 +58,8 @@ qt_add_library(AutoCarverLib
 
         robot/planning/PathPlanner.cpp robot/planning/PathPlanner.h
         robot/planning/Trajectory.cpp robot/planning/Trajectory.h
+
+        physics/Constraint.cpp physics/Constraint.h
         )
 
 target_link_libraries(AutoCarverLib PRIVATE
@@ -73,12 +75,10 @@ target_link_libraries(AutoCarverLib PRIVATE
         Qt6::Widgets
         libassimp
         libmcutd
-        reactphysics3d
         )
 
 qt_add_executable(AutoCarver
-        core/EntryPoint.cpp
-        )
+        core/EntryPoint.cpp)
 
 target_link_libraries(AutoCarver PRIVATE
         Qt::3DCore
@@ -93,7 +93,6 @@ target_link_libraries(AutoCarver PRIVATE
         Qt6::Widgets
         libassimp
         libmcutd
-        reactphysics3d
         AutoCarverLib
         )
 

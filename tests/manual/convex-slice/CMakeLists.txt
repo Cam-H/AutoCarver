@@ -29,7 +29,6 @@ target_link_libraries(convex-slice PRIVATE
         Qt6::OpenGLWidgets
         Qt6::Widgets
         Qt6::Test
-        reactphysics3d
         libassimp
         AutoCarverLib
         )

@@ -21,11 +21,9 @@ include_directories(./extern/glm)
 
 include_directories(./extern/assimp/include)
 include_directories(./extern/mcut/include)
-include_directories(extern/reactphysics3d/include)
 include_directories(./extern/glm)
 
 #add_library()
-add_subdirectory(extern/reactphysics3d)
 
 #set(MCUT_BUILD_WITH_COMPUTE_HELPER_THREADPOOL 0)
 #add_subdirectory(./extern/mcut)

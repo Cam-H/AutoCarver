@@ -11,7 +11,7 @@
 #include <QKeyEvent>
 
 class Scene;
-class Body;
+class RigidBody;
 
 class ControlWidget : public SceneWidget
 {

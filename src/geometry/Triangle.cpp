@@ -65,6 +65,11 @@ float Triangle::area(const QVector3D& a, const QVector3D& b, const QVector3D& c)
     + pow(ab.x() * ac.y() - ab.y() * ac.x(), 2));
 }
 
+float Triangle::area(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
+{
+    return 0.5f * glm::length(glm::cross(b - a, c - a));
+}
+
 float Triangle::cross(const QVector2D &pivot, const QVector2D &a, const QVector2D &b)
 {
     return cross(a - pivot, b - pivot);

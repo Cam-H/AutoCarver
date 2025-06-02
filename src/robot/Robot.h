@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "KinematicChain.h"
-#include "geometry/Body.h"
+#include "geometry/RigidBody.h"
 
 #include "geometry/Transformable.h"
 #include "planning/Trajectory.h"
@@ -31,7 +31,7 @@ public:
 
     void traverse(const std::shared_ptr<Trajectory>& trajectory);
 
-    const std::vector<std::shared_ptr<Body>>& links();
+    const std::vector<std::shared_ptr<RigidBody>>& links();
 
     float getJointValue(uint32_t idx);
     float getJointValueDg(uint32_t idx);
@@ -51,7 +51,7 @@ private:
     KinematicChain* m_kinematics;
 
     // Maps to the joints of the kinematic chain
-    std::vector<std::shared_ptr<Body>> m_links;
+    std::vector<std::shared_ptr<RigidBody>> m_links;
 
     //
     std::shared_ptr<Trajectory> m_currentTrajectory;

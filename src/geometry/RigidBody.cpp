@@ -2,7 +2,7 @@
 // Created by Cam on 2024-09-20.
 //
 
-#include "Body.h"
+#include "RigidBody.h"
 
 #include <utility>
 
@@ -14,16 +14,17 @@
 #include "EPA.h"
 #include "MeshBuilder.h"
 
-Body::Body(const std::string& filename)
-        : Body((const std::shared_ptr<Mesh>&)nullptr)
+RigidBody::RigidBody(const std::string& filename)
+        : RigidBody((const std::shared_ptr<Mesh>&)nullptr)
 {
     Serializable::deserialize(filename);
 
     updateColliders();
 }
 
-Body::Body(const std::shared_ptr<Mesh>& mesh)
-    : m_mesh(mesh)
+RigidBody::RigidBody(const std::shared_ptr<Mesh>& mesh)
+    : m_type(Type::STATIC)
+    , m_mesh(mesh)
     , m_hullMesh(nullptr)
     , m_hullOK(false)
     , m_layer(1)
@@ -31,9 +32,16 @@ Body::Body(const std::shared_ptr<Mesh>& mesh)
     , m_isManifold(false)
     , m_area(0)
     , m_volume(0)
+    , m_density(1000.0f)
+    , m_mass(0)
+    , m_inertiaTensor(0.0f)
+    , m_linearVelocity()
+    , m_angularVelocity()
     , m_isManifoldOK(false)
     , m_areaOK(false)
     , m_volumeOK(false)
+    , m_massOK(false)
+    , m_inertiaTensorOK(false)
     , m_colliderVisualsEnable(false)
     , Transformable()
 {
@@ -41,11 +49,17 @@ Body::Body(const std::shared_ptr<Mesh>& mesh)
     updateColliders();
 }
 
-bool Body::serialize(const std::string& filename)
+RigidBody::RigidBody(const ConvexHull& hull)
+        : RigidBody(std::make_shared<Mesh>(hull))
+{
+
+}
+
+bool RigidBody::serialize(const std::string& filename)
 {
     return Serializable::serialize(filename);
 }
-bool Body::serialize(std::ofstream& file)
+bool RigidBody::serialize(std::ofstream& file)
 {
     if (!m_mesh->serialize(file)) return false;
 
@@ -54,11 +68,11 @@ bool Body::serialize(std::ofstream& file)
     return true;
 }
 
-bool Body::deserialize(const std::string& filename)
+bool RigidBody::deserialize(const std::string& filename)
 {
     return Serializable::deserialize(filename);
 }
-bool Body::deserialize(std::ifstream& file)
+bool RigidBody::deserialize(std::ifstream& file)
 {
     m_mesh = std::make_shared<Mesh>(file);// TODO develop method to share meshes
 
@@ -74,7 +88,13 @@ bool Body::deserialize(std::ifstream& file)
     return false;
 }
 
-void Body::setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate) {
+void RigidBody::setType(Type type)
+{
+    if (m_type != type) m_massOK = m_inertiaTensorOK = false;
+    m_type = type;
+}
+
+void RigidBody::setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate) {
     if (mesh == nullptr) return;
 
     m_mesh = mesh;
@@ -82,35 +102,40 @@ void Body::setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate) {
     if (doColliderUpdate) updateColliders();
 }
 
-void Body::setLayer(uint32_t layer)
+void RigidBody::setLayer(uint32_t layer)
 {
     m_layer = layer;
 }
-void Body::setMask(uint32_t mask)
+void RigidBody::setMask(uint32_t mask)
 {
     m_mask = mask;
 }
 
-uint32_t Body::layer() const
+void RigidBody::setDensity(float density)
+{
+    m_density = density;
+}
+
+uint32_t RigidBody::layer() const
 {
     return m_layer;
 }
-uint32_t Body::mask() const
+uint32_t RigidBody::mask() const
 {
     return m_mask;
 }
 
-bool Body::scan(const std::shared_ptr<Body>& body) const
+bool RigidBody::scan(const std::shared_ptr<RigidBody>& body) const
 {
     return ((m_mask & body->m_layer) > 0);
 }
 
-bool Body::boundaryCollision(const std::shared_ptr<Body>& body)
+bool RigidBody::boundaryCollision(const std::shared_ptr<RigidBody>& body)
 {
     return scan(body) && m_boundingSphere.intersects(body->m_boundingSphere);
 }
 
-bool Body::collides(const std::shared_ptr<Body>& body)
+bool RigidBody::collides(const std::shared_ptr<RigidBody>& body)
 {
     if (!m_hullOK || !body->m_hullOK || !boundaryCollision(body)) return false;
 
@@ -125,7 +150,7 @@ bool Body::collides(const std::shared_ptr<Body>& body)
     return simplex.colliding();
 }
 
-bool Body::collision(const std::shared_ptr<Body>& body, glm::vec3& offset)
+bool RigidBody::collision(const std::shared_ptr<RigidBody>& body, glm::vec3& offset)
 {
     if (!m_hullOK || !body->m_hullOK || !boundaryCollision(body)) return false;
 
@@ -135,7 +160,7 @@ bool Body::collision(const std::shared_ptr<Body>& body, glm::vec3& offset)
     return epa.colliding();
 }
 
-EPA Body::collision(const std::shared_ptr<Body>& body)
+EPA RigidBody::collision(const std::shared_ptr<RigidBody>& body)
 {
     if (!m_hullOK || !body->m_hullOK || !boundaryCollision(body)) return {};
 
@@ -149,18 +174,30 @@ EPA Body::collision(const std::shared_ptr<Body>& body)
     return epa;
 }
 
-void Body::cacheCollision(const std::shared_ptr<Body>& body, const std::pair<uint32_t, uint32_t>& start)
+void RigidBody::cacheCollision(const std::shared_ptr<RigidBody>& body, const std::pair<uint32_t, uint32_t>& start)
 {
 
 }
 
-std::pair<uint32_t, uint32_t> Body::cachedCollision(const std::shared_ptr<Body>& body)
+std::pair<uint32_t, uint32_t> RigidBody::cachedCollision(const std::shared_ptr<RigidBody>& body)
 {
     // TODO caching last index
     return { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() };
 }
 
-void Body::updateColliders()
+void RigidBody::step(float delta)
+{
+    if (m_type != Type::STATIC) {
+        globalTranslate(m_linearVelocity * delta);
+        rotate(m_angularVelocity * delta);
+    }
+
+    // Must happen after translation so there is time for constraints to act
+    if (m_type == Type::DYNAMIC) m_linearVelocity += delta * glm::vec3{0, -9.81, 0};
+
+}
+
+void RigidBody::updateColliders()
 {
     m_hullOK = false;
 
@@ -178,7 +215,7 @@ void Body::updateColliders()
     }
 }
 
-void Body::prepareColliderVisuals()
+void RigidBody::prepareColliderVisuals()
 {
     if (!m_colliderVisualsEnable) {
         prepareHullVisual();
@@ -188,74 +225,131 @@ void Body::prepareColliderVisuals()
     m_colliderVisualsEnable = true;
 }
 
-void Body::prepareHullVisual()
+void RigidBody::prepareHullVisual()
 {
     m_hullMesh = std::make_shared<Mesh>(m_hull);
 }
-void Body::prepareSphereVisual()
+void RigidBody::prepareSphereVisual()
 {
     m_sphereMesh = MeshBuilder::icosphere(m_boundingSphere.radius);
     m_sphereMesh->translate(m_boundingSphere.center.x, m_boundingSphere.center.y, m_boundingSphere.center.z);
 }
 
-bool Body::isManifold()
+RigidBody::Type RigidBody::getType() const
+{
+    return m_type;
+}
+
+bool RigidBody::isManifold()
 {
     if (!m_isManifoldOK) evaluateManifold();
     return m_isManifold;
 }
 
-float Body::area()
+float RigidBody::area()
 {
     if (!m_areaOK) calculateArea();
     return m_area;
 }
 
-float Body::volume()
+float RigidBody::density() const
+{
+    return m_density;
+}
+
+float RigidBody::volume()
 {
     if (!m_volumeOK) calculateVolume();
     return m_volume;
 }
 
-const std::shared_ptr<Mesh>& Body::mesh()
+float RigidBody::mass()
+{
+    if (!m_massOK) calculateMass();
+    return m_mass;
+}
+
+glm::vec3 RigidBody::centroid()
+{
+    return m_mesh != nullptr ? m_mesh->centroid() : glm::vec3{};
+}
+
+glm::mat3x3 RigidBody::inertiaTensor()
+{
+    if (!m_inertiaTensorOK) calculateInertiaTensor();
+    return m_inertiaTensor;
+}
+
+void RigidBody::setLinearVelocity(glm::vec3 velocity)
+{
+    m_linearVelocity = velocity;
+}
+
+const glm::vec3& RigidBody::getLinearVelocity() const
+{
+    return m_linearVelocity;
+}
+
+void RigidBody::setAngularVelocity(glm::vec3 velocity)
+{
+    m_angularVelocity = velocity;
+}
+const glm::vec3& RigidBody::getAngularVelocity() const
+{
+    return m_angularVelocity;
+}
+
+const std::shared_ptr<Mesh>& RigidBody::mesh()
 {
     return m_mesh;
 }
 
-const ConvexHull& Body::hull() const
+const ConvexHull& RigidBody::hull() const
 {
     return m_hull;
 }
 
-const Sphere& Body::boundingSphere() const
+const Sphere& RigidBody::boundingSphere() const
 {
     return m_boundingSphere;
 }
 
-const std::shared_ptr<Mesh>& Body::hullMesh()
+const std::shared_ptr<Mesh>& RigidBody::hullMesh()
 {
     return m_hullMesh;
 }
 
-const std::shared_ptr<Mesh>& Body::bSphereMesh()
+const std::shared_ptr<Mesh>& RigidBody::bSphereMesh()
 {
     return m_sphereMesh;
 }
 
-void Body::evaluateManifold()
+void RigidBody::evaluateManifold()
 {
     //TODO
 
     m_isManifoldOK = true;
 }
-void Body::calculateArea()
+void RigidBody::calculateArea()
 {
     //TODO
 
     m_areaOK = true;
 }
-void Body::calculateVolume()
+void RigidBody::calculateVolume()
 {
-    //TODO
-
+    m_volume = (m_mesh != nullptr) ? m_mesh->volume() : 0;
     m_volumeOK = true;
 };
+
+void RigidBody::calculateMass()
+{
+    m_mass = volume() * m_density;
+    m_massOK = true;
+}
+
+void RigidBody::calculateInertiaTensor()
+{
+    m_inertiaTensor = (m_mesh != nullptr) ? glm::inverse(m_mesh->inertiaTensor() * m_density) : 0;
+    m_inertiaTensorOK = true;
+}
