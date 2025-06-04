@@ -5,9 +5,6 @@
 #ifndef AUTOCARVER_SCULPTPROCESS_H
 #define AUTOCARVER_SCULPTPROCESS_H
 
-#define LICENSE_NOTICE_ACKNOWLEDGED 1
-#include "mcut/mcut.h"
-
 #include "Scene.h"
 
 #include "geometry/VertexArray.h"
@@ -50,15 +47,6 @@ private:
     void planFeatureRefinement();
 
     void section(const std::shared_ptr<Mesh>& mesh, const glm::vec3& origin, const glm::vec3& normal);
-    void remove(const std::shared_ptr<Mesh>& mesh, const std::shared_ptr<Mesh>& cut);
-
-    void process();
-
-    bool isFragment(const McConnectedComponent& cc);
-    bool isPatch(const McConnectedComponent& cc);
-    bool isFragmentBelow(const McConnectedComponent& cc);
-
-    std::shared_ptr<Mesh> prepare(const McConnectedComponent& cc);
 
     void prepareSculptureStyles();
 
@@ -77,9 +65,6 @@ private:
     uint32_t m_step;
 
     std::vector<Result> m_results;
-
-    McContext context;
-
 };
 
 

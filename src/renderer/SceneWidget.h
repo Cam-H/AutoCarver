@@ -21,6 +21,7 @@
 
 #include "renderer/RenderGeometry.h"
 class RenderGeometry;
+#include "Camera.h"
 
 class SceneWidget : public QOpenGLWidget, protected QOpenGLFunctions
 {
@@ -33,8 +34,6 @@ public:
     ~SceneWidget();
 
     void setScene(const std::shared_ptr<Scene>& scene);
-    void setCameraPosition(const QVector3D& position);
-    void setCameraFocus(const QVector3D& position);
 
     void addShaderProgram(const std::string& name);
     void createDefaultShaderProgram(const std::string& name);
@@ -55,6 +54,8 @@ public:
 
     void clear();
 
+    Camera& camera();
+
 protected:
 
     struct RenderItem {
@@ -71,14 +72,9 @@ protected:
     void resizeGL(int w, int h) override;
     void paintGL() override;
 
-    void calculateViewProjectionMatrix();
-    QVector3D cameraRotated(QVector3D base) const;
-
     void updateRenderGeometry(const std::shared_ptr<Mesh>& mesh);
 
 private:
-
-    void setCameraOrientation(QVector3D axis);
 
     void paint();
 
@@ -111,17 +107,8 @@ private:
 
     /* ******* CAMERA CONTROLS ******** */
 
-    // Camera perspective
-    qreal m_fov;
-    qreal m_aspect;
-    qreal m_zNear;
-    qreal m_zFar;
+    Camera m_camera;
 
-    // Camera position
-    float m_yaw;
-    float m_pitch;
-
-    float m_radius;
     float m_minRadius;
     float m_maxRadius;
 
@@ -133,13 +120,6 @@ private:
 
     // Inputs
     QVector2D m_mouseLastPosition;
-
-    // Result
-    QVector3D m_center;
-    QVector3D m_eye;
-    QMatrix4x4 m_viewProjection;
-
-    const QVector3D UP_VECTOR = QVector3D(0, 1, 0);
 
 };
 

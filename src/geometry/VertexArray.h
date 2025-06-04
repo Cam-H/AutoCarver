@@ -73,17 +73,19 @@ public:
 
     [[nodiscard]] std::vector<glm::vec3> toVector() const;
 
-    bool extremes(const float *axis, uint32_t &min, uint32_t &max); // Get furthest vertices (top & bottom) along axis
+    bool extremes(const glm::vec3& axis, uint32_t &min, uint32_t &max) const; // Get furthest vertices (top & bottom) along axis
     bool extreme(uint32_t p1, uint32_t p2, uint32_t& max); // Get furthest vertex (perpendicular) from the provided axis
     bool extreme(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max); // Get furthest vertex from the plane formed by provided indices
 
-    void extents(const float *axis, float &near, float &far);
+    void extents(const glm::vec3& axis, float &near, float &far) const;
 
     void print() const;
 
 private:
 
     VertexArray(uint32_t vertexCount);
+
+    glm::vec3 toVector(uint32_t idx) const;
 
 private:
     float *m_vertices;

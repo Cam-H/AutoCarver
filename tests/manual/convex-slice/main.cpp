@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
 //              << t[0][2] << " " << t[1][2] << " " << t[2][2] << "\n";
 
     sceneWidget = widget->findChild<SceneWidget*>("sceneWidget");
-    sceneWidget->setCameraPosition(QVector3D(15, -1, 0));
+    sceneWidget->camera().setPosition(QVector3D(15, -1, 0));
     sceneWidget->setScene(scene);
 
     // Handle position field update
@@ -143,6 +143,7 @@ int main(int argc, char *argv[])
 
         if (!fragments.second.empty()) {
             auto debris = scene->createBody(fragments.second, RigidBody::Type::DYNAMIC);
+//            debris->zero();
 //            debris->setVelocity({0, -0.1, 0});
         }
 

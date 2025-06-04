@@ -9,6 +9,7 @@
 #include <cmath>
 #include <iostream>
 
+
 SceneWidget::SceneWidget(QWidget* parent)
     : SceneWidget(nullptr, parent)
 {
@@ -19,21 +20,13 @@ SceneWidget::SceneWidget(const std::shared_ptr<Scene>& scene, QWidget* parent)
     , m_timer(nullptr)
     , m_interval(1000 / 60)
     , m_defaultProgramIdx(0)
-    , m_fov(60.0)
-    , m_aspect(1.0)
-    , m_zNear(1.0)
-    , m_zFar(100.0)
-    , m_yaw(45.0f)
-    , m_pitch(45.0f)
-    , m_radius(5.0f)
+    , m_camera()
     , m_minRadius(1.0f)
     , m_maxRadius(100.0f)
     , m_translationSensitivity(0.002f)
     , m_rotationSensitivity(0.4f)
     , m_zoomSensitivity(0.0005f)
     , m_zoomExponential(0.2f)
-    , m_center(QVector3D(0, 0, 0))
-    , m_eye(m_center + cameraRotated(QVector3D(m_radius, 0, 0)))
     , QOpenGLWidget(parent)
 {
 
@@ -55,29 +48,6 @@ void SceneWidget::setScene(const std::shared_ptr<Scene>& scene)
     update();
 }
 
-void SceneWidget::setCameraPosition(const QVector3D& position)
-{
-    setCameraOrientation(m_center - position);
-    calculateViewProjectionMatrix();
-}
-
-void SceneWidget::setCameraFocus(const QVector3D& position)
-{
-    setCameraOrientation(position - m_eye);
-    m_center = position;
-
-    calculateViewProjectionMatrix();
-}
-
-void SceneWidget::setCameraOrientation(QVector3D axis)
-{
-    m_radius = axis.length();
-    axis /= m_radius;
-
-    m_yaw = 180.0f / (float)M_PI * atan2f(axis.z(), -axis.x());
-    m_pitch = 180.0f / (float)M_PI * acosf(QVector3D::dotProduct(UP_VECTOR, axis)) - 90.0f;
-}
-
 void SceneWidget::mousePressEvent(QMouseEvent *e)
 {
     // Save mouse press position
@@ -89,54 +59,35 @@ void SceneWidget::mouseMoveEvent(QMouseEvent *e)
     if (e->buttons() == Qt::MouseButton::MiddleButton) {
         QVector2D delta = QVector2D((float)e->position().x(), (float)e->position().y()) - m_mouseLastPosition;
 
-        if(QGuiApplication::keyboardModifiers().testFlag(Qt::ShiftModifier)) { // Try moving camera center
-            QVector3D horz = cameraRotated(QVector3D(0, 0, 1)).normalized();
-            QVector3D vert = cameraRotated(UP_VECTOR).normalized();
+        float yaw = m_camera.getYaw(), pitch = m_camera.getPitch();
 
-            m_center += logf(m_radius) * m_translationSensitivity * (delta.x() * horz + delta.y() * vert);
+        if(QGuiApplication::keyboardModifiers().testFlag(Qt::ShiftModifier)) { // Try moving camera center
+            QVector3D horz = m_camera.horizontal(), vert = m_camera.vertical();
+
+            m_camera.offset(logf(m_camera.getRadius()) * m_translationSensitivity * (delta.x() * horz + delta.y() * vert));
 
         } else { // Rotate the camera about the center instead
-            m_yaw -= m_rotationSensitivity * delta.x();
-            m_pitch += m_rotationSensitivity * delta.y();
-            m_pitch = std::clamp(m_pitch, -89.0f, 89.0f);
+            yaw -= m_rotationSensitivity * delta.x();
+            pitch = std::clamp(pitch + m_rotationSensitivity * delta.y(), -89.0f, 89.0f);
+            m_camera.setViewingAngle(yaw, pitch);
         }
     }
 
     m_mouseLastPosition = QVector2D(e->position());
-
-    calculateViewProjectionMatrix();
 
     update();
 }
 
 void SceneWidget::wheelEvent(QWheelEvent *e)
 {
-    float exponential = std::min(m_zoomExponential * (m_radius - m_minRadius), 4.0f);
-    m_radius -= m_zoomSensitivity * e->angleDelta().y() * expf(exponential);
-    m_radius = std::clamp(m_radius, m_minRadius, m_maxRadius);
+    float radius = m_camera.getRadius();
+    float exponential = std::min(m_zoomExponential * (radius - m_minRadius), 4.0f);
+    radius -= m_zoomSensitivity * e->angleDelta().y() * expf(exponential);
+    radius = std::clamp(radius, m_minRadius, m_maxRadius);
 
-    calculateViewProjectionMatrix();
+    m_camera.setRadius(radius);
 
     update();
-}
-
-void SceneWidget::calculateViewProjectionMatrix()
-{
-
-    // Prepare projection matrix
-    m_viewProjection.setToIdentity();
-    m_viewProjection.perspective(m_fov, m_aspect, m_zNear, m_zFar);
-
-    // Apply the view matrix to the projection
-    m_eye = m_center + cameraRotated(QVector3D(m_radius, 0, 0));
-    m_viewProjection.lookAt(m_eye, m_center, UP_VECTOR);
-
-}
-
-QVector3D SceneWidget::cameraRotated(QVector3D base) const
-{
-    base = QQuaternion::fromAxisAndAngle(0, 0, 1, m_pitch) * base; // Apply pitch to eye
-    return QQuaternion::fromAxisAndAngle(UP_VECTOR, m_yaw) * base; // Apply yaw to eye
 }
 
 void SceneWidget::initializeGL()
@@ -336,15 +287,11 @@ void SceneWidget::updateRenderGeometry(const std::shared_ptr<Mesh>& mesh)
 void SceneWidget::resizeGL(int w, int h)
 {
     // Calculate aspect ratio
-    m_aspect = qreal(w) / qreal(h ? h : 1);
-
-    calculateViewProjectionMatrix();
+    m_camera.setAspectRatio(qreal(w) / qreal(h ? h : 1));
 }
 
 void SceneWidget::paintGL()
 {
-
-    calculateViewProjectionMatrix();
 
     // Clear color and depth buffer
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -354,8 +301,6 @@ void SceneWidget::paintGL()
 
     // Enable back face culling
     glEnable(GL_CULL_FACE);
-
-
 
 
     if (m_scene != nullptr) {
@@ -408,8 +353,8 @@ void SceneWidget::render(const std::shared_ptr<Mesh> &mesh, const QMatrix4x4& tr
     // TODO manage uniforms better
     // Set modelview-projection matrix
     program->setUniformValue("u_transform", transform);
-    program->setUniformValue("vp_matrix", m_viewProjection);
-    program->setUniformValue("mvp_matrix", m_viewProjection * transform);
+    program->setUniformValue("vp_matrix", m_camera.getViewProjection());
+    program->setUniformValue("mvp_matrix", m_camera.getViewProjection() * transform);
     program->setUniformValue("n_matrix", transform.normalMatrix());
 
     const glm::vec3& color = mesh->colorOverrideEnabled() ? mesh->colorOverride() : mesh->baseColor();
@@ -417,4 +362,9 @@ void SceneWidget::render(const std::shared_ptr<Mesh> &mesh, const QMatrix4x4& tr
 
     // Draw mesh geometry
     m_geometries[item.geometryIdx]->draw(program);
+}
+
+Camera& SceneWidget::camera()
+{
+    return m_camera;
 }

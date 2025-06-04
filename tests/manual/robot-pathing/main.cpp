@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
 
             robot->setJointValueDg(i, (float)value);
 
-            scene->step();
+            scene->step(0);
             sceneWidget->update();
 
             jointField->setValue((int)robot->getJointValueDg(i));
@@ -230,7 +230,7 @@ int main(int argc, char *argv[])
     // Handle updating robot
     updateThread = std::make_unique<std::thread>([](){
         while (true) {
-            scene->step();
+            scene->step(0);
 
             if (robot->inTransit()) {
                 sceneWidget->update();

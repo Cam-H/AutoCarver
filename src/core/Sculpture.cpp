@@ -42,16 +42,16 @@ void Sculpture::scaleToFit(float width, float maxHeight)
 {
     // Find the maximum dimensions of the mesh
     float xNear, xFar, yNear, yFar, zNear, zFar;
-    model->xExtent(xNear, xFar);
-    model->yExtent(yNear, yFar);
-    model->zExtent(zNear, zFar);
+    model->xExtents(xNear, xFar);
+    model->yExtents(yNear, yFar);
+    model->zExtents(zNear, zFar);
 
     model->translate(-(xNear + xFar) / 2, -yNear, -(zNear + zFar) / 2); // Center the model in the center
     model->rotate(0, 1, 0, atanf((xFar - xNear) / (zFar - zNear))); // Rotate the model to make best use of diagonal space
 
     // Re-evaluate extents to figure out scaling requirements
-    model->xExtent(xNear, xFar);
-    model->zExtent(zNear, zFar);
+    model->xExtents(xNear, xFar);
+    model->zExtents(zNear, zFar);
 
     model->translate(-(xNear + xFar) / 2, 0, -(zNear + zFar) / 2); // Adjust model in the center
 

@@ -5,31 +5,96 @@
 #ifndef AUTOCARVER_RENDERCAPTURE_H
 #define AUTOCARVER_RENDERCAPTURE_H
 
-#include <Qt3DRender/QRenderCapture>
-#include <QLabel>
+#include <QOffscreenSurface>
+#include <QOpenGLContext>
+#include <QOpenGLFunctions>
+#include <QOpenGLPaintDevice>
+#include <QOpenGLShaderProgram>
+#include <QOpenGLBuffer>
+#include <QColor>
+
+#include <QOpenGLFramebufferObject>
+#include <memory>
+#include <mutex>
+
+class Mesh;
+class RenderGeometry;
+
+#include "Camera.h"
 
 
-class RenderCapture : public QObject {
-Q_OBJECT
+class RenderCapture : public QOffscreenSurface {
 public:
-    RenderCapture(Qt3DRender::QRenderCapture* capture, QLabel *imageLabel)
-    : m_capture(capture)
-    , m_reply(nullptr)
-    , m_imageLabel(imageLabel)
-    , m_continuous(false)
-    {
-    }
+
+    RenderCapture(QScreen *screen, const QSize& size);
+
+    ~RenderCapture();
+
+    void addTarget(const std::shared_ptr<Mesh>& mesh, const QColor& color = QColor(255, 0, 255));
+    void clearTargets();
+
+    void focus();
 
     void capture();
 
-public slots:
-    void onCompletion();
+    Camera& camera();
+
+    QImage grabFramebuffer();
+
+protected:
+
+    void initialize();
+    void prepare();
+
+    void makeCurrent();
+    void doneCurrent();
+
+    void disable();
+
+    void initializeGL();
+//
+//    virtual void resizeGL(
+//            int width,
+//            int height) override;
+//
+    void paintGL();
+
+    [[nodiscard]] QSize bufferSize() const;
+    [[nodiscard]] bool isValid() const;
+
 private:
-    Qt3DRender::QRenderCapture* m_capture;
-    Qt3DRender::QRenderCaptureReply *m_reply;
-    QMetaObject::Connection connection;
-    QLabel *m_imageLabel;
-    bool m_continuous;
+
+    std::mutex m_mutex;
+
+    QOpenGLContext* m_context = nullptr;
+    QOpenGLFunctions* m_functions = nullptr;
+    QOpenGLPaintDevice* m_paintDevice = nullptr;
+
+    QOpenGLShaderProgram* m_program = nullptr;
+
+    QOpenGLFramebufferObject *m_fbo = nullptr;
+
+    bool m_initialized;
+    bool m_initializedGL;
+
+    QSize m_size;
+
+    Camera m_camera;
+
+    struct Target {
+
+        Target (const std::shared_ptr<Mesh>& mesh);
+
+        std::shared_ptr<Mesh> mesh;
+        uint32_t count;
+
+        QOpenGLBuffer vbo;
+        QOpenGLBuffer ibo;
+
+        QColor color;
+    };
+
+    std::vector<Target> m_targets;
 };
 
 

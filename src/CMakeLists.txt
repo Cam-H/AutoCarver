@@ -8,9 +8,15 @@ qt_add_library(AutoCarverLib
         core/Scene.h
         core/Scene.cpp
 
+        core/SculptProcess.cpp
+        core/SculptProcess.h
 
         fileIO/MeshHandler.h
         fileIO/MeshHandler.cpp
+        fileIO/Serializable.cpp
+        fileIO/Serializable.h
+        fileIO/Serializer.cpp
+        fileIO/Serializer.h
 
 
         geometry/RigidBody.h
@@ -25,6 +31,17 @@ qt_add_library(AutoCarverLib
         geometry/Triangle.cpp
         geometry/VertexArray.h
         geometry/VertexArray.cpp
+        geometry/FaceArray.cpp
+        geometry/FaceArray.h
+
+        geometry/Transformable.cpp
+        geometry/Transformable.h
+        geometry/Simplex.cpp
+        geometry/Simplex.h
+        geometry/EPA.cpp
+        geometry/EPA.h
+        geometry/Sphere.cpp
+        geometry/Sphere.h
 
         geometry/poly/Polygon.h
         geometry/poly/Polygon.cpp
@@ -41,26 +58,30 @@ qt_add_library(AutoCarverLib
         robot/Robot.cpp
         robot/Robot.h
 
-        renderer/MonitorCameraController.h
-        renderer/MonitorCameraController.cpp
-        renderer/RenderEntity.h
-        renderer/RenderEntity.cpp
+        robot/planning/Trajectory.cpp
+        robot/planning/Trajectory.h
+        robot/planning/PathPlanner.cpp
+        robot/planning/PathPlanner.h
 
 
-        widgets/SceneViewWidget.h
-        widgets/SceneViewWidget.cpp
+        physics/Constraint.cpp
+        physics/Constraint.h
 
-        core/SculptProcess.cpp core/SculptProcess.h geometry/FaceArray.cpp geometry/FaceArray.h
 
-        renderer/RenderCapture.cpp renderer/RenderCapture.h renderer/SceneWidget.cpp renderer/SceneWidget.h renderer/RenderGeometry.cpp renderer/RenderGeometry.h
-        geometry/Simplex.cpp geometry/Simplex.h geometry/EPA.cpp geometry/EPA.h
-        fileIO/Serializable.cpp fileIO/Serializable.h fileIO/Serializer.cpp fileIO/Serializer.h geometry/Sphere.cpp geometry/Sphere.h renderer/LineChartWidget.cpp renderer/LineChartWidget.h renderer/UiLoader.cpp renderer/UiLoader.h geometry/Transformable.cpp geometry/Transformable.h
+        renderer/SceneWidget.cpp
+        renderer/SceneWidget.h
+        renderer/LineChartWidget.cpp
+        renderer/LineChartWidget.h
 
-        robot/planning/PathPlanner.cpp robot/planning/PathPlanner.h
-        robot/planning/Trajectory.cpp robot/planning/Trajectory.h
+        renderer/RenderCapture.cpp
+        renderer/RenderCapture.h
 
-        physics/Constraint.cpp physics/Constraint.h
-        )
+        renderer/RenderGeometry.cpp
+        renderer/RenderGeometry.h
+        renderer/UiLoader.cpp
+        renderer/UiLoader.h
+
+        renderer/Camera.cpp renderer/Camera.h)
 
 target_link_libraries(AutoCarverLib PRIVATE
         Qt::3DCore

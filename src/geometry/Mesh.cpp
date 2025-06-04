@@ -259,23 +259,28 @@ void Mesh::rotate(float x, float y, float z, float theta)
     delete[] axis;
 }
 
-void Mesh::xExtent(float &near, float &far)
+void Mesh::zero()
 {
-    auto axis = new float[3] {1, 0, 0};
-    m_vertices.extents(axis, near, far);
-    delete[] axis;
+    glm::vec3 offset = -centroid();
+    translate(offset.x, offset.y, offset.z);
 }
-void Mesh::yExtent(float &near, float &far)
+
+void Mesh::xExtents(float &near, float &far) const
 {
-    auto axis = new float[3] {0, 1, 0};
-    m_vertices.extents(axis, near, far);
-    delete[] axis;
+    return extents({1, 0, 0}, near, far);
 }
-void Mesh::zExtent(float &near, float &far)
+void Mesh::yExtents(float &near, float &far) const
 {
-    auto axis = new float[3] {0, 0, 1};
+    return extents({0, 1, 0}, near, far);
+}
+void Mesh::zExtents(float &near, float &far) const
+{
+    return extents({0, 0, 1}, near, far);
+}
+
+void Mesh::extents(const glm::vec3& axis, float &near, float &far) const
+{
     m_vertices.extents(axis, near, far);
-    delete[] axis;
 }
 
 // Assign a base color to the mesh. If vertex colors are in use, overwrites colors of the original base to the new base

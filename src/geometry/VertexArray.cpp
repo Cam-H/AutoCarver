@@ -107,6 +107,11 @@ VertexArray VertexArray::deserialize(std::ifstream& file)
 
 glm::vec3 VertexArray::operator[](uint32_t idx) const
 {
+    return toVector(idx);
+}
+
+glm::vec3 VertexArray::toVector(uint32_t idx) const
+{
     return {m_vertices[idx * STRIDE], m_vertices[idx * STRIDE + 1], m_vertices[idx * STRIDE + 2]};
 }
 
@@ -318,13 +323,13 @@ std::vector<glm::vec3> VertexArray::toVector() const
     return { (glm::vec3*)m_vertices, (glm::vec3*)m_vertices + m_vertexCount };
 }
 
-bool VertexArray::extremes(const float *axis, uint32_t &min, uint32_t &max)
+bool VertexArray::extremes(const glm::vec3& axis, uint32_t &min, uint32_t &max) const
 {
     float minValue = std::numeric_limits<float>::max();
     float maxValue = std::numeric_limits<float>::lowest();
 
     for(uint32_t i = 0; i < m_vertexCount; i++){
-        float value = dot(&m_vertices[i * STRIDE], axis);// TODO double check
+        float value = glm::dot(toVector(i), axis);
 
         if(value < minValue){
             minValue = value;
@@ -383,13 +388,13 @@ bool VertexArray::extreme(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max)
     return std::abs(maxValue) > std::numeric_limits<float>::epsilon();
 }
 
-void VertexArray::extents(const float *axis, float &near, float &far)
+void VertexArray::extents(const glm::vec3& axis, float &near, float &far) const
 {
     uint32_t min, max;
     extremes(axis, min, max);
 
-    near = VertexArray::dot(axis, &m_vertices[min * STRIDE]);
-    far = VertexArray::dot(axis, &m_vertices[max * STRIDE]);
+    near = glm::dot(axis, toVector(min));
+    far = glm::dot(axis, toVector(max));
 }
 
 void VertexArray::print() const

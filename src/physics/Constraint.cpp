@@ -30,6 +30,9 @@ Constraint::Constraint(const std::shared_ptr<RigidBody>& a, const std::shared_pt
     , m_tangent2Impulse(0)
 {
 
+    glm::vec3 ca = a->mesh()->centroid(), cb = b->mesh()->centroid();
+    std::cout << a << " " << ca.x << " " << ca.y << " " << ca.z << " || " << b << " " << cb.x << " " << cb.y << " " << cb.z << "\n";
+
     glm::vec3 ref = normal.x * normal.x == 1 ? glm::vec3{ 0, 1, 0 } : glm::vec3{ 1, 0, 0 };
     m_tangent1 = glm::normalize(glm::cross(normal, ref));
     m_tangent2 = glm::normalize(glm::cross(normal, m_tangent1));

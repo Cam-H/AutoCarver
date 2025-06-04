@@ -10,15 +10,16 @@
 #include "renderer/SceneWidget.h"
 #include "fileIO/MeshHandler.h"
 #include "core/SculptProcess.h"
-
+#include "renderer/RenderCapture.h"
 #endif
 
-SculptProcess *scene = nullptr;
-SceneWidget *sceneWidget = nullptr;
+std::shared_ptr<SculptProcess> scene = nullptr;
+SceneWidget* sceneWidget = nullptr;
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+
 
     QSurfaceFormat format;
     format.setDepthBufferSize(24);
@@ -62,8 +63,9 @@ int main(int argc, char *argv[])
     auto model = MeshHandler::loadAsMeshBody(source);
     model->setBaseColor({1, 0, 1});
 
-    scene = new SculptProcess(model);
+    scene = std::make_shared<SculptProcess>(model);
     sceneWidget = new SceneWidget(scene);
+
     hRenderLayout->addWidget(sceneWidget);
 
 //    auto *sw2 = new SceneWidget(new SculptProcess(model));
@@ -85,6 +87,7 @@ int main(int argc, char *argv[])
     QObject::connect(sculptureButton, &QCheckBox::clicked, [&](bool checked) {
         if (checked) sceneWidget->show(1, Scene::Model::ALL);
         else sceneWidget->hide(1, Scene::Model::ALL);
+        sceneWidget->update();
     });
 
     auto hullButton = new QCheckBox("Show convex hull", control);
@@ -93,6 +96,7 @@ int main(int argc, char *argv[])
     QObject::connect(hullButton, &QCheckBox::clicked, [&](bool checked) {
         if (checked) sceneWidget->show(0, Scene::Model::HULL);
         else sceneWidget->hide(0, Scene::Model::HULL);
+        sceneWidget->update();
     });
 
     auto stepButton = new QPushButton("Next step", control);
@@ -100,6 +104,7 @@ int main(int argc, char *argv[])
 
     QObject::connect(stepButton, &QPushButton::clicked, [&]() {
         scene->next();
+        sceneWidget->update();
     });
 
     auto captureButton = new QPushButton("Capture", control);

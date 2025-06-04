@@ -275,13 +275,11 @@ std::vector<Triangle> ConvexHull::initialApproximation(){
 
     // Find a pair of extreme points of the point cloud
     std::vector<uint32_t> extremes = { 0, 0, 0, 0 };
-    float axes[9] = { 1, 0, 0, 0, 1, 0, 0, 0, 1}, *ptr = axes;
-    for (uint8_t i = 0; i < 3; i++) {
-        if (m_cloud.extremes(ptr, extremes[0], extremes[1])) {
+    glm::vec3 axes[3] = { glm::vec3(1, 0, 0), glm::vec3(0, 1, 0), glm::vec3(0, 0, 1) };
+    for (const glm::vec3& axis : axes) {
+        if (m_cloud.extremes(axis, extremes[0], extremes[1])) {
             break;
         }
-
-        ptr += 3;
     }
 
     // Prepare a maximal tetrahedron - exits early if the cloud is degenerate in some dimension

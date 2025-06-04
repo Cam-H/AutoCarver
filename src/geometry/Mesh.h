@@ -47,9 +47,13 @@ public:
     void translate(float x, float y, float z);
     void rotate(float x, float y, float z, float theta);
 
-    void xExtent(float &near, float &far);
-    void yExtent(float &near, float &far);
-    void zExtent(float &near, float &far);
+    void zero();
+
+
+    void xExtents(float &near, float &far) const;
+    void yExtents(float &near, float &far) const;
+    void zExtents(float &near, float &far) const;
+    void extents(const glm::vec3& axis, float &near, float &far) const;
 
     void setBaseColor(const glm::vec3& color);
     void setFaceColor(uint32_t faceIdx, const glm::vec3& color);
