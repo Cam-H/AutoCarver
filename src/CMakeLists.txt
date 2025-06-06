@@ -81,7 +81,7 @@ qt_add_library(AutoCarverLib
         renderer/UiLoader.cpp
         renderer/UiLoader.h
 
-        renderer/Camera.cpp renderer/Camera.h)
+        renderer/Camera.cpp renderer/Camera.h renderer/EdgeDetect.cpp renderer/EdgeDetect.h)
 
 target_link_libraries(AutoCarverLib PRIVATE
         Qt::3DCore

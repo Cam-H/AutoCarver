@@ -27,6 +27,7 @@ public:
     void setRect(float left, float right, float bot, float top);
 
     // Camera positioning
+    void setCenter(const QVector3D& center);
     void setPosition(const QVector3D& position);
     void setFocus(const QVector3D& position);
 

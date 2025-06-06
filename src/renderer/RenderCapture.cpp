@@ -93,6 +93,9 @@ void RenderCapture::prepare()
     if (!m_paintDevice) {
         m_paintDevice = new QOpenGLPaintDevice;
     }
+
+    std::cout << bufferSize().width() << " " << m_paintDevice->size().width() << " " << m_size.width() << " A\n";
+
     // update paint device size if needed
     if (m_paintDevice->size() != bufferSize()) {
         m_paintDevice->setSize(bufferSize());
@@ -148,6 +151,25 @@ void RenderCapture::clearTargets()
     m_targets.clear();
 }
 
+void RenderCapture::resize(int width, int height)
+{
+    resize(QSize(width, height));
+}
+
+void RenderCapture::resize(const QSize& size)
+{
+    m_mutex.lock();
+
+    m_size = size;
+
+    makeCurrent();
+
+    prepare();
+
+    m_mutex.unlock();
+
+}
+
 void RenderCapture::focus()
 {
     QVector3D horz = m_camera.horizontal(), vert = m_camera.vertical();
@@ -188,7 +210,16 @@ void RenderCapture::focus()
     bot -= margin;
     top += margin;
 
+    // Ensure that the targets are centered in the screen
+    QVector3D center = horz * (left + right) / 2 + vert * (bot + top) / 2;
+    m_camera.setCenter(center);
+
     m_camera.setRect(left, right, bot, top);
+}
+
+void RenderCapture::setClearColor(QColor color)
+{
+    m_functions->glClearColor(color.redF(), color.greenF(), color.blueF(), color.alphaF());
 }
 
 void RenderCapture::capture()
@@ -217,7 +248,7 @@ void RenderCapture::disable()
 
 void RenderCapture::initializeGL()
 {
-    m_functions->glClearColor(0.1f, 0.8f, 0.1f, 1);
+    setClearColor(Qt::black);
     m_functions->glViewport(0, 0, m_size.width(), m_size.height());
 
     m_program = new QOpenGLShaderProgram(m_context);

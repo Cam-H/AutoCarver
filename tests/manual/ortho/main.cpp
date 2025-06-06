@@ -1,44 +1,34 @@
 #include <QApplication>
 #include <QLabel>
 #include <QSurfaceFormat>
-#include <QMainWindow>
 #include <QPushButton>
 #include <QVBoxLayout>
-#include <QCheckBox>
-#include <QTextEdit>
-#include <QLineEdit>
 #include <QSpinBox>
-#include <QTableWidget>
-#include <QGraphicsWidget>
 
 #include <QFile>
 #include <QDir>
 
 #ifndef QT_NO_OPENGL
-#include "renderer/SceneWidget.h"
 #include "fileIO/MeshHandler.h"
 #include "geometry/MeshBuilder.h"
-#include "core/SculptProcess.h"
 #include "robot/ArticulatedWrist.h"
-#include "renderer/LineChartWidget.h"
 
 #include "renderer/UiLoader.h"
-#include "robot/planning/Trajectory.h"
 #include "renderer/RenderCapture.h"
+#include "renderer/EdgeDetect.h"
 
 #endif
 
 QWidget *window = nullptr;
-QLabel *view = nullptr;
+QLabel *modelView = nullptr;
+QLabel *processView = nullptr;
 
 std::shared_ptr<Mesh> mesh = nullptr;
 std::shared_ptr<Mesh> hull = nullptr;
 
-RenderCapture *rc = nullptr;
+EdgeDetect* detector = nullptr;
 
 QPixmap* px;
-
-bool edgeDetect = false;
 
 static QWidget *loadUiFile(QWidget *parent)
 {
@@ -57,19 +47,19 @@ static QWidget *loadUiFile(QWidget *parent)
 
 void updateImage()
 {
-    rc->capture();
 
-    QImage image = rc->grabFramebuffer();
+    detector->update();
 
-    if (edgeDetect) { // Do image processing
-
-    }
-
-//    image.save(QString("image.png"));
+    detector->sink().save(QString("image.png"));
 
     px = new QPixmap;
-    px->convertFromImage(image);
-    view->setPixmap(*px);
+    px->convertFromImage(detector->source());
+    modelView->setPixmap(*px);
+
+    px = new QPixmap;
+    px->convertFromImage(detector->sink());
+    processView->setPixmap(*px);
+
 }
 
 int main(int argc, char *argv[])
@@ -83,26 +73,23 @@ int main(int argc, char *argv[])
     window = loadUiFile(nullptr);
     if (window == nullptr) return -1;
 
-    view = window->findChild<QLabel*>("graphics");
+    modelView = window->findChild<QLabel*>("modelView");
+    processView = window->findChild<QLabel*>("processView");
 
 
 #ifndef QT_NO_OPENGL
 
     mesh = MeshHandler::loadAsMeshBody(R"(..\res\meshes\devil.obj)");
-    mesh->zero();
 
     hull = std::make_shared<Mesh>(ConvexHull(mesh->vertices()));
+    glm::vec3 centroid = -hull->centroid();
+    mesh->translate(centroid.x, centroid.y, centroid.z);
+    hull->zero();
 
-    rc = new RenderCapture(nullptr, QSize(500, 500));
-    rc->addTarget(hull, QColor(0, 0, 255));
-    rc->addTarget(mesh, QColor(255, 0, 0));
+    detector = new EdgeDetect(mesh);
 
-//    rc->addTarget(MeshBuilder::box(0.6f, 0.6f, 4.0f));
-//    rc->addTarget(MeshBuilder::box(1.0f, 1.0f, 1.0f), QColor(0, 0, 255));
-//    rc->addTarget(MeshBuilder::box(0.6f, 8.0f, 0.6f), QColor(255, 0, 0));
-
-    rc->camera().setViewingAngle(0, 0);
-    rc->focus();
+    detector->capture()->camera().setViewingAngle(0, 0);
+    detector->capture()->focus();
 
     updateImage();
 
@@ -114,21 +101,28 @@ int main(int argc, char *argv[])
     // Handle adjacent prev/next buttons
     auto *stepButton = window->findChild<QPushButton*>("stepButton");
     QObject::connect(stepButton, &QPushButton::clicked, [&]() {
-        rc->camera().rotate(5);
-        rc->focus();
+        detector->capture()->camera().rotate(5);
+        detector->capture()->focus();
+        updateImage();
+    });
+
+    auto *sizeField = window->findChild<QSpinBox*>("sizeField");
+    QObject::connect(sizeField, &QSpinBox::valueChanged, [](int value) {
+        detector->setSize(value);
+        updateImage();
+    });
+
+    auto *epsilonField = window->findChild<QSpinBox*>("epsilonField");
+    QObject::connect(epsilonField, &QSpinBox::valueChanged, [](int value) {
+        detector->setEpsilon((float)value);
         updateImage();
     });
 
     auto *projButton = window->findChild<QPushButton*>("projButton");
     QObject::connect(projButton, &QPushButton::clicked, [&]() {
-        if (rc->camera().getType() == Camera::Type::PERSPECTIVE) rc->camera().setType(Camera::Type::ORTHOGRAPHIC);
-        else rc->camera().setType(Camera::Type::PERSPECTIVE);
-        updateImage();
-    });
-
-    auto *detectButton = window->findChild<QPushButton*>("detectButton");
-    QObject::connect(detectButton, &QPushButton::clicked, [&]() {
-        edgeDetect = !edgeDetect;
+        if (detector->capture()->camera().getType() == Camera::Type::PERSPECTIVE)
+            detector->capture()->camera().setType(Camera::Type::ORTHOGRAPHIC);
+        else detector->capture()->camera().setType(Camera::Type::PERSPECTIVE);
         updateImage();
     });
 

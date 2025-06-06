@@ -57,6 +57,13 @@ void Camera::setRect(float left, float right, float bot, float top)
     calculateViewProjectionMatrix();
 }
 
+void Camera::setCenter(const QVector3D& center)
+{
+    m_center = center;
+
+    calculateViewProjectionMatrix();
+}
+
 void Camera::setPosition(const QVector3D& position)
 {
     setOrientation(m_center - position);

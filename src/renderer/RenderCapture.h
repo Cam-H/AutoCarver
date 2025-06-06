@@ -33,7 +33,12 @@ public:
     void addTarget(const std::shared_ptr<Mesh>& mesh, const QColor& color = QColor(255, 0, 255));
     void clearTargets();
 
+    void resize(int width, int height);
+    void resize(const QSize& size);
+
     void focus();
+
+    void setClearColor(QColor color);
 
     void capture();
 
