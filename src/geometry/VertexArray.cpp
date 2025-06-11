@@ -20,14 +20,14 @@ VertexArray::VertexArray(const float* vertices, uint32_t vertexCount)
     memcpy(m_vertices.data(), vertices, vertexCount * STRIDE * sizeof(float));
 }
 
-VertexArray::VertexArray(const std::vector<glm::vec3>& vertices)
-    : m_vertices(vertices)
+VertexArray::VertexArray(uint32_t vertexCount)
+        : m_vertices(vertexCount)
 {
 
 }
 
-VertexArray::VertexArray(uint32_t vertexCount)
-    : m_vertices(vertexCount)
+VertexArray::VertexArray(const std::vector<glm::vec3>& vertices)
+    : m_vertices(vertices)
 {
 
 }
@@ -106,6 +106,30 @@ void VertexArray::swap(uint32_t I0, uint32_t I1)
 {
     if (I0 > m_vertices.size() || I1 > m_vertices.size()) return;
     std::swap(m_vertices[I0], m_vertices[I1]);
+}
+
+std::vector<glm::vec2> VertexArray::project(const glm::vec3& normal)
+{
+    return project(m_vertices, normal);
+}
+std::vector<glm::vec2> VertexArray::project(const std::vector<glm::vec3>& vertices, const glm::vec3& normal)
+{
+    glm::vec3 ref = normal.x * normal.x == 1 ? glm::vec3{ 0, 1, 0 } : glm::vec3{ 1, 0, 0 };
+    glm::vec3 xAxis = glm::normalize(glm::cross(normal, ref));
+
+    return project(vertices, xAxis, glm::normalize(glm::cross(normal, xAxis)));
+}
+
+std::vector<glm::vec2> VertexArray::project(const std::vector<glm::vec3>& vertices, const glm::vec3& xAxis, const glm::vec3& yAxis)
+{
+    std::vector<glm::vec2> projection;
+    projection.reserve(vertices.size());
+
+    for (const glm::vec3& vertex : vertices) {
+        projection.emplace_back(glm::dot(xAxis, vertex), glm::dot(yAxis, vertex));
+    }
+
+    return projection;
 }
 
 const std::vector<glm::vec3>& VertexArray::vertices() const

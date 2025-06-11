@@ -73,7 +73,6 @@ public:
     [[nodiscard]] uint32_t vertexCount() const;
     [[nodiscard]] const VertexArray& vertices() const;
 
-    [[nodiscard]] const VertexArray& faceNormals() const;
     [[nodiscard]] const VertexArray& vertexNormals() const;
 
     [[nodiscard]] const VertexArray& colors() const;
@@ -85,7 +84,7 @@ public:
     [[nodiscard]] bool colorOverrideEnabled() const;
 
     [[nodiscard]] uint32_t triangleCount() const;
-    uint32_t* indices();
+    const uint32_t* indices() const;
 
     [[nodiscard]] uint32_t faceCount() const;
     [[nodiscard]] const FaceArray& faces() const;
@@ -108,7 +107,6 @@ private:
 
     void initialize(bool prepareIndexing = true);
 
-    void calculateFaceNormals();
     void calculateVertexNormals();
 
     std::vector<uint16_t> identifyHorizonFaces(const glm::vec3& axis, const std::vector<std::vector<uint32_t>>& adjacencies) const;
@@ -125,11 +123,7 @@ private:
 
     FaceArray m_faces;
 
-    VertexArray m_faceNormals;
     VertexArray m_vertexNormals;
-
-    uint32_t *m_indices;
-    uint32_t m_indexCount;
 
     VertexArray m_colors;
     glm::vec3 m_baseColor;
@@ -140,8 +134,6 @@ private:
     std::vector<std::vector<uint32_t>> m_adjacencies;
 
 //    float *m_colors;
-
-    const static uint8_t STRIDE = 3;
 
 };
 

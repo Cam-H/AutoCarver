@@ -13,6 +13,20 @@ Triangle::Triangle(uint32_t I0, uint32_t I1, uint32_t I2)
 {
 }
 
+bool Triangle::operator==(const Triangle& other) const {
+    uint32_t offset = (other.I0 == I0) + 2 * (other.I1 == I0) + 3 * (other.I2 == I0);
+    switch (offset) {
+        case 1:
+            return other.I1 == I1 && other.I2 == I2;
+        case 2:
+            return other.I2 == I1 && other.I0 == I2;
+        case 3:
+            return other.I0 == I1 && other.I1 == I2;
+        default: return false;
+    }
+//    return I0 == other.I0 && I1 == other.I1 && I2 == other.I2;
+}
+
 uint32_t Triangle::operator[](uint32_t i) const
 {
     switch(i){

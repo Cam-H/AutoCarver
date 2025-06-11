@@ -5,6 +5,7 @@
 #include "FaceArray.h"
 #include "core/Timer.h"
 #include "fileIO/Serializable.h"
+#include "geometry/poly/Polygon.h"
 
 #include <glm/glm.hpp>
 
@@ -150,6 +151,83 @@ FaceArray FaceArray::deserialize(std::ifstream& file)
     return fa;
 }
 
+void FaceArray::calculateNormals(const std::vector<glm::vec3>& vertices)
+{
+    m_normals = std::vector<glm::vec3>(m_faceCount);
+
+    uint32_t *idxPtr = m_faces;
+    for (uint32_t i = 0; i < m_faceCount; i++) {
+        if (m_faceSizes[i] == 3) { // Simple cross-product normal
+            m_normals[i] = glm::normalize(glm::cross(
+                    vertices[*(idxPtr + 1)] - vertices[*idxPtr],
+                    vertices[*(idxPtr + 2)] - vertices[*idxPtr]
+            ));
+        } else { // Otherwise, evaluate the normal using Newell's method
+            m_normals[i] = { 0, 0, 0 };
+            for (uint32_t j = 0; j < m_faceSizes[i]; j++) {
+                const glm::vec3& current = vertices[*(idxPtr + j)];
+                const glm::vec3& next = vertices[*(idxPtr + (j + 1) % m_faceSizes[i])];
+
+                m_normals[i] += glm::vec3{
+                        (current.y - next.y) * (current.z + next.z),
+                        (current.z - next.z) * (current.x + next.x),
+                        (current.x - next.x) * (current.y + next.y)
+                };
+            }
+
+            m_normals[i] = glm::normalize(m_normals[i]);
+        }
+
+        idxPtr += m_faceSizes[i];
+    }
+}
+
+void FaceArray::triangulate(const std::vector<glm::vec3>& vertices)
+{
+    if (m_normals.empty()) calculateNormals(vertices);
+
+    m_triangles.clear();
+    m_triFaceLookup.clear();
+
+    uint32_t *idxPtr = m_faces;
+    for (uint32_t i = 0; i < m_faceCount; i++) {
+        if (m_faceSizes[i] == 3) {
+            m_triFaceLookup.emplace_back(m_triangles.size());
+            m_triangles.emplace_back(*idxPtr, *(idxPtr + 1), *(idxPtr + 2));
+        } else if (m_faceSizes[i] > 3 && inRange(idxPtr, m_faceSizes[i], vertices.size())){
+
+            // Prepare to project the face into 2D space
+            std::vector<glm::vec3> border(m_faceSizes[i]);
+            for (uint32_t j = 0; j < m_faceSizes[i]; j++) border[j] = vertices[*(idxPtr + j)];
+
+            // Find the Delaunay triangulation of the projected 2D polygon
+            auto triangles = Polygon::bowyerWatson(VertexArray::project(border, m_normals[i]));
+
+            // Map indices to the original set
+            m_triFaceLookup.emplace_back(m_triangles.size());
+            for (Triangle& tri : triangles) {
+                m_triangles.emplace_back(
+                        *(idxPtr + tri.I0),
+                        *(idxPtr + tri.I1),
+                        *(idxPtr + tri.I2)
+                        );
+            }
+        }
+
+
+        idxPtr += m_faceSizes[i];
+    }
+}
+
+
+// Prevent improper array access
+bool FaceArray::inRange(const uint32_t *idx, uint32_t count, uint32_t limit)
+{
+    for (uint32_t i = 0; i < count; i++) if (*(idx + i) >= limit) return false;
+
+    return true;
+}
+
 uint32_t* FaceArray::operator[](uint32_t idx)
 {
     return idxPtr(idx);
@@ -192,35 +270,32 @@ uint32_t FaceArray::faceCount() const
     return m_faceCount;
 }
 
-glm::vec3 FaceArray::normal(uint32_t idx, const VertexArray& vertices) const
+const std::vector<glm::vec3>& FaceArray::normals() const
 {
-    uint32_t* ptr = idxPtr(idx);
-    if (ptr == nullptr) return {};
-
-    glm::vec3 normal = vertices[ptr[0]];
-    return glm::normalize(glm::cross(vertices[ptr[1]] - normal, vertices[ptr[2]] - normal));
+    return m_normals;
 }
 
-// Requires that the faces are convex TODO handle non-convex faces
-void FaceArray::triangulation(uint32_t* indices)
+glm::vec3 FaceArray::normal(uint32_t idx) const
 {
-    uint32_t idx = 0;
-    auto idxPtr = indices;
-    for (uint32_t i = 0; i < m_faceCount; i++) {
-
-        // Triangulate facet, splitting in a fan-shape from the first vertex
-        for (uint32_t j = 0; j < m_faceSizes[i] - 2; j++) {
-            *idxPtr++ = m_faces[idx];
-            *idxPtr++ = m_faces[idx + j + 1];
-            *idxPtr++ = m_faces[idx + j + 2];
-        }
-
-        idx += m_faceSizes[i];
-    }
+    if (idx >= m_normals.size()) return {};
+    return m_normals[idx];
 }
+
+const std::vector<Triangle>& FaceArray::triangles() const
+{
+    return m_triangles;
+}
+
 uint32_t FaceArray::triangleCount() const
 {
-    return m_indexCount - 2 * m_faceCount;
+    return m_triangles.size();
+}
+
+std::tuple<uint32_t, uint32_t> FaceArray::triangleLookup(uint32_t faceIdx) const
+{
+    if (faceIdx >= m_faceCount) return {};
+    else if (faceIdx + 1 == m_faceCount)return { m_triFaceLookup[faceIdx], m_triangles.size() - m_triFaceLookup[faceIdx] };
+    else return { m_triFaceLookup[faceIdx], m_triFaceLookup[faceIdx + 1] - m_triFaceLookup[faceIdx] };
 }
 
 uint32_t FaceArray::indexCount() const
@@ -228,15 +303,15 @@ uint32_t FaceArray::indexCount() const
     return m_indexCount;
 }
 
-FaceArray FaceArray::triangulated()
-{
-    uint32_t count = triangleCount();
-    auto *faces = new uint32_t[3 * count];
-
-    triangulation(faces);
-
-    return {faces, count};
-}
+//FaceArray FaceArray::triangulated()
+//{
+//    uint32_t count = triangleCount();
+//    auto *faces = new uint32_t[3 * count];
+//
+//    triangulation(faces);
+//
+//    return {faces, count};
+//}
 
 // TODO non-convex triangulation
 //    std::vector<QVector3D> loop;

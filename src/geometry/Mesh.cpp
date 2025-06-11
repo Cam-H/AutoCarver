@@ -19,9 +19,6 @@
 Mesh::Mesh(float vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t indexCount)
     : Mesh(VertexArray(vertices, vertexCount), FaceArray(indices, indexCount))
 {
-    m_indices = indices;
-    m_indexCount = indexCount;
-
     initialize(false);
 }
 
@@ -32,7 +29,7 @@ Mesh::Mesh(const ConvexHull& hull, bool applyColorPattern)
 
     // Convex hull renders default to alternating yellow-orange color pattern
     if (applyColorPattern) {
-        m_colors = VertexArray(new float[hull.facetCount() * STRIDE], applyColorPattern * hull.facetCount());
+        m_colors = VertexArray(applyColorPattern * hull.facetCount());
         for (uint32_t i = 0; i < faceCount(); i+= 2) {
             setFaceColor(i, {0.8f, 0.6f, 0.1f});
         }
@@ -50,11 +47,6 @@ Mesh::Mesh(const float *vertices, uint32_t vertexCount, const uint32_t *faceIndi
 Mesh::Mesh(const std::vector<glm::vec3>& vertices, const std::vector<Triangle>& faces)
     : Mesh(VertexArray(vertices), FaceArray(faces))
 {
-
-    m_indexCount = m_faces.triangleCount();
-    m_indices = new uint32_t[m_indexCount * STRIDE];
-    memcpy(m_indices, m_faces.faces(), m_indexCount * STRIDE * sizeof(uint32_t));
-
     initialize(false);
 }
 
@@ -75,10 +67,7 @@ Mesh::Mesh(std::ifstream& file)
 Mesh::Mesh(VertexArray vertices, FaceArray faces)
     : m_vertices(std::move(vertices))
     , m_faces(std::move(faces))
-    , m_faceNormals(nullptr, 0)
     , m_vertexNormals(nullptr, 0)
-    , m_indices(nullptr)
-    , m_indexCount(0)
     , m_colors(nullptr, 0)
     , m_baseColor(1.0f, 1.0f, 1.0f)
     , m_colorOverride(1.0f, 0.0f, 0.0f)
@@ -90,19 +79,19 @@ Mesh::Mesh(VertexArray vertices, FaceArray faces)
 
 void Mesh::initialize(bool prepareIndexing)
 {
-    if (prepareIndexing) {
-        m_indexCount = m_faces.triangleCount();
-        m_indices = new uint32_t[m_indexCount * STRIDE];
-        m_faces.triangulation(m_indices);
-    }
+//    if (prepareIndexing) {
+//        m_faces.triangulate(m_vertices.vertices());
+//    }
 
-    calculateFaceNormals();
+    m_faces.calculateNormals(m_vertices.vertices());
+    m_faces.triangulate(m_vertices.vertices());
+
     calculateVertexNormals();
 }
 
 Mesh::~Mesh()
 {
-    delete[] m_indices;
+
 }
 
 bool Mesh::serialize(const std::string& filename)
@@ -148,53 +137,27 @@ bool Mesh::deserialize(std::ifstream& file)
     return false;
 }
 
-void Mesh::calculateFaceNormals()
-{
-    auto normals = new float[3 * m_faces.faceCount()], ptr = normals;
-    uint32_t idx = 0;
-
-    for (uint32_t i = 0; i < m_faces.faceCount(); i++) {
-        auto face = &m_faces.faces()[idx];
-        glm::vec3 normal = m_vertices[face[0]];
-
-        normal = glm::normalize(glm::cross(m_vertices[face[1]] - normal, m_vertices[face[2]] - normal));
-
-        *ptr++ = normal.x;
-        *ptr++ = normal.y;
-        *ptr++ = normal.z;
-
-        idx += m_faces.faceSizes()[i];
-    }
-
-    m_faceNormals = {normals, m_faces.faceCount()};
-
-    delete[] normals;
-}
-
 void Mesh::calculateVertexNormals()
 {
-    auto normals = new float[m_vertices.size() * STRIDE];
-    for (uint32_t i = 0; i < m_vertices.size() * STRIDE; i++) normals[i] = 0;
+    std::vector<glm::vec3> normals(m_vertices.size(), glm::vec3{});
 
-    auto idx = m_indices;
     for (uint32_t i = 0; i < m_faces.faceCount(); i++) {
-        for (uint32_t j = 0; j < 3 * (m_faces.faceSizes()[i] - 2); j++) {
-            normals[STRIDE * *idx    ] += m_faceNormals[i].x;
-            normals[STRIDE * *idx + 1] += m_faceNormals[i].y;
-            normals[STRIDE * *idx + 2] += m_faceNormals[i].z;
-            idx++;
+        auto [start, count] = m_faces.triangleLookup(i);
+        for (uint32_t j = 0; j < count; j++) {
+            const Triangle& triangle = m_faces.triangles()[start + j];
+            const glm::vec3& faceNormal = m_faces.normal(i);
+
+            normals[triangle.I0] += faceNormal;
+            normals[triangle.I1] += faceNormal;
+            normals[triangle.I2] += faceNormal;
         }
     }
 
-    for (uint32_t i = 0; i < m_vertices.vertexCount(); i++) {
-        auto norm = 1 / glm::length(glm::vec3{normals[3 * i], normals[3 * i + 1], normals[3 * i + 2]});
-        normals[3 * i    ] *= norm;
-        normals[3 * i + 1] *= norm;
-        normals[3 * i + 2] *= norm;
+    for (glm::vec3& normal : normals) {
+        normal = glm::normalize(normal);
     }
 
-    m_vertexNormals = {normals, m_vertices.size()};
-    delete[] normals;
+    m_vertexNormals = VertexArray(normals);
 }
 
 void Mesh::print() const
@@ -295,7 +258,7 @@ void Mesh::setBaseColor(const glm::vec3& color)
 void Mesh::setFaceColor(uint32_t faceIdx, const glm::vec3& color)
 {
     if (m_colors.empty()) {
-        m_colors = {new float[m_faces.faceCount() * STRIDE], m_faces.faceCount()};
+        m_colors = VertexArray(m_faces.faceCount());
         for (uint32_t i = 0; i < m_colors.vertexCount(); i++) m_colors.replace(i, m_baseColor);
     }
 
@@ -337,10 +300,6 @@ const VertexArray& Mesh::vertices() const
     return m_vertices;
 }
 
-const VertexArray& Mesh::faceNormals() const
-{
-    return m_faceNormals;
-}
 const VertexArray& Mesh::vertexNormals() const
 {
     return m_vertexNormals;
@@ -382,12 +341,12 @@ bool Mesh::faceColorsAssigned() const
 
 uint32_t Mesh::triangleCount() const
 {
-    return m_indexCount;
+    return m_faces.triangleCount();
 }
 
-uint32_t* Mesh::indices()
+const uint32_t* Mesh::indices() const
 {
-    return m_indices;
+    return (uint32_t*)m_faces.triangles().data();
 }
 
 uint32_t Mesh::faceCount() const
@@ -501,8 +460,8 @@ std::vector<uint16_t> Mesh::identifyHorizonFaces(const glm::vec3& axis, const st
 
         for (uint32_t j = 0; j < adjacencies[i].size(); j++) {
             if (adjacencies[i][j] != std::numeric_limits<uint32_t>::max() && status[adjacencies[i][j]] != 0) {
-                dp1 = glm::dot(axis, m_faceNormals[i]);
-                dp2 = glm::dot(axis, m_faceNormals[adjacencies[i][j]]);
+                dp1 = glm::dot(axis, m_faces.normal(i));
+                dp2 = glm::dot(axis, m_faces.normal(adjacencies[i][j]));
 
                 if (dp1 * dp2 < 0) {
                     status[adjacencies[i][j]] = 1;
@@ -527,8 +486,8 @@ float Mesh::surfaceArea() const
 float Mesh::volume() const
 {
     float sum = 0;
-    for (uint32_t i = 0; i < triangleCount(); i++) {
-        sum += tetrahedronVolume(m_vertices[m_indices[i * STRIDE]], m_vertices[m_indices[i * STRIDE + 1]], m_vertices[m_indices[i * STRIDE + 2]]);
+    for (const Triangle& tri : m_faces.triangles()) {
+        sum += tetrahedronVolume(m_vertices[tri.I0], m_vertices[tri.I1], m_vertices[tri.I2]);
     }
 
     return sum / 6.0f;
@@ -544,10 +503,10 @@ glm::vec3 Mesh::centroid() const
     float sum = 0;
     glm::vec3 centroid(0.0f);
 
-    for (uint32_t i = 0; i < triangleCount(); i++) {
-        glm::vec3 a = m_vertices[m_indices[i * STRIDE]];
-        glm::vec3 b = m_vertices[m_indices[i * STRIDE + 1]];
-        glm::vec3 c = m_vertices[m_indices[i * STRIDE + 2]];
+    for (const Triangle& tri : m_faces.triangles()) {
+        glm::vec3 a = m_vertices[tri.I0];
+        glm::vec3 b = m_vertices[tri.I1];
+        glm::vec3 c = m_vertices[tri.I2];
 
         glm::vec3 center = (a + b + c) * (1.0f / 3);
         float area = Triangle::area(a, b, c);
@@ -563,8 +522,8 @@ glm::mat3x3 Mesh::inertiaTensor() const
 {
     glm::mat3x3 it(0.0f);
 
-    for (uint32_t i = 0; i < triangleCount(); i++) {
-        it += tetrahedronInertiaTensor(m_vertices[m_indices[i * STRIDE]], m_vertices[m_indices[i * STRIDE + 1]], m_vertices[m_indices[i * STRIDE + 2]]);
+    for (const Triangle& tri : m_faces.triangles()) {
+        it += tetrahedronInertiaTensor(m_vertices[tri.I0], m_vertices[tri.I1], m_vertices[tri.I2]);
     }
 
     // Apply Parallel Axis Theorem to change frame to the centroid

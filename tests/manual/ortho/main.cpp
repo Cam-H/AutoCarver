@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 
 #ifndef QT_NO_OPENGL
 
-    mesh = MeshHandler::loadAsMeshBody(R"(..\res\meshes\beshon.obj)");
+    mesh = MeshHandler::loadAsMeshBody(R"(..\res\meshes\flame.obj)");
     mesh->normalize(5.0f);
     mesh->zero();
 

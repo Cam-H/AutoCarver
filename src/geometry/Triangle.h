@@ -15,6 +15,8 @@ public:
 
     Triangle(uint32_t I0, uint32_t I1, uint32_t I2);
 
+    bool operator==(const Triangle& other) const;
+
     uint32_t operator[](uint32_t i) const;
     uint32_t& operator[](uint32_t i);
 

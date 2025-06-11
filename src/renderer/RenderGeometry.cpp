@@ -45,7 +45,7 @@ void RenderGeometry::initialize(const std::shared_ptr<Mesh>& mesh)
 void* RenderGeometry::vertexData(const std::shared_ptr<Mesh>& mesh)
 {
 
-    std::vector<std::reference_wrapper<const VertexArray>> attribs = attributes(mesh);
+    std::vector<std::reference_wrapper<const std::vector<glm::vec3>>> attribs = attributes(mesh);
 
     m_stride = 3 * attribs.size() * sizeof(float);
 
@@ -56,29 +56,33 @@ void* RenderGeometry::vertexData(const std::shared_ptr<Mesh>& mesh)
 
     if (m_indexVertices) {
         for (uint32_t i = 0; i < vertexCount; i++) {
-            for (const VertexArray& attribute : attribs) {
-                const glm::vec3& value = attribute.vertices()[i];
+            for (const std::vector<glm::vec3>& attribute : attribs) {
+                const glm::vec3& value = attribute[i];
                 *ptr++ = value.x;
                 *ptr++ = value.y;
                 *ptr++ = value.z;
             }
         }
     } else {
-        const uint32_t* triPtr = mesh->indices();
-        for (uint32_t i = 0; i < mesh->faceCount(); i++) {
-            uint32_t size = 3 * (mesh->faces().faceSizes()[i] - 2);
-            for (uint32_t j = 0; j < size; j++) {
-                const glm::vec3& vertex = attribs[0].get().vertices()[*triPtr++];
+        for (uint32_t i = 0; i < mesh->faceCount(); i++) { // Every face
+            auto [start, count] = mesh->faces().triangleLookup(i);
+            for (uint32_t j = 0; j < count; j++) { // Every triangle in each face
+                const Triangle& triangle = mesh->faces().triangles()[start + j];
 
-                *ptr++ = vertex.x;
-                *ptr++ = vertex.y;
-                *ptr++ = vertex.z;
+                for (uint32_t k = 0; k < 3; k++) { // Every vertex in each triangle
+                    const glm::vec3& vertex = attribs[0].get()[triangle[k]];
 
-                for (uint32_t k = 1; k < attribs.size(); k++) {
-                    const glm::vec3& value = attribs[k].get().vertices()[i];
-                    *ptr++ = value.x;
-                    *ptr++ = value.y;
-                    *ptr++ = value.z;
+                    *ptr++ = vertex.x;
+                    *ptr++ = vertex.y;
+                    *ptr++ = vertex.z;
+
+                    for (uint32_t m = 1; m < attribs.size(); m++) { // Every attribute in each vertex
+                        const glm::vec3& value = attribs[m].get()[i];
+                        *ptr++ = value.x;
+                        *ptr++ = value.y;
+                        *ptr++ = value.z;
+
+                    }
                 }
             }
         }
@@ -87,19 +91,19 @@ void* RenderGeometry::vertexData(const std::shared_ptr<Mesh>& mesh)
     return data;
 }
 
-std::vector<std::reference_wrapper<const VertexArray>> RenderGeometry::attributes(const std::shared_ptr<Mesh>& mesh)
+std::vector<std::reference_wrapper<const std::vector<glm::vec3>>> RenderGeometry::attributes(const std::shared_ptr<Mesh>& mesh)
 {
     switch (m_format) {
         case Format::VERTEX:
-            return { mesh->vertices() };
+            return { mesh->vertices().vertices() };
         case Format::VERTEX_NORMAL:
-            if (m_indexVertices) return { mesh->vertices(), mesh->vertexNormals() };
-            else return { mesh->vertices(), mesh->faceNormals() };
+            if (m_indexVertices) return { mesh->vertices().vertices(), mesh->vertexNormals().vertices() };
+            else return { mesh->vertices().vertices(), mesh->faces().normals() };
         case Format::VERTEX_COLOR:
-            return { mesh->vertices(), mesh->colors() };
+            return { mesh->vertices().vertices(), mesh->colors().vertices() };
         case Format::VERTEX_NORMAL_COLOR:
-            if (m_indexVertices) return { mesh->vertices(), mesh->vertexNormals(), mesh->colors() };
-            else return { mesh->vertices(), mesh->faceNormals(), mesh->colors() };
+            if (m_indexVertices) return { mesh->vertices().vertices(), mesh->vertexNormals().vertices(), mesh->colors().vertices() };
+            else return { mesh->vertices().vertices(), mesh->faces().normals(), mesh->colors().vertices() };
     }
 
     return {};

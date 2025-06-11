@@ -11,12 +11,14 @@
 
 #include <vector>
 
+#include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 
 class VertexArray {
 public:
     VertexArray(const float* vertices, uint32_t vertexCount);
 
+    explicit VertexArray(uint32_t vertexCount);
     explicit VertexArray(const std::vector<glm::vec3>& vertices);
 
 
@@ -36,6 +38,10 @@ public:
     void remove(uint32_t idx);
     void swap(uint32_t I0, uint32_t I1);
 
+    std::vector<glm::vec2> project(const glm::vec3& normal);
+    static std::vector<glm::vec2> project(const std::vector<glm::vec3>& vertices, const glm::vec3& normal);
+    static std::vector<glm::vec2> project(const std::vector<glm::vec3>& vertices, const glm::vec3& xAxis, const glm::vec3& yAxis);
+
     [[nodiscard]] const std::vector<glm::vec3>& vertices() const;
     [[nodiscard]] uint32_t vertexCount() const;
 
@@ -52,10 +58,6 @@ public:
     void extents(const glm::vec3& axis, float &near, float &far) const;
 
     void print() const;
-
-private:
-
-    explicit VertexArray(uint32_t vertexCount);
 
 private:
     std::vector<glm::vec3> m_vertices;

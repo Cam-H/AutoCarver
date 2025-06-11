@@ -31,6 +31,9 @@ public:
     bool serialize(std::ofstream& file);
     static FaceArray deserialize(std::ifstream& file);
 
+    void calculateNormals(const std::vector<glm::vec3>& vertices);
+    void triangulate(const std::vector<glm::vec3>& vertices);
+
     uint32_t* operator[](uint32_t idx);
     uint32_t* operator[](uint32_t idx) const;
 
@@ -38,14 +41,17 @@ public:
     [[nodiscard]] const uint32_t* faceSizes() const;
     [[nodiscard]] uint32_t faceCount() const;
 
-    [[nodiscard]] glm::vec3 normal(uint32_t idx, const VertexArray& vertices) const;
+    [[nodiscard]] const std::vector<glm::vec3>& normals() const;
+    [[nodiscard]] glm::vec3 normal(uint32_t idx) const;
 
-    void triangulation(uint32_t* indices); // Triangulates faces, presumes each face is convex
+    [[nodiscard]] const std::vector<Triangle>& triangles() const;
     [[nodiscard]] uint32_t triangleCount() const;
+
+    [[nodiscard]] std::tuple<uint32_t, uint32_t> triangleLookup(uint32_t faceIdx) const;
 
     [[nodiscard]] uint32_t indexCount() const;
 
-    FaceArray triangulated();
+//    FaceArray triangulated();
 
     [[nodiscard]] std::vector<std::vector<uint32_t>> edgeList() const;
     [[nodiscard]] std::vector<std::vector<uint32_t>> adjacencies() const;
@@ -59,6 +65,8 @@ private:
 
     FaceArray(uint32_t faceCount, uint32_t indexCount);
 
+    static bool inRange(const uint32_t *idx, uint32_t count, uint32_t limit);
+
     uint32_t* idxPtr(uint32_t idx);
     uint32_t* idxPtr(uint32_t idx) const;
 
@@ -67,6 +75,11 @@ private:
 private:
     uint32_t *m_faces; // Loops of vertex indices that compose each face
     uint32_t *m_faceSizes; // Size of each individual face in vertices
+
+    std::vector<glm::vec3> m_normals;
+
+    std::vector<Triangle> m_triangles;
+    std::vector<uint32_t> m_triFaceLookup;
 
     uint32_t m_faceCount; // Total number of faces
     uint32_t m_indexCount; // Total number of indices, the sum of all face sizes
