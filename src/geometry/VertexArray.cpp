@@ -5,6 +5,9 @@
 #include "VertexArray.h"
 #include "fileIO/Serializable.h"
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/quaternion.hpp>
+
 #include <iostream>
 
 #include <limits>
@@ -12,76 +15,28 @@
 #include <utility>
 
 VertexArray::VertexArray(const float* vertices, uint32_t vertexCount)
-    : m_vertices(new float[vertexCount * STRIDE])
-    , m_vertexCount(vertexCount)
+    : m_vertices(vertexCount * STRIDE)
 {
-    memcpy(m_vertices, vertices, m_vertexCount * STRIDE * sizeof(float));
+    memcpy(m_vertices.data(), vertices, vertexCount * STRIDE * sizeof(float));
 }
 
 VertexArray::VertexArray(const std::vector<glm::vec3>& vertices)
-    : m_vertices(new float[vertices.size() * STRIDE])
-    , m_vertexCount(vertices.size())
-{
-    memcpy(m_vertices, vertices.data(), m_vertexCount * STRIDE * sizeof(float));
-}
-
-VertexArray::VertexArray(const VertexArray& other)
-        : VertexArray(other.m_vertices, other.m_vertexCount)
+    : m_vertices(vertices)
 {
 
-}
-
-VertexArray& VertexArray::operator=(const VertexArray& other)
-{
-//    auto local_vertices = new float[other.m_vertexCount];
-//    memcpy(local_vertices, array.m_vertices, array.m_vertexCount * STRIDE * sizeof(float));
-//
-//    delete[] m_vertices;
-//    m_vertices = local_vertices;
-//    m_vertexCount = array.m_vertexCount;
-
-    if (this == &other)
-        return *this;
-
-    VertexArray temp(other);
-    std::swap(m_vertices, temp.m_vertices);
-    m_vertexCount = temp.m_vertexCount;
-
-    return *this;
-}
-
-VertexArray::VertexArray(VertexArray&& other) noexcept
-    : m_vertices(std::exchange(other.m_vertices, nullptr))
-    , m_vertexCount(other.m_vertexCount)
-{
-
-}
-
-VertexArray& VertexArray::operator=(VertexArray&& other) noexcept
-{
-    VertexArray temp(std::move(other));
-    std::swap(m_vertices, temp.m_vertices);
-    m_vertexCount = temp.m_vertexCount;
-
-    return *this;
-}
-
-VertexArray::~VertexArray()
-{
-    delete[] m_vertices;
 }
 
 VertexArray::VertexArray(uint32_t vertexCount)
-    : m_vertices(new float[vertexCount * STRIDE])
-    , m_vertexCount(vertexCount)
+    : m_vertices(vertexCount)
 {
+
 }
 
 bool VertexArray::serialize(std::ofstream& file)
 {
-    Serializer::writeUint(file, m_vertexCount);
+    Serializer::writeUint(file, m_vertices.size());
 //    file.write(reinterpret_cast<const char*>(&m_vertexCount), sizeof(uint32_t));
-    file.write(reinterpret_cast<const char*>(m_vertices), m_vertexCount * stride());
+    file.write(reinterpret_cast<const char*>(m_vertices.data()), m_vertices.size() * stride());
 
     return true;
 }
@@ -94,233 +49,92 @@ VertexArray VertexArray::deserialize(std::ifstream& file)
 
     // Read vertex data
     VertexArray va(vertexCount);
-    file.read(reinterpret_cast<char*>(va.m_vertices), vertexCount * VertexArray::stride());
+    file.read(reinterpret_cast<char*>(va.m_vertices.data()), vertexCount * VertexArray::stride());
 
     return va;
 }
 
-
-//float* VertexArray::operator[](uint32_t idx)
-//{
-//    return &m_vertices[idx * STRIDE];
-//}
-
-glm::vec3 VertexArray::operator[](uint32_t idx) const
+const glm::vec3& VertexArray::operator[](uint32_t idx) const
 {
-    return toVector(idx);
-}
-
-glm::vec3 VertexArray::toVector(uint32_t idx) const
-{
-    return {m_vertices[idx * STRIDE], m_vertices[idx * STRIDE + 1], m_vertices[idx * STRIDE + 2]};
+    return m_vertices[idx];
 }
 
 void VertexArray::scale(float scalar) {
-    for (uint32_t i = 0; i < m_vertexCount * STRIDE; i++) {
-        m_vertices[i] *= scalar;
+    for (glm::vec3& vertex : m_vertices) {
+        vertex *= scalar;
     }
 }
 
-void VertexArray::scale(float xScale, float yScale, float zScale)
+void VertexArray::scale(const glm::vec3& scale)
 {
-    for (uint32_t i = 0; i < m_vertexCount * STRIDE; i+=3) {
-        m_vertices[i    ] *= xScale;
-        m_vertices[i + 1] *= yScale;
-        m_vertices[i + 2] *= zScale;
+    for (glm::vec3& vertex : m_vertices) {
+        vertex *= scale;
     }
 }
 
-void VertexArray::translate(const float* translation)
+void VertexArray::translate(const glm::vec3& translation)
 {
-    for (uint32_t i = 0; i < m_vertexCount * STRIDE; i++) {
-        m_vertices[i] += translation[i % STRIDE];
+    for (glm::vec3& vertex : m_vertices) {
+        vertex += translation;
     }
 }
 
-void VertexArray::rotate(const float* axis, float theta)
+void VertexArray::rotate(const glm::vec3& axis, float theta)
 {
-    float val = sinf(theta / 2), temp[3];
+    glm::quat rotation(theta, axis);
 
-    float quat[4] = {cosf(theta / 2), axis[0] * val, axis[1] * val, axis[2] * val};
-
-    float mat[3][3] = {
-            {
-                1 - 2 * (powf(quat[2], 2) + powf(quat[3], 2)),
-                2 * (quat[1] * quat[2] - quat[3] * quat[0]),
-                2 * (quat[1] * quat[3] + quat[2] * quat[0])
-            }, {
-                2 * (quat[1] * quat[2] + quat[3] * quat[0]),
-                1 - 2 * (powf(quat[1], 2) + powf(quat[3], 2)),
-                2 * (quat[2] * quat[3] - quat[1] * quat[0])
-            }, {
-                2 * (quat[1] * quat[3] - quat[2] * quat[0]),
-                2 * (quat[2] * quat[3] + quat[1] * quat[0]),
-                1 - 2 * (powf(quat[1], 2) + powf(quat[2], 2))
-            }
-    };
-
-    for (uint32_t i = 0; i < m_vertexCount; i++) {
-        temp[0] = m_vertices[i * STRIDE + 0] * mat[0][0] + m_vertices[i * STRIDE + 1] * mat[0][1] + m_vertices[i * STRIDE + 2] * mat[0][2];
-        temp[1] = m_vertices[i * STRIDE + 0] * mat[1][0] + m_vertices[i * STRIDE + 1] * mat[1][1] + m_vertices[i * STRIDE + 2] * mat[1][2];
-        temp[2] = m_vertices[i * STRIDE + 0] * mat[2][0] + m_vertices[i * STRIDE + 1] * mat[2][1] + m_vertices[i * STRIDE + 2] * mat[2][2];
-
-        m_vertices[i * STRIDE + 0] = temp[0];
-        m_vertices[i * STRIDE + 1] = temp[1];
-        m_vertices[i * STRIDE + 2] = temp[2];
+    for (glm::vec3& vertex : m_vertices) {
+        vertex = rotation * vertex;// TODO double check
     }
 }
 
 void VertexArray::replace(uint32_t idx, const glm::vec3& replacement)
 {
-    if (idx < m_vertexCount) {
-        m_vertices[idx * STRIDE    ] = replacement.x;
-        m_vertices[idx * STRIDE + 1] = replacement.y;
-        m_vertices[idx * STRIDE + 2] = replacement.z;
+    if (idx < m_vertices.size()) {
+        m_vertices[idx] = replacement;
     }
 }
 
 void VertexArray::remove(uint32_t idx)
 {
-    if (idx < m_vertexCount) {
-        m_vertexCount--;
-
-        for (uint8_t i = 0; i < 3; i++) m_vertices[idx * STRIDE + i] = m_vertices[m_vertexCount * STRIDE + i];
+    if (idx < m_vertices.size()) {
+        m_vertices.erase(m_vertices.begin() + idx);
     }
 }
 
 void VertexArray::swap(uint32_t I0, uint32_t I1)
 {
-    if (I0 > m_vertexCount || I1 > m_vertexCount) return;
-
-    I0 *= STRIDE;
-    I1 *= STRIDE;
-
-    auto ptr1 = &m_vertices[I0], ptr2 = &m_vertices[I1];
-    glm::vec3 temp = {m_vertices[I0], m_vertices[I0 + 1], m_vertices[I0 + 2]};
-    *ptr1++ = *ptr2++;
-    *ptr1++ = *ptr2++;
-    *ptr1++ = *ptr2;
-
-    ptr2 -= 2;
-    *ptr2++ = temp.x;
-    *ptr2++ = temp.y;
-    *ptr2++ = temp.z;
+    if (I0 > m_vertices.size() || I1 > m_vertices.size()) return;
+    std::swap(m_vertices[I0], m_vertices[I1]);
 }
 
-float* VertexArray::sub(uint32_t I0, uint32_t I1)
-{
-    return sub(&m_vertices[I0 * STRIDE], &m_vertices[I1 * STRIDE]);
-}
-
-float* VertexArray::sub(const float* a, const float* b)
-{
-    return new float[3] {
-            a[0] - b[0],
-            a[1] - b[1],
-            a[2] - b[2]
-    };
-}
-
-void VertexArray::sub(float* res, uint32_t I0, uint32_t I1)
-{
-    sub(res, &m_vertices[I0 * STRIDE], &m_vertices[I1 * STRIDE]);
-}
-
-void VertexArray::sub(float* res, const float* a, const float* b)
-{
-    res[0] = a[0] - b[0];
-    res[1] = a[1] - b[1];
-    res[2] = a[2] - b[2];
-}
-
-float VertexArray::dot(uint32_t I0, uint32_t I1)
-{
-    return dot(&m_vertices[I0 * STRIDE], &m_vertices[I1 * STRIDE]);
-}
-
-float VertexArray::dot(const float *a, const float *b)
-{
-    return a[0] * b[0] + a[1] * b[1]+ a[2] * b[2];
-}
-
-void VertexArray::cross(float* res, const float *a, const float *b)
-{
-    res[0] = a[1] * b[2] - a[2] * b[1];
-    res[1] = a[2] * b[0] - a[0] * b[2];
-    res[2] = a[0] * b[1] - a[1] * b[0];
-}
-
-void VertexArray::normal(float* res, uint32_t I0, uint32_t I1, uint32_t I2)
-{
-    normal(res, &m_vertices[I0 * STRIDE], &m_vertices[I1 * STRIDE], &m_vertices[I2 * STRIDE]);
-}
-
-void VertexArray::normal(float* res, const float* a, const float *b, const float *c)
-{
-    float* ab = sub(b, a);
-    float* ac = sub(c, a);
-
-    cross(res, ab, ac);
-    normalize(res);
-
-    delete ab, ac;
-}
-
-void VertexArray::normalize(float* vec)
-{
-    float len = 1.0f / length(vec);
-    vec[0] *= len;
-    vec[1] *= len;
-    vec[2] *= len;
-}
-
-float VertexArray::length2(const float *a)
-{
-    return powf(a[0], 2) + powf(a[1], 2) + powf(a[2], 2);
-}
-
-float VertexArray::length(const float *a)
-{
-    return sqrtf(length2(a));
-}
-
-const float* VertexArray::data() const
-{
-    return m_vertices;
-}
-
-uint32_t VertexArray::length() const
-{
-    return m_vertexCount;
-}
-
-const float* VertexArray::vertices() const
+const std::vector<glm::vec3>& VertexArray::vertices() const
 {
     return m_vertices;
 }
 
 uint32_t VertexArray::vertexCount() const
 {
-    return m_vertexCount;
+    return m_vertices.size();
 }
 
-uint32_t VertexArray::stride() {
-    return STRIDE * sizeof(float);
+uint32_t VertexArray::length() const
+{
+    return m_vertices.size();
 }
 
 uint32_t VertexArray::size() const
 {
-    return m_vertexCount * stride() + sizeof(uint32_t);
+    return m_vertices.size() * stride() + sizeof(uint32_t);
 }
 
 bool VertexArray::empty() const
 {
-    return m_vertexCount == 0;
+    return m_vertices.empty();
 }
 
-std::vector<glm::vec3> VertexArray::toVector() const
-{
-    return { (glm::vec3*)m_vertices, (glm::vec3*)m_vertices + m_vertexCount };
+uint32_t VertexArray::stride() {
+    return STRIDE * sizeof(float);
 }
 
 bool VertexArray::extremes(const glm::vec3& axis, uint32_t &min, uint32_t &max) const
@@ -328,8 +142,8 @@ bool VertexArray::extremes(const glm::vec3& axis, uint32_t &min, uint32_t &max) 
     float minValue = std::numeric_limits<float>::max();
     float maxValue = std::numeric_limits<float>::lowest();
 
-    for(uint32_t i = 0; i < m_vertexCount; i++){
-        float value = glm::dot(toVector(i), axis);
+    for(uint32_t i = 0; i < m_vertices.size(); i++){
+        float value = glm::dot(m_vertices[i], axis);
 
         if(value < minValue){
             minValue = value;
@@ -349,15 +163,11 @@ bool VertexArray::extreme(uint32_t p1, uint32_t p2, uint32_t& max)
 {
     float maxValue = std::numeric_limits<float>::lowest();
 
-    float axis[3], test[3], vec[3];
-    sub(axis, p2, p1);
-    normalize(axis);
+    glm::vec3 axis = glm::normalize(m_vertices[p2] - m_vertices[p1]);
 
-    for(uint32_t i = 0; i < m_vertexCount; i++){
-        sub(vec, p1, i);
-        cross(test, axis, vec);
-
-        float value = length2(test);// / length;
+    for(uint32_t i = 0; i < m_vertices.size(); i++){
+        glm::vec3 test = glm::cross(axis, m_vertices[p1] - m_vertices[i]);
+        float value = glm::dot(test, test);// Length squared;
 
         if(value > maxValue){
             maxValue = value;
@@ -372,12 +182,11 @@ bool VertexArray::extreme(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max)
 {
     float maxValue = std::numeric_limits<float>::lowest();
 
-    float axis[3], vec[3];
-    normal(axis, p1, p2, p3);
+    glm::vec3 axis = glm::normalize(glm::cross(m_vertices[p2] - m_vertices[p1], m_vertices[p3] - m_vertices[p1]));
 
-    for(uint32_t i = 0; i < m_vertexCount; i++){
-        sub(vec, p1, i);
-        float value = std::abs(dot(axis, vec));
+    for(uint32_t i = 0; i < m_vertices.size(); i++){
+        glm::vec3 vec = m_vertices[p1] - m_vertices[i];
+        float value = std::abs(glm::dot(axis, vec));
 
         if(value > maxValue){
             maxValue = value;
@@ -393,14 +202,14 @@ void VertexArray::extents(const glm::vec3& axis, float &near, float &far) const
     uint32_t min, max;
     extremes(axis, min, max);
 
-    near = glm::dot(axis, toVector(min));
-    far = glm::dot(axis, toVector(max));
+    near = glm::dot(axis, m_vertices[min]);
+    far = glm::dot(axis, m_vertices[max]);
 }
 
 void VertexArray::print() const
 {
-    std::cout << "~~~~~ Vertices (" << m_vertexCount << ") ~~~~~\n";
-    for (uint32_t i = 0; i < m_vertexCount; i++) {
-        std::cout << m_vertices[i * STRIDE] << ", " << m_vertices[i * STRIDE + 1] << ", " << m_vertices[i * STRIDE + 2] << "\n";
+    std::cout << "~~~~~ Vertices (" << m_vertices.size() << ") ~~~~~\n";
+    for (const glm::vec3& vertex : m_vertices) {
+        std::cout << vertex.x << ", " << vertex.y << ", " << vertex.z << "\n";
     }
 }

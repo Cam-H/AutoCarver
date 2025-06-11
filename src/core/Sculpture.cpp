@@ -15,8 +15,8 @@ Sculpture::Sculpture(const std::shared_ptr<Mesh> &model, float width, float heig
 
     scaleToFit(m_width, m_height);
 
-    m_mesh->scale(1, m_height / height, 1);
-    m_mesh->translate(0, m_height / 2, 0);
+    m_mesh->scale({ 1, m_height / height, 1 });
+    m_mesh->translate({ 0, m_height / 2, 0 });
 
     std::cout << "Volume ratio: " << 100 * bulkUsageRatio() << "% material usage, " << 100 * remainderRatio() << "% Remaining\n";
 }
@@ -46,14 +46,14 @@ void Sculpture::scaleToFit(float width, float maxHeight)
     model->yExtents(yNear, yFar);
     model->zExtents(zNear, zFar);
 
-    model->translate(-(xNear + xFar) / 2, -yNear, -(zNear + zFar) / 2); // Center the model in the center
-    model->rotate(0, 1, 0, atanf((xFar - xNear) / (zFar - zNear))); // Rotate the model to make best use of diagonal space
+    model->translate({ -(xNear + xFar) / 2, -yNear, -(zNear + zFar) / 2 }); // Center the model in the center
+    model->rotate({ 0, 1, 0 }, atanf((xFar - xNear) / (zFar - zNear))); // Rotate the model to make best use of diagonal space
 
     // Re-evaluate extents to figure out scaling requirements
     model->xExtents(xNear, xFar);
     model->zExtents(zNear, zFar);
 
-    model->translate(-(xNear + xFar) / 2, 0, -(zNear + zFar) / 2); // Adjust model in the center
+    model->translate({ -(xNear + xFar) / 2, 0, -(zNear + zFar) / 2 }); // Adjust model in the center
 
     m_height = yFar - yNear;
 

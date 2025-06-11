@@ -197,6 +197,18 @@ void RigidBody::step(float delta)
 
 }
 
+void RigidBody::zero()
+{
+    if (m_mesh == nullptr) return;
+
+    glm::vec3 centroid = m_mesh->centroid();
+    m_mesh->translate(-centroid);
+    globalTranslate(centroid);// TODO confirm
+
+    m_inertiaTensorOK = false;
+}
+
+
 void RigidBody::updateColliders()
 {
     m_hullOK = false;
@@ -232,7 +244,7 @@ void RigidBody::prepareHullVisual()
 void RigidBody::prepareSphereVisual()
 {
     m_sphereMesh = MeshBuilder::icosphere(m_boundingSphere.radius);
-    m_sphereMesh->translate(m_boundingSphere.center.x, m_boundingSphere.center.y, m_boundingSphere.center.z);
+    m_sphereMesh->translate(m_boundingSphere.center);
 }
 
 RigidBody::Type RigidBody::getType() const

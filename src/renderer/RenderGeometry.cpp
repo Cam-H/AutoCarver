@@ -9,26 +9,6 @@
 
 #include <iostream>
 
-struct VertexData
-{
-    QVector3D position;
-    QVector2D texCoord;
-};
-
-//RenderGeometry::RenderGeometry()
-//    : m_indexBuf(QOpenGLBuffer::IndexBuffer)
-//    , source(nullptr)
-//{
-//    initializeOpenGLFunctions();
-//
-//    // Generate 2 VBOs
-//    m_arrayBuf.create();
-//    m_indexBuf.create();
-//
-//    // Initializes cube geometry and transfers it to VBOs
-//    initCubeGeometry();
-//}
-
 RenderGeometry::RenderGeometry(const std::shared_ptr<Mesh>& mesh, RenderGeometry::Format format, bool indexVertices)
     : m_indexBuf(QOpenGLBuffer::IndexBuffer)
     , m_indexCount(3 * mesh->triangleCount())
@@ -64,7 +44,8 @@ void RenderGeometry::initialize(const std::shared_ptr<Mesh>& mesh)
 
 void* RenderGeometry::vertexData(const std::shared_ptr<Mesh>& mesh)
 {
-    std::vector<const float*> attribs = attributes(mesh);
+
+    std::vector<std::reference_wrapper<const VertexArray>> attribs = attributes(mesh);
 
     m_stride = 3 * attribs.size() * sizeof(float);
 
@@ -73,46 +54,52 @@ void* RenderGeometry::vertexData(const std::shared_ptr<Mesh>& mesh)
     auto *data = new float[vertexCount * m_stride];
     auto *ptr = data;
 
-    for (uint32_t i = 0; i < vertexCount; i++) {
-        for (auto& attrib : attribs) {
-            *ptr++ = attrib[3 * i];
-            *ptr++ = attrib[3 * i + 1];
-            *ptr++ = attrib[3 * i + 2];
+    if (m_indexVertices) {
+        for (uint32_t i = 0; i < vertexCount; i++) {
+            for (const VertexArray& attribute : attribs) {
+                const glm::vec3& value = attribute.vertices()[i];
+                *ptr++ = value.x;
+                *ptr++ = value.y;
+                *ptr++ = value.z;
+            }
+        }
+    } else {
+        const uint32_t* triPtr = mesh->indices();
+        for (uint32_t i = 0; i < mesh->faceCount(); i++) {
+            uint32_t size = 3 * (mesh->faces().faceSizes()[i] - 2);
+            for (uint32_t j = 0; j < size; j++) {
+                const glm::vec3& vertex = attribs[0].get().vertices()[*triPtr++];
+
+                *ptr++ = vertex.x;
+                *ptr++ = vertex.y;
+                *ptr++ = vertex.z;
+
+                for (uint32_t k = 1; k < attribs.size(); k++) {
+                    const glm::vec3& value = attribs[k].get().vertices()[i];
+                    *ptr++ = value.x;
+                    *ptr++ = value.y;
+                    *ptr++ = value.z;
+                }
+            }
         }
     }
 
     return data;
 }
 
-std::vector<const float*> RenderGeometry::attributes(const std::shared_ptr<Mesh>& mesh)
+std::vector<std::reference_wrapper<const VertexArray>> RenderGeometry::attributes(const std::shared_ptr<Mesh>& mesh)
 {
-    if (m_indexVertices) {
-        switch (m_format) {
-            case Format::VERTEX:
-                return { mesh->vertices().data() };
-            case Format::VERTEX_NORMAL:
-                return { mesh->vertices().data(), mesh->vertexNormals().data() };
-            case Format::VERTEX_COLOR:
-                return { mesh->vertices().data(), mesh->colors().data() };
-            case Format::VERTEX_NORMAL_COLOR:
-                return { mesh->vertices().data(), mesh->vertexNormals().data(), mesh->colors().data() };
-        }
-    } else {
-
-        size_t size = m_indexCount * 3;
-        auto *vertices = new float[size], *normals = new float[size], *colors = new float[size];
-        mesh->directRepresentation(vertices, normals, colors);
-
-        switch (m_format) {
-            case Format::VERTEX:
-                return { vertices };
-            case Format::VERTEX_NORMAL:
-                return { vertices, normals };
-            case Format::VERTEX_COLOR:
-                return { vertices, colors };
-            case Format::VERTEX_NORMAL_COLOR:
-                return { vertices, normals, colors };
-        }
+    switch (m_format) {
+        case Format::VERTEX:
+            return { mesh->vertices() };
+        case Format::VERTEX_NORMAL:
+            if (m_indexVertices) return { mesh->vertices(), mesh->vertexNormals() };
+            else return { mesh->vertices(), mesh->faceNormals() };
+        case Format::VERTEX_COLOR:
+            return { mesh->vertices(), mesh->colors() };
+        case Format::VERTEX_NORMAL_COLOR:
+            if (m_indexVertices) return { mesh->vertices(), mesh->vertexNormals(), mesh->colors() };
+            else return { mesh->vertices(), mesh->faceNormals(), mesh->colors() };
     }
 
     return {};

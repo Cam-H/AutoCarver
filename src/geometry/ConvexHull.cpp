@@ -240,8 +240,7 @@ glm::vec3 ConvexHull::gjkSupport(const ConvexHull& body, const glm::mat4& transf
 
 uint32_t ConvexHull::walk(const glm::vec3& axis, uint32_t index) const
 {
-    uint32_t i = 0, j = 0;
-
+    uint32_t i = 0;
     while (i == 0) { // Only true when arriving at a fresh vertex
         for (; i < m_walks[index].size(); i++) { // Iterate through adjacent vertices
             if (glm::dot(axis, m_vertices[m_walks[index][i]] - m_vertices[index]) > 1e-6) { // Move to the first adjacent vertex along the axis
@@ -250,24 +249,53 @@ uint32_t ConvexHull::walk(const glm::vec3& axis, uint32_t index) const
                 break;
             }
         }
-
-        // For debugging
-        if (j++ > 10000) {
-            std::cout << "\033[31mERROR! Failed to walk to a final destination!\033[0m\n";
-            break;
-        }
     }
 
-//    float value = std::numeric_limits<float>::lowest(), temp;
-//    for (uint32_t i = 0; i < m_vertices.vertexCount(); i++) {
-//        temp = glm::dot(axis, m_vertices[i]);
-//        if (temp > value) {
-//            value = temp;
-//            index = i;
-//        }
-//    }
-
     return index;
+}
+
+std::vector<uint32_t> ConvexHull::horizon(const glm::vec3& axis) const
+{
+    bool xN = axis.x * axis.x == 1;
+    return horizon(axis, glm::vec3 { !xN, xN, 0});
+}
+std::vector<uint32_t> ConvexHull::horizon(const glm::vec3& axis, const glm::vec3& support) const
+{
+    std::cout << m_vertices.length() << "\n";
+    std::cout << "A " << axis.x << " " << axis.y << " " << axis.z << "\n";
+    std::cout << "S " << support.x << " " << support.y << " " << support.z << "\n";
+
+    uint32_t idx = 0;
+    std::vector<uint32_t> boundary(3);
+    m_vertices.extremes(support, boundary[1], boundary[0]);
+
+    boundary[2] = boundary[0]; // Duplicate first vertex so the algorithm wraps
+
+//    std::cout << "B " << boundary[0] << "/" << boundary[1] << ": ";
+//    glm::vec3 tt = m_vertices[boundary[1]] - m_vertices[boundary[0]];
+//    for (uint32_t b : boundary) std::cout << m_vertices[b].x << " " << m_vertices[b].y << " " << m_vertices[b].z << " |\n";
+//    std::cout << tt.x << " " << tt.y << " " << tt.z << "\n";
+
+
+    while (idx < boundary.size() - 1) {
+        glm::vec3 vec = glm::normalize(glm::cross(m_vertices[boundary[idx + 1]] - m_vertices[boundary[idx]], axis));
+//        std::cout << "V " << vec.x << " " << vec.y << " " << vec.z << "\n";
+        uint32_t next = walk(vec, boundary[idx]);
+//        std::cout << idx << " " << boundary.size() << " " << next << " " << boundary[idx] << " " << boundary[idx + 1] << " " << glm::dot(vec, m_vertices[next] - m_vertices[boundary[idx]]) << "\n";
+        if (next != boundary[idx] && next != boundary[idx + 1]) {
+            boundary.insert(boundary.begin() + idx + 1, next);
+        } else idx++;
+
+//        for(uint32_t b : boundary) std::cout << b << " ";
+//        std::cout << "~~~~~~~~\n";
+    }
+
+    // Remove duplicate vertex (First and last are the same). Chooses initial vertex to begin from top-left position
+    if (glm::dot(support, m_vertices[boundary[1]] - m_vertices[boundary[0]]) > -1e-6)
+        boundary.erase(boundary.begin());
+    else boundary.pop_back();
+
+    return boundary;
 }
 
 std::vector<Triangle> ConvexHull::initialApproximation(){

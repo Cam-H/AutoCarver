@@ -46,6 +46,10 @@ public:
     float getYaw() const;
     float getPitch() const;
 
+    QVector3D getPosition() const;
+    QVector3D getFocus() const;
+
+    QVector3D forward() const;
     QVector3D horizontal() const;
     QVector3D vertical() const;
 

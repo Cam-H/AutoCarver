@@ -5,6 +5,7 @@
 #include "Camera.h"
 
 #include <QQuaternion>
+#include <iostream>
 
 Camera::Camera(Type type)
     : m_type(type)
@@ -157,9 +158,24 @@ float Camera::getPitch() const
     return m_pitch;
 }
 
+QVector3D Camera::getPosition() const
+{
+    return m_eye;
+}
+QVector3D Camera::getFocus() const
+{
+    return m_center;
+}
+
+QVector3D Camera::forward() const
+{
+    return (m_center - m_eye).normalized();
+}
+
 QVector3D Camera::horizontal() const
 {
-    return cameraRotated(QVector3D(0, 0, 1)).normalized();
+//    -cameraRotated(QVector3D(0, 0, 1)).normalized();
+    return QVector3D::crossProduct(m_center - m_eye, cameraRotated(UP_VECTOR)).normalized();
 }
 QVector3D Camera::vertical() const
 {

@@ -201,7 +201,7 @@ glm::vec3 FaceArray::normal(uint32_t idx, const VertexArray& vertices) const
     return glm::normalize(glm::cross(vertices[ptr[1]] - normal, vertices[ptr[2]] - normal));
 }
 
-// Requires that the faces are convex
+// Requires that the faces are convex TODO handle non-convex faces
 void FaceArray::triangulation(uint32_t* indices)
 {
     uint32_t idx = 0;

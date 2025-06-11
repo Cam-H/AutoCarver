@@ -43,10 +43,11 @@ public:
     bool deserialize(std::ifstream& file) override;
 
     void scale(float scalar);
-    void scale(float x, float y, float z);
-    void translate(float x, float y, float z);
-    void rotate(float x, float y, float z, float theta);
+    void scale(const glm::vec3& scale);
+    void translate(const glm::vec3& translation);
+    void rotate(const glm::vec3& axis, float theta);
 
+    void normalize(float scalar = 1.0f);
     void zero();
 
 
@@ -54,6 +55,10 @@ public:
     void yExtents(float &near, float &far) const;
     void zExtents(float &near, float &far) const;
     void extents(const glm::vec3& axis, float &near, float &far) const;
+
+    float xSpan() const;
+    float ySpan() const;
+    float zSpan() const;
 
     void setBaseColor(const glm::vec3& color);
     void setFaceColor(uint32_t faceIdx, const glm::vec3& color);
@@ -94,8 +99,6 @@ public:
     [[nodiscard]] glm::mat3x3 inertiaTensor() const;
 
     std::vector<uint32_t> sharedFaces(const std::shared_ptr<Mesh>& reference) const;
-
-    void directRepresentation(float *vertices, float *normals, float *colors);
 
     void print() const;
 

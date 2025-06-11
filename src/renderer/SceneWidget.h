@@ -56,6 +56,9 @@ public:
 
     Camera& camera();
 
+signals:
+    void perspectiveChanged();
+
 protected:
 
     struct RenderItem {

@@ -45,6 +45,9 @@ public:
 
     [[nodiscard]] uint32_t walk(const glm::vec3& axis, uint32_t index = 0) const;
 
+    [[nodiscard]] std::vector<uint32_t> horizon(const glm::vec3& axis) const;
+    [[nodiscard]] std::vector<uint32_t> horizon(const glm::vec3& axis, const glm::vec3& support) const;
+
     [[nodiscard]] Simplex gjkIntersection(const ConvexHull& body, const glm::mat4& transform, std::pair<uint32_t, uint32_t>& idx) const;
     [[nodiscard]] EPA epaIntersection(const ConvexHull& body, const glm::mat4& transform, const glm::mat4& relativeTransform, std::pair<uint32_t, uint32_t>& idx) const;
 

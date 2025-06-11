@@ -67,6 +67,12 @@ std::shared_ptr<Mesh> MeshHandler::loadAsMeshBody(const std::string& filepath, f
 
 void MeshHandler::exportMesh(const std::shared_ptr<Mesh>& mesh, const std::string& filepath)
 {
+
+    if (mesh == nullptr) {
+        std::cout << "Can not export! Null mesh provided\n";
+        return;
+    }
+
     std::cout << "Exporting mesh...\n";
     ScopedTimer timer(filepath + " mesh export");
     Assimp::Exporter exporter;
@@ -74,11 +80,11 @@ void MeshHandler::exportMesh(const std::shared_ptr<Mesh>& mesh, const std::strin
     auto outputMesh = new aiMesh();
     outputMesh->mNumVertices = mesh->vertexCount();
     outputMesh->mVertices = new aiVector3f [3 * mesh->vertexCount()];
-    memcpy(outputMesh->mVertices, mesh->vertices().data(), 3 * mesh->vertexCount() * sizeof(float));
+    memcpy(outputMesh->mVertices, mesh->vertices().vertices().data(), 3 * mesh->vertexCount() * sizeof(float));
     outputMesh->mNumFaces = mesh->faceCount();
     outputMesh->mFaces = new aiFace[mesh->faceCount()];
     outputMesh->mNormals = new aiVector3f[mesh->vertexCount()];
-    memcpy(outputMesh->mNormals, mesh->vertexNormals().data(), 3 * mesh->vertexCount() * sizeof(float));
+    memcpy(outputMesh->mNormals, mesh->vertexNormals().vertices().data(), 3 * mesh->vertexCount() * sizeof(float));
     auto idxPtr = mesh->faces().faces();
     for (uint32_t i = 0; i < mesh->faceCount(); i++) {
         outputMesh->mFaces[i].mNumIndices = mesh->faces().faceSizes()[i];

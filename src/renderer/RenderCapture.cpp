@@ -18,7 +18,7 @@ RenderCapture::RenderCapture(QScreen *screen, const QSize& size)
     , m_size(size)
     , m_initialized(false)
     , m_initializedGL(false)
-    , m_camera()
+    , m_camera(Camera::Type::ORTHOGRAPHIC)
 {
 
     setFormat(QSurfaceFormat::defaultFormat());
@@ -94,8 +94,6 @@ void RenderCapture::prepare()
         m_paintDevice = new QOpenGLPaintDevice;
     }
 
-    std::cout << bufferSize().width() << " " << m_paintDevice->size().width() << " " << m_size.width() << " A\n";
-
     // update paint device size if needed
     if (m_paintDevice->size() != bufferSize()) {
         m_paintDevice->setSize(bufferSize());
@@ -127,6 +125,16 @@ RenderCapture::~RenderCapture()
 
 void RenderCapture::addTarget(const std::shared_ptr<Mesh>& mesh, const QColor& color)
 {
+    std::lock_guard <std::mutex> locker(m_mutex);
+
+    initialize();
+
+    makeCurrent();
+    if (!m_initializedGL) {
+        m_initializedGL = true;
+        initializeGL();
+    }
+
     m_targets.emplace_back(mesh);
     Target& target = m_targets[m_targets.size() - 1];
 
@@ -136,19 +144,34 @@ void RenderCapture::addTarget(const std::shared_ptr<Mesh>& mesh, const QColor& c
     target.vbo.bind();
     target.ibo.bind();
 
-    target.vbo.allocate(mesh->vertices().data(), 3 * mesh->vertexCount() * sizeof(float));
+    target.vbo.allocate(mesh->vertices().vertices().data(), 3 * mesh->vertexCount() * sizeof(float));
     target.ibo.allocate(mesh->indices(), target.count * sizeof(uint32_t));
 
     target.color = color;
+
+    doneCurrent();
+
 }
 void RenderCapture::clearTargets()
 {
+    std::lock_guard <std::mutex> locker(m_mutex);
+
+    initialize();
+
+    makeCurrent();
+    if (!m_initializedGL) {
+        m_initializedGL = true;
+        initializeGL();
+    }
+
     for (Target& target : m_targets) {
         target.vbo.destroy();
         target.ibo.destroy();
     }
 
     m_targets.clear();
+
+    doneCurrent();
 }
 
 void RenderCapture::resize(int width, int height)
@@ -172,14 +195,21 @@ void RenderCapture::resize(const QSize& size)
 
 void RenderCapture::focus()
 {
-    QVector3D horz = m_camera.horizontal(), vert = m_camera.vertical();
+    QVector3D fwd = m_camera.forward(), horz = m_camera.horizontal(), vert = m_camera.vertical();
 
+    glm::vec3 axis = { fwd.x(), fwd.y(), fwd.z() };
     glm::vec3 hAxis = { horz.x(), horz.y(), horz.z() }, vAxis = { vert.x(), vert.y(), vert.z() };
 
     // Find maximum extents of the targets along the camera view axes
     float left = 1e6, right = -1e6, bot = 1e6, top = -1e6;
     for (const Target& target : m_targets) {
         float min, max;
+
+        //
+        target.mesh->extents(axis, min, max);
+        float dist = std::max(std::abs(min), max) + 1;
+        if (m_camera.getRadius() < dist) m_camera.setRadius(dist);
+    std::cout << min << " " << max << " " << dist << "\n";
 
         target.mesh->extents(hAxis, min, max);
         if (min < left) left = min;

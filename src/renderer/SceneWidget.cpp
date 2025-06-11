@@ -29,7 +29,6 @@ SceneWidget::SceneWidget(const std::shared_ptr<Scene>& scene, QWidget* parent)
     , m_zoomExponential(0.2f)
     , QOpenGLWidget(parent)
 {
-
 }
 
 SceneWidget::~SceneWidget()
@@ -71,6 +70,8 @@ void SceneWidget::mouseMoveEvent(QMouseEvent *e)
             pitch = std::clamp(pitch + m_rotationSensitivity * delta.y(), -89.0f, 89.0f);
             m_camera.setViewingAngle(yaw, pitch);
         }
+
+        emit perspectiveChanged();
     }
 
     m_mouseLastPosition = QVector2D(e->position());
@@ -86,6 +87,8 @@ void SceneWidget::wheelEvent(QWheelEvent *e)
     radius = std::clamp(radius, m_minRadius, m_maxRadius);
 
     m_camera.setRadius(radius);
+
+    emit perspectiveChanged();//TODO
 
     update();
 }
@@ -109,6 +112,7 @@ SceneWidget::RenderItem& SceneWidget::getRender(const std::shared_ptr<Mesh>& mes
         auto item = RenderItem{ (uint32_t)m_geometries.size(),m_defaultProgramIdx + mesh->faceColorsAssigned(), defaultVisibility };
         m_renderMap[mesh] = item;
         m_geometries.push_back(new RenderGeometry(mesh, mesh->faceColorsAssigned() ? RenderGeometry::Format::VERTEX_NORMAL_COLOR : RenderGeometry::Format::VERTEX_NORMAL));
+
         return m_renderMap[mesh];
     }
 
@@ -272,6 +276,10 @@ void SceneWidget::paint()
 
 void SceneWidget::clear()
 {
+    for (RenderGeometry* rg : m_geometries) {
+        delete rg;
+    }
+
     m_geometries.clear();
     m_renderMap.clear();
 }
@@ -288,6 +296,8 @@ void SceneWidget::resizeGL(int w, int h)
 {
     // Calculate aspect ratio
     m_camera.setAspectRatio(qreal(w) / qreal(h ? h : 1));
+
+    emit perspectiveChanged();
 }
 
 void SceneWidget::paintGL()
@@ -301,7 +311,6 @@ void SceneWidget::paintGL()
 
     // Enable back face culling
     glEnable(GL_CULL_FACE);
-
 
     if (m_scene != nullptr) {
         const std::vector<std::shared_ptr<RigidBody>>& bodies = m_scene->bodies();
@@ -329,17 +338,19 @@ void SceneWidget::paintGL()
 //    transform.translate(0.0, 0.0, -5.0);
 //    transform.rotate(rotation);
 
+//            std::cout << body->mesh() << " " << body->hullMesh() << " " << body->bSphereMesh() << " RR]]\n";
+
             render(body->mesh(), transform, true);
             render(body->hullMesh(), transform, false);
             render(body->bSphereMesh(), transform, false);
 
         }
     }
-
 }
 
 void SceneWidget::render(const std::shared_ptr<Mesh> &mesh, const QMatrix4x4& transform, bool defaultVisibility)
 {
+
     // Identify proper settings to render the mesh
     if (mesh == nullptr) return;
     auto item = getRender(mesh, defaultVisibility);

@@ -24,6 +24,7 @@ public:
     static std::shared_ptr<Mesh> box(float length, float width, float height);
 
     static std::shared_ptr<Mesh> cylinder(float radius = 1.0f, float height = 1.0f, uint32_t segments = 6);
+    static std::shared_ptr<Mesh> extrude(const std::vector<glm::vec3>& border, const glm::vec3& normal, float depth = 1.0f);
 
     static std::shared_ptr<Mesh> icosahedron(float radius = 1.0f);
     static std::shared_ptr<Mesh> icosphere(float radius = 1.0f, uint8_t subdivisions = 1);

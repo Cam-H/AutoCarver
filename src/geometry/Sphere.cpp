@@ -13,7 +13,7 @@ Sphere::Sphere(glm::vec3 center, float radius) : center(center), radius(radius) 
 
 Sphere Sphere::enclose(const VertexArray& vertices)
 {
-    return Sphere::enclose(vertices.toVector());
+    return Sphere::enclose(vertices.vertices());
 }
 
 Sphere Sphere::enclose(const std::vector<Sphere>& spheres){

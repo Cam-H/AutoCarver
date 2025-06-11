@@ -197,33 +197,6 @@ void Mesh::calculateVertexNormals()
     delete[] normals;
 }
 
-void Mesh::directRepresentation(float *vertices, float *normals, float* colors)
-{
-    auto idx = m_indices;
-    for (uint32_t i = 0; i < m_faces.faceCount(); i++) { // For every face
-        for (uint32_t j = 0; j < 3 * (m_faces.faceSizes()[i] - 2); j++) { // For every triangle in the face
-
-            const glm::vec3& vertex = m_vertices[*idx];
-            *vertices++ = vertex.x;
-            *vertices++ = vertex.y;
-            *vertices++ = vertex.z;
-
-//            const vec3f& normal = m_vertexNormals[*idx];
-            const glm::vec3& normal = m_faceNormals[i];
-            *normals++ = normal.x;
-            *normals++ = normal.y;
-            *normals++ = normal.z;
-
-            const glm::vec3& color = m_colors[i];
-            *colors++ = color.x;
-            *colors++ = color.y;
-            *colors++ = color.z;
-
-            idx++;
-        }
-    }
-}
-
 void Mesh::print() const
 {
     std::cout << "==========[ MESH ]==========\n";
@@ -240,29 +213,33 @@ void Mesh::scale(float scalar)
     m_vertices.scale(scalar);
 }
 
-void Mesh::scale(float x, float y, float z)
+void Mesh::scale(const glm::vec3& scale)
 {
-    m_vertices.scale(x, y, z);
+    m_vertices.scale(scale);
 }
 
-void Mesh::translate(float x, float y, float z)
+void Mesh::translate(const glm::vec3& translation)
 {
-    auto translation = new float[3] {x, y, z};
     m_vertices.translate(translation);
-    delete[] translation;
 }
 
-void Mesh::rotate(float x, float y, float z, float theta)
+void Mesh::rotate(const glm::vec3& axis, float theta)
 {
-    auto axis = new float[3] {x, y, z};
     m_vertices.rotate(axis, theta);
-    delete[] axis;
+}
+
+void Mesh::normalize(float scalar)
+{
+    float dx = xSpan(), dy = ySpan(), dz = zSpan();
+    float maxSpan = std::max(dx, std::max(dy, dz));
+    scale(scalar / maxSpan);
 }
 
 void Mesh::zero()
 {
-    glm::vec3 offset = -centroid();
-    translate(offset.x, offset.y, offset.z);
+//    translate(-ConvexHull(m_vertices).center());
+    translate(-centroid());
+
 }
 
 void Mesh::xExtents(float &near, float &far) const
@@ -281,6 +258,25 @@ void Mesh::zExtents(float &near, float &far) const
 void Mesh::extents(const glm::vec3& axis, float &near, float &far) const
 {
     m_vertices.extents(axis, near, far);
+}
+
+float Mesh::xSpan() const
+{
+    float near, far;
+    xExtents(near, far);
+    return far - near;
+}
+float Mesh::ySpan() const
+{
+    float near, far;
+    yExtents(near, far);
+    return far - near;
+}
+float Mesh::zSpan() const
+{
+    float near, far;
+    zExtents(near, far);
+    return far - near;
 }
 
 // Assign a base color to the mesh. If vertex colors are in use, overwrites colors of the original base to the new base

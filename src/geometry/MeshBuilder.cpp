@@ -99,7 +99,7 @@ std::shared_ptr<Mesh> MeshBuilder::cylinder(float radius, float height, uint32_t
     *fsPtr++ = vertexCount / 2;
     *fsPtr++ = vertexCount / 2;
 
-    // Generate ~cylindrical faces
+    // Generate cylindrical faces
     for (uint32_t i = 0; i < segments; i++) {
         *fPtr++ = 2 * i;
         *fPtr++ = 2 * i + 1;
@@ -110,6 +110,46 @@ std::shared_ptr<Mesh> MeshBuilder::cylinder(float radius, float height, uint32_t
 
     return std::make_shared<Mesh>(vertices, vertexCount, faces, faceSizes, faceCount);
 
+}
+
+std::shared_ptr<Mesh> MeshBuilder::extrude(const std::vector<glm::vec3>& border, const glm::vec3& normal, float depth){
+    if (border.size() < 3) return nullptr;
+
+    uint32_t vertexCount = 2 * border.size(), segments = border.size(), faceCount = 2 + segments;
+
+    // Generate vertices to approximate a cylinder
+    auto *vertices = new float[3 * vertexCount], *vPtr = vertices;
+
+    for (const glm::vec3& vertex : border) {
+        *vPtr++ = vertex.x;
+        *vPtr++ = vertex.y;
+        *vPtr++ = vertex.z;
+
+        *vPtr++ = vertex.x + normal.x * depth;
+        *vPtr++ = vertex.y + normal.y * depth;
+        *vPtr++ = vertex.z + normal.z * depth;
+    }
+
+    auto *faces = new uint32_t[2 * vertexCount + 4 * segments], *fPtr = faces;
+    auto *faceSizes = new uint32_t[faceCount], *fsPtr = faceSizes;
+
+    // Generate flat faces
+    for(uint32_t i = 0; i < vertexCount; i+=2) *fPtr++ = i;
+    for(uint32_t i = 1; i < vertexCount; i+=2) *fPtr++ = vertexCount - i;
+
+    *fsPtr++ = vertexCount / 2;
+    *fsPtr++ = vertexCount / 2;
+
+    // Generate border faces
+    for (uint32_t i = 0; i < segments; i++) {
+        *fPtr++ = 2 * i;
+        *fPtr++ = 2 * i + 1;
+        *fPtr++ = (2 * i + 3) % (2 * segments);
+        *fPtr++ = (2 * i + 2) % (2 * segments);
+        *fsPtr++ = 4;
+    }
+
+    return std::make_shared<Mesh>(vertices, vertexCount, faces, faceSizes, faceCount);
 }
 
 std::shared_ptr<Mesh> MeshBuilder::icosahedron(float radius){
@@ -234,7 +274,7 @@ std::shared_ptr<Mesh> MeshBuilder::merge(const std::shared_ptr<Mesh>& a, const s
     uint32_t vertexCount = aVC + bVC;
     auto *vertices = new float[3 * vertexCount], *vPtr = vertices;
 
-    const float *aVPtr = a->vertices().data(), *bVPtr = b->vertices().data();
+    const float *aVPtr = (float*)a->vertices().vertices().data(), *bVPtr = (float*)b->vertices().vertices().data();
     for (uint32_t i = 0; i < 3 * aVC; i++) *vPtr++ = *aVPtr++;
     for (uint32_t i = 0; i < 3 * bVC; i++) *vPtr++ = *bVPtr++;
 

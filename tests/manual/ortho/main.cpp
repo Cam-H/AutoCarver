@@ -10,21 +10,35 @@
 
 #ifndef QT_NO_OPENGL
 #include "fileIO/MeshHandler.h"
+#include "core/Scene.h"
+#include "geometry/RigidBody.h"
 #include "geometry/MeshBuilder.h"
 #include "robot/ArticulatedWrist.h"
 
 #include "renderer/UiLoader.h"
 #include "renderer/RenderCapture.h"
 #include "renderer/EdgeDetect.h"
+#include "renderer/SceneWidget.h"
 
 #endif
 
+
 QWidget *window = nullptr;
+
 QLabel *modelView = nullptr;
 QLabel *processView = nullptr;
 
+std::shared_ptr<Scene> scene = nullptr;
+SceneWidget *sceneWidget = nullptr;
+
+QCheckBox *fixedCameraSetting = nullptr;
+QPushButton *stepButton = nullptr;
+
+std::shared_ptr<RigidBody> body = nullptr;
+std::shared_ptr<RigidBody> silhouette = nullptr;
+
 std::shared_ptr<Mesh> mesh = nullptr;
-std::shared_ptr<Mesh> hull = nullptr;
+//std::shared_ptr<Mesh> hull = nullptr;
 
 EdgeDetect* detector = nullptr;
 
@@ -50,6 +64,25 @@ void updateImage()
 
     detector->update();
 
+    auto fwd = detector->capture()->camera().forward();
+    glm::vec3 axis = { fwd.x(), fwd.y(), fwd.z() };
+
+    auto border = detector->border();
+    std::vector<glm::vec3> vertices;
+    for (const auto& vertex : border)
+//        if (vertex.first == std::numeric_limits<uint32_t>::max())
+            vertices.push_back(vertex.second);
+
+    auto extrude = MeshBuilder::extrude(vertices, -axis);
+    if (extrude != nullptr) {
+        extrude->setBaseColor({1, 0, 1});
+        extrude->translate(2.0f * axis);
+        MeshHandler::exportMesh(extrude, "border.obj");
+
+        if (silhouette == nullptr) silhouette = scene->createBody(extrude);
+        else silhouette->setMesh(extrude, false);
+    }
+
     detector->sink().save(QString("image.png"));
 
     px = new QPixmap;
@@ -59,6 +92,9 @@ void updateImage()
     px = new QPixmap;
     px->convertFromImage(detector->sink());
     processView->setPixmap(*px);
+
+
+    sceneWidget->update();
 
 }
 
@@ -77,29 +113,41 @@ int main(int argc, char *argv[])
     processView = window->findChild<QLabel*>("processView");
 
 
+
 #ifndef QT_NO_OPENGL
 
-    mesh = MeshHandler::loadAsMeshBody(R"(..\res\meshes\devil.obj)");
+    mesh = MeshHandler::loadAsMeshBody(R"(..\res\meshes\beshon.obj)");
+    mesh->normalize(5.0f);
+    mesh->zero();
 
-    hull = std::make_shared<Mesh>(ConvexHull(mesh->vertices()));
-    glm::vec3 centroid = -hull->centroid();
-    mesh->translate(centroid.x, centroid.y, centroid.z);
-    hull->zero();
+//    hull = std::make_shared<Mesh>(ConvexHull(mesh->vertices()));
+//    glm::vec3 centroid = -hull->centroid();
+//    mesh->translate(centroid.x, centroid.y, centroid.z);
+//    hull->zero();
 
-    detector = new EdgeDetect(mesh);
+    scene = std::make_shared<Scene>();
+    body = scene->createBody(mesh);
+//    body->zero();
 
-    detector->capture()->camera().setViewingAngle(0, 0);
-    detector->capture()->focus();
-
-    updateImage();
+    sceneWidget = window->findChild<SceneWidget*>("sceneWidget");
+    sceneWidget->camera().setPosition(QVector3D(5, 0, 0));
+    sceneWidget->setScene(scene);
 
 #else
     QLabel note("OpenGL Support required");
     note.show();
 #endif
 
-    // Handle adjacent prev/next buttons
-    auto *stepButton = window->findChild<QPushButton*>("stepButton");
+    fixedCameraSetting = window->findChild<QCheckBox*>("fixedCameraSetting");
+    QObject::connect(fixedCameraSetting, &QCheckBox::clicked, [&]() {
+        stepButton->setEnabled(fixedCameraSetting->checkState() == Qt::CheckState::Checked);
+//        if (detector->capture()->camera().getType() == Camera::Type::PERSPECTIVE)
+//            detector->capture()->camera().setType(Camera::Type::ORTHOGRAPHIC);
+//        else detector->capture()->camera().setType(Camera::Type::PERSPECTIVE);
+//        updateImage();
+    });
+
+    stepButton = window->findChild<QPushButton*>("stepButton");
     QObject::connect(stepButton, &QPushButton::clicked, [&]() {
         detector->capture()->camera().rotate(5);
         detector->capture()->focus();
@@ -118,15 +166,48 @@ int main(int argc, char *argv[])
         updateImage();
     });
 
-    auto *projButton = window->findChild<QPushButton*>("projButton");
-    QObject::connect(projButton, &QPushButton::clicked, [&]() {
-        if (detector->capture()->camera().getType() == Camera::Type::PERSPECTIVE)
-            detector->capture()->camera().setType(Camera::Type::ORTHOGRAPHIC);
-        else detector->capture()->camera().setType(Camera::Type::PERSPECTIVE);
-        updateImage();
+    auto *newMeshButton = window->findChild<QPushButton*>("newMeshButton");
+    QObject::connect(newMeshButton, &QPushButton::clicked, [&]() {
+        const QString fileName = QFileDialog::getOpenFileName(nullptr, "Select Model",
+                                                     "../res/meshes", "Model Files (*.obj)");
+
+        if (!fileName.isEmpty()) {
+            mesh = MeshHandler::loadAsMeshBody(fileName.toStdString());
+            mesh->normalize(5.0f);
+            mesh->zero();
+
+            body->setMesh(mesh, false);
+            sceneWidget->clear();
+
+            detector->setMesh(mesh);
+            detector->capture()->focus();
+
+            updateImage();
+        }
+
     });
 
+    QObject::connect(sceneWidget, &SceneWidget::perspectiveChanged, [&]() {
+        std::cout << "Perspective change trigger entry\n";
+        if (fixedCameraSetting->checkState() == Qt::CheckState::Unchecked) {
+            detector->capture()->camera().setPosition(sceneWidget->camera().getPosition());
+            detector->capture()->focus();
+            updateImage();
+        }
+    });
+
+    detector = new EdgeDetect(mesh);
+
+    detector->setSize(sizeField->value());
+    detector->setEpsilon((float)epsilonField->value());
+
+    detector->capture()->camera().setViewingAngle(0, 0);
+    detector->capture()->focus();
+
+    updateImage();
+
     window->show();
+
 
     return app.exec();
 }

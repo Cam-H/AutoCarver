@@ -49,6 +49,8 @@ public:
 
     void step(float delta);
 
+    void zero();
+
     void updateColliders();
     void prepareColliderVisuals();
 

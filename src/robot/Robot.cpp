@@ -25,15 +25,15 @@ void Robot::prepareLinks()
     float height = 0.8f;
     for (const Joint& joint : m_kinematics->getJoints()) {
         auto mesh = MeshBuilder::cylinder(0.25f, height, 8);
-        mesh->translate(0, -height / 2, 0);
-        mesh->rotate(1, 0, 0, M_PI / 2);
+        mesh->translate({ 0, -height / 2, 0 });
+        mesh->rotate({ 1, 0, 0 }, M_PI / 2);
         mesh->setBaseColor(glm::vec3{0.1f, 0.1f, 0.1f});
 
         uint32_t layer = 0b0010, mask = 0b0001;
 
         if (joint.getParameters().len > 0 || joint.getParameters().dist > 0) {
             auto linkMesh = MeshBuilder::box(std::max(0.2f, joint.getParameters().len), std::max(0.2f, joint.getParameters().dist), 0.2);
-            linkMesh->translate(joint.getParameters().len / 2, 0, joint.getParameters().dist / 2);
+            linkMesh->translate({ joint.getParameters().len / 2, 0, joint.getParameters().dist / 2 });
             linkMesh->setBaseColor(glm::vec3{ 1.0f, 1.0f, 0.0f });
             mesh = MeshBuilder::merge(mesh, linkMesh);
         } else {
