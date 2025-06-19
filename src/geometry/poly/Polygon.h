@@ -15,8 +15,32 @@ public:
 
     explicit Polygon(const std::vector<glm::vec2> &border);
 
+    void removeVertex(uint32_t index);
+
+    void insertVertex(const glm::vec2& vertex);
+    void insertVertex(uint32_t index, const glm::vec2& vertex);
+
+    void positionVertex(uint32_t index, const glm::vec2& position);
+
+    uint32_t vertexCount() const;
+    const std::vector<glm::vec2>& border() const;
+
+    static void cullCollinear(std::vector<glm::vec2>& vertices, float tolerance = 1e-3);
+
+    std::vector<glm::vec3> projected3D(const glm::vec3& xAxis, const glm::vec3& yAxis, const glm::vec3& offset = {}) const;
+
+    std::vector<uint32_t> hull() const;
+    static std::vector<uint32_t> hull(const std::vector<glm::vec2>& vertices);
+
+    std::vector<Triangle> tesselate();
     std::vector<Triangle> bowyerWatson();
     static std::vector<Triangle> bowyerWatson(const std::vector<glm::vec2>& border);
+
+    [[nodiscard]] virtual std::vector<std::pair<glm::vec2, glm::vec2>> debugEdges() const;
+
+protected:
+
+    static float cross(const glm::vec2& origin, const glm::vec2& a, const glm::vec2& b);
 
 private:
 

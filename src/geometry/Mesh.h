@@ -34,8 +34,6 @@ public:
 
     explicit Mesh(VertexArray vertices, FaceArray faces);
 
-    ~Mesh();
-
     bool serialize(const std::string& filename) override;
     bool serialize(std::ofstream& file) override;
 
@@ -48,6 +46,7 @@ public:
     void rotate(const glm::vec3& axis, float theta);
 
     void normalize(float scalar = 1.0f);
+    void center();
     void zero();
 
 
@@ -60,13 +59,14 @@ public:
     float ySpan() const;
     float zSpan() const;
 
+    void overrideColor(bool enable);
     void setBaseColor(const glm::vec3& color);
-    void setFaceColor(uint32_t faceIdx, const glm::vec3& color);
 
-    void applyColorOverride(const glm::vec3& color);
-    void setColorOverride(const glm::vec3& color);
-    void enableColorOverride(bool enable = true);
-    void disableColorOverride();
+    void setVertexColor(const glm::vec3& color);
+    void setVertexColor(uint32_t vertexIdx, const glm::vec3& color);
+
+    void setFaceColor(const glm::vec3& color);
+    void setFaceColor(uint32_t faceIdx, const glm::vec3& color);
 
     void calculateAdjacencies();
 
@@ -74,14 +74,15 @@ public:
     [[nodiscard]] const VertexArray& vertices() const;
 
     [[nodiscard]] const VertexArray& vertexNormals() const;
+    [[nodiscard]] const std::vector<glm::vec3>& vertexColors() const;
 
-    [[nodiscard]] const VertexArray& colors() const;
     [[nodiscard]] const glm::vec3& baseColor() const;
-    [[nodiscard]] glm::vec3 faceColor(uint32_t faceIdx) const;
-    [[nodiscard]] const glm::vec3& colorOverride() const;
 
+    [[nodiscard]] bool colorsAssigned() const;
     [[nodiscard]] bool faceColorsAssigned() const;
-    [[nodiscard]] bool colorOverrideEnabled() const;
+    [[nodiscard]] bool vertexColorsAssigned() const;
+
+    [[nodiscard]] bool useBaseColor() const;
 
     [[nodiscard]] uint32_t triangleCount() const;
     const uint32_t* indices() const;
@@ -125,10 +126,9 @@ private:
 
     VertexArray m_vertexNormals;
 
-    VertexArray m_colors;
+    bool m_colorOverride;
     glm::vec3 m_baseColor;
-    glm::vec3 m_colorOverride;
-    bool m_colorOverrideEnable;
+    std::vector<glm::vec3> m_vertexColors;
 
     bool m_adjacencyOK;
     std::vector<std::vector<uint32_t>> m_adjacencies;

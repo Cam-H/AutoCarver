@@ -46,6 +46,9 @@ void* RenderGeometry::vertexData(const std::shared_ptr<Mesh>& mesh)
 {
 
     std::vector<std::reference_wrapper<const std::vector<glm::vec3>>> attribs = attributes(mesh);
+    for (const std::vector<glm::vec3>& attribute : attribs) {
+        if (attribute.empty()) throw std::runtime_error("[RenderGeometry] Attribute data not populated! Can not prepare OpenGL buffers");
+    }
 
     m_stride = 3 * attribs.size() * sizeof(float);
 
@@ -100,10 +103,11 @@ std::vector<std::reference_wrapper<const std::vector<glm::vec3>>> RenderGeometry
             if (m_indexVertices) return { mesh->vertices().vertices(), mesh->vertexNormals().vertices() };
             else return { mesh->vertices().vertices(), mesh->faces().normals() };
         case Format::VERTEX_COLOR:
-            return { mesh->vertices().vertices(), mesh->colors().vertices() };
+            if (m_indexVertices) return { mesh->vertices().vertices(), mesh->vertexColors() };
+            else return { mesh->vertices().vertices(), mesh->faces().colors() };
         case Format::VERTEX_NORMAL_COLOR:
-            if (m_indexVertices) return { mesh->vertices().vertices(), mesh->vertexNormals().vertices(), mesh->colors().vertices() };
-            else return { mesh->vertices().vertices(), mesh->faces().normals(), mesh->colors().vertices() };
+            if (m_indexVertices) return { mesh->vertices().vertices(), mesh->vertexNormals().vertices(), mesh->vertexColors() };
+            else return { mesh->vertices().vertices(), mesh->faces().normals(), mesh->faces().colors() };
     }
 
     return {};

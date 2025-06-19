@@ -15,7 +15,7 @@
 #include <utility>
 
 VertexArray::VertexArray(const float* vertices, uint32_t vertexCount)
-    : m_vertices(vertexCount * STRIDE)
+    : m_vertices(vertexCount)
 {
     memcpy(m_vertices.data(), vertices, vertexCount * STRIDE * sizeof(float));
 }
@@ -81,10 +81,10 @@ void VertexArray::translate(const glm::vec3& translation)
 
 void VertexArray::rotate(const glm::vec3& axis, float theta)
 {
-    glm::quat rotation(theta, axis);
+    glm::quat rotation = glm::angleAxis(theta, axis);
 
     for (glm::vec3& vertex : m_vertices) {
-        vertex = rotation * vertex;// TODO double check
+        vertex = vertex * rotation;
     }
 }
 
@@ -163,11 +163,26 @@ uint32_t VertexArray::stride() {
 
 bool VertexArray::extremes(const glm::vec3& axis, uint32_t &min, uint32_t &max) const
 {
+    return extremes(m_vertices, axis, min, max);
+}
+
+bool VertexArray::extreme(uint32_t p1, uint32_t p2, uint32_t& max) const
+{
+    return extreme(m_vertices, p1, p2, max);
+}
+
+bool VertexArray::extreme(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max) const
+{
+    return extreme(m_vertices, p1, p2, p3, max);
+}
+
+bool VertexArray::extremes(const std::vector<glm::vec3>& vertices, const glm::vec3& axis, uint32_t &min, uint32_t &max)
+{
     float minValue = std::numeric_limits<float>::max();
     float maxValue = std::numeric_limits<float>::lowest();
 
-    for(uint32_t i = 0; i < m_vertices.size(); i++){
-        float value = glm::dot(m_vertices[i], axis);
+    for(uint32_t i = 0; i < vertices.size(); i++){
+        float value = glm::dot(vertices[i], axis);
 
         if(value < minValue){
             minValue = value;
@@ -182,15 +197,14 @@ bool VertexArray::extremes(const glm::vec3& axis, uint32_t &min, uint32_t &max) 
 
     return min != max;
 }
-
-bool VertexArray::extreme(uint32_t p1, uint32_t p2, uint32_t& max)
+bool VertexArray::extreme(const std::vector<glm::vec3>& vertices, uint32_t p1, uint32_t p2, uint32_t& max)
 {
     float maxValue = std::numeric_limits<float>::lowest();
 
-    glm::vec3 axis = glm::normalize(m_vertices[p2] - m_vertices[p1]);
+    glm::vec3 axis = glm::normalize(vertices[p2] - vertices[p1]);
 
-    for(uint32_t i = 0; i < m_vertices.size(); i++){
-        glm::vec3 test = glm::cross(axis, m_vertices[p1] - m_vertices[i]);
+    for(uint32_t i = 0; i < vertices.size(); i++){
+        glm::vec3 test = glm::cross(axis, vertices[p1] - vertices[i]);
         float value = glm::dot(test, test);// Length squared;
 
         if(value > maxValue){
@@ -201,15 +215,14 @@ bool VertexArray::extreme(uint32_t p1, uint32_t p2, uint32_t& max)
 
     return maxValue > std::numeric_limits<float>::epsilon();
 }
-
-bool VertexArray::extreme(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max)
+bool VertexArray::extreme(const std::vector<glm::vec3>& vertices, uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max)
 {
     float maxValue = std::numeric_limits<float>::lowest();
 
-    glm::vec3 axis = glm::normalize(glm::cross(m_vertices[p2] - m_vertices[p1], m_vertices[p3] - m_vertices[p1]));
+    glm::vec3 axis = glm::normalize(glm::cross(vertices[p2] - vertices[p1], vertices[p3] - vertices[p1]));
 
-    for(uint32_t i = 0; i < m_vertices.size(); i++){
-        glm::vec3 vec = m_vertices[p1] - m_vertices[i];
+    for(uint32_t i = 0; i < vertices.size(); i++){
+        glm::vec3 vec = vertices[p1] - vertices[i];
         float value = std::abs(glm::dot(axis, vec));
 
         if(value > maxValue){
@@ -223,11 +236,16 @@ bool VertexArray::extreme(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max)
 
 void VertexArray::extents(const glm::vec3& axis, float &near, float &far) const
 {
-    uint32_t min, max;
-    extremes(axis, min, max);
+    extents(m_vertices, axis, near, far);
+}
 
-    near = glm::dot(axis, m_vertices[min]);
-    far = glm::dot(axis, m_vertices[max]);
+void VertexArray::extents(const std::vector<glm::vec3>& vertices, const glm::vec3& axis, float &near, float &far)
+{
+    uint32_t min, max;
+    extremes(vertices, axis, min, max);
+
+    near = glm::dot(axis, vertices[min]);
+    far = glm::dot(axis, vertices[max]);
 }
 
 void VertexArray::print() const

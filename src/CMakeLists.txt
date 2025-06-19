@@ -40,12 +40,15 @@ qt_add_library(AutoCarverLib
         geometry/Simplex.h
         geometry/EPA.cpp
         geometry/EPA.h
+        geometry/Circle.cpp
+        geometry/Circle.h
         geometry/Sphere.cpp
         geometry/Sphere.h
 
         geometry/poly/Polygon.h
         geometry/poly/Polygon.cpp
-
+        geometry/poly/Profile.h
+        geometry/poly/Profile.cpp
 
         robot/KinematicChain.cpp
         robot/KinematicChain.h
@@ -79,7 +82,11 @@ qt_add_library(AutoCarverLib
         renderer/UiLoader.cpp
         renderer/UiLoader.h
 
-        renderer/Camera.cpp renderer/Camera.h renderer/EdgeDetect.cpp renderer/EdgeDetect.h geometry/Circle.cpp geometry/Circle.h)
+        renderer/Camera.cpp renderer/Camera.h
+        renderer/EdgeDetect.cpp
+        renderer/EdgeDetect.h
+
+        renderer/PolygonWidget.cpp renderer/PolygonWidget.h)
 
 target_link_libraries(AutoCarverLib PRIVATE
         Qt::3DCore

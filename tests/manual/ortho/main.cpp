@@ -19,6 +19,7 @@
 #include "renderer/RenderCapture.h"
 #include "renderer/EdgeDetect.h"
 #include "renderer/SceneWidget.h"
+#include "renderer/PolygonWidget.h"
 
 #endif
 
@@ -27,6 +28,9 @@ QWidget *window = nullptr;
 
 QLabel *modelView = nullptr;
 QLabel *processView = nullptr;
+
+Profile profile;
+PolygonWidget* polygonWidget = nullptr;
 
 std::shared_ptr<Scene> scene = nullptr;
 SceneWidget *sceneWidget = nullptr;
@@ -61,19 +65,15 @@ static QWidget *loadUiFile(QWidget *parent)
 
 void updateImage()
 {
-
     detector->update();
 
     auto fwd = detector->capture()->camera().forward();
     glm::vec3 axis = { fwd.x(), fwd.y(), fwd.z() };
 
-    auto border = detector->border();
-    std::vector<glm::vec3> vertices;
-    for (const auto& vertex : border)
-//        if (vertex.first == std::numeric_limits<uint32_t>::max())
-            vertices.push_back(vertex.second);
+    profile = detector->profile();
 
-    auto extrude = MeshBuilder::extrude(vertices, -axis);
+    std::cout << "Border: " << profile.vertexCount() << "\n";
+    auto extrude = MeshBuilder::extrude(profile.projected3D(), -axis, 4);
     if (extrude != nullptr) {
         extrude->setBaseColor({1, 0, 1});
         extrude->translate(2.0f * axis);
@@ -82,6 +82,9 @@ void updateImage()
         if (silhouette == nullptr) silhouette = scene->createBody(extrude);
         else silhouette->setMesh(extrude, false);
     }
+
+    polygonWidget->setPolygon(&profile);
+    polygonWidget->center();
 
     detector->sink().save(QString("image.png"));
 
@@ -111,14 +114,14 @@ int main(int argc, char *argv[])
 
     modelView = window->findChild<QLabel*>("modelView");
     processView = window->findChild<QLabel*>("processView");
-
+    polygonWidget = window->findChild<PolygonWidget*>("polygonWidget");
 
 
 #ifndef QT_NO_OPENGL
 
-    mesh = MeshHandler::loadAsMeshBody(R"(..\res\meshes\flame.obj)");
+    mesh = MeshHandler::loadAsMeshBody(R"(..\res\meshes\devil.obj)");
+    mesh->center();
     mesh->normalize(5.0f);
-    mesh->zero();
 
 //    hull = std::make_shared<Mesh>(ConvexHull(mesh->vertices()));
 //    glm::vec3 centroid = -hull->centroid();
@@ -127,11 +130,15 @@ int main(int argc, char *argv[])
 
     scene = std::make_shared<Scene>();
     body = scene->createBody(mesh);
+//    body = scene->createBody(std::make_shared<Mesh>(ConvexHull(mesh)));
+//    body->prepareColliderVisuals();
 //    body->zero();
 
     sceneWidget = window->findChild<SceneWidget*>("sceneWidget");
     sceneWidget->camera().setPosition(QVector3D(5, 0, 0));
     sceneWidget->setScene(scene);
+
+//    sceneWidget->show(0, Scene::Model::HULL);
 
 #else
     QLabel note("OpenGL Support required");
@@ -154,6 +161,12 @@ int main(int argc, char *argv[])
         updateImage();
     });
 
+    auto refineButton = window->findChild<QPushButton*>("refineButton");
+    QObject::connect(refineButton, &QPushButton::clicked, [&]() {
+        profile.refine();
+        polygonWidget->repaint();
+    });
+
     auto *sizeField = window->findChild<QSpinBox*>("sizeField");
     QObject::connect(sizeField, &QSpinBox::valueChanged, [](int value) {
         detector->setSize(value);
@@ -174,7 +187,6 @@ int main(int argc, char *argv[])
         if (!fileName.isEmpty()) {
             mesh = MeshHandler::loadAsMeshBody(fileName.toStdString());
             mesh->normalize(5.0f);
-            mesh->zero();
 
             body->setMesh(mesh, false);
             sceneWidget->clear();

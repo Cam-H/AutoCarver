@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
     robot = scene->createRobot(new ArticulatedWrist(0.8, 2, 2, 1));
 
     auto box = MeshBuilder::box(2, 2, 1);
-    box->translate(3, 0, 0);
+    box->translate({ 3, 0, 0 });
     scene->createBody(box);
 
     sceneWidget = new SceneWidget(scene);

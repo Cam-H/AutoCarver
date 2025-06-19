@@ -34,7 +34,6 @@ std::shared_ptr<Mesh> MeshHandler::loadAsMeshBody(const std::string& filepath, f
     uint32_t vertexCount = 0, faceCount = 0, indexCount = 0;
     for (uint32_t i = 0; i < scene->mNumMeshes; i++) {
         vertexCount += scene->mMeshes[i]->mNumVertices;
-
         faceCount += scene->mMeshes[i]->mNumFaces;
         for (uint32_t j = 0; j < scene->mMeshes[i]->mNumFaces; j++) {
             indexCount += scene->mMeshes[i]->mFaces[j].mNumIndices;
@@ -62,7 +61,13 @@ std::shared_ptr<Mesh> MeshHandler::loadAsMeshBody(const std::string& filepath, f
         offset += scene->mMeshes[i]->mNumVertices;
     }
 
-    return std::make_shared<Mesh>(vertices, vertexCount, faces, faceSizes, faceCount);
+    auto mesh = std::make_shared<Mesh>(vertices, vertexCount, faces, faceSizes, faceCount);
+
+    delete[] vertices;
+    delete[] faces;
+    delete[] faceSizes;
+
+    return mesh;
 }
 
 void MeshHandler::exportMesh(const std::shared_ptr<Mesh>& mesh, const std::string& filepath)

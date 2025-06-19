@@ -23,13 +23,13 @@ Mesh::Mesh(float vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t 
 }
 
 Mesh::Mesh(const ConvexHull& hull, bool applyColorPattern)
-    : Mesh(hull.vertices(), hull.faces())
+    : Mesh(VertexArray(hull.vertices()), hull.faces())
 {
-    m_baseColor = { 0.8f, 0.8f, 0.1f};
 
     // Convex hull renders default to alternating yellow-orange color pattern
     if (applyColorPattern) {
-        m_colors = VertexArray(applyColorPattern * hull.facetCount());
+        setFaceColor(0, { 0.8f, 0.8f, 0.1f});
+
         for (uint32_t i = 0; i < faceCount(); i+= 2) {
             setFaceColor(i, {0.8f, 0.6f, 0.1f});
         }
@@ -68,10 +68,8 @@ Mesh::Mesh(VertexArray vertices, FaceArray faces)
     : m_vertices(std::move(vertices))
     , m_faces(std::move(faces))
     , m_vertexNormals(nullptr, 0)
-    , m_colors(nullptr, 0)
+    , m_colorOverride(false)
     , m_baseColor(1.0f, 1.0f, 1.0f)
-    , m_colorOverride(1.0f, 0.0f, 0.0f)
-    , m_colorOverrideEnable(false)
     , m_adjacencyOK(false)
 {
     initialize();
@@ -89,11 +87,6 @@ void Mesh::initialize(bool prepareIndexing)
     calculateVertexNormals();
 }
 
-Mesh::~Mesh()
-{
-
-}
-
 bool Mesh::serialize(const std::string& filename)
 {
     return Serializable::serialize(filename);
@@ -102,10 +95,10 @@ bool Mesh::serialize(std::ofstream& file)
 {
     if (m_vertices.serialize(file) && m_faces.serialize(file)) {
 
+        Serializer::writeBool(file, m_colorOverride);
         Serializer::writeVec3(file, m_baseColor);
-        Serializer::writeBool(file, faceColorsAssigned());
-
-        if (faceColorsAssigned()) return m_colors.serialize(file);
+        // TODO serialization
+//        if (vertexColorsAssigned()) return m_colors.serialize(file);
 
         return true;
     }
@@ -124,12 +117,12 @@ bool Mesh::deserialize(std::ifstream& file)
 
     if (m_vertices.vertexCount() > 0 && m_faces.faceCount() > 0) {
 
+        m_colorOverride = Serializer::readBool(file);
         m_baseColor = Serializer::readVec3(file);
-        bool faceColors = Serializer::readBool(file);
-
-        if (faceColors) {
-            m_colors = VertexArray::deserialize(file);
-        }
+//
+//        if (faceColors) {
+//            m_colors = VertexArray::deserialize(file);
+//        }
 
         return true;
     }
@@ -198,6 +191,23 @@ void Mesh::normalize(float scalar)
     scale(scalar / maxSpan);
 }
 
+void Mesh::center()
+{
+    glm::vec3 delta = {};
+    float near, far;
+
+    xExtents(near, far);
+    delta.x = -(near + far) / 2;
+
+    yExtents(near, far);
+    delta.y = -(near + far) / 2;
+
+    zExtents(near, far);
+    delta.z = -(near + far) / 2;
+
+    translate(delta);
+}
+
 void Mesh::zero()
 {
 //    translate(-ConvexHull(m_vertices).center());
@@ -242,45 +252,36 @@ float Mesh::zSpan() const
     return far - near;
 }
 
-// Assign a base color to the mesh. If vertex colors are in use, overwrites colors of the original base to the new base
+void Mesh::overrideColor(bool enable)
+{
+    m_colorOverride = enable;
+}
+
 void Mesh::setBaseColor(const glm::vec3& color)
 {
-    if (!m_colors.empty()) {
-        for (uint32_t i = 0; i < m_colors.vertexCount(); i++) {
-            if (m_colors[i] == m_baseColor) m_colors.replace(i, color);
-        }
-    }
-
-    m_baseColor =  color;
+    m_baseColor = color;
 }
 
-// Assign color to the specified face. If vertex colors are not currently in use, prepares an appropriate array
+void Mesh::setVertexColor(const glm::vec3& color)
+{
+    m_vertexColors = std::vector<glm::vec3>(m_vertices.vertexCount(), color);
+}
+
+void Mesh::setVertexColor(uint32_t vertexIdx, const glm::vec3& color)
+{
+    if (vertexIdx >= m_vertices.vertexCount()) throw std::runtime_error("[Mesh] Out of bounds array access!");
+    if (m_vertexColors.empty()) m_vertexColors = std::vector<glm::vec3>(m_vertices.vertexCount(), m_baseColor);
+    else m_vertexColors[vertexIdx] = color;
+}
+
+void Mesh::setFaceColor(const glm::vec3& color)
+{
+    m_faces.setColor(color);
+}
+
 void Mesh::setFaceColor(uint32_t faceIdx, const glm::vec3& color)
 {
-    if (m_colors.empty()) {
-        m_colors = VertexArray(m_faces.faceCount());
-        for (uint32_t i = 0; i < m_colors.vertexCount(); i++) m_colors.replace(i, m_baseColor);
-    }
-
-    if (faceIdx < m_colors.vertexCount()) m_colors.replace(faceIdx, color);
-}
-
-void Mesh::applyColorOverride(const glm::vec3& color)
-{
-    m_colorOverride = color;
-    m_colorOverrideEnable = true;
-}
-void Mesh::setColorOverride(const glm::vec3& color)
-{
-    m_colorOverride = color;
-}
-void Mesh::enableColorOverride(bool enable)
-{
-    m_colorOverrideEnable = enable;
-}
-void Mesh::disableColorOverride()
-{
-    m_colorOverrideEnable = false;
+    m_faces.setColor(faceIdx, color);
 }
 
 void Mesh::calculateAdjacencies()
@@ -305,9 +306,9 @@ const VertexArray& Mesh::vertexNormals() const
     return m_vertexNormals;
 }
 
-const VertexArray& Mesh::colors() const
+const std::vector<glm::vec3>& Mesh::vertexColors() const
 {
-    return m_colors;
+    return m_vertexColors;
 }
 
 const glm::vec3& Mesh::baseColor() const
@@ -315,28 +316,23 @@ const glm::vec3& Mesh::baseColor() const
     return m_baseColor;
 }
 
-const glm::vec3& Mesh::colorOverride() const
+bool Mesh::colorsAssigned() const
 {
-    return m_colorOverride;
-}
-
-bool Mesh::colorOverrideEnabled() const
-{
-    return m_colorOverrideEnable;
-}
-
-glm::vec3 Mesh::faceColor(uint32_t faceIdx) const
-{
-    if (m_colors.empty() || faceIdx >= m_faces.faceCount()) {
-        return NULL_COLOR;
-    }
-
-    return m_colors[faceIdx];
+    return faceColorsAssigned() || vertexColorsAssigned();
 }
 
 bool Mesh::faceColorsAssigned() const
 {
-    return !m_colors.empty();
+    return !m_faces.colors().empty();
+}
+bool Mesh::vertexColorsAssigned() const
+{
+    return !m_vertexColors.empty();
+}
+
+bool Mesh::useBaseColor() const
+{
+    return m_colorOverride || !colorsAssigned();
 }
 
 uint32_t Mesh::triangleCount() const

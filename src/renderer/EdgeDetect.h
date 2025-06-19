@@ -14,6 +14,7 @@ class Mesh;
 class RenderCapture;
 
 #include "geometry/ConvexHull.h"
+#include "geometry/poly/Profile.h"
 
 class EdgeDetect {
 public:
@@ -37,7 +38,7 @@ public:
     [[nodiscard]] const QImage& source() const;
     [[nodiscard]] const QImage& sink() const;
 
-    [[nodiscard]] const std::vector<std::pair<uint32_t, glm::vec3>>& border() const;
+    [[nodiscard]] const Profile& profile() const;
 
 private:
 
@@ -60,15 +61,15 @@ private:
     static uint32_t limit(const std::vector<glm::vec2>& contour, const glm::vec2& axis);
 
     void updateModelDirections();
-    void findReferences(const std::vector<uint32_t>& hull, const std::vector<glm::vec2>& contour, float& scale, uint32_t& hRef, uint32_t& cRef);
+    float estimateScale(const std::vector<uint32_t>& hull, const std::vector<glm::vec2>& contour);
+    static std::tuple<size_t, size_t> findReferenceVertex(const std::vector<glm::vec2>& hull, const std::vector<glm::vec2>& contour);
 
-    std::vector<std::pair<size_t, size_t>> dynamicTimeWarp(const std::vector<glm::vec2>& hull, const std::vector<glm::vec2>& contour);
+    static std::vector<std::pair<size_t, size_t>> matchVertices(const std::vector<glm::vec2>& hull, const std::vector<glm::vec2>& contour, uint32_t hShift, uint32_t cShift);
+    static std::vector<std::pair<size_t, size_t>> cyclicTimeWarp(const std::vector<glm::vec2>& hull, const std::vector<glm::vec2>& contour);
+    static std::tuple<std::vector<std::vector<double>>, double> dynamicTimeWarp(const std::vector<glm::vec2>& hull, const std::vector<glm::vec2>& contour, uint32_t hShift, uint32_t cShift);
     static std::vector<std::pair<size_t, size_t>> dtwPath(const std::vector<std::vector<double>>& cost);
 
-    void prepareBorder(const std::vector<std::pair<size_t, size_t>>& border, const std::vector<glm::vec2>& projection, const std::vector<glm::vec2>& contour);
-    void captureConcave(const std::vector<glm::vec2>& source, uint32_t& start, uint32_t end);
-
-    std::vector<glm::vec2> projected();
+    void drawPolygon(const std::vector<glm::vec2>& vertices, uint8_t value);
 
 private:
 
@@ -87,7 +88,7 @@ private:
     glm::vec3 m_up;
     glm::vec3 m_right;
 
-    std::vector<std::pair<uint32_t, glm::vec3>> m_border;
+    Profile m_profile;
 
     uchar* m_data;
 

@@ -10,6 +10,7 @@
 
 #include "SceneWidget.h"
 #include "LineChartWidget.h"
+#include "PolygonWidget.h"
 
 class UiLoader : public QUiLoader {
 public:
@@ -24,6 +25,10 @@ public:
             return w;
         } else if (className == "LineChartWidget") {
             auto *w = new LineChartWidget(parent);
+            w->setObjectName(name);
+            return w;
+        } else if (className == "PolygonWidget") {
+            auto *w = new PolygonWidget(parent);
             w->setObjectName(name);
             return w;
         }

@@ -94,7 +94,7 @@ EPA::EPA(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, c
     m_nearest = vertices[tri.I0].idx;
 }
 
-glm::vec3 EPA::fromBarycentric(const VertexArray& va, const Triangle& triangle, const glm::vec3& bary)
+glm::vec3 EPA::fromBarycentric(const std::vector<glm::vec3>& va, const Triangle& triangle, const glm::vec3& bary)
 {
     return bary.x * va[triangle.I0] + bary.y * va[triangle.I1] + bary.z * va[triangle.I2];
 }

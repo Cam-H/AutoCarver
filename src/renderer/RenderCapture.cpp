@@ -137,6 +137,7 @@ void RenderCapture::addTarget(const std::shared_ptr<Mesh>& mesh, const QColor& c
 
     m_targets.emplace_back(mesh);
     Target& target = m_targets[m_targets.size() - 1];
+    target.mesh->center();
 
     target.vbo.create();
     target.ibo.create();

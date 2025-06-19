@@ -158,10 +158,7 @@ void FaceArray::calculateNormals(const std::vector<glm::vec3>& vertices)
     uint32_t *idxPtr = m_faces;
     for (uint32_t i = 0; i < m_faceCount; i++) {
         if (m_faceSizes[i] == 3) { // Simple cross-product normal
-            m_normals[i] = glm::normalize(glm::cross(
-                    vertices[*(idxPtr + 1)] - vertices[*idxPtr],
-                    vertices[*(idxPtr + 2)] - vertices[*idxPtr]
-            ));
+            m_normals[i] = Triangle::normal(vertices[*idxPtr], vertices[*(idxPtr + 1)], vertices[*(idxPtr + 2)]);
         } else { // Otherwise, evaluate the normal using Newell's method
             m_normals[i] = { 0, 0, 0 };
             for (uint32_t j = 0; j < m_faceSizes[i]; j++) {
@@ -219,6 +216,17 @@ void FaceArray::triangulate(const std::vector<glm::vec3>& vertices)
     }
 }
 
+void FaceArray::setColor(const glm::vec3& color)
+{
+    m_colors = std::vector<glm::vec3>(m_faceCount, color);
+}
+
+void FaceArray::setColor(uint32_t idx, const glm::vec3& color)
+{
+    if (idx >= m_faceCount) throw std::runtime_error("[FaceArray] Out of bounds array access!");
+    if (m_colors.empty()) setColor(color);
+    else m_colors[idx] = color;
+}
 
 // Prevent improper array access
 bool FaceArray::inRange(const uint32_t *idx, uint32_t count, uint32_t limit)
@@ -281,6 +289,16 @@ glm::vec3 FaceArray::normal(uint32_t idx) const
     return m_normals[idx];
 }
 
+const std::vector<glm::vec3>& FaceArray::colors() const
+{
+    return m_colors;
+}
+glm::vec3 FaceArray::color(uint32_t idx) const
+{
+    if (idx >= m_colors.size()) return {};
+    return m_colors[idx];
+}
+
 const std::vector<Triangle>& FaceArray::triangles() const
 {
     return m_triangles;
@@ -303,42 +321,6 @@ uint32_t FaceArray::indexCount() const
     return m_indexCount;
 }
 
-//FaceArray FaceArray::triangulated()
-//{
-//    uint32_t count = triangleCount();
-//    auto *faces = new uint32_t[3 * count];
-//
-//    triangulation(faces);
-//
-//    return {faces, count};
-//}
-
-// TODO non-convex triangulation
-//    std::vector<QVector3D> loop;
-//    uint32_t idx = 0, offset = 0, *idxPtr = m_indices;
-//    for (uint32_t i = 0; i < m_faceCount; i++) {
-//        std::cout << i << " " << idx << " " << idxPtr - m_indices << "\n";
-//        for (uint32_t j = 0; j < m_faceSizes[i]; j++) {
-//            std::cout << "Vertex: " << m_faces[idx] << " = " <<m_vertices[m_faces[idx]][0] << " " << m_vertices[m_faces[idx]][1] << " " << m_vertices[m_faces[idx]][2] << "\n";
-//            loop.emplace_back(m_vertices[m_faces[idx]][0], m_vertices[m_faces[idx]][1], m_vertices[m_faces[idx]][2]);
-//            idx++;
-//        }
-//        std::cout << "loop: " << loop.size() << "\n";
-//        CompositePolygon poly(loop);
-//        std::cout << "creation\n";
-//        std::vector<Triangle> triangles = poly.triangulation();
-//        std::cout << "triangles: " << triangles.size() << "\n";
-//        offset = idx - m_faceSizes[i];
-//        for (const Triangle& tri : triangles) {
-//            std::cout << tri.m_I0 << " " << tri.m_I1 << " " << tri.m_I2 << "\n";
-//            *idxPtr++ = m_faces[offset + tri.m_I0];
-//            *idxPtr++ = m_faces[offset + tri.m_I1];
-//            *idxPtr++ = m_faces[offset + tri.m_I2];
-//        }
-//        std::cout << "============================\n";
-//
-//        loop.clear();
-//    }
 
 std::vector<std::vector<uint32_t>> FaceArray::edgeList() const
 {
@@ -399,6 +381,18 @@ std::vector<std::vector<uint32_t>> FaceArray::adjacencies() const
     std::cout << "[[[[[[[[ " << links.size() << " " << neighbors.size() << "\n";
 
     return neighbors;
+}
+
+std::vector<uint32_t> FaceArray::instances(uint32_t maxIndex) const
+{
+    std::vector<uint32_t> count(maxIndex, 0);
+
+    uint32_t *ptr = m_faces;
+    for (uint32_t i = 0; i < m_faceCount; i++) {
+        for (uint32_t j = 0; j < m_faceSizes[i]; j++) count[*ptr++]++;
+    }
+
+    return count;
 }
 
 inline uint64_t FaceArray::linkKey(uint32_t I0, uint32_t I1)

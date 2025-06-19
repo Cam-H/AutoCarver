@@ -127,9 +127,29 @@ bool Serializer::writeUint(std::ofstream& file, uint32_t value)
     return true;
 }
 
+bool Serializer::writeVec2(std::ofstream& file, const glm::vec2& value)
+{
+    file.write(reinterpret_cast<const char*>(glm::value_ptr(value)), sizeof(glm::vec2));
+    return true;
+}
+
 bool Serializer::writeVec3(std::ofstream& file, const glm::vec3& value)
 {
     file.write(reinterpret_cast<const char*>(glm::value_ptr(value)), sizeof(glm::vec3));
+    return true;
+}
+
+bool Serializer::writeVectorVec2(std::ofstream& file, const std::vector<glm::vec2>& values)
+{
+    Serializer::writeUint(file, values.size());
+    file.write(reinterpret_cast<const char*>(values.data()), values.size() * sizeof(glm::vec2));
+    return true;
+}
+
+bool Serializer::writeVectorVec3(std::ofstream& file, const std::vector<glm::vec3>& values)
+{
+    Serializer::writeUint(file, values.size());
+    file.write(reinterpret_cast<const char*>(values.data()), values.size() * sizeof(glm::vec3));
     return true;
 }
 
@@ -182,6 +202,17 @@ uint32_t Serializer::readUint(std::ifstream& file)
     return data;
 }
 
+glm::vec2 Serializer::readVec2(std::ifstream& file)
+{
+    auto *buffer = new float[2];
+    file.read(reinterpret_cast<char*>(buffer), sizeof(glm::vec2));
+
+    auto vector = glm::make_vec2(buffer);
+    delete[] buffer;
+
+    return vector;
+}
+
 glm::vec3 Serializer::readVec3(std::ifstream& file)
 {
     auto *buffer = new float[3];
@@ -191,6 +222,37 @@ glm::vec3 Serializer::readVec3(std::ifstream& file)
     delete[] buffer;
 
     return vector;
+}
+
+std::vector<glm::vec2> Serializer::readVectorVec2(std::ifstream& file)
+{
+    uint32_t size = readUint(file);
+    std::vector<glm::vec2> vertices(size);
+
+    file.read(reinterpret_cast<char*>(vertices.data()), size * sizeof(glm::vec2));
+
+    return vertices;
+}
+
+std::vector<glm::vec3> Serializer::readVectorVec3(std::ifstream& file)
+{
+    uint32_t size = readUint(file);
+    std::vector<glm::vec3> vertices(size);
+
+    file.read(reinterpret_cast<char*>(vertices.data()), size * sizeof(glm::vec3));
+
+//    std::vector<glm::vec3> vertices;
+//    vertices.reserve(size);
+//
+//    auto *buffer = new float[3];
+//    for (uint32_t i = 0; i < size; i++) {
+//        file.read(reinterpret_cast<char*>(buffer), sizeof(glm::vec3));
+//        vertices.emplace_back(glm::make_vec3(buffer));
+//    }
+//
+//    delete[] buffer;
+
+    return vertices;
 }
 
 glm::mat4x4 Serializer::readTransform(std::ifstream& file)

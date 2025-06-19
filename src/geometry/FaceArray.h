@@ -34,6 +34,9 @@ public:
     void calculateNormals(const std::vector<glm::vec3>& vertices);
     void triangulate(const std::vector<glm::vec3>& vertices);
 
+    void setColor(const glm::vec3& color);
+    void setColor(uint32_t idx, const glm::vec3& color);
+
     uint32_t* operator[](uint32_t idx);
     uint32_t* operator[](uint32_t idx) const;
 
@@ -43,6 +46,9 @@ public:
 
     [[nodiscard]] const std::vector<glm::vec3>& normals() const;
     [[nodiscard]] glm::vec3 normal(uint32_t idx) const;
+
+    [[nodiscard]] const std::vector<glm::vec3>& colors() const;
+    [[nodiscard]] glm::vec3 color(uint32_t idx) const;
 
     [[nodiscard]] const std::vector<Triangle>& triangles() const;
     [[nodiscard]] uint32_t triangleCount() const;
@@ -55,6 +61,9 @@ public:
 
     [[nodiscard]] std::vector<std::vector<uint32_t>> edgeList() const;
     [[nodiscard]] std::vector<std::vector<uint32_t>> adjacencies() const;
+
+    // Calculates the number of instances of every vertex in a face
+    [[nodiscard]] std::vector<uint32_t> instances(uint32_t maxIndex) const;
 
     [[nodiscard]] uint32_t size() const; // Get the size of the array in bytes
     [[nodiscard]] bool empty() const;
@@ -77,6 +86,7 @@ private:
     uint32_t *m_faceSizes; // Size of each individual face in vertices
 
     std::vector<glm::vec3> m_normals;
+    std::vector<glm::vec3> m_colors;
 
     std::vector<Triangle> m_triangles;
     std::vector<uint32_t> m_triFaceLookup;

@@ -18,19 +18,23 @@
 #include "Simplex.h"
 #include "Triangle.h"
 
+class Mesh;
 class EPA;
 
 class ConvexHull {
 public:
 
     ConvexHull();
-    ConvexHull(const float* cloud, uint32_t cloudSize);
-    ConvexHull(VertexArray  cloud);
+
+    ConvexHull(const VertexArray&  cloud);
+    ConvexHull(const std::vector<glm::vec3>&  cloud);
+
+    ConvexHull(const std::shared_ptr<Mesh>& mesh);
 
     ConvexHull(const ConvexHull& rhs) = default;
 
     [[nodiscard]] uint32_t vertexCount() const;
-    [[nodiscard]] const VertexArray& vertices() const;
+    [[nodiscard]] const std::vector<glm::vec3>& vertices() const;
 
     [[nodiscard]] uint32_t facetCount() const;
     [[nodiscard]] const FaceArray& faces() const;
@@ -40,8 +44,6 @@ public:
     [[nodiscard]] glm::vec3 center() const;
 
     [[nodiscard]] bool empty() const;
-    [[nodiscard]] bool isSourceConvex() const;
-    static bool isConvex(const VertexArray& test);
 
     [[nodiscard]] uint32_t walk(const glm::vec3& axis, uint32_t index = 0) const;
 
@@ -66,6 +68,8 @@ private:
 //        ~Facet() { delete[] normal; }
     };
 
+    void initialize();
+
     std::vector<Triangle> initialApproximation();
     glm::vec3 wNormal(const Triangle& triangle);
 
@@ -84,17 +88,13 @@ private:
 
 private:
 
-    VertexArray m_cloud;
+    std::vector<glm::vec3> m_cloud;
 
-    VertexArray m_vertices;
+    std::vector<glm::vec3> m_vertices;
 
     FaceArray m_faces;
 
-//    uint32_t *m_facets;
-//    uint32_t *m_facetSizes;
-//    uint32_t m_facetCount;
-
-    std::vector<glm::vec3> w_vertices;
+//    std::vector<glm::vec3> w_vertices;
     std::vector<Facet> facets;
 
 

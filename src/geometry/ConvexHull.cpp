@@ -5,6 +5,7 @@
 
 #include "ConvexHull.h"
 
+#include "Mesh.h"
 #include "EPA.h"
 
 
@@ -19,32 +20,51 @@
 #include <utility>
 
 ConvexHull::ConvexHull()
-    : m_vertices(nullptr, 0)
-    , m_center()
-    , m_cloud(nullptr, 0)
+    : m_center()
     , m_faces(nullptr, nullptr, 0)
 {
 }
 
-ConvexHull::ConvexHull(const float* cloud, uint32_t cloudSize)
-    : ConvexHull(VertexArray{cloud, cloudSize})
-
+ConvexHull::ConvexHull(const VertexArray&  cloud)
+    : ConvexHull(cloud.vertices())
 {
+
 }
 
-ConvexHull::ConvexHull(VertexArray cloud)
-    : m_vertices(nullptr, 0)
-    , m_center()
+ConvexHull::ConvexHull(const std::vector<glm::vec3>& cloud)
+    : m_center()
+    , m_cloud(cloud)
     , m_faces(nullptr, nullptr, 0)
-    , m_cloud(std::move(cloud)){
 
-    if (m_cloud.vertexCount() < 4) {
+{
+    initialize();
+}
+
+ConvexHull::ConvexHull(const std::shared_ptr<Mesh>& mesh)
+        : m_center(0)
+        , m_cloud(std::vector<glm::vec3>())
+        , m_faces(nullptr, nullptr, 0)
+{
+    m_cloud.reserve(mesh->vertexCount());
+
+    // Excludes orphan vertices that may be part of the mesh
+    std::vector<uint32_t> instances = mesh->faces().instances(mesh->vertexCount());
+    for (uint32_t i = 0; i < instances.size(); i++) {
+        if (instances[i] > 0) m_cloud.push_back(mesh->vertices()[i]);
+    }
+
+    initialize();
+}
+
+void ConvexHull::initialize()
+{
+    if (m_cloud.size() < 4) {
         std::cout << "\033[31mERROR! Can not generate a 3D convex hull with fewer than 4 vertices\033[0m\n";
         return;
     }
 
     // Default to minimum hull size that will not introduce potential bugs
-    w_vertices.reserve(m_cloud.vertexCount());
+    m_vertices.reserve(m_cloud.size());
 
     std::vector<Triangle> triangles = initialApproximation();
 
@@ -57,16 +77,13 @@ ConvexHull::ConvexHull(VertexArray cloud)
 
     for (uint32_t i = 0; i < facets.size(); i++) {
         if (facets[i].onHull && !facets[i].outside.empty()) {
-            w_vertices.push_back(m_cloud[facets[i].outside[0]]);
+            m_vertices.push_back(m_cloud[facets[i].outside[0]]);
 
             std::vector<uint32_t> horizon, set;
-            calculateHorizon(w_vertices[w_vertices.size() - 1], -1, i, horizon, set);
+            calculateHorizon(m_vertices[m_vertices.size() - 1], -1, i, horizon, set);
             prepareFacets(horizon, set);// Generate a strip of new facets between the apex and the horizon
         }
     }
-
-    // Adjust vertex array size to calculated hull size
-    m_vertices = VertexArray((float*)w_vertices.data(), w_vertices.size());
 
     // Attach all remaining triangles to the convex hull
     uint32_t idx = 0, count = 0;
@@ -129,21 +146,24 @@ ConvexHull::ConvexHull(VertexArray cloud)
 
     m_faces = {facets, facetSizes, (uint32_t)faces.size()};
 
-    // Caluclate convex hull center
-    for (uint32_t i = 0; i < m_vertices.vertexCount(); i++) {
+    delete[] facetSizes;
+    delete[] facets;
+
+    // Calculate convex hull center
+    for (uint32_t i = 0; i < m_vertices.size(); i++) {
         m_center += m_vertices[i];
     }
-    m_center = m_center * (1 / (float)m_vertices.vertexCount());
+    m_center = m_center * (1 / (float)m_vertices.size());
 
     m_walks = m_faces.edgeList();
 }
 
 uint32_t ConvexHull::vertexCount() const
 {
-    return m_vertices.vertexCount();
+    return m_vertices.size();
 }
 
-const VertexArray& ConvexHull::vertices() const
+const std::vector<glm::vec3>& ConvexHull::vertices() const
 {
     return m_vertices;
 }
@@ -173,18 +193,7 @@ glm::vec3 ConvexHull::center() const
 
 bool ConvexHull::empty() const
 {
-    return m_vertices.vertexCount() == 0;
-}
-
-bool ConvexHull::isSourceConvex() const
-{
-    std::cout << m_vertices.vertexCount() << " " << m_cloud.vertexCount() << " |";
-    return m_vertices.vertexCount() == m_cloud.vertexCount();
-}
-
-bool ConvexHull::isConvex(const VertexArray& test)
-{
-    return ConvexHull(test).isSourceConvex();
+    return m_vertices.empty();
 }
 
 Simplex ConvexHull::gjkIntersection(const ConvexHull& body, const glm::mat4& transform, std::pair<uint32_t, uint32_t>& idx) const
@@ -261,21 +270,12 @@ std::vector<uint32_t> ConvexHull::horizon(const glm::vec3& axis) const
 }
 std::vector<uint32_t> ConvexHull::horizon(const glm::vec3& axis, const glm::vec3& support) const
 {
-    std::cout << m_vertices.length() << "\n";
-    std::cout << "A " << axis.x << " " << axis.y << " " << axis.z << "\n";
-    std::cout << "S " << support.x << " " << support.y << " " << support.z << "\n";
 
     uint32_t idx = 0;
     std::vector<uint32_t> boundary(3);
-    m_vertices.extremes(support, boundary[1], boundary[0]);
+    VertexArray::extremes(m_vertices, support, boundary[1], boundary[0]);
 
     boundary[2] = boundary[0]; // Duplicate first vertex so the algorithm wraps
-
-//    std::cout << "B " << boundary[0] << "/" << boundary[1] << ": ";
-//    glm::vec3 tt = m_vertices[boundary[1]] - m_vertices[boundary[0]];
-//    for (uint32_t b : boundary) std::cout << m_vertices[b].x << " " << m_vertices[b].y << " " << m_vertices[b].z << " |\n";
-//    std::cout << tt.x << " " << tt.y << " " << tt.z << "\n";
-
 
     while (idx < boundary.size() - 1) {
         glm::vec3 vec = glm::normalize(glm::cross(m_vertices[boundary[idx + 1]] - m_vertices[boundary[idx]], axis));
@@ -286,6 +286,8 @@ std::vector<uint32_t> ConvexHull::horizon(const glm::vec3& axis, const glm::vec3
             boundary.insert(boundary.begin() + idx + 1, next);
         } else idx++;
 
+        // Check
+        if (boundary.size() > m_vertices.size()) throw std::runtime_error("[ConvexHull] Failed to find a horizon!");
 //        for(uint32_t b : boundary) std::cout << b << " ";
 //        std::cout << "~~~~~~~~\n";
     }
@@ -305,7 +307,7 @@ std::vector<Triangle> ConvexHull::initialApproximation(){
     std::vector<uint32_t> extremes = { 0, 0, 0, 0 };
     glm::vec3 axes[3] = { glm::vec3(1, 0, 0), glm::vec3(0, 1, 0), glm::vec3(0, 0, 1) };
     for (const glm::vec3& axis : axes) {
-        if (m_cloud.extremes(axis, extremes[0], extremes[1])) {
+        if (VertexArray::extremes(m_cloud, axis, extremes[0], extremes[1])) {
             break;
         }
     }
@@ -316,31 +318,31 @@ std::vector<Triangle> ConvexHull::initialApproximation(){
         return triangles;
     }
 
-    if (!m_cloud.extreme(extremes[0], extremes[1], extremes[2])) {
+    if (!VertexArray::extreme(m_cloud, extremes[0], extremes[1], extremes[2])) {
         std::cout << "\033[31mERROR! Can not generate a 3D convex hull from the cloud! The cloud is 1D degenerate\033[0m\n";
         return triangles;
     }
 
-    if (!m_cloud.extreme(extremes[0], extremes[1], extremes[2], extremes[3])) {
+    if (!VertexArray::extreme(m_cloud, extremes[0], extremes[1], extremes[2], extremes[3])) {
         std::cout << "\033[31mERROR! Can not generate a 3D convex hull from the cloud! The cloud is 2D degenerate\033[0m\n";
         return triangles;
     }
 
     // Add extremities to the convex hull
     for (uint32_t extreme : extremes) {
-        w_vertices.push_back(m_cloud[extreme]);
+        m_vertices.push_back(m_cloud[extreme]);
     }
 
     // Erase extreme vertices from cloud to prevent consideration later on (can otherwise introduce precision errors)
     std::sort(extremes.begin(), extremes.end(), [](uint32_t a, uint32_t b){ return b < a; });
-    for (uint32_t extreme : extremes) m_cloud.remove(extreme);
+    for (uint32_t extreme : extremes) m_cloud.erase(m_cloud.begin() + extreme);
 
     // Swap vertices if needed to ensure proper winding
-    auto ref = w_vertices[3] - w_vertices[0];
-    auto normal = Triangle::normal(w_vertices[0], w_vertices[1], w_vertices[2]);
+    auto ref = m_vertices[3] - m_vertices[0];
+    auto normal = Triangle::normal(m_vertices[0], m_vertices[1], m_vertices[2]);
 
     if (glm::dot(ref, normal) > 0) {
-        std::swap(w_vertices[0], w_vertices[1]);
+        std::swap(m_vertices[0], m_vertices[1]);
     }
 
     // Prepare initial triangle approximation (tetrahedron)
@@ -354,11 +356,11 @@ std::vector<Triangle> ConvexHull::initialApproximation(){
 
 glm::vec3 ConvexHull::wNormal(const Triangle& triangle)
 {
-    return Triangle::normal(w_vertices[triangle.I0], w_vertices[triangle.I1], w_vertices[triangle.I2]);
+    return Triangle::normal(m_vertices[triangle.I0], m_vertices[triangle.I1], m_vertices[triangle.I2]);
 }
 
 void ConvexHull::prepareFacets(const std::vector<Triangle>& triangles){
-    std::vector<uint32_t> free(m_cloud.vertexCount());
+    std::vector<uint32_t> free(m_cloud.size());
     std::iota(free.begin(), free.end(), 0);
 
     std::vector<std::vector<uint32_t>> neighbors = { { 2, 3, 1 }, { 0, 3, 2 }, { 1, 3, 0 }, { 1, 0, 2 } };
@@ -384,7 +386,7 @@ void ConvexHull::prepareFacets(const std::vector<uint32_t>& horizon, std::vector
         facets[horizon[j]].neighbors[z] = currentFacet;// Link against existing facet beyond the horizon
 
         // Prepare the new facet and link
-        Triangle triangle = { (uint32_t)w_vertices.size() - 1, lastVertex, horizon[j + 1] };
+        Triangle triangle = { (uint32_t)m_vertices.size() - 1, lastVertex, horizon[j + 1] };
         glm::vec3 normal = wNormal(triangle);
 
         Facet facet = {triangle, normal, {}, {lastFacet, horizon[j], nextFacet}, true};
@@ -401,7 +403,7 @@ void ConvexHull::sortCloud(std::vector<uint32_t>& free, Facet& facet){
     int64_t peak = -1;
 
     for (uint32_t i = 0; i < free.size(); i++) { // Iterate through unsorted cloud
-        float test = glm::dot(facet.normal, m_cloud[free[i]] - w_vertices[facet.triangle.I0]);
+        float test = glm::dot(facet.normal, m_cloud[free[i]] - m_vertices[facet.triangle.I0]);
         if (test > 1e-6) {//std::numeric_limits<float>::epsilon()
             if (test > value) {
                 value = test;
@@ -426,7 +428,7 @@ void ConvexHull::calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t 
         return;
     }
 
-    float test = glm::dot(facets[current].normal, apex - w_vertices[facets[current].triangle.I0]);
+    float test = glm::dot(facets[current].normal, apex - m_vertices[facets[current].triangle.I0]);
 
     if (test > 1e-6) { // Check whether facet is visible to apex
         set.insert(set.end(), facets[current].outside.begin(), facets[current].outside.end());
@@ -458,7 +460,7 @@ ConvexHull ConvexHull::fragment(const glm::vec3& origin, const glm::vec3& normal
 {
 
     // Find vertex intersections of hull with plane
-    std::vector<bool> above(m_vertices.vertexCount());
+    std::vector<bool> above(m_vertices.size());
     std::vector<glm::vec3> set = intersection(origin, normal, above);
 
     // Exit if no edges intersect with the plane
@@ -469,12 +471,12 @@ ConvexHull ConvexHull::fragment(const glm::vec3& origin, const glm::vec3& normal
     // Attach vertices on the positive side of the plane
     for (uint32_t i = 0; i < above.size(); i++) if (above[i]) set.push_back(m_vertices[i]);
 
-    return { VertexArray(set) };
+    return { set };
 }
 
 std::pair<ConvexHull, ConvexHull> ConvexHull::fragments(const glm::vec3& origin, const glm::vec3& normal) const
 {
-    std::vector<bool> above(m_vertices.vertexCount());
+    std::vector<bool> above(m_vertices.size());
     std::vector<glm::vec3> setA = intersection(origin, normal, above);
 
     // Exit if no edges intersect with the plane
@@ -490,7 +492,7 @@ std::pair<ConvexHull, ConvexHull> ConvexHull::fragments(const glm::vec3& origin,
         else setB.push_back(m_vertices[i]);
     }
 
-    return { VertexArray(setA), VertexArray(setB) };
+    return { setA, setB };
 }
 
 // TODO Improvement: Leverage walk to calculate intersection in-place
@@ -500,13 +502,13 @@ std::vector<glm::vec3> ConvexHull::intersection(const glm::vec3& origin, const g
     float d = glm::dot(origin, normal);
 
     // Determine which vertices are above the cut plane
-    for (uint32_t i = 0; i < m_vertices.vertexCount(); i++) {
+    for (uint32_t i = 0; i < m_vertices.size(); i++) {
         above[i] = glm::dot(normal, origin - m_vertices[i]) <= 0;
     }
 
     // Find vertices on the cut plane
     std::vector<glm::vec3> intersection;
-    for (uint32_t i = 0; i < m_vertices.vertexCount(); i++) {
+    for (uint32_t i = 0; i < m_vertices.size(); i++) {
         for (uint32_t j : m_walks[i]) {
             if (i < j && above[i] != above[j]) { // Skip repeated edges, edges that do not cross the plane
                 glm::vec3 vertex = m_vertices[i], edge = m_vertices[j] - vertex;

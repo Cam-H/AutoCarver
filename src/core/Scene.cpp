@@ -90,7 +90,7 @@ void Scene::step(float delta)
                 collision |= link->collides(body);
             }
 
-            link->mesh()->enableColorOverride(collision);
+            link->mesh()->overrideColor(collision);
         }
     }
 

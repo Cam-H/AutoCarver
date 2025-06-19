@@ -19,6 +19,121 @@ Polygon::Polygon(const std::vector<glm::vec2>& border)
 
 }
 
+void Polygon::removeVertex(uint32_t index)
+{
+    if (index >= m_vertices.size()) throw std::runtime_error("[Polygon] Index out of bounds error!");
+    m_vertices.erase(m_vertices.begin() + index);
+}
+
+void Polygon::insertVertex(const glm::vec2& vertex)
+{
+    m_vertices.push_back(vertex);
+}
+
+void Polygon::insertVertex(uint32_t index, const glm::vec2& vertex)
+{
+    if (index >= m_vertices.size()) m_vertices.push_back(vertex);
+    else m_vertices.insert(m_vertices.begin() + index, vertex);
+}
+
+void Polygon::positionVertex(uint32_t index, const glm::vec2& position)
+{
+    if (index >= m_vertices.size()) throw std::runtime_error("[Polygon] Index out of bounds error!");
+
+    m_vertices[index] = position;
+}
+
+uint32_t Polygon::vertexCount() const
+{
+    return m_vertices.size();
+}
+
+const std::vector<glm::vec2>& Polygon::border() const
+{
+    return m_vertices;
+}
+
+void Polygon::cullCollinear(std::vector<glm::vec2>& vertices, float tolerance)
+{
+    glm::vec2 prev = glm::normalize(vertices[vertices.size() - 1] - vertices[0]);
+    for (uint32_t i = 0; i < vertices.size(); i++) {
+        glm::vec2 next = glm::normalize(vertices[(i + 1) % vertices.size()] - vertices[i]);
+        if (glm::dot(prev, next) < -1 + tolerance) {
+            vertices.erase(vertices.begin() + i);
+            i--;
+        } else prev = -next;
+    }
+}
+
+std::vector<glm::vec3> Polygon::projected3D(const glm::vec3& xAxis, const glm::vec3& yAxis, const glm::vec3& offset) const
+{
+    std::vector<glm::vec3> vertices;
+    vertices.reserve(m_vertices.size());
+
+    for (const glm::vec2& vertex : m_vertices) {
+        vertices.emplace_back(offset + xAxis * vertex.x + yAxis * vertex.y);
+    }
+
+    return vertices;
+}
+
+std::vector<uint32_t> Polygon::hull() const
+{
+    return hull(m_vertices);
+}
+
+std::vector<uint32_t> Polygon::hull(const std::vector<glm::vec2>& vertices)
+{
+
+    uint32_t n = vertices.size(), k = 0;
+    if (n <= 3) return { 0, 1, 2 };
+
+    struct Vertex {
+        glm::vec2 p;
+        uint32_t idx;
+
+        bool operator<(const Vertex& b) const {
+            return p.x < b.p.x || (p.x == b.p.x && p.y < b.p.y);
+        }
+    };
+
+    uint32_t idx = 0;
+    std::vector<Vertex> points;
+    points.reserve(vertices.size());
+    for (const glm::vec2& vertex : vertices) points.push_back({ vertex, idx++ });
+
+    std::sort(points.begin(), points.end());
+    std::vector<uint32_t> hull(2 * n);
+
+
+    // Lower hull
+    for (uint32_t i = 0; i < vertices.size(); i++) {
+        while (k >= 2 && cross(points[hull[k - 2]].p, points[hull[k - 1]].p, points[i].p) <= 0) k--;
+        hull[k++] = i;
+    }
+
+    // Upper hull
+    for (int i = n - 2, t = k + 1; i >= 0; i--) {
+        while (k >= t && cross(points[hull[k - 2]].p, points[hull[k - 1]].p, points[i].p) <= 0) k--;
+        hull[k++] = i;
+    }
+
+    hull.resize(k - 1); // Remove duplicate end point
+    for (uint32_t& vertex : hull) vertex = points[vertex].idx;
+
+    return hull;
+}
+
+float Polygon::cross(const glm::vec2& origin, const glm::vec2& a, const glm::vec2& b)
+{
+    return (a.x - origin.x) * (b.y - origin.y) - (a.y - origin.y) * (b.x - origin.x);
+}
+
+std::vector<Triangle> Polygon::tesselate()
+{
+    return bowyerWatson();
+}
+
 // Find the Delaunay triangulation of the polygon
 std::vector<Triangle> Polygon::bowyerWatson()
 {
@@ -108,4 +223,9 @@ std::vector<Triangle> Polygon::bowyerWatson(const std::vector<glm::vec2>& border
     }), triangles.end());
 
     return triangles;
+}
+
+std::vector<std::pair<glm::vec2, glm::vec2>> Polygon::debugEdges() const
+{
+    return {};
 }

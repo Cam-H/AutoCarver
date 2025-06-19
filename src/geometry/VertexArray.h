@@ -52,10 +52,16 @@ public:
     [[nodiscard]] static uint32_t stride() ;
 
     bool extremes(const glm::vec3& axis, uint32_t &min, uint32_t &max) const; // Get furthest vertices (top & bottom) along axis
-    bool extreme(uint32_t p1, uint32_t p2, uint32_t& max); // Get furthest vertex (perpendicular) from the provided axis
-    bool extreme(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max); // Get furthest vertex from the plane formed by provided indices
+    bool extreme(uint32_t p1, uint32_t p2, uint32_t& max) const; // Get furthest vertex (perpendicular) from the provided axis
+    bool extreme(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max) const; // Get furthest vertex from the plane formed by provided indices
+
+    static bool extremes(const std::vector<glm::vec3>& vertices, const glm::vec3& axis, uint32_t &min, uint32_t &max);
+    static bool extreme(const std::vector<glm::vec3>& vertices, uint32_t p1, uint32_t p2, uint32_t& max);
+    static bool extreme(const std::vector<glm::vec3>& vertices, uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max);
+
 
     void extents(const glm::vec3& axis, float &near, float &far) const;
+    static void extents(const std::vector<glm::vec3>& vertices, const glm::vec3& axis, float &near, float &far);
 
     void print() const;
 

@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
     base = MeshBuilder::box(2, 2, 1);
 
     test = MeshBuilder::cylinder(0.5, 2, 6);
-    test->translate(0.5, 0.5, 0.5);
+    test->translate({ 0.5, 0.5, 0.5 });
 
     scene->createBody(base);
     scene->createBody(test);

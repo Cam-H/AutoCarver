@@ -301,10 +301,11 @@ std::shared_ptr<Mesh> MeshBuilder::merge(const std::shared_ptr<Mesh>& a, const s
     // Copy colors
     mesh->setBaseColor(a->baseColor());
     if (a->faceColorsAssigned())
-        for (uint32_t i = 0; i < aFC; i++) mesh->setFaceColor(i, a->faceColor(i));
+        for (uint32_t i = 0; i < aFC; i++) mesh->setFaceColor(i, a->faces().color(i));
+    else mesh->setFaceColor(a->baseColor());
 
     if (b->faceColorsAssigned())
-        for (uint32_t i = 0; i < bFC; i++) mesh->setFaceColor(aFC + i, b->faceColor(i));
+        for (uint32_t i = 0; i < bFC; i++) mesh->setFaceColor(aFC + i, b->faces().color(i));
     else
         for (uint32_t i = 0; i < bFC; i++) mesh->setFaceColor(aFC + i, b->baseColor());
 
