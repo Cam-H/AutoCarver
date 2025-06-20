@@ -135,13 +135,13 @@ std::vector<Triangle> Polygon::tesselate()
 }
 
 // Find the Delaunay triangulation of the polygon
-std::vector<Triangle> Polygon::bowyerWatson()
+std::vector<Triangle> Polygon::bowyerWatson(bool cullTriangles, float direction)
 {
-    return Polygon::bowyerWatson(m_vertices);
+    return Polygon::bowyerWatson(m_vertices, cullTriangles, direction);
 }
 
 // Find the Delaunay triangulation of the provided border
-std::vector<Triangle> Polygon::bowyerWatson(const std::vector<glm::vec2>& border) {
+std::vector<Triangle> Polygon::bowyerWatson(const std::vector<glm::vec2>& border, bool cullTriangles, float direction) {
     uint32_t n = border.size();
     float minX = std::numeric_limits<float>::max(), maxX = std::numeric_limits<float>::lowest();
     float minY = minX, maxY = maxX;
@@ -217,10 +217,13 @@ std::vector<Triangle> Polygon::bowyerWatson(const std::vector<glm::vec2>& border
     }), triangles.end());
 
     // Remove triangles outside the border (marked by inverted cross-product)
-    triangles.erase(remove_if(triangles.begin(), triangles.end(), [&](const Triangle& tri) {
-        glm::vec2 ab = border[tri.I1] - border[tri.I0], ac = border[tri.I2] - border[tri.I0];
-        return (ab.x * ac.y - ab.y * ac.x) < 0;
-    }), triangles.end());
+    if (cullTriangles) {
+        triangles.erase(remove_if(triangles.begin(), triangles.end(), [&](const Triangle& tri) {
+            glm::vec2 ab = border[tri.I1] - border[tri.I0], ac = border[tri.I2] - border[tri.I0];
+            return direction * (ab.x * ac.y - ab.y * ac.x) < 0;
+        }), triangles.end());
+    }
+
 
     return triangles;
 }

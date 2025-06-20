@@ -71,6 +71,7 @@ void updateImage()
     glm::vec3 axis = { fwd.x(), fwd.y(), fwd.z() };
 
     profile = detector->profile();
+    profile.setRefinementMethod(Profile::RefinementMethod::DELAUNEY);
 
     std::cout << "Border: " << profile.vertexCount() << "\n";
     auto extrude = MeshBuilder::extrude(profile.projected3D(), -axis, 4);

@@ -33,8 +33,8 @@ public:
     static std::vector<uint32_t> hull(const std::vector<glm::vec2>& vertices);
 
     std::vector<Triangle> tesselate();
-    std::vector<Triangle> bowyerWatson();
-    static std::vector<Triangle> bowyerWatson(const std::vector<glm::vec2>& border);
+    std::vector<Triangle> bowyerWatson(bool cullTriangles = true, float direction = 1);
+    static std::vector<Triangle> bowyerWatson(const std::vector<glm::vec2>& border, bool cullTriangles = true, float direction = 1);
 
     [[nodiscard]] virtual std::vector<std::pair<glm::vec2, glm::vec2>> debugEdges() const;
 

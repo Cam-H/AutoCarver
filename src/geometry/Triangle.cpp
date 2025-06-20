@@ -53,7 +53,12 @@ uint32_t& Triangle::operator[](uint32_t i)
     }
 }
 
-uint32_t Triangle::last(uint32_t a, uint32_t b)
+bool Triangle::has(uint32_t i) const
+{
+    return i == I0 || i == I1 || i == I2;
+}
+
+uint32_t Triangle::last(uint32_t a, uint32_t b) const
 {
     if (I0 != a && I0 != b) return I0;
     if (I1 != a && I1 != b) return I1;

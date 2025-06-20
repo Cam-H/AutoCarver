@@ -20,7 +20,9 @@ public:
     uint32_t operator[](uint32_t i) const;
     uint32_t& operator[](uint32_t i);
 
-    uint32_t last(uint32_t a, uint32_t b);
+    bool has(uint32_t i) const;
+
+    uint32_t last(uint32_t a, uint32_t b) const;
 
 //    friend std::ostream& operator<<(std::ostream& os, const Triangle& tri)
 //    {
