@@ -239,7 +239,7 @@ int main(int argc, char *argv[])
     hControlLayout->addWidget(stepButton);
 
     QObject::connect(stepButton, &QPushButton::clicked, [&]() {
-        scene->next();
+//        scene->next();
     });
 
     auto captureButton = new QPushButton("Capture", control);

@@ -26,6 +26,7 @@ public:
     static VertexArray deserialize(std::ifstream& file);
 
 //    float* operator[](uint32_t idx);
+    glm::vec3& operator[](uint32_t idx);
     const glm::vec3& operator[](uint32_t idx) const;
 
 

@@ -10,15 +10,15 @@
 // Mesh manipulation
 
 #include <vector>
-#include <glm/glm.hpp>
+#include "glm/glm.hpp"
 
 #include "fileIO/Serializable.h"
 
-#include "Mesh.h"
-#include "ConvexHull.h"
-#include "Sphere.h"
+#include "geometry/Mesh.h"
+#include "geometry/ConvexHull.h"
+#include "geometry/Sphere.h"
 
-#include "Transformable.h"
+#include "geometry/Transformable.h"
 
 
 class RigidBody : public Serializable, public Transformable {

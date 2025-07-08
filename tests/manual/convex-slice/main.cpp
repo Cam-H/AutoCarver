@@ -44,10 +44,12 @@ std::shared_ptr<Mesh> randomMesh()
 
     // Generate a cloud of count vertices within a cube around the origin
     uint32_t count = rng.global()->bounded(4, 12);
-    auto *cloud = new float[3 * count], *ptr = cloud;
-    for (uint32_t j = 0; j < 3 * count; j++) *ptr++ =  (float)rng.global()->bounded(2.0) - 1.0f;
+    std::vector<glm::vec3> cloud(count);
+    auto *ptr = (float*)cloud.data();
 
-    return std::make_shared<Mesh>(ConvexHull(cloud, count), false);
+    for (uint32_t j = 0; j < 3 * count; j++) *ptr++ = (float)rng.global()->bounded(2.0) - 1.0f;
+
+    return std::make_shared<Mesh>(ConvexHull(cloud), false);
 }
 
 static QWidget *loadUiFile(QWidget *parent)
@@ -93,14 +95,14 @@ int main(int argc, char *argv[])
 
     // Create the floor
     model = MeshBuilder::box(40, 40, 5);
-    model->translate(0, -8, 0);
+    model->translate({ 0, -8, 0 });
 //    model->rotate(1, 0, 0, -M_PI / 16);
     model->setBaseColor({0.1, 0.4, 0.1});
     scene->createBody(model);
 
     // Create the base to cut from
     model = MeshBuilder::box(3, 3, 3);
-    model->rotate(1, 0, 0, M_PI / 3);
+    model->rotate({ 1, 0, 0 }, M_PI / 3);
 //    model->translate(0.5, 0.5, 0.5);
     model->setBaseColor({1, 0, 1});
     base = scene->createBody(model);
@@ -139,9 +141,10 @@ int main(int argc, char *argv[])
     auto *sliceButton = widget->findChild<QPushButton*>("sliceButton");
     QObject::connect(sliceButton, &QPushButton::clicked, [&]() {
         auto fragments = base->hull().fragments(plane->position(), plane->up());
-        base->setMesh(std::make_shared<Mesh>(fragments.first), true);
 
-        if (!fragments.second.empty()) {
+        if (!fragments.first.empty() && !fragments.second.empty()) {
+            base->setMesh(std::make_shared<Mesh>(fragments.first), true);
+
             auto debris = scene->createBody(fragments.second, RigidBody::Type::DYNAMIC);
 //            debris->zero();
 //            debris->setVelocity({0, -0.1, 0});

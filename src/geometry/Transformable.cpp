@@ -24,6 +24,7 @@ void Transformable::setPosition(const glm::vec3& position)
     m_transform[3][0] = position.x;
     m_transform[3][1] = position.y;
     m_transform[3][2] = position.z;
+    moved();
 }
 
 void Transformable::setRotation(const glm::vec3& euler)
@@ -41,16 +42,18 @@ void Transformable::setRotation(const glm::vec3& euler)
     m_transform[0][2] = rotation[0][2];
     m_transform[1][2] = rotation[1][2];
     m_transform[2][2] = rotation[2][2];
+    moved();
 }
 
 void Transformable::translate(const glm::vec3& translation)
 {
     m_transform = glm::translate(m_transform, translation);
-
+    moved();
 }
 void Transformable::rotate(const glm::vec3& axis, float theta)
 {
     m_transform = glm::rotate(m_transform, theta, axis);
+    moved();
 }
 
 void Transformable::rotate(const glm::vec3& w)
@@ -62,31 +65,40 @@ void Transformable::rotate(const glm::vec3& w)
 //    m_transform = m_transform * glm::eulerAngleXYX(w.x, w.y, w.z);
 //    m_transform = m_transform * glm::eulerAngleXZX(w.x, w.y, w.z);
 //    m_transform = m_transform * glm::eulerAngleXZY(w.x, w.y, w.z);
-
+    moved();
 }
 
 void Transformable::globalTranslate(const glm::vec3& translation)
 {
     m_transform = glm::translate(glm::mat4(1.0f), translation) * m_transform;
+    moved();
 }
 void Transformable::globalRotate(const glm::vec3& axis, float theta)
 {
     m_transform = glm::rotate(glm::mat4(1.0f), theta, axis) * m_transform;
+    moved();
 }
 
 void Transformable::transform(const glm::mat4x4& transform)
 {
     m_transform = m_transform * transform;
+    moved();
 }
 
 void Transformable::setTransform(glm::mat4x4 transform)
 {
     m_transform = transform;
+    moved();
 }
 
 const glm::mat4x4& Transformable::getTransform()
 {
     return m_transform;
+}
+
+void Transformable::moved()
+{
+
 }
 
 glm::vec3 Transformable::position() const

@@ -19,7 +19,6 @@
 Mesh::Mesh(float vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t indexCount)
     : Mesh(VertexArray(vertices, vertexCount), FaceArray(indices, indexCount))
 {
-    initialize(false);
 }
 
 Mesh::Mesh(const ConvexHull& hull, bool applyColorPattern)
@@ -34,20 +33,16 @@ Mesh::Mesh(const ConvexHull& hull, bool applyColorPattern)
             setFaceColor(i, {0.8f, 0.6f, 0.1f});
         }
     }
-
-    initialize();
 }
 
 Mesh::Mesh(const float *vertices, uint32_t vertexCount, const uint32_t *faceIndices, const uint32_t *faceSizes, uint32_t faceCount)
     : Mesh(VertexArray(vertices, vertexCount), FaceArray(faceIndices, faceSizes, faceCount))
 {
-    initialize();
 }
 
 Mesh::Mesh(const std::vector<glm::vec3>& vertices, const std::vector<Triangle>& faces)
     : Mesh(VertexArray(vertices), FaceArray(faces))
 {
-    initialize(false);
 }
 
 Mesh::Mesh(const std::string& filename)
@@ -75,12 +70,20 @@ Mesh::Mesh(VertexArray vertices, FaceArray faces)
     initialize();
 }
 
-void Mesh::initialize(bool prepareIndexing)
+Mesh::Mesh(const Mesh& mesh)
+        : m_vertices(mesh.m_vertices)
+        , m_faces(mesh.m_faces)
+        , m_vertexNormals(mesh.m_vertexNormals)
+        , m_colorOverride(mesh.m_colorOverride)
+        , m_baseColor(mesh.m_baseColor)
+        , m_vertexColors(mesh.m_vertexColors)
+        , m_adjacencyOK(mesh.m_adjacencyOK)
 {
-//    if (prepareIndexing) {
-//        m_faces.triangulate(m_vertices.vertices());
-//    }
 
+}
+
+void Mesh::initialize()
+{
     m_faces.calculateNormals(m_vertices.vertices());
     m_faces.triangulate(m_vertices.vertices());
 
@@ -193,19 +196,7 @@ void Mesh::normalize(float scalar)
 
 void Mesh::center()
 {
-    glm::vec3 delta = {};
-    float near, far;
-
-    xExtents(near, far);
-    delta.x = -(near + far) / 2;
-
-    yExtents(near, far);
-    delta.y = -(near + far) / 2;
-
-    zExtents(near, far);
-    delta.z = -(near + far) / 2;
-
-    translate(delta);
+    translate(boundedOffset());
 }
 
 void Mesh::zero()
@@ -353,6 +344,11 @@ uint32_t Mesh::faceCount() const
 const FaceArray& Mesh::faces() const
 {
     return m_faces;
+}
+
+uint32_t Mesh::matchFace(const glm::vec3& axis)
+{
+    return m_faces.matchFace(axis);
 }
 
 std::vector<uint32_t> Mesh::outline(const glm::vec3& axis) // const TODO revert back to const
@@ -514,6 +510,23 @@ glm::vec3 Mesh::centroid() const
     return centroid / sum;
 }
 
+glm::vec3 Mesh::boundedOffset() const
+{
+    glm::vec3 offset = {};
+    float near, far;
+
+    xExtents(near, far);
+    offset.x = -(near + far) / 2;
+
+    yExtents(near, far);
+    offset.y = -(near + far) / 2;
+
+    zExtents(near, far);
+    offset.z = -(near + far) / 2;
+
+    return offset;
+}
+
 glm::mat3x3 Mesh::inertiaTensor() const
 {
     glm::mat3x3 it(0.0f);
@@ -588,7 +601,7 @@ std::vector<uint32_t> Mesh::sharedFaces(const std::shared_ptr<Mesh>& reference) 
 
 float Mesh::faceArea(uint32_t faceIdx) const
 {
-    uint32_t *indices = m_faces[faceIdx], count = m_faces.faceSizes()[faceIdx];
+    const uint32_t *indices = m_faces[faceIdx], count = m_faces.faceSizes()[faceIdx];
     if (count < 3) return -1;
 
     std::vector<glm::vec3> vertices(count);

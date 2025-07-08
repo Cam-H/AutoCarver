@@ -19,8 +19,8 @@ qt_add_library(AutoCarverLib
         fileIO/Serializer.h
 
 
-        geometry/RigidBody.h
-        geometry/RigidBody.cpp
+        physics/RigidBody.h
+        physics/RigidBody.cpp
         geometry/ConvexHull.h
         geometry/ConvexHull.cpp
         geometry/Mesh.h
@@ -86,7 +86,7 @@ qt_add_library(AutoCarverLib
         renderer/EdgeDetect.cpp
         renderer/EdgeDetect.h
 
-        renderer/PolygonWidget.cpp renderer/PolygonWidget.h)
+        renderer/PolygonWidget.cpp renderer/PolygonWidget.h physics/CompositeBody.cpp physics/CompositeBody.h)
 
 target_link_libraries(AutoCarverLib PRIVATE
         Qt::3DCore

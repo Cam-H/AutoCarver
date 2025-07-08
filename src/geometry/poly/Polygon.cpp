@@ -13,10 +13,10 @@
 
 #include "geometry/Circle.h"
 
-Polygon::Polygon(const std::vector<glm::vec2>& border)
+Polygon::Polygon(const std::vector<glm::vec2>& border, bool enforceCCWWinding)
     : m_vertices(border)
 {
-
+    if (enforceCCWWinding) correctWinding();
 }
 
 void Polygon::removeVertex(uint32_t index)
@@ -41,6 +41,96 @@ void Polygon::positionVertex(uint32_t index, const glm::vec2& position)
     if (index >= m_vertices.size()) throw std::runtime_error("[Polygon] Index out of bounds error!");
 
     m_vertices[index] = position;
+}
+
+void Polygon::translate(const glm::vec2& translation)
+{
+    for (glm::vec2& vertex : m_vertices) vertex += translation;
+}
+
+void Polygon::scale(float scalar)
+{
+    for (glm::vec2& vertex : m_vertices) vertex *= scalar;
+}
+
+void Polygon::scale(const glm::vec2& anchor, float scalar)
+{
+    glm::vec2 delta;
+    for (glm::vec2& vertex : m_vertices) {
+        delta = vertex - anchor;
+        vertex = anchor + delta * scalar;
+    }
+}
+
+void Polygon::centerScale(float scalar)
+{
+    glm::vec2 offset = { xSpan(), ySpan() };
+    std::cout << "SPAN: " << offset.x << " " << offset.y << " | " << scalar << "\n";
+    scale(scalar);
+
+    offset *= -0.5f * (scalar - 1);
+    std::cout << "DEL: " << offset.x << " " << offset.y << "\n";
+    translate(offset);
+}
+
+void Polygon::correctWinding()
+{
+    if(isCW()) inverseWinding();
+}
+
+void Polygon::inverseWinding()
+{
+    std::reverse(m_vertices.begin(), m_vertices.end());
+}
+
+bool Polygon::isCW() const
+{
+    return !isCCW();
+}
+bool Polygon::isCCW() const
+{
+    float sum = 0;
+
+    for (uint32_t i = 0; i < m_vertices.size(); i++) {
+        const glm::vec2& current = m_vertices[i];
+        const glm::vec2& next = m_vertices[(i + 1) % m_vertices.size()];
+
+        sum += (current.x - next.x) * (current.y + next.y);
+    }
+
+    return sum < 0;
+}
+
+float Polygon::xSpan() const
+{
+    float near, far;
+    xExtents(near, far);
+    return far - near;
+}
+float Polygon::ySpan() const
+{
+    float near, far;
+    yExtents(near, far);
+    return far - near;
+}
+
+void Polygon::xExtents(float& near, float& far) const
+{
+    auto [max, min] = std::minmax_element(m_vertices.begin(), m_vertices.end(), [](const glm::vec2& lhs, const glm::vec2& rhs){
+        return lhs.x > rhs.x;
+    });
+
+    near = min->x;
+    far = max->x;
+}
+void Polygon::yExtents(float& near, float& far) const
+{
+    auto [max, min] = std::minmax_element(m_vertices.begin(), m_vertices.end(), [](const glm::vec2& lhs, const glm::vec2& rhs){
+        return lhs.y > rhs.y;
+    });
+
+    near = min->y;
+    far = max->y;
 }
 
 uint32_t Polygon::vertexCount() const

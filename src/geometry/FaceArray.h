@@ -14,10 +14,13 @@
 
 class FaceArray {
 public:
+    FaceArray(uint32_t faceCount, uint32_t indexCount);
+
     FaceArray(const uint32_t* indices, uint32_t triangleCount);
+    explicit FaceArray(const std::vector<Triangle>& faces);
+
     FaceArray(const uint32_t* faces, const uint32_t* faceSizes, uint32_t faceCount);
 
-    explicit FaceArray(const std::vector<Triangle>& faces);
     explicit FaceArray(const std::vector<std::vector<uint32_t>>& indices);
 
     FaceArray(const FaceArray &);
@@ -38,11 +41,15 @@ public:
     void setColor(uint32_t idx, const glm::vec3& color);
 
     uint32_t* operator[](uint32_t idx);
-    uint32_t* operator[](uint32_t idx) const;
+    const uint32_t* operator[](uint32_t idx) const;
+
+    [[nodiscard]] uint32_t faceCount() const;
+    [[nodiscard]] uint32_t indexCount() const;
 
     [[nodiscard]] const uint32_t* faces() const;
+
+    [[nodiscard]] uint32_t* faceSizes();
     [[nodiscard]] const uint32_t* faceSizes() const;
-    [[nodiscard]] uint32_t faceCount() const;
 
     [[nodiscard]] const std::vector<glm::vec3>& normals() const;
     [[nodiscard]] glm::vec3 normal(uint32_t idx) const;
@@ -50,14 +57,16 @@ public:
     [[nodiscard]] const std::vector<glm::vec3>& colors() const;
     [[nodiscard]] glm::vec3 color(uint32_t idx) const;
 
-    [[nodiscard]] const std::vector<Triangle>& triangles() const;
     [[nodiscard]] uint32_t triangleCount() const;
+    [[nodiscard]] const std::vector<Triangle>& triangles() const;
 
     [[nodiscard]] std::tuple<uint32_t, uint32_t> triangleLookup(uint32_t faceIdx) const;
 
-    [[nodiscard]] uint32_t indexCount() const;
 
 //    FaceArray triangulated();
+
+    // Selects the face with the normal nearest to the specified axis
+    [[nodiscard]] uint32_t matchFace(const glm::vec3& axis);
 
     [[nodiscard]] std::vector<std::vector<uint32_t>> edgeList() const;
     [[nodiscard]] std::vector<std::vector<uint32_t>> adjacencies() const;
@@ -71,8 +80,6 @@ public:
     void print() const;
 
 private:
-
-    FaceArray(uint32_t faceCount, uint32_t indexCount);
 
     static bool inRange(const uint32_t *idx, uint32_t count, uint32_t limit);
 

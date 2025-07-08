@@ -54,8 +54,15 @@ VertexArray VertexArray::deserialize(std::ifstream& file)
     return va;
 }
 
+glm::vec3& VertexArray::operator[](uint32_t idx)
+{
+    if (idx >= m_vertices.size()) throw std::runtime_error("[VertexArray] Invalid array index access!");
+    return m_vertices[idx];
+}
+
 const glm::vec3& VertexArray::operator[](uint32_t idx) const
 {
+    if (idx >= m_vertices.size()) throw std::runtime_error("[VertexArray] Invalid array index access!");
     return m_vertices[idx];
 }
 

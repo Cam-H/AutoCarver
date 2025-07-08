@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "KinematicChain.h"
-#include "geometry/RigidBody.h"
+#include "physics/RigidBody.h"
 
 #include "geometry/Transformable.h"
 #include "planning/Trajectory.h"
@@ -16,12 +16,16 @@
 class Robot : public Transformable { // TODO make serializable
 public:
 
-    Robot(KinematicChain* kinematics);
+    Robot(KinematicChain* kinematics, const std::shared_ptr<RigidBody>& eoat = nullptr);
 
     void prepareLinks();
 
     void step();
+    void step(float delta);
+
     void update();
+
+    void setEOAT(const std::shared_ptr<RigidBody>& eoat, bool preserveTransform = true);
 
     void setJointValue(uint32_t idx, float value);
     void setJointValueDg(uint32_t idx, float value);
@@ -36,10 +40,15 @@ public:
     float getJointValue(uint32_t idx);
     float getJointValueDg(uint32_t idx);
 
+    Waypoint getWaypoint() const;
+
+    [[nodiscard]] const glm::mat4x4& getEOATTransform() const;
     [[nodiscard]] glm::vec3 getEOATPosition() const;
     [[nodiscard]] glm::vec3 getEOATEuler() const;
 
     bool inTransit();
+
+    [[nodiscard]] Waypoint inverse(const glm::vec3& position, const glm::vec3& euler) const;
 
 
 protected:
@@ -52,6 +61,9 @@ private:
 
     // Maps to the joints of the kinematic chain
     std::vector<std::shared_ptr<RigidBody>> m_links;
+
+    std::shared_ptr<RigidBody> m_eoat;
+    glm::mat4x4 m_eoatRelativeTransform;
 
     //
     std::shared_ptr<Trajectory> m_currentTrajectory;

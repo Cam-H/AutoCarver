@@ -33,6 +33,7 @@ public:
     explicit Mesh(std::ifstream& file);
 
     explicit Mesh(VertexArray vertices, FaceArray faces);
+    explicit Mesh(const Mesh& mesh);
 
     bool serialize(const std::string& filename) override;
     bool serialize(std::ofstream& file) override;
@@ -90,12 +91,16 @@ public:
     [[nodiscard]] uint32_t faceCount() const;
     [[nodiscard]] const FaceArray& faces() const;
 
+    [[nodiscard]] uint32_t matchFace(const glm::vec3& axis);
+
     [[nodiscard]] std::vector<uint32_t> outline(const glm::vec3& axis);
 
     [[nodiscard]] float surfaceArea() const;
 
     [[nodiscard]] float volume() const;
     [[nodiscard]] glm::vec3 centroid() const;
+    [[nodiscard]] glm::vec3 boundedOffset() const;
+
     [[nodiscard]] glm::mat3x3 inertiaTensor() const;
 
     std::vector<uint32_t> sharedFaces(const std::shared_ptr<Mesh>& reference) const;
@@ -106,7 +111,7 @@ private:
 
     explicit Mesh();
 
-    void initialize(bool prepareIndexing = true);
+    void initialize();
 
     void calculateVertexNormals();
 

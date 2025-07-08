@@ -7,12 +7,12 @@
 #include <utility>
 
 #include <unordered_map>
-#include <glm/gtc/matrix_transform.hpp>
+#include "glm/gtc/matrix_transform.hpp"
 //#include <glm/gtc/matrix_inverse.hpp>
 
-#include "../core/Timer.h"
-#include "EPA.h"
-#include "MeshBuilder.h"
+#include "core/Timer.h"
+#include "geometry/EPA.h"
+#include "geometry/MeshBuilder.h"
 
 RigidBody::RigidBody(const std::string& filename)
         : RigidBody((const std::shared_ptr<Mesh>&)nullptr)

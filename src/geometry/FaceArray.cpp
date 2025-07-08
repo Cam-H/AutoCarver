@@ -16,13 +16,25 @@
 #include <iostream>
 #include <limits>
 
+FaceArray::FaceArray(uint32_t faceCount, uint32_t indexCount)
+        : m_faceCount(faceCount)
+        , m_indexCount(indexCount)
+        , m_faceSizes(new uint32_t[faceCount])
+        , m_faces(new uint32_t[indexCount])
+{
+}
+
 FaceArray::FaceArray(const uint32_t* indices, uint32_t triangleCount)
-    : m_faces(new uint32_t[3 * triangleCount])
-    , m_faceSizes(new uint32_t[triangleCount])
-    , m_faceCount(triangleCount)
-    , m_indexCount(3 * triangleCount)
+    : FaceArray(triangleCount, 3 * triangleCount)
 {
     memcpy(m_faces, indices, 3 * triangleCount * sizeof(uint32_t));
+    for (uint32_t i = 0; i < m_faceCount; i++) m_faceSizes[i] = 3;
+}
+
+FaceArray::FaceArray(const std::vector<Triangle>& faces)
+        : FaceArray(faces.size(), 3 * faces.size())
+{
+    memcpy(m_faces, faces.data(), m_faceCount * sizeof(Triangle));
     for (uint32_t i = 0; i < m_faceCount; i++) m_faceSizes[i] = 3;
 }
 
@@ -40,16 +52,7 @@ FaceArray::FaceArray(const uint32_t* faces, const uint32_t* faceSizes, uint32_t 
 
 }
 
-FaceArray::FaceArray(const std::vector<Triangle>& faces)
-    : m_faceSizes(new uint32_t[faces.size()])
-    , m_faceCount(faces.size())
-    , m_indexCount(3 * faces.size())
-{
-    m_faces = new uint32_t[m_indexCount];
 
-    for (uint32_t i = 0; i < m_faceCount; i++) m_faceSizes[i] = 3;
-    memcpy(m_faces, faces.data(), m_faceCount * sizeof(Triangle));
-}
 
 FaceArray::FaceArray(const std::vector<std::vector<uint32_t>>& indices)
         : m_faceSizes(new uint32_t[indices.size()])
@@ -74,7 +77,11 @@ FaceArray::FaceArray(const std::vector<std::vector<uint32_t>>& indices)
 FaceArray::FaceArray(const FaceArray& other)
         : FaceArray(other.m_faces, other.m_faceSizes, other.m_faceCount)
 {
+    m_normals = other.m_normals;
+    m_colors = other.m_colors;
 
+    m_triangles = other.m_triangles;
+    m_triFaceLookup = other.m_triFaceLookup;
 }
 
 FaceArray& FaceArray::operator=(const FaceArray& other)
@@ -110,14 +117,6 @@ FaceArray& FaceArray::operator=(FaceArray&& other) noexcept
     m_indexCount = temp.m_indexCount;
 
     return *this;
-}
-
-FaceArray::FaceArray(uint32_t faceCount, uint32_t indexCount)
-    : m_faceCount(faceCount)
-    , m_indexCount(indexCount)
-    , m_faceSizes(new uint32_t[faceCount])
-    , m_faces(new uint32_t[indexCount])
-{
 }
 
 FaceArray::~FaceArray()
@@ -240,7 +239,7 @@ uint32_t* FaceArray::operator[](uint32_t idx)
 {
     return idxPtr(idx);
 }
-uint32_t* FaceArray::operator[](uint32_t idx) const
+const uint32_t* FaceArray::operator[](uint32_t idx) const
 {
     return idxPtr(idx);
 }
@@ -265,17 +264,28 @@ uint32_t* FaceArray::idxPtr(uint32_t idx) const
     return ptr;
 }
 
+uint32_t FaceArray::faceCount() const
+{
+    return m_faceCount;
+}
+
+uint32_t FaceArray::indexCount() const
+{
+    return m_indexCount;
+}
+
 const uint32_t* FaceArray::faces() const
 {
     return m_faces;
 }
-const uint32_t* FaceArray::faceSizes() const
+
+uint32_t* FaceArray::faceSizes()
 {
     return m_faceSizes;
 }
-uint32_t FaceArray::faceCount() const
+const uint32_t* FaceArray::faceSizes() const
 {
-    return m_faceCount;
+    return m_faceSizes;
 }
 
 const std::vector<glm::vec3>& FaceArray::normals() const
@@ -299,14 +309,14 @@ glm::vec3 FaceArray::color(uint32_t idx) const
     return m_colors[idx];
 }
 
-const std::vector<Triangle>& FaceArray::triangles() const
-{
-    return m_triangles;
-}
-
 uint32_t FaceArray::triangleCount() const
 {
     return m_triangles.size();
+}
+
+const std::vector<Triangle>& FaceArray::triangles() const
+{
+    return m_triangles;
 }
 
 std::tuple<uint32_t, uint32_t> FaceArray::triangleLookup(uint32_t faceIdx) const
@@ -316,11 +326,14 @@ std::tuple<uint32_t, uint32_t> FaceArray::triangleLookup(uint32_t faceIdx) const
     else return { m_triFaceLookup[faceIdx], m_triFaceLookup[faceIdx + 1] - m_triFaceLookup[faceIdx] };
 }
 
-uint32_t FaceArray::indexCount() const
+uint32_t FaceArray::matchFace(const glm::vec3& axis)
 {
-    return m_indexCount;
-}
+    auto match = std::max_element(m_normals.begin(), m_normals.end(), [axis](const glm::vec3& lhs, const glm::vec3& rhs){
+        return glm::dot(lhs, axis) > glm::dot(rhs, axis);
+    });
 
+    return std::distance(m_normals.begin(), match);
+}
 
 std::vector<std::vector<uint32_t>> FaceArray::edgeList() const
 {

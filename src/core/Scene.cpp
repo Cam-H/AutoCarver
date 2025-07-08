@@ -81,6 +81,7 @@ void Scene::step(float delta)
 {
     // Update robots
     for (const std::shared_ptr<Robot>& robot : m_robots) robot->step();
+//    for (const std::shared_ptr<Robot>& robot : m_robots) robot->step(delta);
 
     // Check for robot collisions with the environment
     for (const std::shared_ptr<Robot>& robot : m_robots) {

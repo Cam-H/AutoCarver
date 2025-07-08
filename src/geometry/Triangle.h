@@ -36,6 +36,7 @@ public:
 
     static float area(const QVector3D& a, const QVector3D& b, const QVector3D& c);
 
+    static float area(const glm::vec2& a, const glm::vec2& b, const glm::vec2& c);
     static float area(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c);
 
 

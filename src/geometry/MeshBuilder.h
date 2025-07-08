@@ -21,6 +21,7 @@ public:
 //    static std::shared_ptr<Mesh> plane(float length, float width, const vec3f& origin, const vec3f& normal, const vec3f& ref);
     static std::shared_ptr<Mesh> plane(float length, float width, const glm::vec3& origin, const glm::vec3& normal, const glm::vec3& ref);
 
+    static std::shared_ptr<Mesh> box(float sideLength = 1.0f);
     static std::shared_ptr<Mesh> box(float length, float width, float height);
 
     static std::shared_ptr<Mesh> cylinder(float radius = 1.0f, float height = 1.0f, uint32_t segments = 6);
@@ -31,6 +32,8 @@ public:
 
 
     static std::shared_ptr<Mesh> merge(const std::shared_ptr<Mesh>& a, const std::shared_ptr<Mesh>& b);
+
+    static std::shared_ptr<Mesh> composite(const std::vector<ConvexHull>& hulls);
 
     static std::shared_ptr<Mesh> eliminateCoincidentVertices(const std::shared_ptr<Mesh>& mesh);
 

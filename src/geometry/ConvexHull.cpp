@@ -180,7 +180,7 @@ const FaceArray& ConvexHull::faces() const
 
 glm::vec3 ConvexHull::facetNormal(uint32_t idx) const
 {
-    uint32_t *loop = m_faces[idx];
+    const uint32_t *loop = m_faces[idx];
     if (loop == nullptr) return {};
 
     return Triangle::normal(m_vertices[loop[0]], m_vertices[loop[1]], m_vertices[loop[2]]);
@@ -261,6 +261,30 @@ uint32_t ConvexHull::walk(const glm::vec3& axis, uint32_t index) const
     }
 
     return index;
+}
+
+std::vector<glm::vec3> ConvexHull::border(const glm::vec3& faceNormal) const
+{
+    float value = std::numeric_limits<float>::lowest();
+    uint32_t faceIndex = 0;
+
+    for (uint32_t i = 0; i < m_faces.faceCount(); i++) {
+        float test = glm::dot(faceNormal, m_faces.normal(i));
+        if (value < test) {
+            faceIndex = i;
+            value = test;
+        }
+    }
+
+    auto *ptr = m_faces[faceIndex];
+    std::vector<glm::vec3> border;
+    border.reserve(m_faces.faceSizes()[faceIndex]);
+
+    for (uint32_t i = 0; i < m_faces.faceSizes()[faceIndex]; i++) {
+        border.emplace_back(m_vertices[*ptr++]);
+    }
+
+    return border;
 }
 
 std::vector<uint32_t> ConvexHull::horizon(const glm::vec3& axis) const
@@ -456,6 +480,12 @@ void ConvexHull::calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t 
     horizon.push_back(facets[current].triangle[index]);// Encode next vertex on horizon
 }
 
+std::vector<glm::vec3> ConvexHull::intersection(const glm::vec3& origin, const glm::vec3& normal) const
+{
+    std::vector<bool> above(m_vertices.size());
+    return intersection(origin, normal, above);
+}
+
 ConvexHull ConvexHull::fragment(const glm::vec3& origin, const glm::vec3& normal) const
 {
 
@@ -465,7 +495,8 @@ ConvexHull ConvexHull::fragment(const glm::vec3& origin, const glm::vec3& normal
 
     // Exit if no edges intersect with the plane
     if (set.empty()) {
-        return *this;
+        if (above[0]) return *this;
+        else return {};
     }
 
     // Attach vertices on the positive side of the plane
@@ -481,12 +512,14 @@ std::pair<ConvexHull, ConvexHull> ConvexHull::fragments(const glm::vec3& origin,
 
     // Exit if no edges intersect with the plane
     if (setA.empty()) {
-        return { *this, {} };
+        if (above[0]) return { *this, {} };
+        else return { {}, *this };
     }
 
+    // Duplicate intersection vertices in other set
     std::vector<glm::vec3> setB = setA;
 
-    // Attach vertices to respective fragments
+    // Attach original vertices to respective fragments
     for (uint32_t i = 0; i < above.size(); i++) {
         if (above[i]) setA.push_back(m_vertices[i]);
         else setB.push_back(m_vertices[i]);

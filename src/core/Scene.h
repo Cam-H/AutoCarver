@@ -13,7 +13,7 @@
 #include <fstream>
 
 #include "fileIO/Serializable.h"
-#include "geometry/RigidBody.h"
+#include "physics/RigidBody.h"
 #include "robot/Robot.h"
 
 
@@ -35,7 +35,7 @@ public:
 
     void start();
     void pause();
-    void step(float delta);
+    virtual void step(float delta);
     void stop();
 
     void connect(void(*function)());

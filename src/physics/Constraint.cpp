@@ -9,7 +9,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
 
-#include "geometry/RigidBody.h"
+#include "RigidBody.h"
 #include "geometry/EPA.h"
 
 const float BETA = 0.01f;

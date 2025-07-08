@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>524</width>
-    <height>564</height>
+    <width>518</width>
+    <height>644</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -21,6 +21,12 @@
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>500</width>
+       <height>500</height>
+      </size>
      </property>
     </widget>
    </item>
@@ -104,6 +110,32 @@
         </property>
         <property name="text">
          <string>&gt;</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="widget" native="true">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <item>
+       <widget class="QPushButton" name="downScaleButton">
+        <property name="text">
+         <string>Scale (0.95x)</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="upScaleButton">
+        <property name="text">
+         <string>Scale (1.05x)</string>
         </property>
        </widget>
       </item>

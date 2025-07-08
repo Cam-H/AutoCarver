@@ -59,6 +59,7 @@ void EdgeDetect::setEpsilon(float epsilon)
 
 void EdgeDetect::update()
 {
+    // Capture an image of the scene for processing
     m_capture->capture();
     m_source = m_capture->grabFramebuffer();
     m_sink = m_source.convertToFormat(QImage::Format::Format_Grayscale8);
@@ -67,24 +68,35 @@ void EdgeDetect::update()
     m_data = new uchar[m_size * m_size];
 
     try {
+
+        // Apply kernel to come up with only the edges of the render
         detectEdges(m_sink);
 
+        // Find contours from continuous edge segments
         m_contours = suzukiAbe(m_data, m_size);
+
+        // Approximate and simplify the contour by reducing the number of vertices
         for (Contour& contour : m_contours) {
             douglasPeucker(contour, m_epsilon);
         }
 
-        for (const glm::vec2& vertex : m_contours[0].points) {
-            m_data[(int)(std::round(vertex.x + vertex.y * m_size))] = 150;
-        }
+        if (!m_contours.empty()) {
 
-        findBorder(m_contours[0].points);
+            // A bit of styling for debugging purposes
+            for (const glm::vec2& vertex : m_contours[0].points) {
+                m_data[(int)(std::round(vertex.x + vertex.y * m_size))] = 150;
+            }
+
+            // Try to find a border from the discovered contours (silhouette is necessarily the first contour discovered)
+            findBorder(m_contours[0].points);
+        }
 
     } catch (const std::runtime_error& e) {
         std::cerr << "Caught exception: " << e.what() << ". The silhouette could not be calculated\n";
         m_profile = {};
     }
 
+    // Generate an output image for debugging purposes
     m_sink = QImage(m_data, m_size, m_size, QImage::Format::Format_Grayscale8);
 }
 

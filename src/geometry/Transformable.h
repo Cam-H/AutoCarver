@@ -27,6 +27,8 @@ public:
     void setTransform(glm::mat4x4 transform);
     const glm::mat4x4& getTransform();
 
+    virtual void moved();
+
     [[nodiscard]] glm::vec3 position() const;
     [[nodiscard]] glm::vec3 up() const;
 

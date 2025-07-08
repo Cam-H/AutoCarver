@@ -6,6 +6,7 @@
 #define AUTOCARVER_TRAJECTORY_H
 
 #include <vector>
+#include <iostream>
 #include <cstdint>
 #include <functional>
 
@@ -14,6 +15,8 @@ struct Waypoint {
     float toRad;
     bool collides;
 };
+
+std::ostream& operator<<(std::ostream& stream, const Waypoint& waypoint);
 
 // Defines how trajectories should be interpolated based on endpoints (constraints)
 // LINEAR - Only position endpoints, linear interpolation
@@ -74,6 +77,12 @@ public:
 
 //    void setEndpoints(const std::vector<float> endpoints);
 
+    void insertWaypoint(uint32_t idx, const Waypoint& waypoint);
+
+    void setMaxVelocity(float velocity);
+//    void setMaxAcceleration(float acceleration);
+
+    [[nodiscard]] uint32_t waypointCount() const;
     [[nodiscard]] uint32_t dimensions() const;
 
     [[nodiscard]] float tStep() const;
@@ -81,12 +90,19 @@ public:
 
     [[nodiscard]] bool complete() const;
 
+    [[nodiscard]] Waypoint start();
+    [[nodiscard]] Waypoint end();
 
     [[nodiscard]] Waypoint next();
+    [[nodiscard]] Waypoint timestep(float delta);
     [[nodiscard]] Waypoint evaluate(float t) const;
 
     [[nodiscard]] const JointTrajectory& jointTrajectory(uint32_t idx);
 
+private:
+    void initialize();
+
+    void calculateDuration();
 
 private:
     std::vector<Waypoint> m_waypoints;
@@ -97,6 +113,11 @@ private:
 
     float m_t;
     float m_tStep;
+
+    float m_maxVelocity;
+    float m_maxAcceleration;
+
+    float m_duration;
 
     std::vector<JointTrajectory> m_jointTrajectories;
 };

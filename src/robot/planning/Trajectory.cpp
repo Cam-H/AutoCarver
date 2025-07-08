@@ -6,6 +6,17 @@
 
 #include "../Robot.h"
 
+std::ostream& operator<<(std::ostream& stream, const Waypoint& waypoint)
+{
+    stream << "{ ";
+    for (float value : waypoint.values) {
+    stream << value << ", ";
+    }
+
+    stream << "[" << waypoint.toRad << "] }";
+    return stream;
+}
+
 JointTrajectory::JointTrajectory(float start, float end)
     : JointTrajectory(std::vector<float>{ start, end })
 {
@@ -228,19 +239,72 @@ Trajectory::Trajectory(const std::vector<Waypoint>& waypoints, TrajectorySolverT
     , m_jointCount(!waypoints.empty() ? waypoints[0].values.size() : 0)
     , m_t(0.0f)
     , m_tStep(0.05f)
+    , m_maxVelocity(0)
+    , m_maxAcceleration(0)
+    , m_duration(1.0f)
 {
+    if (m_waypoints.size() > 1) initialize();
+}
 
+void Trajectory::initialize()
+{
     for (uint32_t i = 0; i < m_jointCount; i++) {
         std::vector<float> jwp;
-        jwp.reserve(waypoints.size());
+        jwp.reserve(m_waypoints.size());
 
         for (const Waypoint& waypoint : m_waypoints) jwp.emplace_back(waypoint.values[i]);
 
         m_jointTrajectories.emplace_back(jwp, m_solver);
     }
+
+    if (m_maxVelocity != 0.0f) calculateDuration();
 }
 
+void Trajectory::insertWaypoint(uint32_t idx, const Waypoint& waypoint)
+{
+    idx = (idx >= m_waypoints.size() ? m_waypoints.size() - 1 : idx); // Safe because m_waypoints minimum size is 1
+    m_waypoints.insert(m_waypoints.begin() + idx, waypoint);
 
+    m_jointTrajectories.clear();
+    initialize();
+}
+
+void Trajectory::setMaxVelocity(float velocity)
+{
+    m_maxVelocity = std::abs(velocity);
+    calculateDuration();
+}
+
+void Trajectory::calculateDuration()
+{
+    if (m_jointTrajectories.empty()) return; // Skip calculation if called before trajectories are generated
+
+    float maxVelocity = 0;
+    for (const auto& jt : m_jointTrajectories) {
+        float velocity = jt.maxVelocity();
+        if (maxVelocity < velocity) maxVelocity = velocity;
+    }
+
+    m_duration = maxVelocity / m_maxVelocity; // Duration in seconds
+
+    std::cout << "Duration: " << m_duration << " | " << maxVelocity << " " << m_maxVelocity << "\n";
+    m_duration = 1.0f / m_duration; // Inverse to use as a multiplier
+//    m_duration =
+//    switch (m_solver) {
+//        case TrajectorySolverType::LINEAR:
+//
+//            break;
+//        case TrajectorySolverType::CUBIC:
+//            break;
+//        case TrajectorySolverType::QUINTIC:
+//            break;
+//    }
+}
+
+uint32_t Trajectory::waypointCount() const
+{
+    return m_waypoints.size();
+}
 
 uint32_t Trajectory::dimensions() const
 {
@@ -260,6 +324,16 @@ bool Trajectory::complete() const
 {
     return m_t - (float)m_waypoints.size() + 1 > m_tStep;
 }
+
+Waypoint Trajectory::start()
+{
+    return m_waypoints[0];
+}
+Waypoint Trajectory::end()
+{
+    return m_waypoints[m_waypoints.size() - 1];
+}
+
 Waypoint Trajectory::next()
 {
     auto wp =  evaluate(m_t);
@@ -268,9 +342,17 @@ Waypoint Trajectory::next()
     return wp;
 }
 
+Waypoint Trajectory::timestep(float delta)
+{
+    // Default to next when no max velocity has been set
+    if (m_maxVelocity == 0.0f) return next();
+
+    return evaluate(m_t += delta * m_duration);
+}
+
 Waypoint Trajectory::evaluate(float t) const
 {
-    if (t >= (float)m_waypoints.size()) return m_waypoints[m_waypoints.size() - 1];
+    if (t >= (float)m_waypoints.size() - 1) return m_waypoints[m_waypoints.size() - 1];
     else if (t < 0) return m_waypoints[0];
 
     uint32_t idx = std::floor(t);

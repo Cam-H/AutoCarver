@@ -61,6 +61,7 @@ std::vector<float> KinematicChain::invkin(const glm::mat4& transform)
 
 std::vector<float> KinematicChain::invkin(const glm::vec3& position, const glm::vec3& euler)
 {
+    std::cout << "INVPK\n";
     return invkin(m_axisTransform3 * position, glm::quat_cast(m_axisTransform3 * glm::mat3_cast(glm::quat(euler))));
 }
 

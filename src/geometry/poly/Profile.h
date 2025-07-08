@@ -28,10 +28,22 @@ public:
     bool deserialize(std::ifstream& file) override;
 
     void setRefinementMethod(RefinementMethod method);
+    void setMimimumArea(float area);
+
+    void translate(const glm::vec3& translation);
+
+    void rotateAbout(const glm::vec3& axis, float theta);
+
+    void inverseWinding() override;
 
     std::vector<uint32_t> refine();
+    bool complete() const;
+
+    const glm::vec3& normal() const;
+
 
     [[nodiscard]] std::vector<glm::vec3> projected3D(const glm::vec3& offset = {});
+    [[nodiscard]] std::vector<glm::vec3> projected3D(const std::vector<uint32_t>& indices, const glm::vec3& offset = {});
 
     [[nodiscard]] std::vector<std::pair<glm::vec2, glm::vec2>> debugEdges() const override;
 
@@ -39,10 +51,14 @@ private:
 
     void initialize();
 
+    std::vector<uint32_t> triangleRefinement();
     std::vector<uint32_t> directRefinement();
     std::vector<uint32_t> delauneyRefinement();
     std::vector<uint32_t> testRefinement();
 
+    bool isValidRefinement(const std::vector<uint32_t>& indices) const;
+
+    float area(const std::vector<uint32_t>& indices) const;
     inline static uint32_t difference(uint32_t a, uint32_t b, uint32_t max);
 
     inline std::vector<uint32_t> sectionIndices(const std::pair<uint32_t, uint32_t>& limits) const;
@@ -57,8 +73,10 @@ private:
 
     RefinementMethod m_method;
 
-    std::vector<std::pair<uint32_t, uint32_t>> m_remainder;
+    std::vector<std::pair<uint32_t, uint32_t>> m_remainder; // first (index), second (number of subsequent vertices)
     uint32_t m_next;
+
+    float m_minimumArea;
 };
 
 

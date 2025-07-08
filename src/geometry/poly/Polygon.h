@@ -13,7 +13,7 @@
 class Polygon {
 public:
 
-    explicit Polygon(const std::vector<glm::vec2> &border);
+    explicit Polygon(const std::vector<glm::vec2> &border, bool enforceCCWWinding = true);
 
     void removeVertex(uint32_t index);
 
@@ -22,8 +22,25 @@ public:
 
     void positionVertex(uint32_t index, const glm::vec2& position);
 
+    void translate(const glm::vec2& translation);
+    void scale(float scalar);
+    void scale(const glm::vec2& anchor, float scalar);
+    void centerScale(float scalar);
+
+    void correctWinding();
+    virtual void inverseWinding();
+
     uint32_t vertexCount() const;
     const std::vector<glm::vec2>& border() const;
+
+    bool isCW() const;
+    bool isCCW() const;
+
+    float xSpan() const;
+    float ySpan() const;
+
+    void xExtents(float& near, float& far) const;
+    void yExtents(float& near, float& far) const;
 
     static void cullCollinear(std::vector<glm::vec2>& vertices, float tolerance = 1e-3);
 

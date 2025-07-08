@@ -84,6 +84,10 @@ float Triangle::area(const QVector3D& a, const QVector3D& b, const QVector3D& c)
     + pow(ab.x() * ac.y() - ab.y() * ac.x(), 2));
 }
 
+float Triangle::area(const glm::vec2& a, const glm::vec2& b, const glm::vec2& c)
+{
+    return 0.5f * (a.x * (b.y - c.y) + b.x * (c.y - a.y + c.x * (a.y - b.y)));
+}
 float Triangle::area(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
 {
     return 0.5f * glm::length(glm::cross(b - a, c - a));

@@ -135,6 +135,17 @@ int main(int argc, char *argv[])
         displayWidget->setPolygon(&polygons[selection]);
     });
 
+    auto downScaleButton = window->findChild<QPushButton*>("downScaleButton");
+    QObject::connect(downScaleButton, &QPushButton::clicked, [&]() {
+        polygons[selection].scale({ 250, 250}, 0.95f);
+        displayWidget->update();
+    });
+
+    auto upScaleButton = window->findChild<QPushButton*>("upScaleButton");
+    QObject::connect(upScaleButton, &QPushButton::clicked, [&]() {
+        polygons[selection].scale({ 250, 250}, 1.05f);
+        displayWidget->update();
+    });
 
     auto copyButton = window->findChild<QPushButton*>("copyButton");
     QObject::connect(copyButton, &QPushButton::clicked, [=]() {

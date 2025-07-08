@@ -24,6 +24,7 @@
 
 #include "renderer/UiLoader.h"
 #include "robot/planning/Trajectory.h"
+#include "core/Timer.h"
 
 #endif
 
@@ -201,6 +202,7 @@ int main(int argc, char *argv[])
         if (m_inputEnable && m_waypoints.size() > 1) {
 
             m_trajectory = std::make_shared<Trajectory>(m_waypoints, TrajectorySolverType::CUBIC);
+            m_trajectory->setMaxVelocity(90.0f);
             robot->traverse(m_trajectory);
             robot->step();
 
@@ -229,8 +231,11 @@ int main(int argc, char *argv[])
 
     // Handle updating robot
     updateThread = std::make_unique<std::thread>([](){
+        Timer rateTimer;
+
         while (true) {
-            scene->step(0);
+            scene->step(rateTimer.getElapsedSeconds());
+            rateTimer.reset();
 
             if (robot->inTransit()) {
                 sceneWidget->update();

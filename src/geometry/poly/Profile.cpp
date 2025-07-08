@@ -6,18 +6,22 @@
 
 #include <iostream>
 
+#include "glm/gtc/quaternion.hpp"
+
+
 Profile::Profile()
     : Profile({}, { 1, 0,  0 }, { 0, 0, -1 }, { 0, 1, 0 })
 {
 }
 
 Profile::Profile(const std::vector<glm::vec2>& contour, const glm::vec3& normal, const glm::vec3& xAxis, const glm::vec3& yAxis)
-    : Polygon(contour)
+    : Polygon(contour, false)
     , m_normal(normal)
     , m_xAxis(xAxis)
     , m_yAxis(yAxis)
     , m_method(RefinementMethod::DIRECT)
     , m_next(0)
+    , m_minimumArea(0.0001f)
 {
     initialize();
 }
@@ -73,6 +77,9 @@ void Profile::initialize()
         uint32_t idx = (i + 1) % border.size(), count = 1 + difference(border[i], border[idx], m_vertices.size());
         if (count > 2) m_remainder.emplace_back(border[i], count);
     }
+
+    correctWinding();
+
 }
 
 void Profile::setRefinementMethod(RefinementMethod method)
@@ -80,18 +87,45 @@ void Profile::setRefinementMethod(RefinementMethod method)
     m_method = method;
 }
 
+void Profile::setMimimumArea(float area)
+{
+    m_minimumArea = area;
+}
+
+void Profile::translate(const glm::vec3& translation)
+{
+    Polygon::translate({
+        glm::dot(translation, m_xAxis),
+        glm::dot(translation, m_yAxis)
+    });
+}
+
+void Profile::rotateAbout(const glm::vec3& axis, float theta)
+{
+    auto rotation = glm::angleAxis(theta, axis);
+    m_normal = rotation * m_normal;
+    m_xAxis = rotation * m_xAxis;
+    m_yAxis = rotation * m_yAxis;
+}
+
+void Profile::inverseWinding()
+{
+    Polygon::inverseWinding();
+
+    for (auto& remainder : m_remainder) {
+
+        // Offset index by count (Required because inversion causes initiation from opposite side of section)
+        remainder.first += remainder.second;
+        if (remainder.first >= m_vertices.size()) remainder.first -= m_vertices.size();
+
+        remainder.first = m_vertices.size() - remainder.first; // Invert index
+    }
+}
+
 std::vector<uint32_t> Profile::refine()
 {
-
     if (m_next < m_remainder.size()) {
-        if (m_remainder[m_next].second == 3) { // Easy direct triangle cutout
-            m_remainder.erase(m_remainder.begin() + m_next);
-            return {
-                m_remainder[m_next].first,
-                (uint32_t)((m_remainder[m_next].first + 1) % m_vertices.size()),
-                (uint32_t)((m_remainder[m_next].first + 2) % m_vertices.size())
-            };
-        }
+        if (m_remainder[m_next].second == 3) return triangleRefinement(); // Easy direct triangle cutout
 
         // More involved decomposition of concave for processing
         switch (m_method) {
@@ -107,11 +141,43 @@ std::vector<uint32_t> Profile::refine()
     return {};
 }
 
+bool Profile::complete() const
+{
+    return m_next >= m_remainder.size();
+}
+
+const glm::vec3& Profile::normal() const
+{
+    return m_normal;
+}
+
+std::vector<uint32_t> Profile::triangleRefinement()
+{
+    auto indices = {
+            m_remainder[m_next].first,
+            (uint32_t)((m_remainder[m_next].first + 1) % m_vertices.size()),
+            (uint32_t)((m_remainder[m_next].first + 2) % m_vertices.size())
+    };
+
+    if (isValidRefinement(indices)) {
+        m_remainder.erase(m_remainder.begin() + m_next);
+        return indices;
+    } else m_next++;
+
+    return {};
+}
+
 std::vector<uint32_t> Profile::directRefinement()
 {
     auto cut = m_remainder[m_next];
-    m_remainder.erase(m_remainder.begin() + m_next);
-    return sectionIndices(cut);
+    auto indices = sectionIndices(cut);
+
+    if (isValidRefinement(indices)) {
+        m_remainder.erase(m_remainder.begin() + m_next);
+        return indices;
+    } else m_next++;
+
+    return {};
 }
 
 
@@ -121,7 +187,7 @@ std::vector<uint32_t> Profile::delauneyRefinement()
     std::vector<glm::vec2> vertices = sectionVertices(indices);
 
     // Find the Delauney triangulation of the remaining section
-    auto triangles = Polygon::bowyerWatson(vertices, true, -1);
+    auto triangles = Polygon::bowyerWatson(vertices, true, 1);
 
     // Select the triangle on the boundary (The only accessible tri)
     for (const Triangle& tri : triangles) {
@@ -133,7 +199,7 @@ std::vector<uint32_t> Profile::delauneyRefinement()
     }
 
     // If a viable triangular cut was found
-    if (!triangle.empty()) {
+    if (isValidRefinement(triangle)) {
         uint32_t d1 = difference(triangle[0], triangle[1], m_vertices.size()),
                  d2 = difference(triangle[1], triangle[2], m_vertices.size());
 
@@ -144,11 +210,13 @@ std::vector<uint32_t> Profile::delauneyRefinement()
         } else if (d2 > 1) {
             m_remainder[m_next] = { triangle[1], d2 + 1};
         }
+
+        return triangle;
     } else {
         m_next++; // Skip over this section because it is unreachable
     }
 
-    return triangle;
+    return {};
 }
 
 std::vector<uint32_t> Profile::testRefinement()
@@ -196,6 +264,19 @@ std::vector<uint32_t> Profile::testRefinement()
     return {};
 }
 
+bool Profile::isValidRefinement(const std::vector<uint32_t>& indices) const
+{
+    std::cout << "VR: " << area(indices) << "\n";
+    return !indices.empty() && area(indices) > m_minimumArea;
+}
+
+float Profile::area(const std::vector<uint32_t>& indices) const
+{
+    if (indices.size() == 3) {
+        return Triangle::area(m_vertices[indices[0]], m_vertices[indices[1]], m_vertices[indices[2]]);
+    } else throw std::runtime_error("[Profile] Area calculation not yet developed");
+}
+
 uint32_t Profile::difference(uint32_t a, uint32_t b, uint32_t max)
 {
     return b < a ? max - a + b : b - a;
@@ -227,6 +308,19 @@ std::vector<glm::vec3> Profile::projected3D(const glm::vec3& offset)
     return Polygon::projected3D(m_xAxis, m_yAxis, offset);
 }
 
+std::vector<glm::vec3> Profile::projected3D(const std::vector<uint32_t>& indices, const glm::vec3& offset)
+{
+    std::vector<glm::vec2> vertices;
+    vertices.reserve(indices.size());
+
+    for (uint32_t idx : indices) {
+        if (idx >= m_vertices.size()) throw std::runtime_error("[Profile] Out of bounds vertex index access!");
+        vertices.emplace_back(m_vertices[idx]);
+    }
+
+    return Polygon(vertices).projected3D(m_xAxis, m_yAxis, offset);
+}
+
 std::vector<std::pair<glm::vec2, glm::vec2>> Profile::debugEdges() const {
     auto edges = Polygon::debugEdges();
 
@@ -235,7 +329,7 @@ std::vector<std::pair<glm::vec2, glm::vec2>> Profile::debugEdges() const {
 
     if (m_next < m_remainder.size()) {
         std::vector<glm::vec2> vertices = sectionVertices(m_remainder[m_next]);
-        auto triangles = Polygon::bowyerWatson(vertices, true, -1);
+        auto triangles = Polygon::bowyerWatson(vertices, true, 1);
 
         for (const Triangle& tri: triangles) {
             edges.emplace_back(vertices[tri.I0], vertices[tri.I1]);

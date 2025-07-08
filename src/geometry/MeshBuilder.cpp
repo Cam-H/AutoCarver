@@ -37,6 +37,11 @@ std::shared_ptr<Mesh> MeshBuilder::plane(float length, float width, const glm::v
     return std::make_shared<Mesh>(vertices, 4, faces, faceSizes, 2);
 }
 
+std::shared_ptr<Mesh> MeshBuilder::box(float sideLength)
+{
+    return box(sideLength, sideLength, sideLength);
+}
+
 std::shared_ptr<Mesh> MeshBuilder::box(float length, float width, float height)
 {
     length /= 2;
@@ -310,6 +315,41 @@ std::shared_ptr<Mesh> MeshBuilder::merge(const std::shared_ptr<Mesh>& a, const s
         for (uint32_t i = 0; i < bFC; i++) mesh->setFaceColor(aFC + i, b->baseColor());
 
     return mesh;
+}
+
+std::shared_ptr<Mesh> MeshBuilder::composite(const std::vector<ConvexHull>& hulls)
+{
+    uint32_t vertexCount = 0, faceCount = 0, indexCount = 0;
+
+    for (const ConvexHull& hull : hulls) {
+        std::cout << hull.vertexCount() << " " << hull.faces().faceCount() << " " << hull.faces().indexCount() << "~~\n";
+
+        vertexCount += hull.vertexCount();
+        faceCount += hull.faces().faceCount();
+        indexCount += hull.faces().indexCount();
+    }
+
+    auto vertices = VertexArray(vertexCount);
+
+    auto faces = FaceArray(faceCount, indexCount);
+    uint32_t vertexIdx = 0, *sizePtr = faces.faceSizes(), *idxPtr = faces[0];
+    const uint32_t *hPtr = nullptr;
+
+    uint32_t idxOffset = 0;
+    for (const ConvexHull& hull : hulls) {
+        for (const glm::vec3& vertex : hull.vertices()) vertices[vertexIdx++] = vertex;
+
+        hPtr = hull.faces()[0];
+        for (uint32_t i = 0; i < hull.faces().faceCount(); i++) {
+            *sizePtr = hull.faces().faceSizes()[i];
+            for (uint32_t j = 0; j < *sizePtr; j++) *idxPtr++ = *hPtr++ + idxOffset;
+            sizePtr++;
+        }
+
+        idxOffset += hull.vertexCount();
+    }
+
+    return std::make_shared<Mesh>(vertices, faces);
 }
 
 std::shared_ptr<Mesh> MeshBuilder::eliminateCoincidentVertices(const std::shared_ptr<Mesh>& mesh)

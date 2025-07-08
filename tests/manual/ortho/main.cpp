@@ -11,7 +11,7 @@
 #ifndef QT_NO_OPENGL
 #include "fileIO/MeshHandler.h"
 #include "core/Scene.h"
-#include "geometry/RigidBody.h"
+#include "physics/RigidBody.h"
 #include "geometry/MeshBuilder.h"
 #include "robot/ArticulatedWrist.h"
 
@@ -67,17 +67,14 @@ void updateImage()
 {
     detector->update();
 
-    auto fwd = detector->capture()->camera().forward();
-    glm::vec3 axis = { fwd.x(), fwd.y(), fwd.z() };
-
     profile = detector->profile();
     profile.setRefinementMethod(Profile::RefinementMethod::DELAUNEY);
 
     std::cout << "Border: " << profile.vertexCount() << "\n";
-    auto extrude = MeshBuilder::extrude(profile.projected3D(), -axis, 4);
+    auto extrude = MeshBuilder::extrude(profile.projected3D(), profile.normal(), 4);
     if (extrude != nullptr) {
         extrude->setBaseColor({1, 0, 1});
-        extrude->translate(2.0f * axis);
+        extrude->translate(-2.0f * profile.normal());
         MeshHandler::exportMesh(extrude, "border.obj");
 
         if (silhouette == nullptr) silhouette = scene->createBody(extrude);
@@ -217,9 +214,10 @@ int main(int argc, char *argv[])
     detector->capture()->camera().setViewingAngle(0, 0);
     detector->capture()->focus();
 
-    updateImage();
 
     window->show();
+
+    updateImage();
 
 
     return app.exec();

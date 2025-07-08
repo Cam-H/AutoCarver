@@ -4,7 +4,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(meshcarving LANGUAGES CXX)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui OpenGL OpenGLWidgets Widgets Test)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui OpenGL OpenGLWidgets UiTools Widgets Test)
 
 qt_standard_project_setup()
 
@@ -23,6 +23,7 @@ target_link_libraries(meshcarving PRIVATE
         Qt::3DRender
         Qt6::Core
         Qt6::Gui
+        Qt::UiTools
         Qt6::OpenGL
         Qt6::OpenGLWidgets
         Qt6::Widgets
