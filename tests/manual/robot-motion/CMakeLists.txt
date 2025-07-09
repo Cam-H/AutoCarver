@@ -18,16 +18,13 @@ set_target_properties(robotmotion PROPERTIES
         )
 
 target_link_libraries(robotmotion PRIVATE
-        Qt::3DCore
-        Qt::3DExtras
-        Qt::3DRender
-        Qt6::Core
-        Qt6::Gui
-        Qt6::OpenGL
-        Qt6::OpenGLWidgets
-        Qt6::Widgets
-        Qt6::Test
-        libassimp
+        Qt::Core
+        Qt::Gui
+        Qt::OpenGL
+        Qt::OpenGLWidgets
+        Qt::Widgets
+        Qt::Test
+        libassimp-6d
         AutoCarverLib
         )
 

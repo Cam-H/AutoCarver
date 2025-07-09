@@ -89,36 +89,26 @@ qt_add_library(AutoCarverLib
         renderer/PolygonWidget.cpp renderer/PolygonWidget.h physics/CompositeBody.cpp physics/CompositeBody.h)
 
 target_link_libraries(AutoCarverLib PRIVATE
-        Qt::3DCore
-        Qt::3DExtras
-        Qt::3DInput
-        Qt::3DRender
-        Qt6::Core
-        Qt6::Gui
+        Qt::Core
+        Qt::Gui
         Qt::UiTools
-        Qt6::OpenGL
-        Qt6::OpenGLWidgets
-        Qt6::Widgets
-        libassimp
-        libmcutd
+        Qt::OpenGL
+        Qt::OpenGLWidgets
+        Qt::Widgets
+        libassimp-6d
         )
 
 qt_add_executable(AutoCarver
         core/EntryPoint.cpp)
 
 target_link_libraries(AutoCarver PRIVATE
-        Qt::3DCore
-        Qt::3DExtras
-        Qt::3DInput
-        Qt::3DRender
-        Qt6::Core
-        Qt6::Gui
+        Qt::Core
+        Qt::Gui
         Qt::UiTools
-        Qt6::OpenGL
-        Qt6::OpenGLWidgets
-        Qt6::Widgets
-        libassimp
-        libmcutd
+        Qt::OpenGL
+        Qt::OpenGLWidgets
+        Qt::Widgets
+        libassimp-6d
         AutoCarverLib
         )
 

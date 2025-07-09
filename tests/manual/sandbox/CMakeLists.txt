@@ -18,13 +18,10 @@ set_target_properties(sandbox PROPERTIES
         )
 
 target_link_libraries(sandbox PRIVATE
-        Qt::3DCore
-        Qt::3DExtras
-        Qt::3DRender
-        Qt6::Core
-        Qt6::Gui
-        Qt6::Widgets
-        Qt6::Test
+        Qt::Core
+        Qt::Gui
+        Qt::Widgets
+        Qt::Test
         AutoCarverLib
         )
 

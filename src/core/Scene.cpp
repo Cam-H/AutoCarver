@@ -4,9 +4,6 @@
 
 #include "Scene.h"
 
-// Rendering
-#include <Qt3DCore/QTransform>
-
 #include "fileIO/MeshHandler.h"
 #include "geometry/ConvexHull.h"
 #include "geometry/EPA.h"

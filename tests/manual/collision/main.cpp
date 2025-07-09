@@ -36,10 +36,12 @@ std::shared_ptr<Mesh> randomMesh()
 
     // Generate a cloud of count vertices within a cube around the origin
     uint32_t count = rng.global()->bounded(4, 12);
-    auto *cloud = new float[3 * count], *ptr = cloud;
-    for (uint32_t j = 0; j < 3 * count; j++) *ptr++ =  (float)rng.global()->bounded(2.0) - 1.0f;
+    std::vector<glm::vec3> cloud(count);
+    auto *ptr = (float*)cloud.data();
 
-    return std::make_shared<Mesh>(ConvexHull(cloud, count), false);
+    for (uint32_t j = 0; j < 3 * count; j++) *ptr++ = (float)rng.global()->bounded(2.0) - 1.0f;
+
+    return std::make_shared<Mesh>(ConvexHull(cloud), false);
 }
 
 int main(int argc, char *argv[])

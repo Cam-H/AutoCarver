@@ -6,7 +6,7 @@ project(collision LANGUAGES CXX)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui OpenGL OpenGLWidgets Widgets Test)
 
-qt_standard_project_setup()
+#qt_standard_project_setup()
 
 qt_add_executable(collision
         main.cpp
@@ -19,16 +19,13 @@ set_target_properties(collision PROPERTIES
         )
 
 target_link_libraries(collision PRIVATE
-        Qt::3DCore
-        Qt::3DExtras
-        Qt::3DRender
-        Qt6::Core
-        Qt6::Gui
-        Qt6::OpenGL
-        Qt6::OpenGLWidgets
-        Qt6::Widgets
-        Qt6::Test
-        libassimp
+        Qt::Core
+        Qt::Gui
+        Qt::OpenGL
+        Qt::OpenGLWidgets
+        Qt::Widgets
+        Qt::Test
+        libassimp-6d
         AutoCarverLib
         )
 

@@ -1,9 +1,6 @@
-[submodule "assimp"]
-	path = extern/assimp
-	url = https://github.com/assimp/assimp.git
-[submodule "mcut"]
-	path = extern/mcut
-	url = https://github.com/cutdigital/mcut.git
 [submodule "extern/glm"]
 	path = extern/glm
 	url = https://github.com/g-truc/glm.git
+[submodule "extern/assimp"]
+	path = extern/assimp
+	url = https://github.com/assimp/assimp.git

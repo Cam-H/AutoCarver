@@ -5,9 +5,6 @@
 #ifndef AUTOCARVER_SCENE_H
 #define AUTOCARVER_SCENE_H
 
-#include <Qt3DCore/QEntity>
-#include <Qt3DExtras/Qt3DWindow>
-
 #include <vector>
 #include <thread>
 #include <fstream>

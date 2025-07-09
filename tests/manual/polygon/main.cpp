@@ -31,7 +31,6 @@ uint32_t selection = 0;
 
 static QWidget *loadUiFile(QWidget *parent)
 {
-    std::cout << "Current directory: |" << QDir::currentPath().toStdString() << "|\n";
     QFile file("../tests/manual/polygon/main.ui");
     file.open(QFile::ReadOnly);
 
@@ -49,6 +48,11 @@ int main(int argc, char *argv[])
 
     QApplication app(argc, argv);
 
+//    std::cout << "Current directory: |" << QDir::currentPath().toStdString() << "|\n"
+//        << QDir::homePath().toStdString() << "\n"
+//        << QDir::rootPath().toStdString() << "\n";
+//    "../tests/manual/polygon/main.ui"
+//    QDir::path
     app.setApplicationName("cube");
     app.setApplicationVersion("0.1");
 

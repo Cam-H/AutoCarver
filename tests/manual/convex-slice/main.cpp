@@ -93,6 +93,7 @@ int main(int argc, char *argv[])
     plane = scene->createBody(model);
     plane->setLayer(0);
 
+
     // Create the floor
     model = MeshBuilder::box(40, 40, 5);
     model->translate({ 0, -8, 0 });
@@ -157,6 +158,8 @@ int main(int argc, char *argv[])
     auto *randomButton = widget->findChild<QPushButton*>("randomButton");
     QObject::connect(randomButton, &QPushButton::clicked, [&]() {
         base->setMesh(randomMesh(), true);
+//        base->setMesh(MeshBuilder::box(6), true);
+
 //        sceneWidget->update();
     });
 

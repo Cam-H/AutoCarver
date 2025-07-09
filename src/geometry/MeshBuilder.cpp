@@ -20,21 +20,29 @@ std::shared_ptr<Mesh> MeshBuilder::plane(float length, float width, const glm::v
     glm::vec3 wAxis = glm::normalize(glm::cross(normal, ref)), lAxis = glm::normalize(glm::cross(normal, wAxis));
     glm::vec3 a = origin + wAxis * width * 0.5f + lAxis * length * 0.5f, b = a - wAxis * width, c = b - lAxis * length, d = c + wAxis * width;
 
+    auto vertices = VertexArray(4);
+    vertices[0] = { a.x, a.y, a.z };
+    vertices[1] = { b.x, b.y, c.z };
+    vertices[2] = { c.x, c.y, b.z };
+    vertices[3] = { d.x, d.y, d.z };
 
-    auto vertices = new float[12] {
-        a.x, a.y, a.z,
-        b.x, b.y, b.z,
-        c.x, c.y, c.z,
-        d.x, d.y, d.z
-    };
+    auto faces = FaceArray(2, 8);
+    uint32_t *idxPtr = faces[0], *sizePtr = faces.faceSizes();
 
-    auto faces = new uint32_t[8] {
-        0, 1, 2, 3,
-        0, 3, 2, 1
-    };
-    auto faceSizes = new uint32_t[2] { 4, 4 };
+    *idxPtr++ = 0;
+    *idxPtr++ = 1;
+    *idxPtr++ = 2;
+    *idxPtr++ = 3;
 
-    return std::make_shared<Mesh>(vertices, 4, faces, faceSizes, 2);
+    *idxPtr++ = 0;
+    *idxPtr++ = 3;
+    *idxPtr++ = 2;
+    *idxPtr++ = 1;
+
+    *sizePtr++ = 4;
+    *sizePtr++ = 4;
+
+    return std::make_shared<Mesh>(vertices, faces);
 }
 
 std::shared_ptr<Mesh> MeshBuilder::box(float sideLength)
@@ -48,30 +56,52 @@ std::shared_ptr<Mesh> MeshBuilder::box(float length, float width, float height)
     width /=2;
     height /=2;
 
-    auto vertices = new float[24] {
-        -length, -height, -width,
-        -length,  height, -width,
-         length,  height, -width,
-         length, -height, -width,
-        -length, -height,  width,
-        -length,  height,  width,
-         length,  height,  width,
-         length, -height,  width
-    };
+    auto vertices = VertexArray(8);
+    vertices[0] = { -length, -height, -width };
+    vertices[1] = { -length,  height, -width };
+    vertices[2] = {  length,  height, -width };
+    vertices[3] = {  length, -height, -width };
+    vertices[4] = { -length, -height,  width };
+    vertices[5] = { -length,  height,  width };
+    vertices[6] = {  length,  height,  width };
+    vertices[7] = {  length, -height,  width };
 
-    auto faces = new uint32_t[24] {
-            0, 1, 2, 3,
-            0, 4, 5, 1,
-            0, 3, 7, 4,
-            6, 5, 4, 7,
-            6, 2, 1, 5,
-            6, 7, 3, 2
-    };
+    auto faces = FaceArray(6, 24);
+    uint32_t *idxPtr = faces[0], *sizePtr = faces.faceSizes();
 
-    auto faceSizes = new uint32_t[6] { 4, 4, 4, 4, 4, 4 };
+    *idxPtr++ = 0;
+    *idxPtr++ = 1;
+    *idxPtr++ = 2;
+    *idxPtr++ = 3;
 
-    return std::make_shared<Mesh>(vertices, 8, faces, faceSizes, 6);
+    *idxPtr++ = 0;
+    *idxPtr++ = 4;
+    *idxPtr++ = 5;
+    *idxPtr++ = 1;
 
+    *idxPtr++ = 0;
+    *idxPtr++ = 3;
+    *idxPtr++ = 7;
+    *idxPtr++ = 4;
+
+    *idxPtr++ = 6;
+    *idxPtr++ = 5;
+    *idxPtr++ = 4;
+    *idxPtr++ = 7;
+
+    *idxPtr++ = 6;
+    *idxPtr++ = 2;
+    *idxPtr++ = 1;
+    *idxPtr++ = 5;
+
+    *idxPtr++ = 6;
+    *idxPtr++ = 7;
+    *idxPtr++ = 3;
+    *idxPtr++ = 2;
+
+    for (uint8_t i = 0; i < 6; i++) *sizePtr++ = 4;
+
+    return std::make_shared<Mesh>(vertices, faces);
 }
 
 std::shared_ptr<Mesh> MeshBuilder::cylinder(float radius, float height, uint32_t segments){

@@ -86,7 +86,6 @@ void Mesh::initialize()
 {
     m_faces.calculateNormals(m_vertices.vertices());
     m_faces.triangulate(m_vertices.vertices());
-
     calculateVertexNormals();
 }
 

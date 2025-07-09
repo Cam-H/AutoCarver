@@ -9,18 +9,19 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #set(-DASSIMP_WARNINGS_AS_ERRORS OFF)
 
-find_package(Qt6 REQUIRED COMPONENTS 3DCore 3DExtras 3DInput 3DRender Core Gui UiTools OpenGL OpenGLWidgets Widgets)
+list(APPEND CMAKE_PREFIX_PATH C:/Qt/6.7.3/mingw_64/lib/cmake)
+#list(APPEND CMAKE_PREFIX_PATH C:/Qt/6.9.1/mingw_64/bin)
+#message("${CMAKE_PREFIX_PATH}")
+find_package(Qt6 REQUIRED COMPONENTS Core Gui UiTools OpenGL OpenGLWidgets Widgets)
 
 qt_standard_project_setup()
 
 
 #find_library(ASSIMP_LIBRARY assimp PATHS ./extern/assimp/bin)
 link_directories(./extern/assimp/bin ./extern/assimp/lib)
-link_directories(./extern/mcut/bin ./extern/mcut/lib)
 include_directories(./extern/glm)
 
 include_directories(./extern/assimp/include)
-include_directories(./extern/mcut/include)
 include_directories(./extern/glm)
 
 #add_library()
