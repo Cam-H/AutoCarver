@@ -3,6 +3,7 @@
 #include <QSurfaceFormat>
 #include <QMainWindow>
 #include <QPushButton>
+#include <QRadioButton>
 #include <QVBoxLayout>
 #include <QCheckBox>
 #include <QTextEdit>
@@ -39,7 +40,10 @@ std::shared_ptr<Octree> oct = nullptr;
 std::shared_ptr<RigidBody> render = nullptr;
 std::shared_ptr<RigidBody> collider = nullptr;
 
+bool updateMesh = false;
+
 std::array<float, 6> pos = { 0, 0, 0, 0, 0, 0 };
+uint32_t type = 0;
 
 #include <QRandomGenerator>
 
@@ -96,12 +100,12 @@ int main(int argc, char *argv[])
 
     auto count = 0;
     for (auto i : *oct)
-        std::cout << count++ << "| " << i << "\n";
+        std::cout << count++ << "| " << i.index << " " << (uint32_t)i.status << "\n";
 
     // Create a cutting plane
     auto model = MeshBuilder::mesh(oct);
     if (model != nullptr) {
-        model->setBaseColor({1, 0.5f, 1 });
+        model->setBaseColor({1, 1, 1 });
         render = scene->createBody(model);
     }
 
@@ -125,12 +129,34 @@ int main(int argc, char *argv[])
             collider->setRotation({ pos[3], pos[4], pos[5] });
 
             Sphere sphere = Sphere(position, 1.0f);
-            bool collision = oct->collides(sphere);
-            if (collision) {
-                oct->applyDifference(sphere);
-//                render->setMesh(MeshBuilder::mesh(oct));
+            switch (type) {
+                case 0:
+                {
+                    static bool collision = false;
+                    bool test = oct->collides(sphere) && updateMesh;
+                    if (test != collision) {
+                        auto mesh = MeshBuilder::mesh(oct);
+                        if (test) mesh->setFaceColor({ 1, 0, 0});
+                        else mesh->setFaceColor({ 1, 1, 1});
+                        render->setMesh(mesh);
+                        collision = test;
+                    }
+                }
+
+                    break;
+                case 1:
+                    if (oct->unite(sphere) && updateMesh) render->setMesh(MeshBuilder::mesh(oct));
+                    break;
+                case 2:
+                    if (oct->subtract(sphere) && updateMesh) render->setMesh(MeshBuilder::mesh(oct));
+                    break;
+                case 3:
+                    if (oct->intersect(sphere) && updateMesh) render->setMesh(MeshBuilder::mesh(oct));
+                    break;
+                default: std::cout << "Unknown type: " << type << "\n";
             }
-            std::cout << "Collision: " << collision << "\n";
+
+//            std::cout << oct->memoryFootprint() << "\n";
             sceneWidget->update();
         });
 
@@ -160,6 +186,26 @@ int main(int argc, char *argv[])
 //        base->setMesh(MeshBuilder::box(6), true);
 
 //        sceneWidget->update();
+    });
+
+    auto *noneRButton = widget->findChild<QRadioButton*>("noneRButton");
+    QObject::connect(noneRButton, &QRadioButton::pressed, [&]() {
+        type = 0;
+    });
+
+    auto *uniteRButton = widget->findChild<QRadioButton*>("uniteRButton");
+    QObject::connect(uniteRButton, &QRadioButton::pressed, [&]() {
+        type = 1;
+    });
+
+    auto *differenceRButton = widget->findChild<QRadioButton*>("differenceRButton");
+    QObject::connect(differenceRButton, &QRadioButton::pressed, [&]() {
+        type = 2;
+    });
+
+    auto *intersectRButton = widget->findChild<QRadioButton*>("intersectRButton");
+    QObject::connect(intersectRButton, &QRadioButton::pressed, [&]() {
+        type = 3;
     });
 
     widget->show();

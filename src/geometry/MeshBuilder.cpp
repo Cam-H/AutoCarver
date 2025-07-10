@@ -271,53 +271,37 @@ uint32_t MeshBuilder::getMidPoint(std::vector<glm::vec3>& vertices, std::map<uin
 
 std::shared_ptr<Mesh> MeshBuilder::mesh(const std::shared_ptr<Octree>& tree)
 {
-    uint32_t count = tree->octantCount(), idx = 0;
+    uint8_t target = Octree::Octant::Status::TERMINUS;
+    uint32_t  count = tree->octantCount(target), offset = 0;
     std::cout << count << " / " << tree->maximumOctantCount() << " COUNTS\n";
-
-    struct Item {
-        const Octant* octant;
-        const glm::vec3 offset;
-        const float length;
-    };
 
     auto vertices = VertexArray(8 * count);
 
     auto faces = FaceArray(6 * count, 24 * count);
     uint32_t *idxPtr = faces[0], *sizePtr = faces.faceSizes();
 
-    std::vector<Item> items = { { tree->root(), tree->top(), tree->length() } };
-    while (!items.empty()) {
-        Item item = items[items.size() - 1];
-        items.pop_back();
+    for (const Octree::Octant& octant : *tree) {
+        if (octant.status == target) {
+            float length = tree->octantLength(octant);
+//            std::cout << "MB " << (offset / 8) << " " << length << " " << (uint32_t)octant.depth << " " << (uint32_t)octant.status << " " << octant.index  << " " << octant.top.x << " " << octant.top.y << " " << octant.top.z << "\n";
+            vertices[offset    ] = octant.top;
+            vertices[offset + 1] = octant.top + glm::vec3{      0, length,      0 };
+            vertices[offset + 2] = octant.top + glm::vec3{ length, length,      0 };
+            vertices[offset + 3] = octant.top + glm::vec3{ length,      0,      0 };
+            vertices[offset + 4] = octant.top + glm::vec3{      0,      0, length };
+            vertices[offset + 5] = octant.top + glm::vec3{      0, length, length };
+            vertices[offset + 6] = octant.top + glm::vec3{ length, length, length };
+            vertices[offset + 7] = octant.top + glm::vec3{ length,      0, length };
 
-        if (item.octant->status == 2) continue;
-
-        if (item.octant->status == 0) {
-            uint32_t idxOffset = 8 * idx++;
-
-            vertices[idxOffset    ] = item.offset;
-            vertices[idxOffset + 1] = item.offset + glm::vec3{           0, item.length,           0 };
-            vertices[idxOffset + 2] = item.offset + glm::vec3{ item.length, item.length,           0 };
-            vertices[idxOffset + 3] = item.offset + glm::vec3{ item.length,           0,           0 };
-            vertices[idxOffset + 4] = item.offset + glm::vec3{           0,           0, item.length };
-            vertices[idxOffset + 5] = item.offset + glm::vec3{           0, item.length, item.length };
-            vertices[idxOffset + 6] = item.offset + glm::vec3{ item.length, item.length, item.length };
-            vertices[idxOffset + 7] = item.offset + glm::vec3{ item.length,           0, item.length };
-
-            indexBox(idxPtr, sizePtr, idxOffset);
+            indexBox(idxPtr, sizePtr, offset);
             idxPtr += 24;
             sizePtr += 6;
-        }
 
-        float length = 0.5f * item.length;
-        for (uint32_t i = 0; i < 8; i++) {
-            glm::vec3 offset = tree->octantOffset(i, length) + item.offset;
-
-            if (item.octant->children[i] != nullptr) {
-                items.push_back(Item{ item.octant->children[i], offset, length });
-            }
+            offset += 8;
         }
     }
+
+    std::cout << "done\n";
 
     return std::make_shared<Mesh>(vertices, faces);
 }

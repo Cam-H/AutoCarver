@@ -313,7 +313,7 @@ void SceneWidget::paintGL()
     // Enable back face culling
     glEnable(GL_CULL_FACE);
 
-    std::cout << m_geometries.size() << "\n";
+//    std::cout << m_geometries.size() << "\n";
 
     if (m_scene != nullptr) {
         const std::vector<std::shared_ptr<RigidBody>>& bodies = m_scene->bodies();

@@ -5,111 +5,170 @@
 #include "Octree.h"
 
 #include <iostream>
+#include <sstream>
+#include <iomanip>
 
 #include "Sphere.h"
 #include "ConvexHull.h"
 
-Octant::Octant()
-    : children({ nullptr })
-    , status(0)
+Octree::Octant::Octant(const glm::vec3& top, uint8_t depth)
+    : index(std::numeric_limits<uint32_t>::max())
+    , status(Status::TERMINUS)
+    , top(top)
+    , depth(depth)
 {
 
 }
 
-Octant::~Octant()
+template <bool IsConst>
+void Octree::OctreeIterator<IsConst>::skip()
 {
-    std::cout << "Erasure\n";
-    clear();
-}
-
-void Octant::clear()
-{
-    for (Octant* child : children) delete child;
-}
-
-uint32_t Octant::octantCount() const
-{
-    uint32_t sum = status == 0;
-    for (Octant* child : children) {
-        if (child != nullptr) sum += child->octantCount();
+    if (m_stack.size() > 1) { // Move to the next branch if available
+        m_stack.pop();
+        m_ptr = &octants[m_stack.top()];
+    } else { // Otherwise terminate iterator
+        m_ptr = octants.data() + octants.size();
+        m_stack = {};
     }
-
-    return sum;
 }
 
-bool Octant::terminates() const
+template <bool IsConst>
+Octree::OctreeIterator<IsConst>& Octree::OctreeIterator<IsConst>::operator++()
 {
-    for (Octant* child : children) if (child != nullptr) return false;
-    return true;
+    if (m_ptr->index != std::numeric_limits<uint32_t>::max()) { //  Octant has children
+        m_stack.pop();
+        for (uint8_t i = 0; i < 8; i++)
+            if (octants[m_ptr->index + i].status != Octant::Status::DEAD) m_stack.push(m_ptr->index + i);
+        m_ptr = &octants[m_stack.top()];
+    } else skip();
+
+
+//    std::cout << m_stack.size() << " " << (!m_stack.empty() ? std::to_string(m_stack.top()) : "--") << " " << m_ptr << "<\n";
+
+    return *this;
 }
+
+//Octree::Iterator Octree::Iterator::operator++(int)
+//{
+//    Iterator tmp = *this;
+//    ++(*this);
+//    return tmp;
+//}
+
+//Octant::~Octant()
+//{
+//    std::cout << "Erasure\n";
+//    clear();
+//}
+
+//void Octant::clear()
+//{
+//    for (Octant* child : children) delete child;
+//}
+
+//uint32_t Octant::octantCount() const
+//{
+//    uint32_t sum = status == 0;
+//    for (Octant* child : children) {
+//        if (child != nullptr) sum += child->octantCount();
+//    }
+//
+//    return sum;
+//}
+//
+//bool Octant::terminates() const
+//{
+//    for (Octant* child : children) if (child != nullptr) return false;
+//    return true;
+//}
 
 Octree::Octree(float length)
-    : m_root(new Octant)
-    , m_length(length)
-    , m_maximumDivisions(6)
+    : m_lengths({ length })
+    , m_maxDepth(10)
 {
+    // Reserve memory to prepare for development of the Octree
+    // Reserve less than maximum to reduce memory usage (Full development is rare)
+    m_octants.reserve(maximumOctantCount(m_maxDepth - 1));
 
+    calculateLengths();
+    reset();
 }
 
 void Octree::reset()
 {
-    delete m_root;
-
-    m_root = new Octant;
+    m_octants = { Octant(top(), 0) };
 }
 
-void Octree::applyUnion(const Sphere& sphere)
+bool Octree::unite(const Sphere& sphere)
 {
-
+//    m_last = Iterator::end(m_octants);
+    return false;
 }
-void Octree::applyDifference(const Sphere& sphere)
+bool Octree::subtract(const Sphere& sphere)
 {
-    std::vector<Item> items = { { m_root, top(), m_length, 0 } };
+    auto it = begin();
 
-    while (!items.empty()) {
-        Item item = items[items.size() - 1];
-        items.pop_back();
+    bool update = false;
 
-        if (item.octant->status != 2 && collides(sphere, item.offset, item.length)) {
-            item.octant->status = 1;
+    while (it != end()) {
+        if (collides(sphere, it->top, m_lengths[it->depth])) {
+            if (encloses(sphere, it->top, m_lengths[it->depth])) { // Sphere entirely encloses the octant
+                it->status = Octant::Status::DEAD;
+                update = true;
+                it.skip();
+            } else {
+                update = update || it->status != Octant::Status::LIVE_CHILDREN;
+                it->status = Octant::Status::LIVE_CHILDREN;
 
-            if (encloses(sphere, item.offset, item.length)) {
-//                item.octant->clear();
-                item.octant->status = 2;
-            } else if (item.depth < m_maximumDivisions){
-
-                float length = 0.5f * item.length;
-                for (uint8_t i = 0; i < 8; i++) {
-                    glm::vec3 offset = octantOffset(i, length) + item.offset;
-                    if (item.octant->children[i] == nullptr) item.octant->children[i] = new Octant();
-                    items.push_back({ item.octant->children[i], offset, length, item.depth + 1 });
+                if (it->depth + 1 < m_maxDepth && it->index == std::numeric_limits<uint32_t>::max()) { // Introducing children
+                    it->index = m_octants.size();
+                    for (uint8_t i = 0; i < 8; i++)  m_octants.emplace_back(
+                                it->top + octantOffset(i, m_lengths[it->depth + 1]),
+                                it->depth + 1
+                        );
                 }
-            }
-        }
-    }
-}
-void Octree::applyIntersection(const Sphere& sphere)
-{
 
+                ++it; // Move to the next octant (Could be child, sibling or ?ancestor)
+            }
+
+        } else it.skip(); // Ignore child octants when there is no collision with the parent
+    }
+
+    return update;
+}
+bool Octree::intersect(const Sphere& sphere)
+{
+    return false;
 }
 
 void Octree::setLength(float length)
 {
-    m_length = length;
+    m_lengths = { length };
+    calculateLengths();
 }
 
-void Octree::setMaximumDivisions(uint32_t num)
+void Octree::setMaximumDepth(uint32_t depth)
 {
-    m_maximumDivisions = num;
+    if (m_maxDepth < depth) {
+        m_maxDepth = depth;
+        calculateLengths();
+    } else {
+        m_maxDepth = depth;
+        // TODO Prune octree
+    }
 }
 
 bool Octree::collides(const Sphere& sphere) const
 {
-    if (!collides(sphere, top(), m_length)) return false;
+    auto it = begin();
+    while (it != end()) {
+        if (it->status != Octant::Status::DEAD && collides(sphere, it->top, m_lengths[it->depth])) {
+            if (it->status == Octant::Status::TERMINUS) return true;
+            ++it;
+        } else it.skip();
+    }
 
-//    if (collides(sphere, octant, top)) ;
-
-    return true;
+    return false;
 }
 
 bool Octree::collides(const Sphere& sphere, const glm::vec3& top, float length)
@@ -144,18 +203,39 @@ glm::vec3 Octree::farthest(const glm::vec3& point, const glm::vec3& top, float l
 
 glm::vec3 Octree::top() const
 {
-    return -m_length * 0.5f * glm::vec3(1.0f);
+    return -m_lengths[0] * 0.5f * glm::vec3{ 1, 1, 1 };
 }
 
-uint32_t Octree::octantCount() const
+uint32_t Octree::octantCount(uint8_t status) const
 {
-    return m_root->octantCount();
+    if (status == Octant::Status::DEAD) return 0; //TODO
+
+    uint32_t sum = 0;
+    for (const Octant& octant : *this) {
+        sum += octant.status == status;
+    }
+
+//    uint32_t sum = 0;
+//        sum += octant.status == status;
+//    }
+    return sum;
+}
+
+void Octree::calculateLengths()
+{
+    m_lengths.resize(m_maxDepth);
+    for (uint32_t i = 1; i < m_maxDepth; i++) m_lengths[i] = 0.5f * m_lengths[i - 1];
 }
 
 uint32_t Octree::maximumOctantCount() const
 {
+    return maximumOctantCount(m_maxDepth);
+}
+
+uint32_t Octree::maximumOctantCount(uint32_t depth)
+{
     uint32_t count = 1;
-    for (uint32_t i = 0; i < m_maximumDivisions; i++) count *= 8;
+    for (uint32_t i = 0; i < depth; i++) count *= 8;
     return count;
 }
 
@@ -178,17 +258,87 @@ glm::vec3 Octree::octantOffset(uint32_t index)
     }
 }
 
-const Octant* Octree::root() const
+float Octree::octantLength(const Octant& octant) const
 {
-    return m_root;
+    return m_lengths[octant.depth];
 }
+
+//const Octant* Octree::root() const
+//{
+//    return m_root;
+//}
 
 float Octree::length() const
 {
-    return m_length;
+    return m_lengths[0];
 }
 
-uint32_t Octree::maximumDivisions() const
+uint32_t Octree::maximumDepth() const
 {
-    return m_maximumDivisions;
+    return m_maxDepth;
+}
+
+size_t Octree::size() const
+{
+    return m_octants.size();
+}
+
+std::string Octree::memoryFootprint() const
+{
+    double activeMem = (double)m_octants.size() * sizeof(Octant);
+    double totalMem = (double)m_octants.capacity() * sizeof(Octant);
+
+    auto activeUnit = unit(activeMem);
+    auto totalUnit = unit(totalMem);
+
+//    std::cout << "ST: " << sizeof(Octant::Status) << "\n";
+    return "Octants: " + std::to_string(m_octants.size()) + " / " + std::to_string(m_octants.capacity())
+        + " ( " + std::to_string(sizeof(Octant)) + " ) "
+        + " [ " + toString(activeMem, 1) + activeUnit + " / " + toString(totalMem, 1) + totalUnit + " ]";
+}
+
+std::string Octree::unit(double& value)
+{
+    if (value > 1e12) {
+        value *= 1e-12;
+        return "TB";
+    } else if (value > 1e9) {
+        value *= 1e-9;
+        return "GB";
+    } else if (value > 1e6) {
+        value *= 1e-6;
+        return "MB";
+    } else if (value > 1e3) {
+        value *= 1e-3;
+        return "KB";
+    }
+
+    return "B";
+}
+
+std::string Octree::toString(double value, int precision)
+{
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(precision) << value;
+    return oss.str();
+}
+
+Octree::Iterator Octree::begin()
+{
+    return { m_octants };
+}
+
+Octree::ConstIterator Octree::begin() const
+{
+    return { m_octants };
+}
+
+Octree::Iterator Octree::end()
+{
+    return { m_octants, m_octants.data() + m_octants.size() };
+}
+
+Octree::ConstIterator Octree::end() const
+{
+    return { m_octants, m_octants.data() + m_octants.size() };
 }
