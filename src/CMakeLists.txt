@@ -86,7 +86,7 @@ qt_add_library(AutoCarverLib
         renderer/EdgeDetect.cpp
         renderer/EdgeDetect.h
 
-        renderer/PolygonWidget.cpp renderer/PolygonWidget.h physics/CompositeBody.cpp physics/CompositeBody.h)
+        renderer/PolygonWidget.cpp renderer/PolygonWidget.h physics/CompositeBody.cpp physics/CompositeBody.h geometry/Octree.cpp geometry/Octree.h)
 
 target_link_libraries(AutoCarverLib PRIVATE
         Qt::Core

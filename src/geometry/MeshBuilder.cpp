@@ -4,6 +4,8 @@
 
 #include "MeshBuilder.h"
 
+#include "Octree.h"
+
 #include <glm/glm.hpp>
 #include <array>
 #include <unordered_map>
@@ -68,38 +70,7 @@ std::shared_ptr<Mesh> MeshBuilder::box(float length, float width, float height)
 
     auto faces = FaceArray(6, 24);
     uint32_t *idxPtr = faces[0], *sizePtr = faces.faceSizes();
-
-    *idxPtr++ = 0;
-    *idxPtr++ = 1;
-    *idxPtr++ = 2;
-    *idxPtr++ = 3;
-
-    *idxPtr++ = 0;
-    *idxPtr++ = 4;
-    *idxPtr++ = 5;
-    *idxPtr++ = 1;
-
-    *idxPtr++ = 0;
-    *idxPtr++ = 3;
-    *idxPtr++ = 7;
-    *idxPtr++ = 4;
-
-    *idxPtr++ = 6;
-    *idxPtr++ = 5;
-    *idxPtr++ = 4;
-    *idxPtr++ = 7;
-
-    *idxPtr++ = 6;
-    *idxPtr++ = 2;
-    *idxPtr++ = 1;
-    *idxPtr++ = 5;
-
-    *idxPtr++ = 6;
-    *idxPtr++ = 7;
-    *idxPtr++ = 3;
-    *idxPtr++ = 2;
-
-    for (uint8_t i = 0; i < 6; i++) *sizePtr++ = 4;
+    indexBox(idxPtr, sizePtr);
 
     return std::make_shared<Mesh>(vertices, faces);
 }
@@ -296,6 +267,94 @@ uint32_t MeshBuilder::getMidPoint(std::vector<glm::vec3>& vertices, std::map<uin
     }
 
     return table[key];
+}
+
+std::shared_ptr<Mesh> MeshBuilder::mesh(const std::shared_ptr<Octree>& tree)
+{
+    uint32_t count = tree->octantCount(), idx = 0;
+    std::cout << count << " / " << tree->maximumOctantCount() << " COUNTS\n";
+
+    struct Item {
+        const Octant* octant;
+        const glm::vec3 offset;
+        const float length;
+    };
+
+    auto vertices = VertexArray(8 * count);
+
+    auto faces = FaceArray(6 * count, 24 * count);
+    uint32_t *idxPtr = faces[0], *sizePtr = faces.faceSizes();
+
+    std::vector<Item> items = { { tree->root(), tree->top(), tree->length() } };
+    while (!items.empty()) {
+        Item item = items[items.size() - 1];
+        items.pop_back();
+
+        if (item.octant->status == 2) continue;
+
+        if (item.octant->status == 0) {
+            uint32_t idxOffset = 8 * idx++;
+
+            vertices[idxOffset    ] = item.offset;
+            vertices[idxOffset + 1] = item.offset + glm::vec3{           0, item.length,           0 };
+            vertices[idxOffset + 2] = item.offset + glm::vec3{ item.length, item.length,           0 };
+            vertices[idxOffset + 3] = item.offset + glm::vec3{ item.length,           0,           0 };
+            vertices[idxOffset + 4] = item.offset + glm::vec3{           0,           0, item.length };
+            vertices[idxOffset + 5] = item.offset + glm::vec3{           0, item.length, item.length };
+            vertices[idxOffset + 6] = item.offset + glm::vec3{ item.length, item.length, item.length };
+            vertices[idxOffset + 7] = item.offset + glm::vec3{ item.length,           0, item.length };
+
+            indexBox(idxPtr, sizePtr, idxOffset);
+            idxPtr += 24;
+            sizePtr += 6;
+        }
+
+        float length = 0.5f * item.length;
+        for (uint32_t i = 0; i < 8; i++) {
+            glm::vec3 offset = tree->octantOffset(i, length) + item.offset;
+
+            if (item.octant->children[i] != nullptr) {
+                items.push_back(Item{ item.octant->children[i], offset, length });
+            }
+        }
+    }
+
+    return std::make_shared<Mesh>(vertices, faces);
+}
+
+void MeshBuilder::indexBox(uint32_t *facePtr, uint32_t *sizePtr, uint32_t offset)
+{
+    *facePtr++ = 0 + offset;
+    *facePtr++ = 1 + offset;
+    *facePtr++ = 2 + offset;
+    *facePtr++ = 3 + offset;
+
+    *facePtr++ = 0 + offset;
+    *facePtr++ = 4 + offset;
+    *facePtr++ = 5 + offset;
+    *facePtr++ = 1 + offset;
+
+    *facePtr++ = 0 + offset;
+    *facePtr++ = 3 + offset;
+    *facePtr++ = 7 + offset;
+    *facePtr++ = 4 + offset;
+
+    *facePtr++ = 6 + offset;
+    *facePtr++ = 5 + offset;
+    *facePtr++ = 4 + offset;
+    *facePtr++ = 7 + offset;
+
+    *facePtr++ = 6 + offset;
+    *facePtr++ = 2 + offset;
+    *facePtr++ = 1 + offset;
+    *facePtr++ = 5 + offset;
+
+    *facePtr++ = 6 + offset;
+    *facePtr++ = 7 + offset;
+    *facePtr++ = 3 + offset;
+    *facePtr++ = 2 + offset;
+
+    for (uint8_t i = 0; i < 6; i++) *sizePtr++ = 4;
 }
 
 std::shared_ptr<Mesh> MeshBuilder::merge(const std::shared_ptr<Mesh>& a, const std::shared_ptr<Mesh>& b)

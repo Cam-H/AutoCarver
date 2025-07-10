@@ -14,6 +14,8 @@
 #include <vector>
 #include <map>
 
+class Octree;
+
 class MeshBuilder {
 public:
 
@@ -30,6 +32,7 @@ public:
     static std::shared_ptr<Mesh> icosahedron(float radius = 1.0f);
     static std::shared_ptr<Mesh> icosphere(float radius = 1.0f, uint8_t subdivisions = 1);
 
+    static std::shared_ptr<Mesh> mesh(const std::shared_ptr<Octree>& tree);
 
     static std::shared_ptr<Mesh> merge(const std::shared_ptr<Mesh>& a, const std::shared_ptr<Mesh>& b);
 
@@ -40,6 +43,7 @@ public:
     static std::shared_ptr<Mesh> cleaned(const std::shared_ptr<Mesh>& mesh);
     static std::shared_ptr<Mesh> cleaned(const VertexArray& vertices, const FaceArray& faces);
 
+
     static bool isManifold(const std::shared_ptr<Mesh>& mesh);
     static bool isManifold(const FaceArray& faces);
 
@@ -47,6 +51,10 @@ private:
 
     static void icosahedron(float radius, std::vector<glm::vec3>& vertices, std::vector<Triangle>& faces);
     static uint32_t getMidPoint(std::vector<glm::vec3>& vertices, std::map<uint64_t, uint32_t> &table, uint64_t iA, uint64_t iB, float scalar);
+
+//    static std::shared_ptr<Mesh> cube(glm::vec3 *vertexPtr, uint32_t *facePtr);
+
+    static void indexBox(uint32_t *facePtr, uint32_t *sizePtr, uint32_t offset = 0);
 
     static void eliminateCoincidentVertices(const FaceArray& srcFaces, std::vector<glm::vec3>& vertices, std::vector<std::vector<uint32_t>>& faces);
 
