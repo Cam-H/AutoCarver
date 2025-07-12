@@ -6,7 +6,7 @@
 #define AUTOCARVER_EDGEDETECT_H
 
 #include <QImage>
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 #include <vector>
 

@@ -5,7 +5,7 @@
 #ifndef AUTOCARVER_SPHERE_H
 #define AUTOCARVER_SPHERE_H
 
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 #include "VertexArray.h"
 

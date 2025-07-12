@@ -6,7 +6,7 @@
 
 #include <iostream>
 
-#include "glm/gtc/quaternion.hpp"
+#include <gtc/quaternion.hpp>
 
 
 Profile::Profile()
@@ -71,15 +71,84 @@ void Profile::initialize()
     if (m_vertices.size() < 4) return;
 
     std::vector<uint32_t> border = hull();
+    std::cout << "Border: ";
+    for (uint32_t b : border) std::cout << b << " ";
+    std::cout << "\n";
 
     // Identify concave faces, noting boundaries with the convex hull
     for (uint32_t i = 0; i < border.size(); i++) {
         uint32_t idx = (i + 1) % border.size(), count = 1 + difference(border[i], border[idx], m_vertices.size());
-        if (count > 2) m_remainder.emplace_back(border[i], count);
+        if (count > 2) emplaceRemainder(border[i], count);
     }
 
-    correctWinding();
+    std::cout << "Profile: " << isCCW() << " " << m_vertices.size() << " " << m_remainder.size() << " " << "\n";
+    for (auto& r : m_remainder) std::cout << r.first << " " << r.second << "\n";
 
+//    correctWinding();
+
+}
+
+uint32_t Profile::offsetIndex(uint32_t idx, uint32_t offset) const
+{
+    return (idx + offset) % m_vertices.size();
+}
+
+void Profile::emplaceRemainder(uint32_t start, uint32_t count)
+{
+    auto axis = edgeNormal(start, offsetIndex(start, count - 1));
+    uint32_t subCount;
+
+    while ((subCount = subdivide(axis, start, count)) < count) {
+        // Additional check to remove adjacent collinear vertices
+        if (subCount >= 2) m_remainder.emplace_back(start, subCount + 1);
+
+        // Prepare for next division
+        start = offsetIndex(start, subCount);
+        count -= subCount;
+    }
+
+    // Capture remaining
+    if(count > 2) m_remainder.emplace_back(start, count);
+}
+void Profile::insertRemainder(uint32_t index, uint32_t start, uint32_t count)
+{
+    auto axis = edgeNormal(start, offsetIndex(start, count - 1));
+    uint32_t subCount;
+
+    while ((subCount = subdivide(axis, start, count)) < count) {
+        // Additional check to remove adjacent collinear vertices
+        if (subCount >= 2) m_remainder.insert(m_remainder.begin() + index, { start, subCount + 1 });
+
+        // Prepare for next division
+        start = offsetIndex(start, subCount);
+        count -= subCount;
+    }
+
+    // Capture remaining
+    if (count > 2) m_remainder.insert(m_remainder.begin() + index, { start, count });
+}
+
+// Splits a section into subcomponents along protrusions. This is necessary because
+// later triangulation would fail due to 0 thickness sections that would otherwise result
+uint32_t Profile::subdivide(const glm::vec2& normal, uint32_t start, uint32_t count)
+{
+    for (uint32_t i = 1; i < count - 1; i++) {
+        float result = glm::dot(normal, glm::normalize(m_vertices[offsetIndex(start, i)] - m_vertices[start]));
+//            std::cout << start << " " << count << " " << offsetIndex(start, i) << " (" << i
+//            << ") " << normal.x << " " << normal.y << " "
+//            << result
+//            << "]]]\n";
+
+        if (result > -0.02f) return i;
+    }
+
+    return count;
+}
+
+glm::vec2 Profile::edgeNormal(uint32_t start, uint32_t end)
+{
+    glm::vec2 edge = m_vertices[end] - m_vertices[start];
+    return glm::normalize(glm::vec2{ edge.y, -edge.x });
 }
 
 void Profile::setRefinementMethod(RefinementMethod method)
@@ -90,6 +159,10 @@ void Profile::setRefinementMethod(RefinementMethod method)
 void Profile::setMimimumArea(float area)
 {
     m_minimumArea = area;
+}
+void Profile::translate(const glm::vec2& translation)
+{
+    Polygon::translate(translation);
 }
 
 void Profile::translate(const glm::vec3& translation)
@@ -187,7 +260,7 @@ std::vector<uint32_t> Profile::delauneyRefinement()
     std::vector<glm::vec2> vertices = sectionVertices(indices);
 
     // Find the Delauney triangulation of the remaining section
-    auto triangles = Polygon::bowyerWatson(vertices, true, 1);
+    auto triangles = Polygon::triangulate(vertices);
 
     // Select the triangle on the boundary (The only accessible tri)
     for (const Triangle& tri : triangles) {
@@ -206,7 +279,7 @@ std::vector<uint32_t> Profile::delauneyRefinement()
         // Create new boundaries based on the cut triangle (When borders are still concave)
         if (d1 > 1) {
             m_remainder[m_next] = { triangle[0], d1 + 1};
-            if (d2 > 1) m_remainder.insert(m_remainder.begin() + m_next + 1, { triangle[1], d2 + 1});
+            if (d2 > 1) insertRemainder(m_next + 1, triangle[1], d2 + 1);
         } else if (d2 > 1) {
             m_remainder[m_next] = { triangle[1], d2 + 1};
         }
@@ -221,60 +294,23 @@ std::vector<uint32_t> Profile::delauneyRefinement()
 
 std::vector<uint32_t> Profile::testRefinement()
 {
-//    auto cut = m_remainder[m_next];
-//
-//    std::vector<uint32_t> section = sectionIndices(m_remainder[m_next]);
-//
-//    std::vector<uint32_t> splitPoints;
-//    uint32_t end = (cut.first + cut.second) % m_vertices.size();
-//
-//    glm::vec2 axis = glm::normalize(m_vertices[end] - m_vertices[cut.first]);
-//    glm::vec2 normal = { -axis.y, -axis.x };
-//
-//    std::vector<glm::vec2> rVertices;
-//    rVertices.reserve(cut.second);
-//
-//    for (uint32_t i = 0; i < cut.second; i++) {
-//        uint32_t idx = (cut.first + i) % m_vertices.size();
-//        rVertices.emplace_back(glm::dot(axis, m_vertices[idx]), glm::dot(normal, m_vertices[idx]));
-//        std::cout << "R " << i << " (" << idx << ") " << rVertices[i].x << " " << rVertices[i].y << "\n";
-//    }
-//
-//    float xLim = std::numeric_limits<float>::lowest();
-//    for (uint32_t i = 0; i < cut.second; i++) {
-//        uint32_t idx = (cut.first + i) % m_vertices.size();
-//        float value = glm::dot(axis, m_vertices[idx]);
-//        if (xLim < value) {
-//            splitPoints.emplace_back(idx);
-//            xLim = value;
-//        }
-//    }
-//
-//    xLim = std::numeric_limits<float>::max();
-//    for (int i = splitPoints.size() - 1; i >= 0; i--) {
-//        float value = glm::dot(axis, m_vertices[splitPoints[i]]);
-//        std::cout << "AA " << i << " " << splitPoints[i] << " " << value << "\n";
-////            if ()
-//    }
-//
-//    for (uint32_t p : splitPoints) std::cout << p << " ";
-//    std::cout << "~SP\n";
-//
-//    std::cout << axis.x << " " << axis.y << " | " << normal.x << " " << normal.y << "\n";
     return {};
 }
 
 bool Profile::isValidRefinement(const std::vector<uint32_t>& indices) const
 {
-    std::cout << "VR: " << area(indices) << "\n";
+//    std::cout << "VR: " << area(indices) << "\n";
     return !indices.empty() && area(indices) > m_minimumArea;
 }
 
 float Profile::area(const std::vector<uint32_t>& indices) const
 {
-    if (indices.size() == 3) {
-        return Triangle::area(m_vertices[indices[0]], m_vertices[indices[1]], m_vertices[indices[2]]);
-    } else throw std::runtime_error("[Profile] Area calculation not yet developed");
+    if (indices.size() < 3) {
+        std::cout << indices.size() << " XXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n";
+        return 0;
+    } else if (indices.size() == 3)
+        return std::abs(Triangle::area(m_vertices[indices[0]], m_vertices[indices[1]], m_vertices[indices[2]]));
+    else throw std::runtime_error("[Profile] Area calculation not yet developed");
 }
 
 uint32_t Profile::difference(uint32_t a, uint32_t b, uint32_t max)
@@ -329,7 +365,7 @@ std::vector<std::pair<glm::vec2, glm::vec2>> Profile::debugEdges() const {
 
     if (m_next < m_remainder.size()) {
         std::vector<glm::vec2> vertices = sectionVertices(m_remainder[m_next]);
-        auto triangles = Polygon::bowyerWatson(vertices, true, 1);
+        auto triangles = Polygon::triangulate(vertices);
 
         for (const Triangle& tri: triangles) {
             edges.emplace_back(vertices[tri.I0], vertices[tri.I1]);

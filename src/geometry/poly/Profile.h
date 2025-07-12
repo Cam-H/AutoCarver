@@ -30,6 +30,7 @@ public:
     void setRefinementMethod(RefinementMethod method);
     void setMimimumArea(float area);
 
+    void translate(const glm::vec2& translation);
     void translate(const glm::vec3& translation);
 
     void rotateAbout(const glm::vec3& axis, float theta);
@@ -50,6 +51,13 @@ public:
 private:
 
     void initialize();
+
+    inline uint32_t offsetIndex(uint32_t idx, uint32_t offset = 1) const;
+
+    void emplaceRemainder(uint32_t start, uint32_t count);
+    void insertRemainder(uint32_t index, uint32_t start, uint32_t count);
+    uint32_t subdivide(const glm::vec2& normal, uint32_t start, uint32_t count);
+    glm::vec2 edgeNormal(uint32_t start, uint32_t end);
 
     std::vector<uint32_t> triangleRefinement();
     std::vector<uint32_t> directRefinement();

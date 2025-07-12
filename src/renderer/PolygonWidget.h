@@ -13,7 +13,7 @@
 
 #include <vector>
 
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 class Polygon;
 
@@ -23,7 +23,10 @@ public:
     explicit PolygonWidget(QWidget *parent = nullptr);
 
     void setPolygon(Polygon *polygon);
+
+    void uncenter();
     void center();
+    void setCentered(bool centered);
 
     void enablePolygon(bool enable);
     void enableTriangulation(bool enable);
@@ -47,16 +50,19 @@ private:
 
 private:
 
+    Polygon *m_poly;
+
+    // Selected vertex
     int m_selection;
 
-    Polygon *m_poly;
-    bool m_latest;
-
+    // Rendering settings
     bool m_polygon;
     bool m_triangulation;
     bool m_hull;
     bool m_debugEdges;
 
+    // Polygon positioning
+    bool m_centered;
     float m_scalar;
     glm::vec2 m_offset;
 

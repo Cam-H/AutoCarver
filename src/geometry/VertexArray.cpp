@@ -6,7 +6,7 @@
 #include "fileIO/Serializable.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/quaternion.hpp>
+#include <gtx/quaternion.hpp>
 
 #include <iostream>
 
@@ -121,7 +121,7 @@ std::vector<glm::vec2> VertexArray::project(const glm::vec3& normal)
 }
 std::vector<glm::vec2> VertexArray::project(const std::vector<glm::vec3>& vertices, const glm::vec3& normal)
 {
-    glm::vec3 ref = normal.x * normal.x == 1 ? glm::vec3{ 0, 1, 0 } : glm::vec3{ 1, 0, 0 };
+    glm::vec3 ref = normal.x * normal.x > 0.99f ? glm::vec3{ 0, 1, 0 } : glm::vec3{ 1, 0, 0 };
     glm::vec3 xAxis = glm::normalize(glm::cross(normal, ref));
 
     return project(vertices, xAxis, glm::normalize(glm::cross(normal, xAxis)));

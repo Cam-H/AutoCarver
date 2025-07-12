@@ -6,7 +6,7 @@
 #define AUTOCARVER_POLYGON_H
 
 #include <vector>
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 #include "geometry/Triangle.h"
 
@@ -38,6 +38,7 @@ public:
 
     float xSpan() const;
     float ySpan() const;
+    glm::vec2 spanCenter() const;
 
     void xExtents(float& near, float& far) const;
     void yExtents(float& near, float& far) const;
@@ -49,9 +50,8 @@ public:
     std::vector<uint32_t> hull() const;
     static std::vector<uint32_t> hull(const std::vector<glm::vec2>& vertices);
 
-    std::vector<Triangle> tesselate();
-    std::vector<Triangle> bowyerWatson(bool cullTriangles = true, float direction = 1);
-    static std::vector<Triangle> bowyerWatson(const std::vector<glm::vec2>& border, bool cullTriangles = true, float direction = 1);
+    std::vector<Triangle> triangulate() const;
+    static std::vector<Triangle> triangulate(const std::vector<glm::vec2>& vertices);
 
     [[nodiscard]] virtual std::vector<std::pair<glm::vec2, glm::vec2>> debugEdges() const;
 

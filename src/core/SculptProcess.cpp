@@ -4,7 +4,7 @@
 
 #include "SculptProcess.h"
 
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 #include "Sculpture.h"
 #include "geometry/poly/Profile.h"
@@ -260,7 +260,7 @@ void SculptProcess::planOutlineRefinement(Profile& profile)
     mesh->setFaceColor({0, 0, 1});
     createBody(mesh);
 
-    profile.correctWinding();
+//    profile.correctWinding();
 
     uint32_t count = 0;
     while (!profile.complete() && count < 10) {

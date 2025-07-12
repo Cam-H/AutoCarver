@@ -8,7 +8,7 @@
 #include <string>
 #include <fstream>
 
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 class Serializer {
 private:

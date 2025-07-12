@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 class RigidBody;
 class EPA;

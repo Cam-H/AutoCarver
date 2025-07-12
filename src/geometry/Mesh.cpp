@@ -10,7 +10,7 @@
 
 #include <fstream>
 #include <iostream>
-#include <glm/glm.hpp>
+#include <glm.hpp>
 #include <utility>
 //#include <glm/gtx/norm.hpp>
 
@@ -78,6 +78,17 @@ Mesh::Mesh(const Mesh& mesh)
         , m_baseColor(mesh.m_baseColor)
         , m_vertexColors(mesh.m_vertexColors)
         , m_adjacencyOK(mesh.m_adjacencyOK)
+{
+
+}
+
+Mesh::Mesh(uint32_t vertexCount, uint32_t faceCount, uint32_t indexCount)
+    : m_vertices(vertexCount)
+    , m_faces(faceCount, indexCount)
+    , m_vertexNormals(nullptr, 0)
+    , m_colorOverride(false)
+    , m_baseColor(1.0f, 1.0f, 1.0f)
+    , m_adjacencyOK(false)
 {
 
 }

@@ -5,7 +5,7 @@
 #ifndef AUTOCARVER_CIRCLE_H
 #define AUTOCARVER_CIRCLE_H
 
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 class Circle {
 public:

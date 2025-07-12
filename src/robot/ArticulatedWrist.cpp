@@ -6,9 +6,9 @@
 
 #include "Joint.h"
 
-#include <glm/glm.hpp>
+#include <glm.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/quaternion.hpp>
+#include <gtx/quaternion.hpp>
 
 #include <iostream>
 
@@ -35,7 +35,6 @@ ArticulatedWrist::ArticulatedWrist(float d1, float l2, float l3, float d6)
 
 std::vector<float> ArticulatedWrist::invkin(const glm::vec3& position, const glm::quat& rotation)
 {
-    std::cout << "INVK0\n";
 
     std::vector<float> values(6, 0);
     float l2 = m_joints[1].getParameters().len;
@@ -58,10 +57,8 @@ std::vector<float> ArticulatedWrist::invkin(const glm::vec3& position, const glm
     values[1] = atan2f(Oc.z - d1, sqrtf(r)) + atan2f(l3 * cosf(values[2]), l2 + l3 * sinf(values[2]));
 
 
-    std::cout << "INVK1\n";
     // Verify the solved position joints are valid
     if (!ikValidation({ values[0], values[1], values[2]})) return {};
-    std::cout << "INVK2\n";
 
 
     // Calculate rotation matrix of wrist to match desired rotation
@@ -73,11 +70,8 @@ std::vector<float> ArticulatedWrist::invkin(const glm::vec3& position, const glm
     values[4] = atan2f(sqrtf(R36[2][0] * R36[2][0] + R36[2][1] * R36[2][1]), R36[2][2]);
     values[5] = atan2f(R36[1][2], -R36[0][2]);
 
-    std::cout << "INVK3\n";
-
     // Verify the solved rotation joints are valid
     if (!ikValidation(values, position, rotation)) return {};
-    std::cout << "INVK4\n";
 
     return values;
 }

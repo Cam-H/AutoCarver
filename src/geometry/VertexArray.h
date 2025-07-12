@@ -11,8 +11,8 @@
 
 #include <vector>
 
-#include <glm/vec2.hpp>
-#include <glm/vec3.hpp>
+#include <vec2.hpp>
+#include <vec3.hpp>
 
 class VertexArray {
 public:

@@ -11,13 +11,15 @@
 #include <iostream>
 #include <algorithm>
 
-PolygonWidget::PolygonWidget(QWidget *parent) : QWidget(parent), m_selection(-1)
+PolygonWidget::PolygonWidget(QWidget *parent)
+        : QWidget(parent)
         , m_poly(nullptr)
-        , m_latest(false)
+        , m_selection(-1)
         , m_polygon(true)
         , m_triangulation(false)
         , m_hull(false)
         , m_debugEdges(true)
+        , m_centered(false)
         , m_scalar(1.0f)
         , m_offset()
 {
@@ -26,9 +28,19 @@ PolygonWidget::PolygonWidget(QWidget *parent) : QWidget(parent), m_selection(-1)
 
 void PolygonWidget::setPolygon(Polygon *polygon)
 {
+    if (m_poly == polygon) return;
+
     m_poly = polygon;
     m_selection = -1;
-    m_latest = false;
+    std::cout << "CCW: " << polygon->isCCW() << "\n";
+    if (m_centered) center();
+    else repaint();
+}
+
+void PolygonWidget::uncenter()
+{
+    if (!m_centered) return;
+    m_centered = false;
     repaint();
 }
 
@@ -46,8 +58,6 @@ void PolygonWidget::center()
         return lhs.y < rhs.y;
     });
 
-
-
     glm::vec2 size = { width(), height() };
 
     float margin = 0.1f, im = 1.0f - margin;
@@ -55,23 +65,37 @@ void PolygonWidget::center()
 
     m_offset = 0.5f * (-m_scalar * glm::vec2{
             (*xMax).x + (*xMin).x,
-            (*yMax).y + (*yMin).y
-    } + size);
-//    m_offset += 0.5f * margin * size;
+            -((*yMax).y + (*yMin).y)
+    } + glm::vec2{ size.x, size.y });
 
-    std::cout << m_offset.x << " " << m_offset.y << " " << width() << " " << height() << " " << m_scalar << "\n";
-
+    m_centered = true;
     repaint();
+}
+
+void PolygonWidget::setCentered(bool centered)
+{
+    if (centered) center();
+    else uncenter();
 }
 
 glm::vec2 PolygonWidget::transformed(const glm::vec2& vertex) const
 {
-    return m_scalar * vertex + m_offset;
+    if (!m_centered) return { vertex.x, height() - vertex.y };
+
+    return {
+             m_scalar * vertex.x + m_offset.x,
+            -m_scalar * vertex.y + m_offset.y
+    };
 }
 
 glm::vec2 PolygonWidget::invTransformed(const glm::vec2& vertex) const
 {
-    return (vertex - m_offset) / m_scalar;
+    if (!m_centered) return { vertex.x, height() - vertex.y };
+
+    return glm::vec2{
+             vertex.x - m_offset.x,
+            -vertex.y + m_offset.y
+    } / m_scalar;
 }
 
 void PolygonWidget::enablePolygon(bool enable)
@@ -94,19 +118,6 @@ void PolygonWidget::enableHull(bool enable)
 
 Polygon* PolygonWidget::getPolygon()
 {
-    if (!m_latest) {
-//        delete m_poly;
-//
-//        // Construct a polygon to process based on visual geometry
-//        std::vector<QVector2D> border;
-//        for (const QPoint &vertex : m_vertices) {
-//            border.emplace_back(vertex.x(), vertex.y());
-//        }
-//
-//        m_poly = new Polygon(border);
-        m_latest = true;
-    }
-
     return m_poly;
 }
 
@@ -129,14 +140,13 @@ void PolygonWidget::paintEvent(QPaintEvent *)
     QPen triPen(Qt::cyan);
     triPen.setWidth(1.0);
 
-    std::vector<QVector2D> cut = {QVector2D(250, 150), QVector2D(150, 250), QVector2D(250, 350), QVector2D(350, 250)};
     std::vector<QColor> colorSet = {Qt::green, Qt::cyan, Qt::yellow, Qt::blue, Qt::red, Qt::darkBlue, Qt::magenta, Qt::gray, Qt::black, Qt::darkCyan};
     int idx = 0;
 
     // Draw tesselation results
     if (m_triangulation) {
         Polygon *poly = getPolygon();
-        std::vector<Triangle> triangles = poly->tesselate();
+        std::vector<Triangle> triangles = poly->triangulate();
 
         for (const Triangle &tri : triangles) {
             painter.setPen(colorSet[idx]);
@@ -199,6 +209,7 @@ void PolygonWidget::paintEvent(QPaintEvent *)
         painter.drawEllipse(QPoint((int)vec.x, (int)vec.y), 3, 3);
     }
 
+    // Style selected vertex
     if (m_selection != -1) {
         painter.setBrush(Qt::blue);
         const glm::vec2& vertex = transformed(m_poly->border()[m_selection]);
@@ -235,7 +246,6 @@ void PolygonWidget::mouseMoveEvent(QMouseEvent *event)
 
     if ((event->buttons() & Qt::LeftButton) && m_selection != -1) {
         m_poly->positionVertex(m_selection, invTransformed({ event->pos().x(), event->pos().y() }));
-        m_latest = false;
         repaint();
     }
 }
@@ -252,14 +262,12 @@ void PolygonWidget::keyPressEvent(QKeyEvent *event)
                 if (m_poly->vertexCount() > 3) {
                     m_poly->removeVertex(m_selection);
                     m_selection = -1;
-                    m_latest = false;
                     repaint();
                 }
                 break;
             case Qt::Key_Control:
                 m_poly->insertVertex(m_selection, m_poly->border()[m_selection]);
                 m_selection++;
-                m_latest = false;
                 repaint();
                 break;
         }

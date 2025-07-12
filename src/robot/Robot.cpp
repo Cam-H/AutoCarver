@@ -5,10 +5,10 @@
 #include "Robot.h"
 
 #include <utility>
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 #define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/matrix_decompose.hpp>
+#include <gtx/matrix_decompose.hpp>
 
 #include "geometry/MeshBuilder.h"
 

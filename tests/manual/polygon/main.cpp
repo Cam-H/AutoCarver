@@ -145,6 +145,11 @@ int main(int argc, char *argv[])
         displayWidget->update();
     });
 
+    auto centerButton = window->findChild<QCheckBox*>("centerButton");
+    QObject::connect(centerButton, &QCheckBox::stateChanged, [&](int state) {
+        displayWidget->setCentered(state == Qt::CheckState::Checked);
+    });
+
     auto upScaleButton = window->findChild<QPushButton*>("upScaleButton");
     QObject::connect(upScaleButton, &QPushButton::clicked, [&]() {
         polygons[selection].scale({ 250, 250}, 1.05f);

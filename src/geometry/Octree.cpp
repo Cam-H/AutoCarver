@@ -84,19 +84,21 @@ Octree::OctreeIterator<IsConst>& Octree::OctreeIterator<IsConst>::operator++()
 
 Octree::Octree(float length)
     : m_lengths({ length })
-    , m_maxDepth(10)
+    , m_maxDepth(6)
 {
-    // Reserve memory to prepare for development of the Octree
-    // Reserve less than maximum to reduce memory usage (Full development is rare)
-    m_octants.reserve(maximumOctantCount(m_maxDepth - 1));
-
     calculateLengths();
     reset();
 }
 
 void Octree::reset()
 {
+    if (m_maxDepth > 10) throw std::runtime_error("[Octree] Requested depth is too large. Try further subdividing with multiple Octrees");
+
     m_octants = { Octant(top(), 0) };
+
+    // Reserve memory to prepare for development of the Octree
+    // Reserve less than maximum to reduce memory usage (Full development is rare)
+    m_octants.reserve(maximumOctantCount(m_maxDepth - 1));
 }
 
 bool Octree::unite(const Sphere& sphere)
@@ -147,14 +149,15 @@ void Octree::setLength(float length)
     calculateLengths();
 }
 
-void Octree::setMaximumDepth(uint32_t depth)
+void Octree::setMaximumDepth(uint8_t depth)
 {
     if (m_maxDepth < depth) {
         m_maxDepth = depth;
         calculateLengths();
     } else {
         m_maxDepth = depth;
-        // TODO Prune octree
+        // TODO Prune octree instead
+        reset();
     }
 }
 
@@ -206,11 +209,11 @@ glm::vec3 Octree::top() const
     return -m_lengths[0] * 0.5f * glm::vec3{ 1, 1, 1 };
 }
 
-uint32_t Octree::octantCount(uint8_t status) const
+size_t Octree::octantCount(uint8_t status) const
 {
     if (status == Octant::Status::DEAD) return 0; //TODO
 
-    uint32_t sum = 0;
+    size_t sum = 0;
     for (const Octant& octant : *this) {
         sum += octant.status == status;
     }
@@ -224,26 +227,26 @@ uint32_t Octree::octantCount(uint8_t status) const
 void Octree::calculateLengths()
 {
     m_lengths.resize(m_maxDepth);
-    for (uint32_t i = 1; i < m_maxDepth; i++) m_lengths[i] = 0.5f * m_lengths[i - 1];
+    for (uint8_t i = 1; i < m_maxDepth; i++) m_lengths[i] = 0.5f * m_lengths[i - 1];
 }
 
-uint32_t Octree::maximumOctantCount() const
+size_t Octree::maximumOctantCount() const
 {
     return maximumOctantCount(m_maxDepth);
 }
 
-uint32_t Octree::maximumOctantCount(uint32_t depth)
+size_t Octree::maximumOctantCount(uint8_t depth)
 {
-    uint32_t count = 1;
-    for (uint32_t i = 0; i < depth; i++) count *= 8;
+    size_t count = 1;
+    for (uint8_t i = 0; i < depth; i++) count *= 8;
     return count;
 }
 
-glm::vec3 Octree::octantOffset(uint32_t index, float halfLength)
+glm::vec3 Octree::octantOffset(uint8_t index, float halfLength)
 {
     return halfLength * octantOffset(index);
 }
-glm::vec3 Octree::octantOffset(uint32_t index)
+glm::vec3 Octree::octantOffset(uint8_t index)
 {
     switch (index) {
         case 0: return {};

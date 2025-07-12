@@ -12,6 +12,7 @@
 
 #include "fileIO/Serializable.h"
 
+#include "MeshBuilder.h"
 #include "ConvexHull.h"
 
 #include "VertexArray.h"
@@ -22,6 +23,8 @@ static glm::vec3 NULL_COLOR = { 1.0f, 0.0f, 1.0f };
 
 class Mesh : public Serializable {
 public:
+
+    friend class MeshBuilder;
 
     explicit Mesh(float vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t indexCount);
     explicit Mesh(const ConvexHull& hull, bool applyColorPattern = true);
@@ -34,6 +37,8 @@ public:
 
     explicit Mesh(VertexArray vertices, FaceArray faces);
     explicit Mesh(const Mesh& mesh);
+
+    Mesh(uint32_t vertexCount, uint32_t faceCount, uint32_t indexCount);
 
     bool serialize(const std::string& filename) override;
     bool serialize(std::ofstream& file) override;
@@ -108,8 +113,6 @@ public:
     void print() const;
 
 private:
-
-    explicit Mesh();
 
     void initialize();
 

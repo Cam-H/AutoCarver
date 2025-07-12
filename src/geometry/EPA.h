@@ -7,7 +7,7 @@
 
 #include <string>
 #include <vector>
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 class ConvexHull;
 

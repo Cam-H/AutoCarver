@@ -10,7 +10,7 @@
 
 
 #include <QVector3D>
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 #include "Core/Timer.h"
 

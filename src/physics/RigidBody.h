@@ -10,7 +10,7 @@
 // Mesh manipulation
 
 #include <vector>
-#include "glm/glm.hpp"
+#include "glm.hpp"
 
 #include "fileIO/Serializable.h"
 

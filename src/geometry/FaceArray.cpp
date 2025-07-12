@@ -7,7 +7,7 @@
 #include "fileIO/Serializable.h"
 #include "geometry/poly/Polygon.h"
 
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 #include <utility>
 #include <unordered_map>
@@ -150,6 +150,27 @@ FaceArray FaceArray::deserialize(std::ifstream& file)
     return fa;
 }
 
+glm::vec3 FaceArray::calculateNormal(const std::vector<glm::vec3>& boundary)
+{
+    if (boundary.size() < 3) throw std::runtime_error("[FaceArray] Can not calculate the normal of boundary! Inadequate size");
+
+    if (boundary.size() == 3) return Triangle::normal(boundary[0], boundary[1], boundary[2]);
+
+    glm::vec3 normal = {};
+    for (uint32_t i = 0; i < boundary.size(); i++) {
+        const glm::vec3& current = boundary[i];
+        const glm::vec3& next = boundary[(i + 1) % boundary.size()];
+
+        normal += glm::vec3{
+                (current.y - next.y) * (current.z + next.z),
+                (current.z - next.z) * (current.x + next.x),
+                (current.x - next.x) * (current.y + next.y)
+        };
+    }
+
+    return glm::normalize(normal);
+}
+
 void FaceArray::calculateNormals(const std::vector<glm::vec3>& vertices)
 {
     m_normals = std::vector<glm::vec3>(m_faceCount);
@@ -197,7 +218,7 @@ void FaceArray::triangulate(const std::vector<glm::vec3>& vertices)
             for (uint32_t j = 0; j < m_faceSizes[i]; j++) border[j] = vertices[*(idxPtr + j)];
 
             // Find the Delaunay triangulation of the projected 2D polygon
-            auto triangles = Polygon::bowyerWatson(VertexArray::project(border, m_normals[i]));
+            auto triangles = Polygon::triangulate(VertexArray::project(border, m_normals[i]));
 
             // Map indices to the original set
             m_triFaceLookup.emplace_back(m_triangles.size());

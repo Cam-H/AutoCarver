@@ -70,11 +70,16 @@ void updateImage()
     profile = detector->profile();
     profile.setRefinementMethod(Profile::RefinementMethod::DELAUNEY);
 
-    std::cout << "Border: " << profile.vertexCount() << "\n";
+
+    auto sc = profile.spanCenter();
+    profile.translate(-sc);
+//    profile.translate(sc + glm::vec2{0.01f, 0});
+
     auto extrude = MeshBuilder::extrude(profile.projected3D(), profile.normal(), 4);
+
     if (extrude != nullptr) {
         extrude->setBaseColor({1, 0, 1});
-        extrude->translate(-2.0f * profile.normal());
+//        extrude->translate(-2.0f * profile.normal() + mesh->boundedOffset());
         MeshHandler::exportMesh(extrude, "border.obj");
 
         if (silhouette == nullptr) silhouette = scene->createBody(extrude);
@@ -94,9 +99,7 @@ void updateImage()
     px->convertFromImage(detector->sink());
     processView->setPixmap(*px);
 
-
     sceneWidget->update();
-
 }
 
 int main(int argc, char *argv[])
@@ -132,6 +135,18 @@ int main(int argc, char *argv[])
 //    body->prepareColliderVisuals();
 //    body->zero();
 
+//    std::vector<glm::vec3> border = {
+//            {0, 0, 0},
+//            {2, 0, 0},
+//            {2, 2, 0},
+//            {0, 2, 0}
+//    };
+//    auto normal = FaceArray::calculateNormal(border);
+//    std::cout << normal.x << " " << normal.y << " " << normal.z << " Normal\n";
+//    auto mesh = MeshBuilder::extrude(border, normal, 5.0f);
+//    mesh->setFaceColor({0, 0, 1});
+//    scene->createBody(mesh);
+
     sceneWidget = window->findChild<SceneWidget*>("sceneWidget");
     sceneWidget->camera().setPosition(QVector3D(5, 0, 0));
     sceneWidget->setScene(scene);
@@ -157,6 +172,11 @@ int main(int argc, char *argv[])
         detector->capture()->camera().rotate(5);
         detector->capture()->focus();
         updateImage();
+
+        auto vec = mesh->boundedOffset();
+        auto sc = profile.spanCenter();
+        std::cout << vec.x << " " << vec.y << " " << vec.z << " ~~~ " << body->position().x << " " << body->position().y << " " << body->position().z << "\n";
+        std::cout << profile.xSpan() << " " << profile.ySpan() << " " << sc.x << " " << sc.y << "\n";
     });
 
     auto refineButton = window->findChild<QPushButton*>("refineButton");

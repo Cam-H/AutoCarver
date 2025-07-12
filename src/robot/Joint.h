@@ -5,7 +5,7 @@
 #ifndef AUTOCARVER_JOINT_H
 #define AUTOCARVER_JOINT_H
 
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 struct DHParameter {
     float len;

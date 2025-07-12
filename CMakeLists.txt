@@ -19,10 +19,12 @@ qt_standard_project_setup()
 
 #find_library(ASSIMP_LIBRARY assimp PATHS ./extern/assimp/bin)
 link_directories(./extern/assimp/bin ./extern/assimp/lib)
-include_directories(./extern/glm)
 
 include_directories(./extern/assimp/include)
-include_directories(./extern/glm)
+include_directories(./extern/CDT/CDT/include)
+include_directories(./extern/glm/glm)
+
+add_subdirectory(extern/CDT/CDT)
 
 #add_library()
 

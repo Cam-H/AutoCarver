@@ -11,6 +11,8 @@
 #include <limits>
 #include <algorithm>
 
+#include <CDT.h>
+
 #include "geometry/Circle.h"
 
 Polygon::Polygon(const std::vector<glm::vec2>& border, bool enforceCCWWinding)
@@ -98,7 +100,7 @@ bool Polygon::isCCW() const
         sum += (current.x - next.x) * (current.y + next.y);
     }
 
-    return sum < 0;
+    return sum > 0;
 }
 
 float Polygon::xSpan() const
@@ -112,6 +114,15 @@ float Polygon::ySpan() const
     float near, far;
     yExtents(near, far);
     return far - near;
+}
+
+glm::vec2 Polygon::spanCenter() const
+{
+    float near, far, x;
+    xExtents(near, far);
+    x = (near + far) / 2;
+    yExtents(near, far);
+    return { x, (near + far) / 2 };
 }
 
 void Polygon::xExtents(float& near, float& far) const
@@ -219,101 +230,43 @@ float Polygon::cross(const glm::vec2& origin, const glm::vec2& a, const glm::vec
     return (a.x - origin.x) * (b.y - origin.y) - (a.y - origin.y) * (b.x - origin.x);
 }
 
-std::vector<Triangle> Polygon::tesselate()
+std::vector<Triangle> Polygon::triangulate() const
 {
-    return bowyerWatson();
+    return triangulate(m_vertices);
 }
 
-// Find the Delaunay triangulation of the polygon
-std::vector<Triangle> Polygon::bowyerWatson(bool cullTriangles, float direction)
+std::vector<Triangle> Polygon::triangulate(const std::vector<glm::vec2>& vertices)
 {
-    return Polygon::bowyerWatson(m_vertices, cullTriangles, direction);
-}
+    CDT::Triangulation<float> cdt;
 
-// Find the Delaunay triangulation of the provided border
-std::vector<Triangle> Polygon::bowyerWatson(const std::vector<glm::vec2>& border, bool cullTriangles, float direction) {
-    uint32_t n = border.size();
-    float minX = std::numeric_limits<float>::max(), maxX = std::numeric_limits<float>::lowest();
-    float minY = minX, maxY = maxX;
+    // Convert polygon data into appropriate CDT types
+    std::vector<CDT::V2d<float>> cVertices;
+    cVertices.reserve(vertices.size());
+    for (const glm::vec2& vertex : vertices) cVertices.emplace_back(vertex.x, vertex.y);
 
-    for (const auto& vertex : border) {
-        minX = std::min(minX, vertex.x);
-        maxX = std::max(maxX, vertex.x);
-        minY = std::min(minY, vertex.y);
-        maxY = std::max(maxY, vertex.y);
-    }
+    std::vector<CDT::Edge> edges;
+    edges.reserve(vertices.size());
+    for (uint32_t i = 0; i < vertices.size() - 1; i++) edges.emplace_back(i, i + 1);
+    edges.emplace_back(vertices.size() - 1, 0);
 
-    float dx = maxX - minX, dy = maxY - minY;
-    float delta = std::max(dx, dy);
-    float midx = (minX + maxX) / 2;
-    float midy = (minY + maxY) / 2;
-
-    std::vector<glm::vec2> vertices = border;
-    // Super-triangle points
-    vertices.emplace_back(midx - 20.0f * delta, midy - delta);
-    vertices.emplace_back(midx, midy + 20.0f * delta);
-    vertices.emplace_back(midx + 20.0f * delta, midy - delta);
-
-    std::vector<Triangle> triangles = {
-            {n, n + 1, n + 2}
-    };
+    std::vector<Triangle> triangles;
 
     try {
-        for (int i = 0; i < n; i++) {
-            const auto& p = vertices[i];
-            std::vector<Triangle> bad;
-            std::vector<Edge> boundary;
 
-            // Find triangles whose circumcircle contains the point
-            for (const auto& tri : triangles) {
-                auto circle = Circle::triangleCircumcircle(vertices[tri.I0], vertices[tri.I1], vertices[tri.I2]);
-                if (circle.encloses(p)) {
-                    bad.push_back(tri);
-                }
-            }
+        // Attach polygon data
+        cdt.insertVertices(cVertices);
+        cdt.insertEdges(edges);
 
-            // Find boundary (edges not shared by two bad triangles)
-            std::multiset<Edge> edges;
-            for (const auto& tri : bad) {
-                edges.insert(Edge(tri.I0, tri.I1));
-                edges.insert(Edge(tri.I1, tri.I2));
-                edges.insert(Edge(tri.I2, tri.I0));
-            }
+        cdt.eraseOuterTriangles();
 
-            std::set<Edge> boundaryEdges;
-            for (const auto& e : edges) {
-                if (edges.count(e) == 1)
-                    boundaryEdges.insert(e);
-            }
-
-            // Remove bad triangles
-            triangles.erase(remove_if(triangles.begin(), triangles.end(), [&](const Triangle& t) {
-                return find(bad.begin(), bad.end(), t) != bad.end();
-            }), triangles.end());
-
-            // Re-triangulate the hole
-            for (const auto& e : boundaryEdges) {
-                triangles.emplace_back(e.u, e.v, i);
-            }
+        // Convert output into a usable format
+        for (const CDT::Triangle& triangle : cdt.triangles) {
+            triangles.emplace_back(triangle.vertices[0], triangle.vertices[1], triangle.vertices[2]);
         }
-    } catch (const std::runtime_error& e) {
-        std::cerr << "Caught exception: " << e.what() << ". This face will not be triangulated\n";
-        return {};
+
+    } catch (std::exception& e) {
+        std::cout << e.what() << "\n";
     }
-
-    // Remove triangles connected to super triangle vertices
-    triangles.erase(remove_if(triangles.begin(), triangles.end(), [&](const Triangle& tri) {
-        return tri.I0 >= n || tri.I1 >= n || tri.I2 >= n;
-    }), triangles.end());
-
-    // Remove triangles outside the border (marked by inverted cross-product)
-    if (cullTriangles) {
-        triangles.erase(remove_if(triangles.begin(), triangles.end(), [&](const Triangle& tri) {
-            glm::vec2 ab = border[tri.I1] - border[tri.I0], ac = border[tri.I2] - border[tri.I0];
-            return direction * (ab.x * ac.y - ab.y * ac.x) < 0;
-        }), triangles.end());
-    }
-
 
     return triangles;
 }

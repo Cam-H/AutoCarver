@@ -4,3 +4,6 @@
 [submodule "extern/assimp"]
 	path = extern/assimp
 	url = https://github.com/assimp/assimp.git
+[submodule "extern/CDT"]
+	path = extern/CDT
+	url = https://github.com/artem-ogre/CDT.git

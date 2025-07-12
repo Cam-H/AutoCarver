@@ -5,7 +5,6 @@
 #ifndef AUTOCARVER_MESHBUILDER_H
 #define AUTOCARVER_MESHBUILDER_H
 
-#include "Mesh.h"
 
 #include "VertexArray.h"
 #include "FaceArray.h"
@@ -14,6 +13,8 @@
 #include <vector>
 #include <map>
 
+class Mesh;
+class ConvexHull;
 class Octree;
 
 class MeshBuilder {

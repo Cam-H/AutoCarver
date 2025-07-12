@@ -9,26 +9,10 @@
 #include <stack>
 #include <string>
 #include <cstdint>
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 class Sphere;
 class ConvexHull;
-
-//class Octant {
-//public:
-//
-//    Octant();
-//    ~Octant();
-//
-//    void clear();
-//
-//    uint32_t octantCount() const;
-//    bool terminates() const;
-//
-//public:
-//    std::array<Octant*, 8> children;
-//    uint8_t status; // 0 - No further divisions
-//};
 
 class Octree {
 public:
@@ -44,7 +28,7 @@ public:
 
         Octant(const glm::vec3& top, uint8_t depth);
 
-        uint32_t index;
+        size_t index;
         uint8_t status;
         glm::vec3 top;
         uint8_t depth;
@@ -102,18 +86,18 @@ public:
     bool intersect(const Sphere& sphere);
 
     void setLength(float length);
-    void setMaximumDepth(uint32_t depth);
+    void setMaximumDepth(uint8_t depth);
 
     bool collides(const Sphere& sphere) const;
 
     glm::vec3 top() const;
 
-    uint32_t octantCount(uint8_t status = 1) const;
-    uint32_t maximumOctantCount() const;
-    static uint32_t maximumOctantCount(uint32_t depth);
+    size_t octantCount(uint8_t status = 1) const;
+    size_t maximumOctantCount() const;
+    static size_t maximumOctantCount(uint8_t depth);
 
-    static glm::vec3 octantOffset(uint32_t index, float halfLength);
-    static glm::vec3 octantOffset(uint32_t index);
+    static glm::vec3 octantOffset(uint8_t index, float halfLength);
+    static glm::vec3 octantOffset(uint8_t index);
 
     float octantLength(const Octant& octant) const;
 
@@ -149,7 +133,7 @@ private:
 
     std::vector<float> m_lengths;
 
-    uint32_t m_maxDepth;
+    uint8_t m_maxDepth;
 };
 
 

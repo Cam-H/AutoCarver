@@ -133,6 +133,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="centerButton">
+        <property name="text">
+         <string>Center</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="upScaleButton">
         <property name="text">
          <string>Scale (1.05x)</string>

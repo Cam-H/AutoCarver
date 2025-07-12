@@ -34,6 +34,7 @@ public:
     bool serialize(std::ofstream& file);
     static FaceArray deserialize(std::ifstream& file);
 
+    static glm::vec3 calculateNormal(const std::vector<glm::vec3>& boundary);
     void calculateNormals(const std::vector<glm::vec3>& vertices);
     void triangulate(const std::vector<glm::vec3>& vertices);
 

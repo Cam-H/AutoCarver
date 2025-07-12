@@ -4,11 +4,14 @@
 
 #include "MeshBuilder.h"
 
-#include "Octree.h"
-
-#include <glm/glm.hpp>
+#include <glm.hpp>
 #include <array>
 #include <unordered_map>
+
+#include "Mesh.h"
+#include "ConvexHull.h"
+#include "Octree.h"
+
 
 std::shared_ptr<Mesh> MeshBuilder::plane(float width, const glm::vec3& origin, const glm::vec3& normal)
 {
@@ -121,41 +124,46 @@ std::shared_ptr<Mesh> MeshBuilder::cylinder(float radius, float height, uint32_t
 std::shared_ptr<Mesh> MeshBuilder::extrude(const std::vector<glm::vec3>& border, const glm::vec3& normal, float depth){
     if (border.size() < 3) return nullptr;
 
-    uint32_t vertexCount = 2 * border.size(), segments = border.size(), faceCount = 2 + segments;
+    uint32_t segments = border.size(), idx = 0;
+    uint32_t vertexCount = 2 * border.size(), faceCount = 2 + segments, indexCount = 2 * vertexCount + 4 * segments;
 
-    // Generate vertices to approximate a cylinder
-    auto *vertices = new float[3 * vertexCount], *vPtr = vertices;
+    auto mesh = std::make_shared<Mesh>(vertexCount, faceCount, indexCount);
 
     for (const glm::vec3& vertex : border) {
-        *vPtr++ = vertex.x;
-        *vPtr++ = vertex.y;
-        *vPtr++ = vertex.z;
+        mesh->m_vertices[idx++] = {
+                vertex.x + normal.x * depth,
+                vertex.y + normal.y * depth,
+                vertex.z + normal.z * depth
+        };
 
-        *vPtr++ = vertex.x + normal.x * depth;
-        *vPtr++ = vertex.y + normal.y * depth;
-        *vPtr++ = vertex.z + normal.z * depth;
+        mesh->m_vertices[idx++] = {
+                vertex.x,
+                vertex.y,
+                vertex.z
+        };
     }
 
-    auto *faces = new uint32_t[2 * vertexCount + 4 * segments], *fPtr = faces;
-    auto *faceSizes = new uint32_t[faceCount], *fsPtr = faceSizes;
+    uint32_t *idxPtr = mesh->m_faces[0], *sizePtr = mesh->m_faces.faceSizes();
 
     // Generate flat faces
-    for(uint32_t i = 0; i < vertexCount; i+=2) *fPtr++ = i;
-    for(uint32_t i = 1; i < vertexCount; i+=2) *fPtr++ = vertexCount - i;
+    for(uint32_t i = 0; i < vertexCount; i+=2) *idxPtr++ = i;
+    for(uint32_t i = 1; i < vertexCount; i+=2) *idxPtr++ = vertexCount - i;
 
-    *fsPtr++ = vertexCount / 2;
-    *fsPtr++ = vertexCount / 2;
+    *sizePtr++ = vertexCount / 2;
+    *sizePtr++ = vertexCount / 2;
 
     // Generate border faces
     for (uint32_t i = 0; i < segments; i++) {
-        *fPtr++ = 2 * i;
-        *fPtr++ = 2 * i + 1;
-        *fPtr++ = (2 * i + 3) % (2 * segments);
-        *fPtr++ = (2 * i + 2) % (2 * segments);
-        *fsPtr++ = 4;
+        *idxPtr++ = 2 * i;
+        *idxPtr++ = 2 * i + 1;
+        *idxPtr++ = (2 * i + 3) % (2 * segments);
+        *idxPtr++ = (2 * i + 2) % (2 * segments);
+        *sizePtr++ = 4;
     }
 
-    return std::make_shared<Mesh>(vertices, vertexCount, faces, faceSizes, faceCount);
+    mesh->initialize(); // TODO skip and write indices directly (Easily known so can avoid CDT calculation)
+
+    return mesh;
 }
 
 std::shared_ptr<Mesh> MeshBuilder::icosahedron(float radius){

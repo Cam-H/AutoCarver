@@ -5,7 +5,7 @@
 #ifndef AUTOCARVER_TRANSFORMABLE_H
 #define AUTOCARVER_TRANSFORMABLE_H
 
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 class Transformable {
 public:

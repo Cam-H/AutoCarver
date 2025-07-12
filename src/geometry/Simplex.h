@@ -5,7 +5,7 @@
 #ifndef AUTOCARVER_SIMPLEX_H
 #define AUTOCARVER_SIMPLEX_H
 
-#include <glm/glm.hpp>
+#include <glm.hpp>
 #include <array>
 
 class ConvexHull;

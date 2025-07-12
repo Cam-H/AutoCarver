@@ -34,12 +34,13 @@ void EdgeDetect::setMesh(const std::shared_ptr<Mesh>& newMesh)
     mesh = newMesh;
     m_hull = ConvexHull(mesh->vertices());
 
-    m_capture->clearTargets();
     prepareTargets();
 }
 
 void EdgeDetect::prepareTargets()
 {
+    m_capture->clearTargets();
+
 //    auto hull = std::make_shared<Mesh>(ConvexHull(mesh->vertices()));
 //    m_capture->addTarget(hull, QColor(0, 0, 180));
 

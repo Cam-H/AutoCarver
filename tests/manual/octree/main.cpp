@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
                 default: std::cout << "Unknown type: " << type << "\n";
             }
 
-//            std::cout << oct->memoryFootprint() << "\n";
+            std::cout << oct->memoryFootprint() << "\n";
             sceneWidget->update();
         });
 

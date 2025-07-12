@@ -6,12 +6,12 @@
 
 #include <iostream>
 
-#include <glm/gtc/matrix_transform.hpp>
+#include <gtc/matrix_transform.hpp>
 
 #define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/matrix_decompose.hpp>
-#include <glm/gtx/euler_angles.hpp>
-#include <glm/gtx/string_cast.hpp>
+#include <gtx/matrix_decompose.hpp>
+#include <gtx/euler_angles.hpp>
+#include <gtx/string_cast.hpp>
 
 Transformable::Transformable()
     : m_transform(1.0f)

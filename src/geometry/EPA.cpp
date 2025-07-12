@@ -4,7 +4,7 @@
 
 #include "EPA.h"
 
-#include "glm/gtc/quaternion.hpp"
+#include <gtc/quaternion.hpp>
 
 #include "ConvexHull.h"
 #include "Simplex.h"

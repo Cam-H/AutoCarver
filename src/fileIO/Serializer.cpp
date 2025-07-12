@@ -8,7 +8,7 @@
 #include <iostream>
 #include <limits>
 
-#include <glm/gtc/type_ptr.hpp>
+#include <gtc/type_ptr.hpp>
 
 Serializer *Serializer::instance = new Serializer();
 

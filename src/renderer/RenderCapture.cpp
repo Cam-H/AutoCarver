@@ -210,7 +210,6 @@ void RenderCapture::focus()
         target.mesh->extents(axis, min, max);
         float dist = std::max(std::abs(min), max) + 1;
         if (m_camera.getRadius() < dist) m_camera.setRadius(dist);
-    std::cout << min << " " << max << " " << dist << "\n";
 
         target.mesh->extents(hAxis, min, max);
         if (min < left) left = min;

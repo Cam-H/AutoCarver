@@ -7,8 +7,8 @@
 #include <iostream>
 
 #define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/matrix_decompose.hpp>
-#include <glm/gtc/epsilon.hpp>
+#include <gtx/matrix_decompose.hpp>
+#include <gtc/epsilon.hpp>
 
 KinematicChain::KinematicChain()
     : m_axisTransform3(1, 0, 0,
