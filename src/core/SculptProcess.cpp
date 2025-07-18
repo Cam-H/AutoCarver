@@ -109,7 +109,7 @@ void SculptProcess::skip()
     // Jump robot to endpoint and apply process to the sculpture
     if (m_step < m_actions.size()) {
         m_actions[m_step].target->moveTo( m_actions[m_step].trajectory->end());
-        m_sculpture->section();
+        m_sculpture->applySection();
         m_step++;
     }
 }
@@ -120,7 +120,7 @@ void SculptProcess::step(float delta)
 
     if (simulationIdle()) { // Handle transition between simulation actions
         if (m_actions[m_step].started) {
-            if (m_actions[m_step].trigger) m_sculpture->section();
+            if (m_actions[m_step].trigger) m_sculpture->applySection();
             m_step++;
         } else if (m_continuous) nextAction();
     }
@@ -191,7 +191,7 @@ void SculptProcess::planConvexTrim()
 //        planRoboticSection(min, max);
 
         // Record mesh manipulation operation for later application during carving process
-        m_sculpture->recordSection(step.origin, step.normal);
+        m_sculpture->queueSection(step.origin, step.normal);
 
         // Prepare for next step
         hull = hull.fragment(step.origin, step.normal);
@@ -242,39 +242,45 @@ void SculptProcess::planOutlineRefinement(float stepDg)
         // Use the profile to prepare appropriate sculpting instructions for the robots
         auto profile = detector->profile();
         profile.setRefinementMethod(Profile::RefinementMethod::DELAUNEY);
-//        profile.rotateAbout({ 0, 1, 0 }, -m_sculpture->rotation());
+        profile.rotateAbout({ 0, 1, 0 }, -m_sculpture->rotation());
 //        profile.centerScale(scalar);
         profile.scale(scalar);
         profile.translate(offset);
 //        profile.centerScale(scalar);
 //        profile.scale(scalar);
         planOutlineRefinement(profile);
-        break;
     }
 }
 
 void SculptProcess::planOutlineRefinement(Profile& profile)
 {
-    auto mesh = MeshBuilder::extrude(profile.projected3D(), profile.normal(), 2.0f);
-    mesh->translate(-profile.normal());
-    mesh->setFaceColor({0, 0, 1});
-    createBody(mesh);
+//    auto mesh = MeshBuilder::extrude(profile.projected3D(), profile.normal(), 2.0f);
+//    mesh->translate(-profile.normal());
+//    mesh->setFaceColor({0, 0, 1});
+//    createBody(mesh);
 
 //    profile.correctWinding();
 
     uint32_t count = 0;
-    while (!profile.complete() && count < 10) {
+    while (!profile.complete() && count < 3000) {
 
+        bool external = profile.isNextExternal();
         auto indices = profile.refine();
+        std::cout << "IDX: ";
+        for (auto i : indices) std::cout << i << " ";
+        std::cout << "\n";
         auto border = profile.projected3D(indices);
+        for(const glm::vec3& v : border) std::cout << v.x << " " << v.y << " " << v.z << "\n";
 
         planRoboticSection(border);
 
-        m_sculpture->recordSection(border, profile.normal());
+        if (border.size() == 3) {
+            m_sculpture->queueSection(border[0], border[1], border[2], profile.normal(), external);
+        }
 
 //        std::cout << "Profile: " << border.size() << ": \n";
 //        for (auto& v : border) std::cout << v.x << " " << v.y << " " << v.z << "\n";
-        createBody(MeshBuilder::extrude(border, profile.normal(), 2.0f));
+//        createBody(MeshBuilder::extrude(border, profile.normal(), 2.0f));
         count++;
     }
 

@@ -30,6 +30,9 @@ public:
     void correctWinding();
     virtual void inverseWinding();
 
+    void clean();
+    static std::vector<glm::vec2> clean(const std::vector<glm::vec2>& vertices);
+
     uint32_t vertexCount() const;
     const std::vector<glm::vec2>& border() const;
 
@@ -46,6 +49,7 @@ public:
     static void cullCollinear(std::vector<glm::vec2>& vertices, float tolerance = 1e-3);
 
     std::vector<glm::vec3> projected3D(const glm::vec3& xAxis, const glm::vec3& yAxis, const glm::vec3& offset = {}) const;
+    static std::vector<glm::vec3> projected3D(const std::vector<glm::vec2>& vertices, const glm::vec3& xAxis, const glm::vec3& yAxis, const glm::vec3& offset = {});
 
     std::vector<uint32_t> hull() const;
     static std::vector<uint32_t> hull(const std::vector<glm::vec2>& vertices);

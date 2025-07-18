@@ -70,21 +70,35 @@ void Profile::initialize()
 {
     if (m_vertices.size() < 4) return;
 
-    std::vector<uint32_t> border = hull();
-    std::cout << "Border: ";
-    for (uint32_t b : border) std::cout << b << " ";
-    std::cout << "\n";
+    correctWinding();
 
-    // Identify concave faces, noting boundaries with the convex hull
-    for (uint32_t i = 0; i < border.size(); i++) {
-        uint32_t idx = (i + 1) % border.size(), count = 1 + difference(border[i], border[idx], m_vertices.size());
-        if (count > 2) emplaceRemainder(border[i], count);
+    m_hull = hull();
+
+    // Reorganize recorded border to ensure it is in ascending order (Needed for future operations)
+    uint32_t last = m_hull[0];
+    for (uint32_t i = 1; i < m_hull.size(); i++) {
+        if (m_hull[i] < last) {
+            last = m_hull.size();
+            m_hull.insert(m_hull.begin(), m_hull.end(), m_hull.end() + m_hull.size() - i);
+            m_hull.erase(m_hull.begin() + last, m_hull.end());
+            break;
+        }
+        last = m_hull[i];
     }
 
-    std::cout << "Profile: " << isCCW() << " " << m_vertices.size() << " " << m_remainder.size() << " " << "\n";
-    for (auto& r : m_remainder) std::cout << r.first << " " << r.second << "\n";
+    std::cout << "Border: ";
+    for (uint32_t b : m_hull) std::cout << b << " ";
+    std::cout << "\n";
 
-//    correctWinding();
+
+    // Identify concave faces, noting boundaries with the convex hull
+    for (uint32_t i = 0; i < m_hull.size(); i++) {
+        uint32_t idx = (i + 1) % m_hull.size(), count = 1 + difference(m_hull[i], m_hull[idx], m_vertices.size());
+        if (count > 2) emplaceRemainder(m_hull[i], count);
+    }
+
+    std::cout << "Profile: " << isCCW() << " " << m_hull.size() << " " << m_vertices.size() << " " << m_remainder.size() << " " << "\n";
+    for (auto& r : m_remainder) std::cout << r.first << " " << r.second << "\n";
 
 }
 
@@ -134,11 +148,6 @@ uint32_t Profile::subdivide(const glm::vec2& normal, uint32_t start, uint32_t co
 {
     for (uint32_t i = 1; i < count - 1; i++) {
         float result = glm::dot(normal, glm::normalize(m_vertices[offsetIndex(start, i)] - m_vertices[start]));
-//            std::cout << start << " " << count << " " << offsetIndex(start, i) << " (" << i
-//            << ") " << normal.x << " " << normal.y << " "
-//            << result
-//            << "]]]\n";
-
         if (result > -0.02f) return i;
     }
 
@@ -181,7 +190,7 @@ void Profile::rotateAbout(const glm::vec3& axis, float theta)
     m_yAxis = rotation * m_yAxis;
 }
 
-void Profile::inverseWinding()
+void Profile::inverseWinding()//TODO update
 {
     Polygon::inverseWinding();
 
@@ -219,6 +228,14 @@ bool Profile::complete() const
     return m_next >= m_remainder.size();
 }
 
+bool Profile::isNextExternal() const
+{
+    std::cout << "EXT Check: " << m_remainder[m_next].first << " " << offsetIndex(m_remainder[m_next].first + m_remainder[m_next].second - 2) << "\n";
+    return !complete()
+        && std::binary_search(m_hull.begin(), m_hull.end(), m_remainder[m_next].first)
+        && std::binary_search(m_hull.begin(), m_hull.end(), offsetIndex(m_remainder[m_next].first + m_remainder[m_next].second - 2));
+}
+
 const glm::vec3& Profile::normal() const
 {
     return m_normal;
@@ -228,8 +245,8 @@ std::vector<uint32_t> Profile::triangleRefinement()
 {
     auto indices = {
             m_remainder[m_next].first,
-            (uint32_t)((m_remainder[m_next].first + 1) % m_vertices.size()),
-            (uint32_t)((m_remainder[m_next].first + 2) % m_vertices.size())
+            offsetIndex(m_remainder[m_next].first, 1),
+            offsetIndex(m_remainder[m_next].first, 2)
     };
 
     if (isValidRefinement(indices)) {
@@ -284,6 +301,9 @@ std::vector<uint32_t> Profile::delauneyRefinement()
             m_remainder[m_next] = { triangle[1], d2 + 1};
         }
 
+        std::cout << triangle[0] << " " << triangle[1] << " " << triangle[2] << " Tri\n";
+
+//        return { triangle[2], triangle[1], triangle[0] };
         return triangle;
     } else {
         m_next++; // Skip over this section because it is unreachable
@@ -299,7 +319,11 @@ std::vector<uint32_t> Profile::testRefinement()
 
 bool Profile::isValidRefinement(const std::vector<uint32_t>& indices) const
 {
-//    std::cout << "VR: " << area(indices) << "\n";
+    std::cout << "VR: " << area(indices) << "\n";
+    if (area(indices) < m_minimumArea) {
+        std::cout << indices.size() << "=]\n";
+        for (auto i : indices) std::cout << i << "|" << m_vertices[i].x << " " << m_vertices[i].y << "\n";
+    }
     return !indices.empty() && area(indices) > m_minimumArea;
 }
 
@@ -354,7 +378,7 @@ std::vector<glm::vec3> Profile::projected3D(const std::vector<uint32_t>& indices
         vertices.emplace_back(m_vertices[idx]);
     }
 
-    return Polygon(vertices).projected3D(m_xAxis, m_yAxis, offset);
+    return Polygon::projected3D(vertices, m_xAxis, m_yAxis, offset);
 }
 
 std::vector<std::pair<glm::vec2, glm::vec2>> Profile::debugEdges() const {

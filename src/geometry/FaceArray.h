@@ -63,6 +63,7 @@ public:
 
     [[nodiscard]] std::tuple<uint32_t, uint32_t> triangleLookup(uint32_t faceIdx) const;
 
+    [[nodiscard]] std::vector<glm::vec3> faceBorder(uint32_t idx, const std::vector<glm::vec3>& vertices) const;
 
 //    FaceArray triangulated();
 

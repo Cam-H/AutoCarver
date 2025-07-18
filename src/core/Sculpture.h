@@ -24,14 +24,17 @@ public:
     void restore();
     void restoreAsHull();
 
-    void recordSection(const glm::vec3& origin, const glm::vec3& normal);
-    void recordSection(const std::vector<glm::vec3>& border, const glm::vec3& normal);
+    void queueSection(const glm::vec3& origin, const glm::vec3& normal);
+    void queueSection(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& normal, bool external = false);
+//    void queueSection(const std::vector<glm::vec3>& border, const glm::vec3& normal);
 
-    void section();
-    void section(const glm::vec3& origin, const glm::vec3& normal);
-    void section(const std::vector<std::pair<glm::vec3, glm::vec3>>& surfaces);
+    bool applySection();
+
+    bool form();
 
     void remesh() override;
+
+    void applyCompositeColors(bool enable);
 
     const std::shared_ptr<Mesh>& sculpture();
 
@@ -52,14 +55,20 @@ public:
 
 private:
 
+    void colorHulls();
+
     void prepareBox();
     void prepareFragment(const ConvexHull& hull);
 
-    void triangleSection(const std::pair<glm::vec3, glm::vec3>& planeA, const std::pair<glm::vec3, glm::vec3>& planeB);
+    bool planarSection(const glm::vec3& origin, const glm::vec3& normal);
+    bool triangleSection(const std::pair<glm::vec3, glm::vec3>& planeA, const std::pair<glm::vec3, glm::vec3>& planeB, const std::vector<std::pair<glm::vec3, glm::vec3>>& limits);
 
+    inline static bool inLimit(const ConvexHull& hull, const std::pair<glm::vec3, glm::vec3>& limit);
+    inline static bool inLimit(const ConvexHull& hull, const std::vector<std::pair<glm::vec3, glm::vec3>>& limits);
 
     struct SectionOperation {
         std::vector<std::pair<glm::vec3, glm::vec3>> surfaces;
+        std::vector<std::pair<glm::vec3, glm::vec3>> limits;
 
         SectionOperation()
             : surfaces() {}
@@ -88,9 +97,12 @@ private:
     uint32_t m_step;
     std::vector<SectionOperation> m_operations;
 
+    uint32_t m_formStep;
+
     // Styling
     glm::vec3 m_baseColor;
     glm::vec3 m_highlightColor;
+    bool m_applyCompositeColor;
 
 };
 

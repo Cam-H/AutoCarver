@@ -49,9 +49,9 @@ public:
     uint32_t bodyCount();
 
 //    std::vector<const std::shared_ptr<Mesh>&> meshes();
+    void prepareBody(const std::shared_ptr<RigidBody>& body, uint8_t level = 0);
 
 protected:
-    void prepareBody(const std::shared_ptr<RigidBody>& body, uint8_t level = 0);
 
 private:
     void run();

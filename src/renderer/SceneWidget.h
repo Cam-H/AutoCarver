@@ -54,6 +54,8 @@ public:
 
     void clear();
 
+    void updateRenderGeometry(const std::shared_ptr<Mesh>& mesh);
+
     Camera& camera();
 
 signals:
@@ -75,7 +77,6 @@ protected:
     void resizeGL(int w, int h) override;
     void paintGL() override;
 
-    void updateRenderGeometry(const std::shared_ptr<Mesh>& mesh);
 
 private:
 

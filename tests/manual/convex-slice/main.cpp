@@ -143,6 +143,7 @@ int main(int argc, char *argv[])
     QObject::connect(sliceButton, &QPushButton::clicked, [&]() {
         auto fragments = base->hull().fragments(plane->position(), plane->up());
 
+//        std::cout << plane->up().x << " " << plane->up().y << " " << plane->up().z << "\n";
         if (!fragments.first.empty() && !fragments.second.empty()) {
             base->setMesh(std::make_shared<Mesh>(fragments.first), true);
 

@@ -303,9 +303,18 @@ void EdgeDetect::findBorder(std::vector<glm::vec2>& contour)
 
     // Apply calculated offsets to render to convert to model space
     scale = 1 / scale;
-    for (glm::vec2& vertex : contour) vertex = (vertex - offset) * scale;
 
-    m_profile = Profile(contour, m_axis, m_right, -m_up);
+    for (glm::vec2& vertex : contour) {
+        vertex = {
+                (vertex.x - offset.x) * scale,
+                (offset.y - vertex.y) * scale
+        };
+    }
+//    std::reverse(contour.begin(), contour.end());
+
+//    for (glm::vec2& vertex : contour) vertex = (vertex - offset) * scale;
+
+    m_profile = Profile(contour, m_axis, m_right, m_up);
 
     drawPolygon(projection, 200);
 

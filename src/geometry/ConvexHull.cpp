@@ -59,7 +59,7 @@ ConvexHull::ConvexHull(const std::shared_ptr<Mesh>& mesh)
 void ConvexHull::initialize()
 {
     if (m_cloud.size() < 4) {
-        std::cout << "\033[31mERROR! Can not generate a 3D convex hull with fewer than 4 vertices\033[0m\n";
+//        std::cout << "\033[31mERROR! Can not generate a 3D convex hull with fewer than 4 vertices\033[0m\n";
         return;
     }
 
@@ -69,6 +69,9 @@ void ConvexHull::initialize()
     std::vector<Triangle> triangles = initialApproximation();
 
     if (triangles.empty()) {
+//        m_cloud.clear();
+//        m_cloud.shrink_to_fit();
+//        m_vertices.shrink_to_fit();
         return;
     }
 
@@ -135,19 +138,14 @@ void ConvexHull::initialize()
     // Do away with working memory
     facets.clear();
 
-    auto facetSizes = new uint32_t[faces.size()];
-    auto facets = new uint32_t[count];
+    m_faces = FaceArray(faces.size(), count);
 
-    idx = 0;
-    for (uint32_t i = 0; i < faces.size(); i++) {
-        facetSizes[i] = faces[i].size();
-        for (uint32_t vertex : faces[i]) facets[idx++] = vertex;
+    uint32_t *idxPtr = m_faces[0], *sizePtr = m_faces.faceSizes();
+    for (const auto& face : faces) {
+        *sizePtr++ = face.size();
+        for (uint32_t index : face) *idxPtr++ = index;
     }
 
-    m_faces = {facets, facetSizes, (uint32_t)faces.size()};
-
-    delete[] facetSizes;
-    delete[] facets;
 
     // Calculate convex hull center
     for (uint32_t i = 0; i < m_vertices.size(); i++) {
@@ -196,34 +194,20 @@ bool ConvexHull::empty() const
     return m_vertices.empty();
 }
 
-Simplex ConvexHull::gjkIntersection(const ConvexHull& body, const glm::mat4& transform, std::pair<uint32_t, uint32_t>& idx) const
-{
-
-    glm::vec3 axis = initialAxis(body, idx), next;
-    Simplex simplex({ gjkSupport(body, transform, axis, idx), idx });
-
-    axis = -simplex[0].val;
-
-    int limit = (int)(vertexCount() + body.vertexCount());
-    while (limit-- > 0) {
-        next = gjkSupport(body, transform, axis, idx);
-
-        // Check whether cs is impossible
-        if (glm::dot (axis, next) <= 0) return simplex;
-
-        simplex.add({ next, idx });
-
-        // Check whether the cs is certain
-        if (simplex.evaluate(axis)) return simplex;
-    }
-
-    std::cout << "CH GJK Error!\n";
-    return Simplex(Simplex::Vertex{});
-}
-
 EPA ConvexHull::epaIntersection(const ConvexHull& body, const glm::mat4& transform, const glm::mat4& relativeTransform, std::pair<uint32_t, uint32_t>& idx) const
 {
     return { *this, body, transform, relativeTransform, gjkIntersection(body, relativeTransform, idx) };
+}
+
+glm::vec3 ConvexHull::initialAxis(const Sphere& body, std::pair<uint32_t, uint32_t>& idx) const
+{
+    if (idx.first != std::numeric_limits<uint32_t>::max()) {
+        return m_vertices[idx.first] - body.center;
+    }
+
+    idx = { 0, 0 };
+
+    return m_center - body.center;
 }
 
 glm::vec3 ConvexHull::initialAxis(const ConvexHull& body, std::pair<uint32_t, uint32_t>& idx) const
@@ -235,6 +219,17 @@ glm::vec3 ConvexHull::initialAxis(const ConvexHull& body, std::pair<uint32_t, ui
     idx = { 0, 0 };
 
     return m_center - body.m_center;
+}
+
+glm::vec3 ConvexHull::gjkSupport(const Sphere& body, const glm::mat4& transform, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx) const
+{
+    idx.first = walk(axis, idx.first);
+//    idx.second = 0;
+
+    glm::vec4 vec = transform * glm::vec4(body.center.x, body.center.y, body.center.z, 1.0f);
+    glm::vec3 nearest = glm::vec3{ vec.x, vec.y, vec.z } - glm::normalize(axis) * body.radius;
+
+    return m_vertices[idx.first] - nearest;
 }
 
 glm::vec3 ConvexHull::gjkSupport(const ConvexHull& body, const glm::mat4& transform, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx) const
@@ -303,17 +298,13 @@ std::vector<uint32_t> ConvexHull::horizon(const glm::vec3& axis, const glm::vec3
 
     while (idx < boundary.size() - 1) {
         glm::vec3 vec = glm::normalize(glm::cross(m_vertices[boundary[idx + 1]] - m_vertices[boundary[idx]], axis));
-//        std::cout << "V " << vec.x << " " << vec.y << " " << vec.z << "\n";
         uint32_t next = walk(vec, boundary[idx]);
-//        std::cout << idx << " " << boundary.size() << " " << next << " " << boundary[idx] << " " << boundary[idx + 1] << " " << glm::dot(vec, m_vertices[next] - m_vertices[boundary[idx]]) << "\n";
         if (next != boundary[idx] && next != boundary[idx + 1]) {
             boundary.insert(boundary.begin() + idx + 1, next);
         } else idx++;
 
         // Check
         if (boundary.size() > m_vertices.size()) throw std::runtime_error("[ConvexHull] Failed to find a horizon!");
-//        for(uint32_t b : boundary) std::cout << b << " ";
-//        std::cout << "~~~~~~~~\n";
     }
 
     // Remove duplicate vertex (First and last are the same). Chooses initial vertex to begin from top-left position
@@ -339,17 +330,17 @@ std::vector<Triangle> ConvexHull::initialApproximation(){
     // Prepare a maximal tetrahedron - exits early if the cloud is degenerate in some dimension
     if (extremes[0] == extremes[1]) {
         std::cout << "\033[31mERROR! Can not generate a 3D convex hull from the cloud! The cloud is 0D degenerate\033[0m\n";
-        return triangles;
+        return {};
     }
 
     if (!VertexArray::extreme(m_cloud, extremes[0], extremes[1], extremes[2])) {
         std::cout << "\033[31mERROR! Can not generate a 3D convex hull from the cloud! The cloud is 1D degenerate\033[0m\n";
-        return triangles;
+        return {};
     }
 
     if (!VertexArray::extreme(m_cloud, extremes[0], extremes[1], extremes[2], extremes[3])) {
         std::cout << "\033[31mERROR! Can not generate a 3D convex hull from the cloud! The cloud is 2D degenerate\033[0m\n";
-        return triangles;
+        return {};
     }
 
     // Add extremities to the convex hull
@@ -482,39 +473,98 @@ void ConvexHull::calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t 
 
 std::vector<glm::vec3> ConvexHull::intersection(const glm::vec3& origin, const glm::vec3& normal) const
 {
+    if (m_vertices.empty()) return {};
+
     std::vector<bool> above(m_vertices.size());
+    if (partition(origin, normal, above)) return {};
+
     return intersection(origin, normal, above);
+}
+
+bool ConvexHull::above(const glm::vec3& origin, const glm::vec3& normal) const
+{
+    if (m_vertices.empty()) return false;
+
+    std::vector<bool> above(m_vertices.size());
+    return partition(origin, normal, above) && above[0];
+}
+bool ConvexHull::below(const glm::vec3& origin, const glm::vec3& normal) const
+{
+    if (m_vertices.empty()) return false;
+
+    std::vector<bool> below(m_vertices.size());
+    return partition(origin, -normal, below) && below[0];
+}
+
+bool ConvexHull::intersects(const glm::vec3& origin, const glm::vec3& normal) const
+{
+    if (m_vertices.empty()) return false;
+
+    // Determine whether vertices exist on both sides of the cutting plane
+    bool ref = glm::dot(normal, m_vertices[0] - origin) > -1e-6;
+    for (uint32_t i = 1; i < m_vertices.size(); i++) {
+        if ((glm::dot(normal, m_vertices[i] - origin) > -1e-6) != ref) return true;
+    }
+
+    return false;
+}
+bool ConvexHull::intersects(const Sphere& sphere) const
+{
+    std::pair<uint32_t, uint32_t> indices = { 0, 0 };
+    auto simplex = gjkIntersection(sphere, glm::mat4(1.0f), indices);
+    return simplex.colliding();
+}
+
+
+bool ConvexHull::partition(const glm::vec3& origin, const glm::vec3& normal, std::vector<bool>& above) const
+{
+    uint32_t sum = 0;
+
+    // Determine which vertices are above the cut plane
+    for (uint32_t i = 0; i < m_vertices.size(); i++) {
+        above[i] = glm::dot(normal, m_vertices[i] - origin) > -1e-6;
+        sum += above[i];
+    }
+
+    // Indicate when all vertices are either below or above the plane
+    return sum == 0 || sum == above.size();
 }
 
 ConvexHull ConvexHull::fragment(const glm::vec3& origin, const glm::vec3& normal) const
 {
+    if (m_vertices.empty()) return {};
 
-    // Find vertex intersections of hull with plane
     std::vector<bool> above(m_vertices.size());
-    std::vector<glm::vec3> set = intersection(origin, normal, above);
+    if (partition(origin, normal, above)) { // Identify vertices above and below the plane
 
-    // Exit if no edges intersect with the plane
-    if (set.empty()) {
+        // Exit if no edges intersect with the plane
         if (above[0]) return *this;
         else return {};
     }
 
+    // Find vertex intersections of hull with plane
+    std::vector<glm::vec3> set = intersection(origin, normal, above);
+
+
     // Attach vertices on the positive side of the plane
     for (uint32_t i = 0; i < above.size(); i++) if (above[i]) set.push_back(m_vertices[i]);
 
-    return { set };
+    return { VertexArray::clean(set) };
 }
 
 std::pair<ConvexHull, ConvexHull> ConvexHull::fragments(const glm::vec3& origin, const glm::vec3& normal) const
 {
-    std::vector<bool> above(m_vertices.size());
-    std::vector<glm::vec3> setA = intersection(origin, normal, above);
+    if (m_vertices.empty()) return {};
 
-    // Exit if no edges intersect with the plane
-    if (setA.empty()) {
+    std::vector<bool> above(m_vertices.size());
+    if (partition(origin, normal, above)) { // Identify vertices above and below the plane
+
+        // Exit if no edges intersect with the plane
         if (above[0]) return { *this, {} };
         else return { {}, *this };
     }
+
+    std::vector<glm::vec3> setA = intersection(origin, normal, above);
 
     // Duplicate intersection vertices in other set
     std::vector<glm::vec3> setB = setA;
@@ -525,19 +575,14 @@ std::pair<ConvexHull, ConvexHull> ConvexHull::fragments(const glm::vec3& origin,
         else setB.push_back(m_vertices[i]);
     }
 
-    return { setA, setB };
+    return { VertexArray::clean(setA), VertexArray::clean(setB) };
 }
 
 // TODO Improvement: Leverage walk to calculate intersection in-place
-std::vector<glm::vec3> ConvexHull::intersection(const glm::vec3& origin, const glm::vec3& normal, std::vector<bool>& above) const
+std::vector<glm::vec3> ConvexHull::intersection(const glm::vec3& origin, const glm::vec3& normal, const std::vector<bool>& above) const
 {
 
     float d = glm::dot(origin, normal);
-
-    // Determine which vertices are above the cut plane
-    for (uint32_t i = 0; i < m_vertices.size(); i++) {
-        above[i] = glm::dot(normal, origin - m_vertices[i]) <= 0;
-    }
 
     // Find vertices on the cut plane
     std::vector<glm::vec3> intersection;
@@ -598,193 +643,4 @@ uint32_t ConvexHull::step(const glm::vec3& normal, const glm::vec3& axis, uint32
 //    }
 //
 //    return false;
-//}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                             CONVEX DECOMPOSITION                                                   //
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//void ConvexDecomposition::ProcessLogger::Update(const double overallProgress, const double stageProgress, const char* const stage, const char *operation){
-////    char scratch[512];
-////    snprintf(scratch,sizeof(scratch),"[%-40s] : %0.0f%% : %0.0f%% : %s",stage,overallProgress,stageProgress,operation);
-////
-//////        if ( strcmp(stage,mCurrentStage.c_str()) == 0 )
-//////        {
-//////            for (uint32_t i=0; i<mLastLen; i++)
-//////            {
-//////                printf("%c", 8);
-//////            }
-//////        }
-//////        else
-//////        {
-//////            printf("\n");
-//////            mCurrentStage = std::string(stage);
-//////        }
-//////        mLastLen = (uint32_t)strlen(scratch);
-////    printf("%s", scratch);
-//    std::cout << "|" << stage << "| " << overallProgress << " : " << stageProgress << "\n";
-//}
-//
-//void ConvexDecomposition::ProcessLogger::NotifyVHACDComplete(){
-//    Log("VHACD::Complete");
-//}
-//
-//void ConvexDecomposition::ProcessLogger::Log(const char* const msg){
-//    std::cout << msg << "\n";
-////    mLogMessages.push_back(std::string(msg));
-//}
-//
-//ConvexDecomposition::ConvexDecomposition(const Settings& settings)
-//        : m_Valid(false), m_Latest(true), m_ActiveSettings(settings), m_NewSettings(settings), m_Hulls({}), m_BaseColor(DEFAULT_CONVEX_HULL_COLOR), m_ColorDelta(0.1f, 0.1f, 0.1f){
-//
-//}
-//
-//ConvexDecomposition::ConvexDecomposition(const Settings& settings, const std::vector<glm::vec3>& vertices, const std::vector<Triangle>& triangles)
-//        : m_Valid(false), m_Latest(true), m_ActiveSettings(settings), m_NewSettings(settings), m_BaseColor(DEFAULT_CONVEX_HULL_COLOR), m_ColorDelta(0.1f, 0.1f, 0.1f){
-//
-//    decompose(vertices, triangles);
-//}
-//
-//void ConvexDecomposition::applyNewSettings(const Settings& settings){
-//    if(m_NewSettings != settings){
-//        m_NewSettings = settings;
-//        m_Latest = false;
-//    }
-//
-//    // Allow settings name to be directly overwritten
-//    m_NewSettings.name = m_ActiveSettings.name = settings.name;
-//}
-//
-//void ConvexDecomposition::restoreSettings(){
-//    m_NewSettings = m_ActiveSettings;
-//    m_Latest = true;
-//}
-//
-//void ConvexDecomposition::invalidate(){
-//    m_Valid = false;
-//}
-//
-//void ConvexDecomposition::decompose(const std::vector<glm::vec3>& vertices, const std::vector<Triangle>& triangles, bool async) {
-//
-//    auto *points = new float[vertices.size() * 3];
-//    auto indices = new uint32_t[triangles.size() * 3];
-//
-//    {
-//        ScopedTimer timer("Data conversion for V-HACD");
-//
-//        // Convert data into a format acceptable to vhacd
-//        for (uint32_t i = 0; i < vertices.size(); i++) {
-//            points[3 * i] = vertices[i].x;
-//            points[3 * i + 1] = vertices[i].y;
-//            points[3 * i + 2] = vertices[i].z;
-//        }
-//
-//        for (uint32_t i = 0; i < triangles.size(); i++) {
-//            indices[3 * i] = triangles[i].m_I0;
-//            indices[3 * i + 1] = triangles[i].m_I1;
-//            indices[3 * i + 2] = triangles[i].m_I2;
-//        }
-//    }
-//
-//    decompose(points, vertices.size(), indices, triangles.size(), async);
-//
-//    delete[] points;
-//    delete[] indices;
-//}
-//
-//void ConvexDecomposition::decompose(float* vertices, uint32_t vertexCount, uint32_t* indices, uint32_t triangleCount, bool async){
-//    m_Hulls.clear();
-//
-//    if(vertexCount == 0 || triangleCount == 0){
-//        return;
-//    }
-//
-//    VHACD::IVHACD::Parameters params = generateParameters(m_NewSettings);
-//    params.m_asyncACD = async;
-//
-//    ProcessLogger logging;
-//    params.m_callback = &logging;
-//    params.m_logger = &logging;
-//
-//#if VHACD_DISABLE_THREADING
-//    VHACD::IVHACD *iface = VHACD::CreateVHACD();
-//#else
-//    VHACD::IVHACD *iface = params.m_asyncACD ? VHACD::CreateVHACD_ASYNC() : VHACD::CreateVHACD();
-//#endif
-//
-//    {
-//        ScopedTimer timer("V-HACD process");
-//        iface->Compute(vertices, vertexCount, indices, triangleCount, params);
-//        while(!iface->IsReady()){
-//            std::this_thread::sleep_for(std::chrono::nanoseconds(10000));
-//        }
-//    }
-//
-//    // Capture results of process and convert to the standard format
-//    prepareConvexHulls(iface);
-//
-//    iface->Release();
-//
-//    m_ActiveSettings = m_NewSettings;
-//    m_Valid = m_Latest = true;
-//}
-//
-//VHACD::IVHACD::Parameters ConvexDecomposition::generateParameters(const Settings& settings){
-//    VHACD::IVHACD::Parameters params;
-//
-//    params.m_maxConvexHulls = settings.maxHullCount;
-//    params.m_maxNumVerticesPerCH = settings.maxVertexCount;
-//    params.m_resolution = settings.voxelResolution;
-//    params.m_minimumVolumePercentErrorAllowed = settings.volumeError;
-//    params.m_minimumVolumePercentErrorAllowed = settings.recurseDepth;
-//
-//    params.m_fillMode = VHACD::FillMode::FLOOD_FILL;
-//    params.m_shrinkWrap = true;
-//
-//    return params;
-//}
-//
-//void ConvexDecomposition::prepareConvexHulls(VHACD::IVHACD* iface){
-//    m_Hulls.clear();
-//
-//    uint32_t index = 0;
-//    for (uint32_t i = 0; i < iface->GetNConvexHulls(); i++) {
-//        VHACD::IVHACD::ConvexHull hull;
-//        iface->GetConvexHull(i, hull);
-//
-//        // Extract only vertex information - vhacd lacks some information which makes it easier to just reconstruct the convex hull from a point cloud
-//        std::vector<glm::vec3> hv;
-//        hv.reserve(hull.m_points.size());
-//        for(const VHACD::Vertex& vertex : hull.m_points) {
-//            hv.emplace_back(vertex.mX, vertex.mY, vertex.mZ);
-//        }
-//
-//        m_Hulls.emplace_back(hv);
-//
-//        // Color the constructed hull to make it easier to distinguish
-//        glm::vec color = m_Hulls[i].getNextColor(m_BaseColor, m_ColorDelta, ++index);
-//        m_Hulls[i].setColor(glm::clamp(color, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)));
-//    }
-//}
-//
-//bool ConvexDecomposition::isValid() const{
-//    return m_Valid;
-//}
-//
-//bool ConvexDecomposition::isLatest() const{
-//    return m_Latest;
-//}
-//
-//const ConvexDecomposition::Settings& ConvexDecomposition::getActiveSettings() const{
-//    return m_NewSettings;
-//}
-//
-//uint32_t ConvexDecomposition::getHullCount() const{
-//    return m_Hulls.size();
-//}
-//
-//const std::vector<ConvexHull>& ConvexDecomposition::getHulls(){
-//    return m_Hulls;
 //}

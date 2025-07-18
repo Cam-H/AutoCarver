@@ -400,25 +400,23 @@ std::shared_ptr<Mesh> MeshBuilder::merge(const std::shared_ptr<Mesh>& a, const s
 
 std::shared_ptr<Mesh> MeshBuilder::composite(const std::vector<ConvexHull>& hulls)
 {
+    // Count number of features to determine required mesh size
     uint32_t vertexCount = 0, faceCount = 0, indexCount = 0;
 
     for (const ConvexHull& hull : hulls) {
-        std::cout << hull.vertexCount() << " " << hull.faces().faceCount() << " " << hull.faces().indexCount() << "~~\n";
-
         vertexCount += hull.vertexCount();
         faceCount += hull.faces().faceCount();
         indexCount += hull.faces().indexCount();
     }
 
-    auto vertices = VertexArray(vertexCount);
+    auto mesh = std::make_shared<Mesh>(vertexCount, faceCount, indexCount);
 
-    auto faces = FaceArray(faceCount, indexCount);
-    uint32_t vertexIdx = 0, *sizePtr = faces.faceSizes(), *idxPtr = faces[0];
+    uint32_t vertexIdx = 0, *idxPtr = mesh->m_faces[0], *sizePtr = mesh->m_faces.faceSizes();
     const uint32_t *hPtr = nullptr;
 
     uint32_t idxOffset = 0;
     for (const ConvexHull& hull : hulls) {
-        for (const glm::vec3& vertex : hull.vertices()) vertices[vertexIdx++] = vertex;
+        for (const glm::vec3& vertex : hull.vertices()) mesh->m_vertices[vertexIdx++] = vertex;
 
         hPtr = hull.faces()[0];
         for (uint32_t i = 0; i < hull.faces().faceCount(); i++) {
@@ -430,7 +428,9 @@ std::shared_ptr<Mesh> MeshBuilder::composite(const std::vector<ConvexHull>& hull
         idxOffset += hull.vertexCount();
     }
 
-    return std::make_shared<Mesh>(vertices, faces);
+    mesh->initialize();
+
+    return mesh;
 }
 
 std::shared_ptr<Mesh> MeshBuilder::eliminateCoincidentVertices(const std::shared_ptr<Mesh>& mesh)

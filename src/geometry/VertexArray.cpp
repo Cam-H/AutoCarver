@@ -8,7 +8,6 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <gtx/quaternion.hpp>
 
-#include <iostream>
 
 #include <limits>
 #include <cmath>
@@ -253,6 +252,31 @@ void VertexArray::extents(const std::vector<glm::vec3>& vertices, const glm::vec
 
     near = glm::dot(axis, vertices[min]);
     far = glm::dot(axis, vertices[max]);
+}
+
+void VertexArray::clean()
+{
+    m_vertices = clean(m_vertices);
+}
+
+size_t VertexArray::hash(const glm::vec2& vec, float factor)
+{
+    return cantor((uint32_t)(vec.x * factor), (uint32_t)(vec.y * factor));
+}
+
+size_t VertexArray::hash(const glm::vec3& vec, float factor)
+{
+    return hash((uint32_t)(vec.x * factor), (uint32_t)(vec.y * factor), (uint32_t)(vec.z * factor));
+}
+
+size_t VertexArray::hash(size_t a, size_t b, size_t c)
+{
+    return cantor(a, cantor(b, c));
+}
+
+size_t VertexArray::cantor(size_t a, size_t b)
+{
+    return (a + b + 1) * (a + b) / 2 + b;
 }
 
 void VertexArray::print() const

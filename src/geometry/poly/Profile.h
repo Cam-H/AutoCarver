@@ -40,6 +40,8 @@ public:
     std::vector<uint32_t> refine();
     bool complete() const;
 
+    bool isNextExternal() const;
+
     const glm::vec3& normal() const;
 
 
@@ -81,6 +83,7 @@ private:
 
     RefinementMethod m_method;
 
+    std::vector<uint32_t> m_hull; // Indices of vertices that form the convex hull
     std::vector<std::pair<uint32_t, uint32_t>> m_remainder; // first (index), second (number of subsequent vertices)
     uint32_t m_next;
 

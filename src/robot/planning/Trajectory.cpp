@@ -287,7 +287,7 @@ void Trajectory::calculateDuration()
 
     m_duration = maxVelocity / m_maxVelocity; // Duration in seconds
 
-    std::cout << "Duration: " << m_duration << " | " << maxVelocity << " " << m_maxVelocity << "\n";
+//    std::cout << "Duration: " << m_duration << " | " << maxVelocity << " " << m_maxVelocity << "\n";
     m_duration = 1.0f / m_duration; // Inverse to use as a multiplier
 //    m_duration =
 //    switch (m_solver) {

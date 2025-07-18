@@ -11,6 +11,7 @@
 #ifndef QT_NO_OPENGL
 #include "fileIO/MeshHandler.h"
 #include "core/Scene.h"
+#include "core/Sculpture.h"
 #include "physics/RigidBody.h"
 #include "geometry/MeshBuilder.h"
 #include "robot/ArticulatedWrist.h"
@@ -35,10 +36,10 @@ PolygonWidget* polygonWidget = nullptr;
 std::shared_ptr<Scene> scene = nullptr;
 SceneWidget *sceneWidget = nullptr;
 
-QCheckBox *fixedCameraSetting = nullptr;
+QCheckBox *showHullSetting = nullptr;
 QPushButton *stepButton = nullptr;
 
-std::shared_ptr<RigidBody> body = nullptr;
+std::shared_ptr<Sculpture> body = nullptr;
 std::shared_ptr<RigidBody> silhouette = nullptr;
 
 std::shared_ptr<Mesh> mesh = nullptr;
@@ -65,26 +66,35 @@ static QWidget *loadUiFile(QWidget *parent)
 
 void updateImage()
 {
+    glm::vec3 offset = -mesh->boundedOffset();
+    float scalar = body->scalar();
+
+    std::cout << scalar << " " << offset.x << " " << offset.y << " " << offset.z << "!\n";
+
     detector->update();
 
     profile = detector->profile();
     profile.setRefinementMethod(Profile::RefinementMethod::DELAUNEY);
+//    profile.rotateAbout({ 0, 1, 0 }, -body->rotation());
+//        profile.centerScale(scalar);
+//    profile.scale(scalar);
+    profile.translate(offset);
 
-
-    auto sc = profile.spanCenter();
-    profile.translate(-sc);
+//    auto sc = profile.spanCenter();
+//    profile.translate(-sc);
 //    profile.translate(sc + glm::vec2{0.01f, 0});
 
-    auto extrude = MeshBuilder::extrude(profile.projected3D(), profile.normal(), 4);
 
-    if (extrude != nullptr) {
-        extrude->setBaseColor({1, 0, 1});
-//        extrude->translate(-2.0f * profile.normal() + mesh->boundedOffset());
-        MeshHandler::exportMesh(extrude, "border.obj");
-
-        if (silhouette == nullptr) silhouette = scene->createBody(extrude);
-        else silhouette->setMesh(extrude, false);
-    }
+//    auto extrude = MeshBuilder::extrude(profile.projected3D(), profile.normal(), 4);
+//
+//    if (extrude != nullptr) {
+//        extrude->setBaseColor({1, 0, 1});
+////        extrude->translate(-2.0f * profile.normal() + mesh->boundedOffset());
+//        MeshHandler::exportMesh(extrude, "border.obj");
+//
+//        if (silhouette == nullptr) silhouette = scene->createBody(extrude);
+//        else silhouette->setMesh(extrude, false);
+//    }
 
     polygonWidget->setPolygon(&profile);
     polygonWidget->center();
@@ -100,6 +110,23 @@ void updateImage()
     processView->setPixmap(*px);
 
     sceneWidget->update();
+}
+
+void refine()
+{
+    bool external = profile.isNextExternal();
+    auto indices = profile.refine();
+    auto border = profile.projected3D(indices);
+
+    if (!border.empty()) {
+        body->queueSection(border[0], border[1], border[2], profile.normal(), external);
+        body->applySection();
+
+//            auto extrude = MeshBuilder::extrude(border, profile.normal(), 1);
+//            extrude->translate(0.5f * -profile.normal());
+//            extrude->setFaceColor({ 0, 1, 1 });
+//            scene->createBody(extrude);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -122,7 +149,7 @@ int main(int argc, char *argv[])
 
     mesh = MeshHandler::loadAsMeshBody(R"(..\res\meshes\devil.obj)");
     mesh->center();
-    mesh->normalize(5.0f);
+//    mesh->normalize(5.0f);
 
 //    hull = std::make_shared<Mesh>(ConvexHull(mesh->vertices()));
 //    glm::vec3 centroid = -hull->centroid();
@@ -130,7 +157,10 @@ int main(int argc, char *argv[])
 //    hull->zero();
 
     scene = std::make_shared<Scene>();
-    body = scene->createBody(mesh);
+    body = std::make_shared<Sculpture>(mesh, 1.0f, 1.0f);
+    scene->prepareBody(body);
+
+//    body = scene->createBody(mesh);
 //    body = scene->createBody(std::make_shared<Mesh>(ConvexHull(mesh)));
 //    body->prepareColliderVisuals();
 //    body->zero();
@@ -158,13 +188,17 @@ int main(int argc, char *argv[])
     note.show();
 #endif
 
-    fixedCameraSetting = window->findChild<QCheckBox*>("fixedCameraSetting");
-    QObject::connect(fixedCameraSetting, &QCheckBox::clicked, [&]() {
-        stepButton->setEnabled(fixedCameraSetting->checkState() == Qt::CheckState::Checked);
-//        if (detector->capture()->camera().getType() == Camera::Type::PERSPECTIVE)
-//            detector->capture()->camera().setType(Camera::Type::ORTHOGRAPHIC);
-//        else detector->capture()->camera().setType(Camera::Type::PERSPECTIVE);
-//        updateImage();
+    showHullSetting = window->findChild<QCheckBox*>("showHullSetting");
+    QObject::connect(showHullSetting, &QCheckBox::clicked, [&]() {
+        body->applyCompositeColors(showHullSetting->checkState() == Qt::CheckState::Checked);
+        sceneWidget->updateRenderGeometry(body->mesh());
+        sceneWidget->update();
+    });
+
+    auto resetButton = window->findChild<QPushButton*>("resetButton");
+    QObject::connect(resetButton, &QPushButton::clicked, [&]() {
+        body->restoreAsHull();
+        updateImage();
     });
 
     stepButton = window->findChild<QPushButton*>("stepButton");
@@ -181,14 +215,28 @@ int main(int argc, char *argv[])
 
     auto refineButton = window->findChild<QPushButton*>("refineButton");
     QObject::connect(refineButton, &QPushButton::clicked, [&]() {
-        profile.refine();
+        refine();
+
+        sceneWidget->update();
         polygonWidget->repaint();
     });
 
-    auto *sizeField = window->findChild<QSpinBox*>("sizeField");
-    QObject::connect(sizeField, &QSpinBox::valueChanged, [](int value) {
-        detector->setSize(value);
-        updateImage();
+    auto completeButton = window->findChild<QPushButton*>("completeButton");
+    QObject::connect(completeButton, &QPushButton::clicked, [&]() {
+        while (!profile.complete()) {
+            refine();
+        }
+
+        sceneWidget->update();
+        polygonWidget->repaint();
+    });
+
+    auto formButton = window->findChild<QPushButton*>("formButton");
+    QObject::connect(formButton, &QPushButton::clicked, [&]() {
+        if (body->form()) {
+//            sceneWidget->updateRenderGeometry(body->mesh());
+            sceneWidget->update();
+        }
     });
 
     auto *epsilonField = window->findChild<QSpinBox*>("epsilonField");
@@ -204,9 +252,14 @@ int main(int argc, char *argv[])
 
         if (!fileName.isEmpty()) {
             mesh = MeshHandler::loadAsMeshBody(fileName.toStdString());
-            mesh->normalize(5.0f);
 
-            body->setMesh(mesh, false);
+            scene->clear();
+            body = std::make_shared<Sculpture>(mesh, 1.0f, 1.0f);
+            body->applyCompositeColors(showHullSetting->checkState() == Qt::CheckState::Checked);
+            scene->prepareBody(body);
+//            body->restoreAsHull();
+
+//            body->setMesh(mesh, false);
             sceneWidget->clear();
 
             detector->setMesh(mesh);
@@ -217,18 +270,9 @@ int main(int argc, char *argv[])
 
     });
 
-    QObject::connect(sceneWidget, &SceneWidget::perspectiveChanged, [&]() {
-        std::cout << "Perspective change trigger entry\n";
-        if (fixedCameraSetting->checkState() == Qt::CheckState::Unchecked) {
-            detector->capture()->camera().setPosition(sceneWidget->camera().getPosition());
-            detector->capture()->focus();
-            updateImage();
-        }
-    });
-
     detector = new EdgeDetect(mesh);
 
-    detector->setSize(sizeField->value());
+    detector->setSize(400);
     detector->setEpsilon((float)epsilonField->value());
 
     detector->capture()->camera().setViewingAngle(0, 0);

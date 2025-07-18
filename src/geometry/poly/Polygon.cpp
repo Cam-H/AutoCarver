@@ -14,6 +14,7 @@
 #include <CDT.h>
 
 #include "geometry/Circle.h"
+#include "geometry/VertexArray.h"
 
 Polygon::Polygon(const std::vector<glm::vec2>& border, bool enforceCCWWinding)
     : m_vertices(border)
@@ -67,11 +68,9 @@ void Polygon::scale(const glm::vec2& anchor, float scalar)
 void Polygon::centerScale(float scalar)
 {
     glm::vec2 offset = { xSpan(), ySpan() };
-    std::cout << "SPAN: " << offset.x << " " << offset.y << " | " << scalar << "\n";
     scale(scalar);
 
     offset *= -0.5f * (scalar - 1);
-    std::cout << "DEL: " << offset.x << " " << offset.y << "\n";
     translate(offset);
 }
 
@@ -168,14 +167,19 @@ void Polygon::cullCollinear(std::vector<glm::vec2>& vertices, float tolerance)
 
 std::vector<glm::vec3> Polygon::projected3D(const glm::vec3& xAxis, const glm::vec3& yAxis, const glm::vec3& offset) const
 {
-    std::vector<glm::vec3> vertices;
-    vertices.reserve(m_vertices.size());
+    return Polygon::projected3D(m_vertices, xAxis, yAxis, offset);
+}
 
-    for (const glm::vec2& vertex : m_vertices) {
-        vertices.emplace_back(offset + xAxis * vertex.x + yAxis * vertex.y);
+std::vector<glm::vec3> Polygon::projected3D(const std::vector<glm::vec2>& vertices, const glm::vec3& xAxis, const glm::vec3& yAxis, const glm::vec3& offset)
+{
+    std::vector<glm::vec3> projection;
+    projection.reserve(vertices.size());
+
+    for (const glm::vec2& vertex : vertices) {
+        projection.emplace_back(offset + xAxis * vertex.x + yAxis * vertex.y);
     }
 
-    return vertices;
+    return projection;
 }
 
 std::vector<uint32_t> Polygon::hull() const
@@ -264,11 +268,48 @@ std::vector<Triangle> Polygon::triangulate(const std::vector<glm::vec2>& vertice
             triangles.emplace_back(triangle.vertices[0], triangle.vertices[1], triangle.vertices[2]);
         }
 
-    } catch (std::exception& e) {
+    } catch (CDT::DuplicateVertexError& e) {
+
+        // Generate a new polygon without the duplicate vertices
+        auto cleaned = clean(vertices);
+
+        // Try triangulating again
+        if (cleaned.size() != vertices.size()) return triangulate(cleaned);
+        else std::cout << "[Polygon] Failed to triangulate due to duplicate vertices #" << e.v1() << " and #" << e.v2() << "\n";
+
+    }  catch (std::exception& e) {
         std::cout << e.what() << "\n";
     }
 
     return triangles;
+}
+
+void Polygon::clean()
+{
+    m_vertices = clean(m_vertices);
+}
+
+// Remove duplicate vertices from the polygon - Only applies to adjacent vertices
+std::vector<glm::vec2> Polygon::clean(const std::vector<glm::vec2>& vertices)
+{
+    if (vertices.empty()) return {};
+
+    std::vector<glm::vec2> cleaned = { vertices[0] };
+    cleaned.reserve(vertices.size());
+
+    glm::vec2 delta;
+    for (uint32_t i = 1; i < vertices.size(); i++) {
+        delta = vertices[i] - vertices[i - 1];
+        if (glm::dot(delta, delta) > 1e-6) { // Non-duplicate vertex = sufficiently far from previous vertex
+            cleaned.push_back(vertices[i]);
+        }
+    }
+
+    // Consider endpoints
+    delta = cleaned[cleaned.size() - 1] - cleaned[0];
+    if (glm::dot(delta, delta) < 1e-6) cleaned.pop_back();
+
+    return cleaned;
 }
 
 std::vector<std::pair<glm::vec2, glm::vec2>> Polygon::debugEdges() const

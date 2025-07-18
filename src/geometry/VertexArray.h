@@ -64,7 +64,60 @@ public:
     void extents(const glm::vec3& axis, float &near, float &far) const;
     static void extents(const std::vector<glm::vec3>& vertices, const glm::vec3& axis, float &near, float &far);
 
+    void clean();
+
+    template<class T>
+    static std::vector<T> clean(const std::vector<T>& vertices)
+    {
+        std::vector<T> cleaned;
+        cleaned.reserve(vertices.size());
+
+        float tolerance = 1e-3, factor = 1 / tolerance; // TODO validate such high tolerance
+        std::unordered_map<size_t, uint32_t> vertexMap;
+
+        // Only attach non-coincident vertices
+        for (uint32_t i = 0; i < vertices.size(); i++) {
+            size_t key = hash(vertices[i], factor);
+
+            auto it = vertexMap.find(key);
+            if (it == vertexMap.end()) {
+                cleaned.push_back(vertices[i]);
+                vertexMap[key] = i;
+            }
+        }
+
+        cleaned.shrink_to_fit();
+        return cleaned;
+    }
+
+    template<class T>
+    static std::vector<uint32_t> cleanIndex(const std::vector<T>& vertices)
+    {
+        float tolerance = 1e-3, factor = 1 / tolerance; // TODO validate such high tolerance
+        std::unordered_map<size_t, uint32_t> vertexMap;
+        std::vector<uint32_t> indices(vertices.size(), std::numeric_limits<uint32_t>::max());
+
+        // Remove coincident vertices, recording indices to use to recover vertex mapping
+        for (uint32_t i = 0; i < indices.size(); i++) {
+            size_t key = hash(vertices[i], factor);
+
+            auto it = vertexMap.find(key);
+            if (it == vertexMap.end()) {
+                indices[i] = vertexMap[key] = i;
+            } else indices[i] = it->second;
+        }
+
+        return indices;
+    }
+
     void print() const;
+
+private:
+
+    [[nodiscard]] static size_t hash(const glm::vec2& vec, float factor);
+    [[nodiscard]] static size_t hash(const glm::vec3& vec, float factor);
+    [[nodiscard]] static size_t hash(size_t a, size_t b, size_t c) ;
+    [[nodiscard]] static size_t cantor(size_t a, size_t b) ;
 
 private:
     std::vector<glm::vec3> m_vertices;

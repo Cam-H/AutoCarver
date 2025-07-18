@@ -30,6 +30,9 @@ public:
     [[nodiscard]] bool raycast(const glm::vec3& origin, const glm::vec3& direction) const;
     bool raycast(const glm::vec3& origin, const glm::vec3& direction, float& t1, float& t2) const;
 
+    [[nodiscard]] uint32_t vertexCount() const;
+
+
 private:
     static Sphere welzl(std::vector<glm::vec3>& vertices, std::vector<glm::vec3> set, uint32_t n);
 

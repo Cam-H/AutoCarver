@@ -347,6 +347,21 @@ std::tuple<uint32_t, uint32_t> FaceArray::triangleLookup(uint32_t faceIdx) const
     else return { m_triFaceLookup[faceIdx], m_triFaceLookup[faceIdx + 1] - m_triFaceLookup[faceIdx] };
 }
 
+std::vector<glm::vec3> FaceArray::faceBorder(uint32_t idx, const std::vector<glm::vec3>& vertices) const
+{
+    if (idx >= m_faceCount) throw std::runtime_error("[FaceArray] Invalid element access when generating border");
+
+    std::vector<glm::vec3> border;
+
+    auto *ptr = idxPtr(idx);
+    for (uint32_t i = 0; i < m_faceSizes[idx]; i++) {
+        if (*ptr >= vertices.size()) throw std::runtime_error("[FaceArray] Invalid vertex element access when generating border");
+        border.push_back(vertices[*ptr++]);
+    }
+
+    return border;
+}
+
 uint32_t FaceArray::matchFace(const glm::vec3& axis)
 {
     auto match = std::max_element(m_normals.begin(), m_normals.end(), [axis](const glm::vec3& lhs, const glm::vec3& rhs){

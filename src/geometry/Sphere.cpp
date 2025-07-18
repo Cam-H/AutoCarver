@@ -173,3 +173,8 @@ bool Sphere::raycast(const glm::vec3& origin, const glm::vec3& direction, float&
 
     return b * b - 4 * a * c > 0 && (b <= 0 || c < 0);
 }
+
+uint32_t Sphere::vertexCount() const
+{
+    return 1;
+}

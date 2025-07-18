@@ -17,6 +17,7 @@
 #include "FaceArray.h"
 #include "Simplex.h"
 #include "Triangle.h"
+#include "Sphere.h"
 
 class Mesh;
 class EPA;
@@ -52,10 +53,42 @@ public:
     [[nodiscard]] std::vector<uint32_t> horizon(const glm::vec3& axis) const;
     [[nodiscard]] std::vector<uint32_t> horizon(const glm::vec3& axis, const glm::vec3& support) const;
 
-    [[nodiscard]] Simplex gjkIntersection(const ConvexHull& body, const glm::mat4& transform, std::pair<uint32_t, uint32_t>& idx) const;
+    template<class T>
+    [[nodiscard]] Simplex gjkIntersection(const T& body, const glm::mat4& transform, std::pair<uint32_t, uint32_t>& idx) const
+    {
+
+        glm::vec3 axis = initialAxis(body, idx), next;
+        Simplex simplex({ gjkSupport(body, transform, axis, idx), idx });
+
+        axis = -simplex[0].val;
+
+        int limit = (int)(vertexCount() + body.vertexCount());
+        while (limit-- > 0) {
+            next = gjkSupport(body, transform, axis, idx);
+
+            // Check whether cs is impossible
+            if (glm::dot (axis, next) <= 0) return simplex;
+
+            simplex.add({ next, idx });
+
+            // Check whether the cs is certain
+            if (simplex.evaluate(axis)) return simplex;
+        }
+
+        std::cout << "CH GJK Error!\n";
+        return Simplex(Simplex::Vertex{});
+    }
+
     [[nodiscard]] EPA epaIntersection(const ConvexHull& body, const glm::mat4& transform, const glm::mat4& relativeTransform, std::pair<uint32_t, uint32_t>& idx) const;
 
     [[nodiscard]] std::vector<glm::vec3> intersection(const glm::vec3& origin, const glm::vec3& normal) const;
+
+    [[nodiscard]] bool above(const glm::vec3& origin, const glm::vec3& normal) const;
+    [[nodiscard]] bool below(const glm::vec3& origin, const glm::vec3& normal) const;
+    [[nodiscard]] bool intersects(const glm::vec3& origin, const glm::vec3& normal) const;
+    [[nodiscard]] bool intersects(const Sphere& sphere) const;
+
+    [[nodiscard]] bool partition(const glm::vec3& origin, const glm::vec3& normal, std::vector<bool>& above) const;
 
     [[nodiscard]] ConvexHull fragment(const glm::vec3& origin, const glm::vec3& normal) const;
     [[nodiscard]] std::pair<ConvexHull, ConvexHull> fragments(const glm::vec3& origin, const glm::vec3& normal) const;
@@ -84,10 +117,13 @@ private:
     void sortCloud(std::vector<uint32_t>& free, Facet& facet);
     void calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
 
+    glm::vec3 initialAxis(const Sphere& body, std::pair<uint32_t, uint32_t>& idx) const;
     glm::vec3 initialAxis(const ConvexHull& body, std::pair<uint32_t, uint32_t>& idx) const;
+
+    glm::vec3 gjkSupport(const Sphere& body, const glm::mat4& transform, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx) const;
     glm::vec3 gjkSupport(const ConvexHull& body, const glm::mat4& transform, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx) const;
 
-    std::vector<glm::vec3> intersection(const glm::vec3& origin, const glm::vec3& normal, std::vector<bool>& above) const;
+    std::vector<glm::vec3> intersection(const glm::vec3& origin, const glm::vec3& normal, const std::vector<bool>& above) const;
 
 
 private:

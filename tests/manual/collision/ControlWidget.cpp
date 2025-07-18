@@ -72,18 +72,22 @@ void ControlWidget::keyPressEvent(QKeyEvent *e)
 void ControlWidget::handleCollision(uint32_t active)
 {
 
-    EPA result = m_scene->bodies()[0]->collision(m_scene->bodies()[1]);
-    if (result.colliding()) {
-        m_scene->bodies()[active]->translate((!active ? 1.0f : -1.0f) * result.overlap());
-    }
+    auto sphere = Sphere{ m_scene->bodies()[1]->position() - m_scene->bodies()[0]->position(), 1.0f };
+    auto result = m_scene->bodies()[0]->hull().intersects(sphere);
+    std::cout << "Intersection: " << result << "\n";
 
-    m_scene->bodies()[!active]->mesh()->setBaseColor(result.colliding() ? glm::vec3{1, 0, 0} : glm::vec3{1, 1, 1});
-    updateRenderGeometry(m_scene->bodies()[!active]->mesh());
-    m_scene->bodies()[active]->mesh()->setBaseColor(result.colliding() ? glm::vec3{0.6, 0, 0} : glm::vec3{1, 1, 1});
-    updateRenderGeometry(m_scene->bodies()[active]->mesh());
-
-    m_scene->bodies()[2]->setPosition(result.colliderAClosest());
-    m_scene->bodies()[3]->setPosition(result.colliderBClosest());
+//    EPA result = m_scene->bodies()[0]->collision(m_scene->bodies()[1]);
+//    if (result.colliding()) {
+//        m_scene->bodies()[active]->translate((!active ? 1.0f : -1.0f) * result.overlap());
+//    }
+//
+//    m_scene->bodies()[!active]->mesh()->setBaseColor(result.colliding() ? glm::vec3{1, 0, 0} : glm::vec3{1, 1, 1});
+//    updateRenderGeometry(m_scene->bodies()[!active]->mesh());
+//    m_scene->bodies()[active]->mesh()->setBaseColor(result.colliding() ? glm::vec3{0.6, 0, 0} : glm::vec3{1, 1, 1});
+//    updateRenderGeometry(m_scene->bodies()[active]->mesh());
+//
+//    m_scene->bodies()[2]->setPosition(result.colliderAClosest());
+//    m_scene->bodies()[3]->setPosition(result.colliderBClosest());
 
     update();
 }

@@ -5,6 +5,7 @@
 #include "Sculpture.h"
 
 #include "geometry/MeshBuilder.h"
+#include "renderer/Colors.h"
 
 Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, float width, float height)
     : CompositeBody(MeshBuilder::box())
@@ -14,6 +15,7 @@ Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, float width, float heig
     , m_scalar(1.0f)
     , m_preserveDebris(false)
     , m_step(0)
+    , m_formStep(0)
     , m_baseColor(0.7f, 0.7f, 0.7f)
     , m_highlightColor(0.3f, 0.3f, 0.8f)
 {
@@ -84,7 +86,9 @@ void Sculpture::restore()
 }
 void Sculpture::restoreAsHull()
 {
-    m_mesh = std::make_shared<Mesh>(modelBody->hull());
+    m_hull = modelBody->hull();
+    m_hulls = { m_hull };
+    m_mesh = std::make_shared<Mesh>(m_hull);
     m_mesh->setFaceColor(m_baseColor);
 }
 
@@ -93,37 +97,68 @@ void Sculpture::moved()
     modelBody->setTransform(m_transform);
 }
 
-void Sculpture::recordSection(const glm::vec3& origin, const glm::vec3& normal)
+void Sculpture::queueSection(const glm::vec3& origin, const glm::vec3& normal)
 {
     m_operations.emplace_back(origin, normal);
 }
-void Sculpture::recordSection(const std::vector<glm::vec3>& border, const glm::vec3& normal)
-{
-    if (border.size() < 3) return;
 
+void Sculpture::queueSection(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& normal, bool external)
+{
     m_operations.emplace_back();
 
-    auto &surfaces = m_operations[m_operations.size() - 1].surfaces;
-    surfaces.reserve(border.size() - 1);
+    auto &operation = m_operations[m_operations.size() - 1];
+    operation.surfaces.reserve(2);
+    operation.limits.reserve(1);
 
-    for (uint32_t i = 0; i < border.size() - 1; i++) {
-        surfaces.emplace_back(border[i], glm::normalize(glm::cross(normal, border[i + 1] - border[i])));
+    operation.surfaces.emplace_back(a, glm::normalize(glm::cross(normal, b - a)));
+    operation.surfaces.emplace_back(b, glm::normalize(glm::cross(normal, c - b)));
+
+    if (!external) {
+        operation.limits.emplace_back(c, glm::normalize(glm::cross(normal, a - c)));
+//        operation.limits.emplace_back(b, -operation.limits[0].second);
+
     }
+//    operation.limits.emplace_back(a, glm::normalize(b - a));
+//    operation.limits.emplace_back(c, glm::normalize(b - c));
+
 }
 
-void Sculpture::section()
+//void Sculpture::queueSection(const std::vector<glm::vec3>& border, const glm::vec3& normal)
+//{
+//    if (border.size() < 3) return;
+//    else if (border.size() == 3) queueSection(border[0], border[1], border[2], normal);
+//    else {
+//        throw std::runtime_error("[Sculpture] Sections more complicated than triangles have yet to be developed!");
+//    }
+//}
+
+bool Sculpture::applySection()
 {
     if (m_step < m_operations.size()) {
-        if (m_operations[m_step].surfaces.size() == 1)
-            section(m_operations[m_step].surfaces[0].first, m_operations[m_step].surfaces[0].second);
-        else section(m_operations[m_step].surfaces);
+        uint32_t step = m_step++;
 
-        m_step++;
+        switch (m_operations[step].surfaces.size()) {
+            case 1:
+                planarSection(m_operations[step].surfaces[0].first, m_operations[step].surfaces[0].second);
+                break;
+            case 2:
+                if (m_hulls.empty()) m_hulls.push_back(m_hull); // TODO move when extending to > 2 surface cuts
+                triangleSection(m_operations[step].surfaces[0], m_operations[step].surfaces[1], m_operations[step].limits);
+                break;
+            default:
+                std::cout << "[Sculpture] Queued section not handled. Not currently supported\n";
+
+        }
+
     }
+
+    return false;
 }
 
-void Sculpture::section(const glm::vec3& origin, const glm::vec3& normal)
+bool Sculpture::planarSection(const glm::vec3& origin, const glm::vec3& normal)
 {
+    if (!m_hull.intersects(origin, normal)) return false;
+
     if (m_preserveDebris) {
         auto fragments = m_hull.fragments(origin, normal);
         m_hull = fragments.first;
@@ -137,71 +172,88 @@ void Sculpture::section(const glm::vec3& origin, const glm::vec3& normal)
 
     // Highlight cut faces
     m_mesh->setFaceColor(m_mesh->matchFace(normal), m_highlightColor);
+
+    return true;
 }
 
-void Sculpture::section(const std::vector<std::pair<glm::vec3, glm::vec3>>& surfaces)
+bool Sculpture::inLimit(const ConvexHull& hull, const std::pair<glm::vec3, glm::vec3>& limit)
 {
-    if (m_hulls.empty()) m_hulls.push_back(m_hull);
-
-//    auto fragments = m_hull.fragments(origin, normal);
-//    m_hull = fragments.first;
-    std::cout << "section " << surfaces.size() << "\n";
-
-    if (surfaces.size() == 2) triangleSection(surfaces[0], surfaces[1]);
-    else std::cout << "Greater sections not handled [Sculpture]\n";
-
-    remesh();
-
+    return !hull.below(limit.first, limit.second);
 }
 
-void Sculpture::triangleSection(const std::pair<glm::vec3, glm::vec3>& planeA, const std::pair<glm::vec3, glm::vec3>& planeB)
+bool Sculpture::inLimit(const ConvexHull& hull, const std::vector<std::pair<glm::vec3, glm::vec3>>& limits)
 {
+    for (const auto& limit : limits) {
+        if (!inLimit(hull, limit)) return false;
+    }
 
-    auto normal = glm::normalize(glm::cross(planeA.second, planeB.second));
-    auto pA = -glm::normalize(glm::cross(normal, planeA.second));
-    auto pB = glm::normalize(glm::cross(normal, planeB.second));
-    auto border = { planeB.first + 2.0f * pA, planeB.first, planeB.first + 2.0f * pB };
-    auto mesh = MeshBuilder::extrude(border, normal, 5.0f);
-    mesh->translate(-normal * 2.5f);
-    m_hulls.emplace_back(mesh);
+    return true;
+}
 
-    return;
-    uint32_t count = m_hulls.size();
+bool Sculpture::triangleSection(const std::pair<glm::vec3, glm::vec3>& planeA, const std::pair<glm::vec3, glm::vec3>& planeB, const std::vector<std::pair<glm::vec3, glm::vec3>>& limits)
+{
+    for (uint32_t i = 0; i < m_hulls.size(); i++) {
 
-    for (uint32_t i = 0; i < count; i++) {
-        auto fragments = m_hulls[i].fragments(planeA.first, planeA.second);
-        uint8_t status = !fragments.first.empty() + 2 * !fragments.second.empty();
+        auto aFragments = m_hulls[i].fragments(planeA.first, -planeA.second);
+        auto bFragments = aFragments.second.fragments(planeB.first, -planeB.second);
+        if (bFragments.second.empty()) continue; // Skip hulls behind either cutting plane
 
-        std::cout << i << " " << count << " " << m_hulls.size() << " " << (uint32_t)status << "~~\n";
-        switch (status) {
-            case 1: // The hull is not entirely below the cutting plane
-                break;
-            case 2: // The hull is entirely above the cutting plane
-                std::swap(m_hulls[i], m_hulls[count - 1]);
-                count--;
-                i--;
-                break;
-            case 3: // The hull is bisected by the cutting plane
-                m_hulls[i] = fragments.first;
-                m_hulls.push_back(fragments.second);
-                break;
-            default: // 0 - No hull on either side of cutting plane (Impossible unless the source is empty)
-                std::cout << "[Sculpture] Error! Empty hulls are present\n";
+//        std::cout << i << " " << limits.size() << " | "
+//        << inLimit(bFragments.second, limits)
+//        << " A: " << !aFragments.first.empty()
+//        << " B: " << !bFragments.first.empty() << "\n";
+
+        if (inLimit(bFragments.second, limits)) {
+            if (!aFragments.first.empty()) { // Intersection with plane A
+                m_hulls[i] = aFragments.first;
+
+                if (!bFragments.first.empty()) m_hulls.push_back(bFragments.first); // Intersection with plane B
+
+            } else { // Entirely beyond plane A
+
+                if (!bFragments.first.empty()) m_hulls[i] = bFragments.first; // Intersection with plane B
+                else { // Hull entirely within the cut - to be deleted
+                    std::swap(m_hulls[i], m_hulls[m_hulls.size() - 1]);
+                    m_hulls.pop_back();
+                    i--;
+                }
+            }
         }
     }
 
-    // Operate over fragments above the first cutting plane
-    for (uint32_t i = count; i < m_hulls.size(); i++) {
-        auto fragments = m_hulls[i].fragments(planeB.first, planeB.second);
+//    std::cout << "R " << m_hulls.size() << "\n";
+    remesh();
 
-        std::cout << fragments.first.empty() << " " << fragments.second.empty() << " " << i << " " << count << "||\n";
-        if (fragments.first.empty()) {
-            m_hulls.erase(m_hulls.begin() + i);
-            i--;
-        } else m_hulls[i] = fragments.first;
+    return true;
+}
 
-        if (!fragments.second.empty()) m_fragments.emplace_back(fragments.second);
+bool Sculpture::form()
+{
+    std::cout << "F Step: " << m_formStep + 1 << " / " << modelBody->mesh()->faceCount() << "\n";
+    if (m_formStep < modelBody->mesh()->faceCount() && !m_hulls.empty()) {
+
+        auto normal = modelBody->mesh()->faces().normal(m_formStep);
+        auto border = modelBody->mesh()->faces().faceBorder(m_formStep, modelBody->mesh()->vertices().vertices());
+        Sphere bounds = Sphere::enclose(border);
+
+        std::cout << border.size() << " " << bounds.center.x << " " << bounds.center.y << " " << bounds.center.z << " " << bounds.radius << " B\n";
+        std::cout << "Norm: " << normal.x << " " << normal.y << " " << normal.z << "\n";
+        for (uint32_t i = 0; i < m_hulls.size(); i++) {
+            if (m_hulls[i].intersects(bounds)) {
+                auto fragments = m_hulls[i].fragments(border[0], normal);
+//                m_hulls[i] = fragment;
+
+                std::cout << "Int: " << i << " " << bounds.radius << "\n";
+            }
+        }
+
+        std::cout << "Border: " << border.size() << "\n";
+
+        m_formStep++;
+        remesh();
     }
+
+    return false;
 }
 
 void Sculpture::remesh()
@@ -210,6 +262,30 @@ void Sculpture::remesh()
 
     // Prepare styling for the fragments
     m_mesh->setFaceColor(m_baseColor);
+    if (m_applyCompositeColor) colorHulls();
+}
+
+void Sculpture::applyCompositeColors(bool enable)
+{
+    if (m_applyCompositeColor != enable && m_mesh != nullptr) {
+        if (enable) colorHulls();
+        else m_mesh->setFaceColor(m_baseColor);
+    }
+
+    m_applyCompositeColor = enable;
+}
+
+void Sculpture::colorHulls()
+{
+    if (!m_hulls.empty()) {
+        uint32_t faceIdx = 0, hullIdx = 0;
+        for (const ConvexHull& hull : m_hulls) {
+            const glm::vec3& color = BRIGHT_SET[hullIdx];
+            hullIdx = (hullIdx + 1) % BRIGHT_SET.size();
+
+            for (uint32_t i = 0; i < hull.faces().faceCount(); i++) m_mesh->setFaceColor(faceIdx++, color);
+        }
+    }
 }
 
 const std::shared_ptr<Mesh>& Sculpture::sculpture()

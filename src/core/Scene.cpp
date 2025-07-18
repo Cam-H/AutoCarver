@@ -180,6 +180,8 @@ void Scene::clear(uint8_t level)
 {
     uint32_t count = 0;
 
+    m_bodies.clear();
+    m_robots.clear();
 //    for (uint32_t i = 0; i < m_entities.size(); i++) {
 //        if (m_entities[i].level <= level) {
 //            if (m_entities[i].body->physicsBody() != nullptr) delete m_entities[i].body;

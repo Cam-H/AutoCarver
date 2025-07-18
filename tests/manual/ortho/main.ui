@@ -110,12 +110,9 @@
      </property>
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
-       <widget class="QCheckBox" name="fixedCameraSetting">
+       <widget class="QPushButton" name="resetButton">
         <property name="text">
-         <string>Fix Camera</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
+         <string>Reset</string>
         </property>
        </widget>
       </item>
@@ -134,21 +131,26 @@
        </widget>
       </item>
       <item>
-       <widget class="QSpinBox" name="sizeField">
-        <property name="enabled">
-         <bool>false</bool>
+       <widget class="QPushButton" name="completeButton">
+        <property name="text">
+         <string>Full Refine</string>
         </property>
-        <property name="minimum">
-         <number>100</number>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="formButton">
+        <property name="text">
+         <string>Form</string>
         </property>
-        <property name="maximum">
-         <number>1000</number>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="showHullSetting">
+        <property name="text">
+         <string>Show Decomposition</string>
         </property>
-        <property name="singleStep">
-         <number>100</number>
-        </property>
-        <property name="value">
-         <number>400</number>
+        <property name="checked">
+         <bool>true</bool>
         </property>
        </widget>
       </item>

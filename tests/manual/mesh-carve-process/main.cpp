@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
     window = loadUiFile(nullptr);
     if (window == nullptr) return -1;
 
-    std::string source = "../res/meshes/devil.obj";
+    std::string source = "../res/meshes/ogre.obj";
     auto model = MeshHandler::loadAsMeshBody(source);
     model->setBaseColor({1, 0, 1});
 
