@@ -8,7 +8,7 @@
 #include <QVector2D>
 #include <QVector3D>
 
-#include <glm.hpp>
+#include "glm.hpp"
 
 class Triangle {
 public:

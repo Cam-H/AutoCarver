@@ -8,7 +8,7 @@
 #include <vector>
 #include <glm.hpp>
 
-#include "geometry/Triangle.h"
+#include "geometry/shape/Triangle.h"
 
 class Polygon {
 public:

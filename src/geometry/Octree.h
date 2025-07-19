@@ -12,6 +12,7 @@
 #include <glm.hpp>
 
 class Sphere;
+class AABB;
 class ConvexHull;
 
 class Octree {
@@ -76,7 +77,7 @@ public:
     using Iterator = OctreeIterator<false>;
     using ConstIterator = OctreeIterator<true>;
 
-    Octree(float length = 1.0f);
+    Octree(uint8_t maximumDepth = 6, float length = 1.0f);
 
     void reset();
 
@@ -116,13 +117,9 @@ public:
 
 private:
 
-    static inline bool collides(const Sphere& sphere, const glm::vec3& top, float length);
-    static inline glm::vec3 nearest(const glm::vec3& point, const glm::vec3& top, float length);
-
-    static inline bool encloses(const Sphere& sphere, const glm::vec3& top, float length);
-    static inline glm::vec3 farthest(const glm::vec3& point, const glm::vec3& top, float length);
-
     void calculateLengths();
+
+    inline AABB collider(const Octant& octant) const;
 
     static std::string unit(double& value);
     static std::string toString(double value, int precision);
@@ -131,9 +128,9 @@ private:
 
     std::vector<Octant> m_octants;
 
+    uint8_t m_maxDepth;
     std::vector<float> m_lengths;
 
-    uint8_t m_maxDepth;
 };
 
 

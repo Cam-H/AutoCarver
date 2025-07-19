@@ -27,8 +27,8 @@ qt_add_library(AutoCarverLib
         geometry/Mesh.cpp
         geometry/MeshBuilder.h
         geometry/MeshBuilder.cpp
-        geometry/Triangle.h
-        geometry/Triangle.cpp
+        geometry/shape/Triangle.h
+        geometry/shape/Triangle.cpp
         geometry/VertexArray.h
         geometry/VertexArray.cpp
         geometry/FaceArray.cpp
@@ -40,10 +40,10 @@ qt_add_library(AutoCarverLib
         geometry/Simplex.h
         geometry/EPA.cpp
         geometry/EPA.h
-        geometry/Circle.cpp
-        geometry/Circle.h
-        geometry/Sphere.cpp
-        geometry/Sphere.h
+        geometry/shape/Circle.cpp
+        geometry/shape/Circle.h
+        geometry/shape/Sphere.cpp
+        geometry/shape/Sphere.h
 
         geometry/poly/Polygon.h
         geometry/poly/Polygon.cpp
@@ -86,7 +86,18 @@ qt_add_library(AutoCarverLib
         renderer/EdgeDetect.cpp
         renderer/EdgeDetect.h
 
-        renderer/PolygonWidget.cpp renderer/PolygonWidget.h physics/CompositeBody.cpp physics/CompositeBody.h geometry/Octree.cpp geometry/Octree.h renderer/Colors.h)
+        renderer/PolygonWidget.cpp
+        renderer/PolygonWidget.h
+        physics/CompositeBody.cpp
+        physics/CompositeBody.h
+        geometry/Octree.cpp
+        geometry/Octree.h
+        renderer/Colors.h
+        geometry/shape/Plane.cpp
+        geometry/shape/Plane.h
+
+        geometry/Collision.cpp
+        geometry/Collision.h geometry/shape/AABB.cpp geometry/shape/AABB.h geometry/shape/Ray.cpp geometry/shape/Ray.h)
 
 target_link_libraries(AutoCarverLib PRIVATE
         Qt::Core

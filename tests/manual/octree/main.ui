@@ -177,6 +177,36 @@
     <widget class="QWidget" name="widget" native="true">
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Maximum Depth</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QSpinBox" name="depthField">
+        <property name="minimum">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>10</number>
+        </property>
+        <property name="value">
+         <number>6</number>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="updateMeshButton">
+        <property name="text">
+         <string>Update Mesh</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QLabel" name="label">
         <property name="font">
          <font>
@@ -229,7 +259,7 @@
   <customwidget>
    <class>SceneWidget</class>
    <extends>QOpenGLWidget</extends>
-   <header>SceneWidget.h</header>
+   <header>scenewidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

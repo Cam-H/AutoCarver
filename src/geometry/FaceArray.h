@@ -10,7 +10,7 @@
 #include <fstream>
 
 #include "VertexArray.h"
-#include "Triangle.h"
+#include "geometry/shape/Triangle.h"
 
 class FaceArray {
 public:

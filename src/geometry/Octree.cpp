@@ -8,8 +8,10 @@
 #include <sstream>
 #include <iomanip>
 
-#include "Sphere.h"
+#include "geometry/shape/Sphere.h"
+#include "geometry/shape/AABB.h"
 #include "ConvexHull.h"
+#include "Collision.h"
 
 Octree::Octant::Octant(const glm::vec3& top, uint8_t depth)
     : index(std::numeric_limits<uint32_t>::max())
@@ -82,9 +84,9 @@ Octree::OctreeIterator<IsConst>& Octree::OctreeIterator<IsConst>::operator++()
 //    return true;
 //}
 
-Octree::Octree(float length)
-    : m_lengths({ length })
-    , m_maxDepth(6)
+Octree::Octree(uint8_t maximumDepth, float length)
+    : m_maxDepth(std::max(maximumDepth, (uint8_t)1))
+    , m_lengths({ length })
 {
     calculateLengths();
     reset();
@@ -92,13 +94,12 @@ Octree::Octree(float length)
 
 void Octree::reset()
 {
-    if (m_maxDepth > 10) throw std::runtime_error("[Octree] Requested depth is too large. Try further subdividing with multiple Octrees");
+    if (m_maxDepth < 1) m_maxDepth = 1;
+    else if (m_maxDepth > 10) throw std::runtime_error("[Octree] Requested depth is too large. Try further subdividing with multiple Octrees");
 
     m_octants = { Octant(top(), 0) };
 
-    // Reserve memory to prepare for development of the Octree
-    // Reserve less than maximum to reduce memory usage (Full development is rare)
-    m_octants.reserve(maximumOctantCount(m_maxDepth - 1));
+    m_octants.reserve(maximumOctantCount(m_maxDepth));
 }
 
 bool Octree::unite(const Sphere& sphere)
@@ -113,8 +114,9 @@ bool Octree::subtract(const Sphere& sphere)
     bool update = false;
 
     while (it != end()) {
-        if (collides(sphere, it->top, m_lengths[it->depth])) {
-            if (encloses(sphere, it->top, m_lengths[it->depth])) { // Sphere entirely encloses the octant
+        auto body = collider(*it);
+        if (Collision::test(body, sphere)) {
+            if (Collision::encloses(body, sphere)) { // Sphere entirely encloses the octant
                 it->status = Octant::Status::DEAD;
                 update = true;
                 it.skip();
@@ -122,7 +124,7 @@ bool Octree::subtract(const Sphere& sphere)
                 update = update || it->status != Octant::Status::LIVE_CHILDREN;
                 it->status = Octant::Status::LIVE_CHILDREN;
 
-                if (it->depth + 1 < m_maxDepth && it->index == std::numeric_limits<uint32_t>::max()) { // Introducing children
+                if (it->depth + 1 <= m_maxDepth && it->index == std::numeric_limits<uint32_t>::max()) { // Introducing children
                     it->index = m_octants.size();
                     for (uint8_t i = 0; i < 8; i++)  m_octants.emplace_back(
                                 it->top + octantOffset(i, m_lengths[it->depth + 1]),
@@ -165,43 +167,13 @@ bool Octree::collides(const Sphere& sphere) const
 {
     auto it = begin();
     while (it != end()) {
-        if (it->status != Octant::Status::DEAD && collides(sphere, it->top, m_lengths[it->depth])) {
+        if (it->status != Octant::Status::DEAD && Collision::test(collider(*it), sphere)) {
             if (it->status == Octant::Status::TERMINUS) return true;
             ++it;
         } else it.skip();
     }
 
     return false;
-}
-
-bool Octree::collides(const Sphere& sphere, const glm::vec3& top, float length)
-{
-    glm::vec3 delta = sphere.center - nearest(sphere.center, top, length);
-    return glm::dot(delta, delta) < sphere.radius * sphere.radius;
-}
-
-glm::vec3 Octree::nearest(const glm::vec3& point, const glm::vec3& top, float length)
-{
-    return {
-        std::clamp(point.x, top.x, top.x + length),
-        std::clamp(point.y, top.y, top.y + length),
-        std::clamp(point.z, top.z, top.z + length)
-    };
-}
-
-bool Octree::encloses(const Sphere& sphere, const glm::vec3& top, float length)
-{
-    glm::vec3 delta = sphere.center - farthest(sphere.center, top, length);
-    return glm::dot(delta, delta) < sphere.radius * sphere.radius;
-}
-glm::vec3 Octree::farthest(const glm::vec3& point, const glm::vec3& top, float length)
-{
-    float halfLength = 0.5f * length;
-    return {
-        top.x + (top.x + halfLength > point.x ? length : 0),
-        top.y + (top.y + halfLength > point.y ? length : 0),
-        top.z + (top.z + halfLength > point.z ? length : 0)
-    };
 }
 
 glm::vec3 Octree::top() const
@@ -230,6 +202,16 @@ void Octree::calculateLengths()
     for (uint8_t i = 1; i < m_maxDepth; i++) m_lengths[i] = 0.5f * m_lengths[i - 1];
 }
 
+AABB Octree::collider(const Octant& octant) const
+{
+    float length = m_lengths[octant.depth];
+
+    return {
+      octant.top,
+      octant.top + glm::vec3(length, length, length)
+    };
+}
+
 size_t Octree::maximumOctantCount() const
 {
     return maximumOctantCount(m_maxDepth);
@@ -239,7 +221,7 @@ size_t Octree::maximumOctantCount(uint8_t depth)
 {
     size_t count = 1;
     for (uint8_t i = 0; i < depth; i++) count *= 8;
-    return count;
+    return count + 1;
 }
 
 glm::vec3 Octree::octantOffset(uint8_t index, float halfLength)

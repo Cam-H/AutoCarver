@@ -10,6 +10,8 @@
 #include "geometry/Mesh.h"
 #include "physics/CompositeBody.h"
 
+#include "geometry/shape/Plane.h"
+
 class Sculpture : public CompositeBody {
 public:
 
@@ -60,21 +62,24 @@ private:
     void prepareBox();
     void prepareFragment(const ConvexHull& hull);
 
-    bool planarSection(const glm::vec3& origin, const glm::vec3& normal);
-    bool triangleSection(const std::pair<glm::vec3, glm::vec3>& planeA, const std::pair<glm::vec3, glm::vec3>& planeB, const std::vector<std::pair<glm::vec3, glm::vec3>>& limits);
+    bool planarSection(const Plane& plane);
+    bool triangleSection(const Plane& planeA, const Plane& planeB, const std::vector<Plane>& limits);
 
-    inline static bool inLimit(const ConvexHull& hull, const std::pair<glm::vec3, glm::vec3>& limit);
-    inline static bool inLimit(const ConvexHull& hull, const std::vector<std::pair<glm::vec3, glm::vec3>>& limits);
+    inline static bool inLimit(const ConvexHull& hull, const Plane& limit);
+    inline static bool inLimit(const ConvexHull& hull, const std::vector<Plane>& limits);
 
     struct SectionOperation {
-        std::vector<std::pair<glm::vec3, glm::vec3>> surfaces;
-        std::vector<std::pair<glm::vec3, glm::vec3>> limits;
+        std::vector<Plane> surfaces;
+        std::vector<Plane> limits;
 
         SectionOperation()
             : surfaces() {}
 
         SectionOperation(const glm::vec3& origin, const glm::vec3& normal)
             : surfaces({ {origin, normal} }) {}
+
+        SectionOperation(const Plane& plane)
+                : surfaces({ plane }) {}
 
 //        SectionOperation(const std::vector<std::pair<glm::vec3, glm::vec3>>& surfaces)
 //            : surfaces(surfaces) {}

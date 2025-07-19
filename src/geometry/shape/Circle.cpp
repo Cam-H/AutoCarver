@@ -7,7 +7,7 @@
 #include <stdexcept>
 
 
-Circle::Circle() : center({ 0, 0 }), radius(-1.0f) {}
+Circle::Circle() : center(0, 0), radius(-1.0f) {}
 
 Circle::Circle(const glm::vec2& center, float radius) : center(center), radius(radius) {}
 

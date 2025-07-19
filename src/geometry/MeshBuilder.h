@@ -8,7 +8,7 @@
 
 #include "VertexArray.h"
 #include "FaceArray.h"
-#include "Triangle.h"
+#include "geometry/shape/Triangle.h"
 
 #include <vector>
 #include <map>

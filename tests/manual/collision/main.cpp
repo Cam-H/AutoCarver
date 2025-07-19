@@ -10,6 +10,7 @@
 #include <QSpinBox>
 #include <QRandomGenerator>
 
+#include "geometry/Collision.h"
 
 #ifndef QT_NO_OPENGL
 #include "ControlWidget.h"
@@ -23,6 +24,8 @@
 #include "geometry/Mesh.h"
 #include "geometry/MeshBuilder.h"
 #include "geometry/ConvexHull.h"
+#include "geometry/shape/AABB.h"
+#include "geometry/shape/Ray.h"
 
 std::shared_ptr<Mesh> base;
 std::shared_ptr<Mesh> test;
@@ -62,6 +65,9 @@ int main(int argc, char *argv[])
     window.resize(1200, 700);
 
 
+//    auto cp = CollisionPair(Sphere(), Plane());
+//    std::cout << "Int: " << cp.intersects() << "|\n";
+
     auto *content = new QWidget;
     window.setCentralWidget(content);
 
@@ -89,7 +95,9 @@ int main(int argc, char *argv[])
     base = MeshBuilder::box(2, 2, 1);
 
 //    test = MeshBuilder::cylinder(0.5, 2, 6);
-    test = MeshBuilder::icosphere(1.0f, 3);
+//    test = MeshBuilder::icosphere(1.0f, 3);
+    test = MeshBuilder::box();
+
 //    test->translate({ 0.5, 0.5, 0.5 });
 
     scene->createBody(base);
@@ -99,6 +107,21 @@ int main(int argc, char *argv[])
     sceneWidget->setFocusPolicy(Qt::StrongFocus); // Enable keyboard focus
 
     hRenderLayout->addWidget(sceneWidget);
+
+    auto box = AABB({-1, -1, -1}, {1, 1, 1});
+    auto axes = std::vector<glm::vec3>{
+            {0, 1, 0},
+            glm::normalize(glm::vec3{1, 1, 0}),
+            {1, 0, 0},
+            glm::normalize(glm::vec3{1, -0.5f, 0}),
+            {0, -1, 0}
+    };
+
+    for (const auto& axis : axes) {
+        const auto& [col, t, c] = Collision::intersection(box, Ray({}, axis));
+        std::cout << col << " " << t << " " << c.x << " " << c.y << " " << c.z << "~\n";
+    }
+
 
     sceneWidget->update();
 
@@ -112,7 +135,7 @@ int main(int argc, char *argv[])
 
     QObject::connect(randomButton, &QPushButton::clicked, [&]() {
         scene->bodies()[0]->setMesh(randomMesh(), true);
-        scene->bodies()[1]->setMesh(randomMesh(), true);
+//        scene->bodies()[1]->setMesh(randomMesh(), true);
 
         sceneWidget->update();
     });

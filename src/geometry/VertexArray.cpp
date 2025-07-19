@@ -254,6 +254,17 @@ void VertexArray::extents(const std::vector<glm::vec3>& vertices, const glm::vec
     far = glm::dot(axis, vertices[max]);
 }
 
+float VertexArray::span(const glm::vec3& axis) const
+{
+    return span(m_vertices, axis);
+}
+float VertexArray::span(const std::vector<glm::vec3>& vertices, const glm::vec3& axis)
+{
+    float near, far;
+    extents(vertices, axis, near, far);
+    return far - near;
+}
+
 void VertexArray::clean()
 {
     m_vertices = clean(m_vertices);

@@ -64,6 +64,9 @@ public:
     void extents(const glm::vec3& axis, float &near, float &far) const;
     static void extents(const std::vector<glm::vec3>& vertices, const glm::vec3& axis, float &near, float &far);
 
+    float span(const glm::vec3& axis) const;
+    static float span(const std::vector<glm::vec3>& vertices, const glm::vec3& axis);
+
     void clean();
 
     template<class T>

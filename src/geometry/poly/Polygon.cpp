@@ -13,7 +13,7 @@
 
 #include <CDT.h>
 
-#include "geometry/Circle.h"
+#include "geometry/shape/Circle.h"
 #include "geometry/VertexArray.h"
 
 Polygon::Polygon(const std::vector<glm::vec2>& border, bool enforceCCWWinding)

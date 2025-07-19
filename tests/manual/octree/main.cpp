@@ -17,7 +17,7 @@
 #include <vector>
 
 #ifndef QT_NO_OPENGL
-#include "geometry/Sphere.h"
+#include "geometry/shape/Sphere.h"
 #include "geometry/ConvexHull.h"
 #include "renderer/SceneWidget.h"
 #include "fileIO/MeshHandler.h"
@@ -35,12 +35,15 @@
 std::shared_ptr<Scene> scene = nullptr;
 SceneWidget *sceneWidget = nullptr;
 
+QSpinBox *depthField = nullptr;
+QCheckBox *updateMeshButton = nullptr;
+
 std::shared_ptr<Octree> oct = nullptr;
 
 std::shared_ptr<RigidBody> render = nullptr;
 std::shared_ptr<RigidBody> collider = nullptr;
 
-bool updateMesh = false;
+bool updateMesh = true;
 
 std::array<float, 6> pos = { 0, 0, 0, 0, 0, 0 };
 uint32_t type = 0;
@@ -96,19 +99,6 @@ int main(int argc, char *argv[])
 
     scene = std::make_shared<Scene>();
 
-    oct = std::make_shared<Octree>(5);
-
-    auto count = 0;
-    for (auto i : *oct)
-        std::cout << count++ << "| " << i.index << " " << (uint32_t)i.status << "\n";
-
-    // Create a cutting plane
-    auto model = MeshBuilder::mesh(oct);
-    if (model != nullptr) {
-        model->setBaseColor({1, 1, 1 });
-        render = scene->createBody(model);
-    }
-
     auto colliderMesh = MeshBuilder::icosphere(1.0f, 3);
     collider = scene->createBody(colliderMesh);
 
@@ -156,7 +146,7 @@ int main(int argc, char *argv[])
                 default: std::cout << "Unknown type: " << type << "\n";
             }
 
-            std::cout << oct->memoryFootprint() << "\n";
+//            std::cout << oct->memoryFootprint() << "\n";
             sceneWidget->update();
         });
 
@@ -188,6 +178,23 @@ int main(int argc, char *argv[])
 //        sceneWidget->update();
     });
 
+    depthField = widget->findChild<QSpinBox*>("depthField");
+    QObject::connect(depthField, &QSpinBox::valueChanged, [&](int value) {
+        oct->setMaximumDepth(value);
+        render->setMesh(MeshBuilder::mesh(oct));
+        sceneWidget->update();
+    });
+
+    updateMeshButton = widget->findChild<QCheckBox*>("updateMeshButton");
+    QObject::connect(updateMeshButton, &QCheckBox::clicked, [&]() {
+        if (updateMeshButton->checkState() == Qt::CheckState::Checked) {
+            render->setMesh(MeshBuilder::mesh(oct));
+            sceneWidget->update();
+        }
+
+        updateMesh = updateMeshButton->checkState() == Qt::CheckState::Checked;
+    });
+
     auto *noneRButton = widget->findChild<QRadioButton*>("noneRButton");
     QObject::connect(noneRButton, &QRadioButton::pressed, [&]() {
         type = 0;
@@ -207,6 +214,11 @@ int main(int argc, char *argv[])
     QObject::connect(intersectRButton, &QRadioButton::pressed, [&]() {
         type = 3;
     });
+
+    oct = std::make_shared<Octree>(depthField->value(), 5.0f);
+    auto model = MeshBuilder::mesh(oct);
+    model->setBaseColor({1, 1, 1 });
+    render = scene->createBody(model);
 
     widget->show();
 

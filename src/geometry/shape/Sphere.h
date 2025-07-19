@@ -5,9 +5,9 @@
 #ifndef AUTOCARVER_SPHERE_H
 #define AUTOCARVER_SPHERE_H
 
-#include <glm.hpp>
+#include "glm.hpp"
 
-#include "VertexArray.h"
+#include "geometry/VertexArray.h"
 
 class Sphere {
 public:
@@ -22,10 +22,6 @@ public:
     static Sphere midpointSphere(const glm::vec3& a, const glm::vec3& b);
     static Sphere triangleCircumsphere(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c);
     static Sphere tetrahedronCircumsphere(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& d);
-
-    [[nodiscard]] bool encloses(const glm::vec3& vertex, float tolerance = std::numeric_limits<float>::epsilon()) const;
-
-    [[nodiscard]] bool intersects(const Sphere& sphere) const;
 
     [[nodiscard]] bool raycast(const glm::vec3& origin, const glm::vec3& direction) const;
     bool raycast(const glm::vec3& origin, const glm::vec3& direction, float& t1, float& t2) const;

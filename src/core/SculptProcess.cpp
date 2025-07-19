@@ -13,6 +13,7 @@
 
 #include "robot/planning/Trajectory.h"
 #include "geometry/MeshBuilder.h"
+#include "geometry/Collision.h"
 
 SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     : Scene()
@@ -152,22 +153,18 @@ bool SculptProcess::simulationActive() const
 
 void SculptProcess::planConvexTrim()
 {
-    struct Operation {
-        glm::vec3 origin;
-        glm::vec3 normal;
-    };
 
-    std::vector<Operation> steps;
+    std::vector<Plane> steps;
 
     ConvexHull hull = ConvexHull(model);
 
     for (uint32_t i = 0; i < hull.facetCount(); i++) {
         uint32_t idx = hull.faces()[i][0];
-        steps.push_back({hull.vertices()[idx], -hull.facetNormal(i)});
+        steps.emplace_back(hull.vertices()[idx], -hull.facetNormal(i));
     }
 
     // Plan initial cuts, beginning from the top and moving towards the base
-    std::sort(steps.begin(), steps.end(), [](const Operation& a, const Operation& b){
+    std::sort(steps.begin(), steps.end(), [](const Plane& a, const Plane& b){
         return glm::dot(a.normal, {0, 1, 0}) < glm::dot(b.normal, {0, 1, 0});
     });
 
@@ -177,10 +174,10 @@ void SculptProcess::planConvexTrim()
     std::cout << p.x << " " << p.y << " " << p.z << "~~~~|\n";
 
     // Process all the cuts preemptively
-    for (const Operation& step : steps) {
+    for (const Plane& step : steps) {
 
         // TODO Verify length / access - Get min/max
-        auto border = hull.intersection(step.origin, step.normal);
+        auto border = Collision::intersection(hull, step);
         if (border.size() < 3) continue;
 //        if (border.size() < 3) throw std::runtime_error("[SculptProcess] Failed to find intersection for section");
 
@@ -194,7 +191,7 @@ void SculptProcess::planConvexTrim()
         m_sculpture->queueSection(step.origin, step.normal);
 
         // Prepare for next step
-        hull = hull.fragment(step.origin, step.normal);
+        hull = Collision::fragment(hull, step);
     }
 }
 

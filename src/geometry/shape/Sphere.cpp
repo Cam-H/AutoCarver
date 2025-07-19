@@ -3,6 +3,7 @@
 //
 
 #include "Sphere.h"
+#include "geometry/Collision.h"
 
 #include <iostream>
 #include <random>
@@ -119,23 +120,13 @@ Sphere Sphere::welzl(std::vector<glm::vec3>& vertices, std::vector<glm::vec3> se
     std::swap(vertices[0], vertices[n - 1]);
 
     Sphere test = welzl(vertices, set, n - 1);
-    if (test.encloses(vertex)) {
+    if (Collision::encloses(test, vertex)) {
         return test;
     }
 
     set.push_back(vertex);
 
     return welzl(vertices, set, n - 1);
-}
-
-bool Sphere::encloses(const glm::vec3& vertex, float tolerance) const {
-    glm::vec3 delta = vertex - center;
-    return (glm::dot(delta, delta) - radius * radius) < tolerance;
-}
-
-bool Sphere::intersects(const Sphere& sphere) const {
-    glm::vec3 delta = sphere.center - center;
-    return glm::dot(delta, delta) < pow(sphere.radius + radius, 2);
 }
 
 bool Sphere::raycast(const glm::vec3& origin, const glm::vec3& direction) const {

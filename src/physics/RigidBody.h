@@ -16,7 +16,7 @@
 
 #include "geometry/Mesh.h"
 #include "geometry/ConvexHull.h"
-#include "geometry/Sphere.h"
+#include "geometry/shape/Sphere.h"
 
 #include "geometry/Transformable.h"
 

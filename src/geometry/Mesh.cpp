@@ -236,21 +236,15 @@ void Mesh::extents(const glm::vec3& axis, float &near, float &far) const
 
 float Mesh::xSpan() const
 {
-    float near, far;
-    xExtents(near, far);
-    return far - near;
+    return m_vertices.span({ 1, 0, 0 });
 }
 float Mesh::ySpan() const
 {
-    float near, far;
-    yExtents(near, far);
-    return far - near;
+    return m_vertices.span({ 0, 1, 0 });
 }
 float Mesh::zSpan() const
 {
-    float near, far;
-    zExtents(near, far);
-    return far - near;
+    return m_vertices.span({ 0, 0, 1 });
 }
 
 void Mesh::overrideColor(bool enable)

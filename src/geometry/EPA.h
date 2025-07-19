@@ -11,7 +11,7 @@
 
 class ConvexHull;
 
-#include "Triangle.h"
+#include "geometry/shape/Triangle.h"
 #include "Simplex.h"
 
 class EPA {

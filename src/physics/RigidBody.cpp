@@ -13,6 +13,7 @@
 #include "core/Timer.h"
 #include "geometry/EPA.h"
 #include "geometry/MeshBuilder.h"
+#include "geometry/Collision.h"
 
 RigidBody::RigidBody(const std::string& filename)
         : RigidBody((const std::shared_ptr<Mesh>&)nullptr)
@@ -132,7 +133,7 @@ bool RigidBody::scan(const std::shared_ptr<RigidBody>& body) const
 
 bool RigidBody::boundaryCollision(const std::shared_ptr<RigidBody>& body)
 {
-    return scan(body) && m_boundingSphere.intersects(body->m_boundingSphere);
+    return scan(body) && Collision::test(m_boundingSphere, body->m_boundingSphere);
 }
 
 bool RigidBody::collides(const std::shared_ptr<RigidBody>& body)
@@ -143,7 +144,7 @@ bool RigidBody::collides(const std::shared_ptr<RigidBody>& body)
 
     std::pair<uint32_t, uint32_t> nearest = cachedCollision(body);
 
-    Simplex simplex = m_hull.gjkIntersection(body->m_hull, relative, nearest);
+    Simplex simplex = Collision::gjk(m_hull, body->m_hull, relative, nearest);
 
     cacheCollision(body, simplex[0].idx);
 

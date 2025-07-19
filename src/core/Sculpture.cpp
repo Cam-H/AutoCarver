@@ -6,6 +6,8 @@
 
 #include "geometry/MeshBuilder.h"
 #include "renderer/Colors.h"
+#include "geometry/Collision.h"
+
 
 Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, float width, float height)
     : CompositeBody(MeshBuilder::box())
@@ -18,6 +20,7 @@ Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, float width, float heig
     , m_formStep(0)
     , m_baseColor(0.7f, 0.7f, 0.7f)
     , m_highlightColor(0.3f, 0.3f, 0.8f)
+    , m_applyCompositeColor(true)
 {
 
     scaleToFit(model, m_width, m_height);
@@ -139,7 +142,7 @@ bool Sculpture::applySection()
 
         switch (m_operations[step].surfaces.size()) {
             case 1:
-                planarSection(m_operations[step].surfaces[0].first, m_operations[step].surfaces[0].second);
+                planarSection(m_operations[step].surfaces[0]);
                 break;
             case 2:
                 if (m_hulls.empty()) m_hulls.push_back(m_hull); // TODO move when extending to > 2 surface cuts
@@ -155,33 +158,33 @@ bool Sculpture::applySection()
     return false;
 }
 
-bool Sculpture::planarSection(const glm::vec3& origin, const glm::vec3& normal)
+bool Sculpture::planarSection(const Plane& plane)
 {
-    if (!m_hull.intersects(origin, normal)) return false;
+    if (!Collision::test(m_hull, plane)) return false;
 
     if (m_preserveDebris) {
-        auto fragments = m_hull.fragments(origin, normal);
+        auto fragments = Collision::fragments(m_hull, plane);
         m_hull = fragments.first;
 
         if (!fragments.second.empty()) prepareFragment(fragments.second);
     } else {
-        m_hull = m_hull.fragment(origin, normal);
+        m_hull = Collision::fragment(m_hull, plane);
     }
 
     remesh();
 
     // Highlight cut faces
-    m_mesh->setFaceColor(m_mesh->matchFace(normal), m_highlightColor);
+    m_mesh->setFaceColor(m_mesh->matchFace(plane.normal), m_highlightColor);
 
     return true;
 }
 
-bool Sculpture::inLimit(const ConvexHull& hull, const std::pair<glm::vec3, glm::vec3>& limit)
+bool Sculpture::inLimit(const ConvexHull& hull, const Plane& limit)
 {
-    return !hull.below(limit.first, limit.second);
+    return !Collision::below(hull, limit);
 }
 
-bool Sculpture::inLimit(const ConvexHull& hull, const std::vector<std::pair<glm::vec3, glm::vec3>>& limits)
+bool Sculpture::inLimit(const ConvexHull& hull, const std::vector<Plane>& limits)
 {
     for (const auto& limit : limits) {
         if (!inLimit(hull, limit)) return false;
@@ -190,13 +193,13 @@ bool Sculpture::inLimit(const ConvexHull& hull, const std::vector<std::pair<glm:
     return true;
 }
 
-bool Sculpture::triangleSection(const std::pair<glm::vec3, glm::vec3>& planeA, const std::pair<glm::vec3, glm::vec3>& planeB, const std::vector<std::pair<glm::vec3, glm::vec3>>& limits)
+bool Sculpture::triangleSection(const Plane& planeA, const Plane& planeB, const std::vector<Plane>& limits)
 {
     for (uint32_t i = 0; i < m_hulls.size(); i++) {
 
-        auto aFragments = m_hulls[i].fragments(planeA.first, -planeA.second);
-        auto bFragments = aFragments.second.fragments(planeB.first, -planeB.second);
-        if (bFragments.second.empty()) continue; // Skip hulls behind either cutting plane
+        auto aFragments = Collision::fragments(m_hulls[i], { planeA.origin, -planeA.normal });
+        auto bFragments = Collision::fragments(aFragments.second, { planeB.origin, -planeB.normal });
+        if (bFragments.second.empty()) continue;
 
 //        std::cout << i << " " << limits.size() << " | "
 //        << inLimit(bFragments.second, limits)
@@ -239,12 +242,13 @@ bool Sculpture::form()
         std::cout << border.size() << " " << bounds.center.x << " " << bounds.center.y << " " << bounds.center.z << " " << bounds.radius << " B\n";
         std::cout << "Norm: " << normal.x << " " << normal.y << " " << normal.z << "\n";
         for (uint32_t i = 0; i < m_hulls.size(); i++) {
-            if (m_hulls[i].intersects(bounds)) {
-                auto fragments = m_hulls[i].fragments(border[0], normal);
-//                m_hulls[i] = fragment;
+//            if (m_hulls[i].intersects(bounds)) {
+//                auto fragments = m_hulls[i].fragments(border[0], -normal);
+//                m_hulls[i] = fragments.first;
+//
+//                std::cout << "Int: " << i << " " << fragments.first.vertexCount() << " " << fragments.second.vertexCount() << "\n";
+//            }
 
-                std::cout << "Int: " << i << " " << bounds.radius << "\n";
-            }
         }
 
         std::cout << "Border: " << border.size() << "\n";

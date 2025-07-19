@@ -234,7 +234,7 @@ int main(int argc, char *argv[])
     auto formButton = window->findChild<QPushButton*>("formButton");
     QObject::connect(formButton, &QPushButton::clicked, [&]() {
         if (body->form()) {
-//            sceneWidget->updateRenderGeometry(body->mesh());
+            sceneWidget->updateRenderGeometry(body->mesh());
             sceneWidget->update();
         }
     });
