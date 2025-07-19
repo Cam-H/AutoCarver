@@ -16,6 +16,12 @@ public:
     AABB(const glm::vec3& min, const glm::vec3& max);
     AABB(const ConvexHull& hull);
 
+    float xLength() const;
+    float yLength() const;
+    float zLength() const;
+
+    [[nodiscard]] glm::vec3 center() const;
+
     [[nodiscard]] glm::vec3 vertex(uint32_t index) const;
     [[nodiscard]] glm::vec3 extreme(const glm::vec3& axis) const;
 

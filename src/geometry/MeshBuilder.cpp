@@ -12,6 +12,8 @@
 #include "ConvexHull.h"
 #include "Octree.h"
 
+#include "renderer/Colors.h"
+
 
 std::shared_ptr<Mesh> MeshBuilder::plane(float width, const glm::vec3& origin, const glm::vec3& normal)
 {
@@ -279,27 +281,26 @@ uint32_t MeshBuilder::getMidPoint(std::vector<glm::vec3>& vertices, std::map<uin
 
 std::shared_ptr<Mesh> MeshBuilder::mesh(const std::shared_ptr<Octree>& tree)
 {
-    uint8_t target = Octree::Octant::Status::TERMINUS;
-    uint32_t  count = tree->octantCount(target), offset = 0;
+    const uint8_t target = Octree::Octant::Status::TERMINUS;
+    const uint32_t  count = tree->octantCount(target);
+    uint32_t offset = 0;
     std::cout << count << " / " << tree->maximumOctantCount() << " COUNTS\n";
 
-    auto vertices = VertexArray(8 * count);
+    auto mesh = std::make_shared<Mesh>(8 * count, 6 * count, 24 * count);
 
-    auto faces = FaceArray(6 * count, 24 * count);
-    uint32_t *idxPtr = faces[0], *sizePtr = faces.faceSizes();
+    uint32_t *idxPtr = mesh->m_faces[0], *sizePtr = mesh->m_faces.faceSizes();
 
     for (const Octree::Octant& octant : *tree) {
         if (octant.status == target) {
             float length = tree->octantLength(octant);
-//            std::cout << "MB " << (offset / 8) << " " << length << " " << (uint32_t)octant.depth << " " << (uint32_t)octant.status << " " << octant.index  << " " << octant.top.x << " " << octant.top.y << " " << octant.top.z << "\n";
-            vertices[offset    ] = octant.top;
-            vertices[offset + 1] = octant.top + glm::vec3{      0, length,      0 };
-            vertices[offset + 2] = octant.top + glm::vec3{ length, length,      0 };
-            vertices[offset + 3] = octant.top + glm::vec3{ length,      0,      0 };
-            vertices[offset + 4] = octant.top + glm::vec3{      0,      0, length };
-            vertices[offset + 5] = octant.top + glm::vec3{      0, length, length };
-            vertices[offset + 6] = octant.top + glm::vec3{ length, length, length };
-            vertices[offset + 7] = octant.top + glm::vec3{ length,      0, length };
+            mesh->m_vertices[offset    ] = octant.top;
+            mesh->m_vertices[offset + 1] = octant.top + glm::vec3{      0, length,      0 };
+            mesh->m_vertices[offset + 2] = octant.top + glm::vec3{ length, length,      0 };
+            mesh->m_vertices[offset + 3] = octant.top + glm::vec3{ length,      0,      0 };
+            mesh->m_vertices[offset + 4] = octant.top + glm::vec3{      0,      0, length };
+            mesh->m_vertices[offset + 5] = octant.top + glm::vec3{      0, length, length };
+            mesh->m_vertices[offset + 6] = octant.top + glm::vec3{ length, length, length };
+            mesh->m_vertices[offset + 7] = octant.top + glm::vec3{ length,      0, length };
 
             indexBox(idxPtr, sizePtr, offset);
             idxPtr += 24;
@@ -309,9 +310,18 @@ std::shared_ptr<Mesh> MeshBuilder::mesh(const std::shared_ptr<Octree>& tree)
         }
     }
 
-    std::cout << "done\n";
+    // Apply unique colors to each face for clarity
+    for (uint32_t i = 0; i < 6 * count; i += 6) {
+        for (uint8_t j = 0; j < 6; j++) {
+            mesh->m_faces.setColor(i + j, PURE_COLORS[j]);
+        }
+    }
 
-    return std::make_shared<Mesh>(vertices, faces);
+//    std::cout << "done\n";
+
+    mesh->initialize();
+
+    return mesh;
 }
 
 void MeshBuilder::indexBox(uint32_t *facePtr, uint32_t *sizePtr, uint32_t offset)

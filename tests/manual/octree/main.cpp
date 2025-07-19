@@ -18,6 +18,7 @@
 
 #ifndef QT_NO_OPENGL
 #include "geometry/shape/Sphere.h"
+#include "geometry/shape/AABB.h"
 #include "geometry/ConvexHull.h"
 #include "renderer/SceneWidget.h"
 #include "fileIO/MeshHandler.h"
@@ -46,7 +47,9 @@ std::shared_ptr<RigidBody> collider = nullptr;
 bool updateMesh = true;
 
 std::array<float, 6> pos = { 0, 0, 0, 0, 0, 0 };
-uint32_t type = 0;
+uint32_t shapeType = 0, operationType = 0;
+
+float radius = 0.1f;
 
 #include <QRandomGenerator>
 
@@ -59,7 +62,7 @@ std::shared_ptr<Mesh> randomMesh()
     std::vector<glm::vec3> cloud(count);
     auto *ptr = (float*)cloud.data();
 
-    for (uint32_t j = 0; j < 3 * count; j++) *ptr++ = (float)rng.global()->bounded(2.0) - 1.0f;
+    for (uint32_t j = 0; j < 3 * count; j++) *ptr++ = (float)rng.global()->bounded(2 * radius) - radius;
 
     return std::make_shared<Mesh>(ConvexHull(cloud), false);
 }
@@ -84,6 +87,42 @@ void sceneUpdate()
     sceneWidget->update();
 }
 
+template <class T>
+void apply(const T& body)
+{
+    switch (operationType) {
+        case 0:
+        {
+            static bool collision = false;
+            bool test = oct->collides(body) && updateMesh;
+            if (test != collision) {
+                auto mesh = MeshBuilder::mesh(oct);
+                if (test) mesh->setFaceColor({ 1, 0, 0});
+                else mesh->setFaceColor({ 1, 1, 1});
+                render->setMesh(mesh);
+                collision = test;
+            }
+
+            auto val = oct->locateParent(body);
+            std::cout << "Pos: " << val << " |} ";
+            if (val == std::numeric_limits<uint32_t>::max()) std::cout << "\n";
+            else std::cout << oct->isParent(0, val) << " " << oct->isParent(7, val) << "\n";
+        }
+
+            break;
+        case 1:
+//                    if (oct->unite(body) && updateMesh) render->setMesh(MeshBuilder::mesh(oct));
+            break;
+        case 2:
+            if (oct->subtract(body) && updateMesh) render->setMesh(MeshBuilder::mesh(oct));
+            break;
+        case 3:
+//                    if (oct->intersect(body) && updateMesh) render->setMesh(MeshBuilder::mesh(oct));
+            break;
+        default: std::cout << "Unknown type: " << operationType << "\n";
+    }
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -99,7 +138,7 @@ int main(int argc, char *argv[])
 
     scene = std::make_shared<Scene>();
 
-    auto colliderMesh = MeshBuilder::icosphere(1.0f, 3);
+    auto colliderMesh = MeshBuilder::icosphere(radius, 3);
     collider = scene->createBody(colliderMesh);
 
     sceneWidget = widget->findChild<SceneWidget*>("sceneWidget");
@@ -118,32 +157,20 @@ int main(int argc, char *argv[])
             collider->setPosition(position);
             collider->setRotation({ pos[3], pos[4], pos[5] });
 
-            Sphere sphere = Sphere(position, 1.0f);
-            switch (type) {
+            switch (shapeType) {
                 case 0:
-                {
-                    static bool collision = false;
-                    bool test = oct->collides(sphere) && updateMesh;
-                    if (test != collision) {
-                        auto mesh = MeshBuilder::mesh(oct);
-                        if (test) mesh->setFaceColor({ 1, 0, 0});
-                        else mesh->setFaceColor({ 1, 1, 1});
-                        render->setMesh(mesh);
-                        collision = test;
-                    }
-                }
-
+                    apply(Sphere(position, radius));
                     break;
                 case 1:
-                    if (oct->unite(sphere) && updateMesh) render->setMesh(MeshBuilder::mesh(oct));
+                    apply(AABB(position - radius * glm::vec3{ 1, 1, 1 }, radius));
                     break;
                 case 2:
-                    if (oct->subtract(sphere) && updateMesh) render->setMesh(MeshBuilder::mesh(oct));
+                {
+                    auto vertices = VertexArray(collider->hull().vertices());
+                    vertices.translate(position);
+                    apply(ConvexHull(vertices));
+                }
                     break;
-                case 3:
-                    if (oct->intersect(sphere) && updateMesh) render->setMesh(MeshBuilder::mesh(oct));
-                    break;
-                default: std::cout << "Unknown type: " << type << "\n";
             }
 
 //            std::cout << oct->memoryFootprint() << "\n";
@@ -169,13 +196,25 @@ int main(int argc, char *argv[])
         if (render != nullptr) render->setMesh(MeshBuilder::mesh(oct));
     });
 
+    // Handle mesh sphere button
+    auto *sphereButton = widget->findChild<QPushButton*>("sphereButton");
+    QObject::connect(sphereButton, &QPushButton::clicked, [&]() {
+        collider->setMesh(MeshBuilder::icosphere(0.1f, 3), true);
+        shapeType = 0;
+    });
+
+    // Handle mesh cube button
+    auto *cubeButton = widget->findChild<QPushButton*>("cubeButton");
+    QObject::connect(cubeButton, &QPushButton::clicked, [&]() {
+        collider->setMesh(MeshBuilder::box(), true);
+        shapeType = 1;
+    });
+
     // Handle mesh randomization button
     auto *randomButton = widget->findChild<QPushButton*>("randomButton");
     QObject::connect(randomButton, &QPushButton::clicked, [&]() {
         collider->setMesh(randomMesh(), true);
-//        base->setMesh(MeshBuilder::box(6), true);
-
-//        sceneWidget->update();
+        shapeType = 2;
     });
 
     depthField = widget->findChild<QSpinBox*>("depthField");
@@ -197,25 +236,26 @@ int main(int argc, char *argv[])
 
     auto *noneRButton = widget->findChild<QRadioButton*>("noneRButton");
     QObject::connect(noneRButton, &QRadioButton::pressed, [&]() {
-        type = 0;
+        operationType = 0;
     });
 
     auto *uniteRButton = widget->findChild<QRadioButton*>("uniteRButton");
     QObject::connect(uniteRButton, &QRadioButton::pressed, [&]() {
-        type = 1;
+        operationType = 1;
     });
 
     auto *differenceRButton = widget->findChild<QRadioButton*>("differenceRButton");
     QObject::connect(differenceRButton, &QRadioButton::pressed, [&]() {
-        type = 2;
+        operationType = 2;
     });
 
     auto *intersectRButton = widget->findChild<QRadioButton*>("intersectRButton");
     QObject::connect(intersectRButton, &QRadioButton::pressed, [&]() {
-        type = 3;
+        operationType = 3;
     });
 
     oct = std::make_shared<Octree>(depthField->value(), 5.0f);
+
     auto model = MeshBuilder::mesh(oct);
     model->setBaseColor({1, 1, 1 });
     render = scene->createBody(model);

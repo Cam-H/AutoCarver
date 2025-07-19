@@ -19,6 +19,7 @@ class ConvexHull;
 
 #include "Simplex.h"
 
+// An array of static collision detection methods for primitive shapes
 class Collision {
 public:
 
@@ -94,6 +95,7 @@ public:
     static bool encloses(const Sphere& body, const glm::vec3& vertex);
 
     static bool encloses(const Sphere& bodyA, const Sphere& bodyB);
+    static bool encloses(const AABB& bodyA, const AABB& bodyB);
 
     static bool encloses(const Sphere& bodyA, const AABB& bodyB);
     static bool encloses(const AABB& bodyA, const Sphere& bodyB);

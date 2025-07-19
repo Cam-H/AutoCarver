@@ -152,9 +152,23 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="sphereButton">
+        <property name="text">
+         <string>Sphere</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="cubeButton">
+        <property name="text">
+         <string>Cube</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="randomButton">
         <property name="sizePolicy">
-         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -231,6 +245,9 @@
       </item>
       <item>
        <widget class="QRadioButton" name="uniteRButton">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="text">
          <string>Union</string>
         </property>
@@ -245,8 +262,14 @@
       </item>
       <item>
        <widget class="QRadioButton" name="intersectRButton">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="text">
          <string>Intersect</string>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
         </property>
        </widget>
       </item>

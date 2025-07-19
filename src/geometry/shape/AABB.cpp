@@ -39,6 +39,24 @@ AABB::AABB(const ConvexHull& hull)
 
 }
 
+float AABB::xLength() const
+{
+    return max.x - min.x;
+}
+float AABB::yLength() const
+{
+    return max.y - min.y;
+}
+float AABB::zLength() const
+{
+    return max.z - min.z;
+}
+
+glm::vec3 AABB::center() const
+{
+    return 0.5f * (min + max);
+}
+
 glm::vec3 AABB::vertex(uint32_t index) const
 {
     switch (index) {

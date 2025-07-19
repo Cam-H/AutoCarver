@@ -144,16 +144,27 @@ bool Collision::encloses(const Sphere& bodyA, const Sphere& bodyB)
     return glm::dot(delta, delta) < pow(bodyA.radius - bodyB.radius, 2);
 }
 
+// Test whether bodyA encloses bodyB
+bool Collision::encloses(const AABB& bodyA, const AABB& bodyB)
+{
+    return bodyA.min.x < bodyB.min.x && bodyA.max.x > bodyB.max.x
+        && bodyA.min.y < bodyB.min.y && bodyA.max.y > bodyB.max.y
+        && bodyA.min.z < bodyB.min.z && bodyA.max.z > bodyB.max.z;
+}
 
+// Test whether the sphere encloses the AABB
 bool Collision::encloses(const Sphere& bodyA, const AABB& bodyB)
 {
-    return encloses(bodyB, bodyA);
-
+    glm::vec3 delta = bodyA.center - farthest(bodyB, bodyA.center);
+    return glm::dot(delta, delta) < bodyA.radius * bodyA.radius;
 }
+// Test whether the AABB encloses the sphere
 bool Collision::encloses(const AABB& bodyA, const Sphere& bodyB)
 {
-    glm::vec3 delta = bodyB.center - farthest(bodyA, bodyB.center);
-    return glm::dot(delta, delta) < bodyB.radius * bodyB.radius;
+    glm::vec3 delta = bodyB.center - bodyA.center();
+    return std::abs(delta.x) < 0.5f * bodyA.xLength() - bodyB.radius
+        && std::abs(delta.y) < 0.5f * bodyA.yLength() - bodyB.radius
+        && std::abs(delta.z) < 0.5f * bodyA.zLength() - bodyB.radius;
 }
 
 glm::vec3 Collision::initialAxis(const ConvexHull& bodyA, const ConvexHull& bodyB, std::pair<uint32_t, uint32_t>& idx)
