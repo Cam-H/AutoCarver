@@ -5,6 +5,8 @@
 #ifndef AUTOCARVER_VERTEXARRAY_H
 #define AUTOCARVER_VERTEXARRAY_H
 
+#include "fileIO/Serializable.h"
+
 #include <cstdint>
 #include <iostream>
 #include <fstream>
@@ -14,16 +16,24 @@
 #include <vec2.hpp>
 #include <vec3.hpp>
 
-class VertexArray {
+class VertexArray : public Serializable {
 public:
     VertexArray(const float* vertices, uint32_t vertexCount);
 
     explicit VertexArray(uint32_t vertexCount);
     explicit VertexArray(const std::vector<glm::vec3>& vertices);
 
+    explicit VertexArray(const std::string& filename);
+    explicit VertexArray(std::ifstream& file);
 
-    bool serialize(std::ofstream& file);
-    static VertexArray deserialize(std::ifstream& file);
+
+    bool serialize(const std::string& filename) override;
+    bool serialize(std::ofstream& file) override;
+
+    bool deserialize(const std::string& filename) override;
+    bool deserialize(std::ifstream& file) override;
+
+//    static VertexArray deserialize(std::ifstream& file);
 
 //    float* operator[](uint32_t idx);
     glm::vec3& operator[](uint32_t idx);

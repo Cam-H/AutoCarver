@@ -8,11 +8,11 @@
 
 #include "VertexArray.h"
 #include "FaceArray.h"
-#include "geometry/shape/Triangle.h"
 
 #include <vector>
 #include <map>
 
+class Triangle;
 class Mesh;
 class ConvexHull;
 class Octree;

@@ -9,12 +9,17 @@
 
 #include "geometry/VertexArray.h"
 
+class ConvexHull;
+
 class Sphere {
 public:
 
     Sphere();
     Sphere(glm::vec3 center, float radius);
 
+    [[nodiscard]] bool isValid() const;
+
+    static Sphere enclose(const ConvexHull& hull);
     static Sphere enclose(const VertexArray& vertices);
     static Sphere enclose(const std::vector<Sphere>& spheres);
     static Sphere enclose(const std::vector<glm::vec3>& vertices);
@@ -26,8 +31,7 @@ public:
     [[nodiscard]] bool raycast(const glm::vec3& origin, const glm::vec3& direction) const;
     bool raycast(const glm::vec3& origin, const glm::vec3& direction, float& t1, float& t2) const;
 
-    [[nodiscard]] uint32_t vertexCount() const;
-
+    [[nodiscard]] glm::vec3 extreme(const glm::vec3& axis) const;
 
 private:
     static Sphere welzl(std::vector<glm::vec3>& vertices, std::vector<glm::vec3> set, uint32_t n);

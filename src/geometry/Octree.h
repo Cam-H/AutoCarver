@@ -97,6 +97,8 @@ public:
 
     void reset();
 
+    void translate(const glm::vec3& translation);
+
     // Apply boolean operation to the octree
     template<class T>
     bool unite(const T& body);
@@ -160,6 +162,8 @@ private:
 
     uint8_t m_maxDepth;
     std::vector<float> m_lengths;
+
+    glm::vec3 m_offset;
 
 };
 

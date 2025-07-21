@@ -12,6 +12,11 @@ Plane::Plane(const glm::vec3& origin, const glm::vec3& normal)
 {
 }
 
+bool Plane::isValid() const
+{
+    return glm::dot(normal, normal) > 1e-6;
+}
+
 glm::vec3 Plane::project(const glm::vec3& vertex) const
 {
     return project(*this, vertex);

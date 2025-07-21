@@ -10,7 +10,7 @@
 #include "geometry/Mesh.h"
 #include "physics/CompositeBody.h"
 
-#include "geometry/shape/Plane.h"
+#include "geometry/primitives/Plane.h"
 
 class Sculpture : public CompositeBody {
 public:
@@ -23,7 +23,7 @@ public:
 
     void moved() override;
 
-    void restore();
+    void restore() override;
     void restoreAsHull();
 
     void queueSection(const glm::vec3& origin, const glm::vec3& normal);
@@ -35,8 +35,6 @@ public:
     bool form();
 
     void remesh() override;
-
-    void applyCompositeColors(bool enable);
 
     const std::shared_ptr<Mesh>& sculpture();
 
@@ -56,8 +54,6 @@ public:
     [[nodiscard]] float remainderRatio() const;
 
 private:
-
-    void colorHulls();
 
     void prepareBox();
     void prepareFragment(const ConvexHull& hull);
@@ -105,9 +101,7 @@ private:
     uint32_t m_formStep;
 
     // Styling
-    glm::vec3 m_baseColor;
     glm::vec3 m_highlightColor;
-    bool m_applyCompositeColor;
 
 };
 

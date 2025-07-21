@@ -8,9 +8,9 @@
 #include <sstream>
 #include <iomanip>
 
-#include "geometry/shape/Sphere.h"
-#include "geometry/shape/AABB.h"
-#include "ConvexHull.h"
+#include "geometry/primitives/Sphere.h"
+#include "geometry/primitives/AABB.h"
+#include "geometry/primitives/ConvexHull.h"
 #include "Collision.h"
 
 Octree::Octant::Octant(uint32_t parent, const glm::vec3& top, uint8_t depth)
@@ -26,6 +26,7 @@ Octree::Octant::Octant(uint32_t parent, const glm::vec3& top, uint8_t depth)
 Octree::Octree(uint8_t maximumDepth, float length)
     : m_maxDepth(std::max(maximumDepth, (uint8_t)1))
     , m_lengths({ length })
+    , m_offset(0)
 {
     calculateLengths();
     reset();
@@ -34,11 +35,17 @@ Octree::Octree(uint8_t maximumDepth, float length)
 void Octree::reset()
 {
     if (m_maxDepth < 1) m_maxDepth = 1;
-    else if (m_maxDepth > 10) throw std::runtime_error("[Octree] Requested depth is too large. Try further subdividing with multiple Octrees");
+    else if (m_maxDepth > MAX_DEPTH) throw std::runtime_error("[Octree] Requested depth is too large. Try further subdividing with multiple Octrees");
 
     m_octants = { Octant(std::numeric_limits<uint32_t>::max(), top(), 0) };
 
     m_octants.reserve(maximumOctantCount(m_maxDepth));
+}
+
+void Octree::translate(const glm::vec3& translation)
+{
+    for (Octant& octant : m_octants) octant.top += translation;
+    m_offset += translation;
 }
 
 void Octree::setLength(float length)
@@ -79,7 +86,7 @@ bool Octree::isParent(uint32_t parentIndex, uint32_t childIndex) const
 
 glm::vec3 Octree::top() const
 {
-    return -m_lengths[0] * 0.5f * glm::vec3{ 1, 1, 1 };
+    return -m_lengths[0] * 0.5f * glm::vec3{ 1, 1, 1 } + m_offset;
 }
 
 uint32_t Octree::octantCount(uint8_t status) const

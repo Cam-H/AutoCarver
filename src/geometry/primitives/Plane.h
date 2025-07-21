@@ -13,6 +13,8 @@ public:
     Plane();
     Plane(const glm::vec3& origin, const glm::vec3& normal);
 
+    [[nodiscard]] bool isValid() const;
+
     [[nodiscard]] glm::vec3 project(const glm::vec3& vertex) const;
     inline static glm::vec3 project(const glm::vec3& origin, const glm::vec3& normal, const glm::vec3& vertex);
     inline static glm::vec3 project(const Plane& plane, const glm::vec3& vertex);

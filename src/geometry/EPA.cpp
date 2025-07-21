@@ -6,7 +6,7 @@
 
 #include <gtc/quaternion.hpp>
 
-#include "ConvexHull.h"
+#include "geometry/primitives/ConvexHull.h"
 #include "Simplex.h"
 #include "fileIO/MeshHandler.h"
 
@@ -22,15 +22,16 @@ EPA::EPA()
 
 }
 
-EPA::EPA(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, const glm::mat4& relativeTransform, Simplex simplex)
-    : m_colliding(false)
-    , m_offset()
-    , m_nearest(std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max())
-    , m_aLocal()
-    , m_aWorld()
-    , m_bLocal()
-    , m_bWorld()
+EPA::EPA(const ConvexHull& a, const ConvexHull& b, Simplex simplex)
+    : EPA(a, b, glm::mat4(1.0f), glm::mat4(1.0f), simplex)
 {
+    // TODO implement without transformations to optimize
+}
+
+EPA::EPA(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, const glm::mat4& relativeTransform, Simplex simplex)
+    : EPA()
+{
+
     std::vector<std::pair<float, uint32_t>> order;
 
     // Expand the input simplex, ensuring the algorithm starts with a tetrahedron

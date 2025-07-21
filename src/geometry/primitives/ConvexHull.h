@@ -13,11 +13,11 @@
 
 //#include "VHACD.h"
 
-#include "VertexArray.h"
-#include "FaceArray.h"
-#include "Simplex.h"
-#include "geometry/shape/Triangle.h"
-#include "geometry/shape/Sphere.h"
+#include "geometry/VertexArray.h"
+#include "geometry/FaceArray.h"
+#include "geometry/Simplex.h"
+#include "geometry/primitives/Triangle.h"
+#include "geometry/primitives/Sphere.h"
 
 class Mesh;
 class EPA;
@@ -35,6 +35,8 @@ public:
 
     ConvexHull(const ConvexHull& rhs) = default;
 
+    [[nodiscard]] bool isValid() const;
+
     [[nodiscard]] uint32_t vertexCount() const;
     [[nodiscard]] const std::vector<glm::vec3>& vertices() const;
 
@@ -48,6 +50,8 @@ public:
     [[nodiscard]] bool empty() const;
 
     [[nodiscard]] uint32_t walk(const glm::vec3& axis, uint32_t index = 0) const;
+    [[nodiscard]] const glm::vec3& extreme(const glm::vec3& axis) const;
+    void extents(const glm::vec3& axis, float& near, float& far) const;
 
     [[nodiscard]] const std::vector<uint32_t>& neighbors(uint32_t index) const;
     [[nodiscard]] std::vector<glm::vec3> border(const glm::vec3& faceNormal) const;
@@ -56,6 +60,11 @@ public:
     [[nodiscard]] std::vector<uint32_t> horizon(const glm::vec3& axis, const glm::vec3& support) const;
 
     [[nodiscard]] EPA epaIntersection(const ConvexHull& body, const glm::mat4& transform, const glm::mat4& relativeTransform, std::pair<uint32_t, uint32_t>& idx) const;
+
+    [[nodiscard]] float volume() const;
+
+    static ConvexHull unite(const ConvexHull& hullA, const ConvexHull& hullB);
+    static std::tuple<bool, ConvexHull> tryMerge(const ConvexHull& hullA, const ConvexHull& hullB);
 
 private:
 

@@ -13,7 +13,7 @@
 #include "fileIO/Serializable.h"
 
 #include "MeshBuilder.h"
-#include "ConvexHull.h"
+#include "geometry/primitives/ConvexHull.h"
 
 #include "VertexArray.h"
 #include "FaceArray.h"

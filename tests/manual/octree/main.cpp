@@ -19,7 +19,7 @@
 #ifndef QT_NO_OPENGL
 #include "geometry/shape/Sphere.h"
 #include "geometry/shape/AABB.h"
-#include "geometry/ConvexHull.h"
+#include "geometry/shape/ConvexHull.h"
 #include "renderer/SceneWidget.h"
 #include "fileIO/MeshHandler.h"
 #include "geometry/MeshBuilder.h"

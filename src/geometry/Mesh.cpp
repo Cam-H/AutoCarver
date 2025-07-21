@@ -125,7 +125,7 @@ bool Mesh::deserialize(const std::string& filename)
 }
 bool Mesh::deserialize(std::ifstream& file)
 {
-    m_vertices = VertexArray::deserialize(file);
+    m_vertices = VertexArray(file);
     m_faces = FaceArray::deserialize(file);
 
     if (m_vertices.vertexCount() > 0 && m_faces.faceCount() > 0) {
@@ -481,12 +481,7 @@ float Mesh::surfaceArea() const
 
 float Mesh::volume() const
 {
-    float sum = 0;
-    for (const Triangle& tri : m_faces.triangles()) {
-        sum += tetrahedronVolume(m_vertices[tri.I0], m_vertices[tri.I1], m_vertices[tri.I2]);
-    }
-
-    return sum / 6.0f;
+    return m_faces.volume(m_vertices.vertices());
 }
 
 float Mesh::tetrahedronVolume(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)

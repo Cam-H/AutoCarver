@@ -13,7 +13,7 @@
 class Mesh;
 class RenderCapture;
 
-#include "geometry/ConvexHull.h"
+#include "geometry/primitives/ConvexHull.h"
 #include "geometry/poly/Profile.h"
 
 class EdgeDetect {

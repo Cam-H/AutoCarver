@@ -11,13 +11,14 @@
 
 class ConvexHull;
 
-#include "geometry/shape/Triangle.h"
+#include "geometry/primitives/Triangle.h"
 #include "Simplex.h"
 
 class EPA {
 public:
 
     EPA();
+    EPA(const ConvexHull& a, const ConvexHull& b, Simplex simplex);
     EPA(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, const glm::mat4& relativeTransform, Simplex simplex);
 
     [[nodiscard]] bool colliding() const;

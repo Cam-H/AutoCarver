@@ -9,7 +9,8 @@
 #include <unordered_map>
 
 #include "Mesh.h"
-#include "ConvexHull.h"
+#include "geometry/primitives/Triangle.h"
+#include "geometry/primitives/ConvexHull.h"
 #include "Octree.h"
 
 #include "renderer/Colors.h"

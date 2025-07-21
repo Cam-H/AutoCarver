@@ -1,7 +1,7 @@
 #include "Octree.h"
 
 #include "Collision.h"
-#include "shape/AABB.h"
+#include "primitives/AABB.h"
 
 template <bool IsConst>
 void Octree::OctreeIterator<IsConst>::skip()
@@ -110,9 +110,8 @@ uint32_t Octree::locateParent(const T& body)
 
             // Add children if absent
             tryExpansion(*it);
-        }
-
-        ++it;
+            ++it;
+        } else it.skip();
     }
 
     return index;

@@ -6,7 +6,7 @@
 
 #include <iostream>
 
-#include "ConvexHull.h"
+#include "geometry/primitives/ConvexHull.h"
 
 Simplex::Simplex(const Vertex& start)
     : vertices{start, {}, {}, {}}

@@ -5,15 +5,15 @@
 
 #include "ConvexHull.h"
 
-#include "Mesh.h"
-#include "EPA.h"
+#include "geometry/Mesh.h"
+#include "geometry/EPA.h"
 
 
 #include <QVector3D>
-#include <glm.hpp>
+#include "glm.hpp"
 
-#include "Core/Timer.h"
-#include "Collision.h"
+#include "core/Timer.h"
+#include "geometry/Collision.h"
 
 #include <thread>
 #include <iostream>
@@ -157,6 +157,11 @@ void ConvexHull::initialize()
     m_walks = m_faces.edgeList();
 }
 
+bool ConvexHull::isValid() const
+{
+    return !m_vertices.empty();
+}
+
 uint32_t ConvexHull::vertexCount() const
 {
     return m_vertices.size();
@@ -202,6 +207,8 @@ EPA ConvexHull::epaIntersection(const ConvexHull& body, const glm::mat4& transfo
 
 uint32_t ConvexHull::walk(const glm::vec3& axis, uint32_t index) const
 {
+    if (index >= m_walks.size()) throw std::runtime_error("[ConvexHull] Index out of bounds. Can not walk");
+
     uint32_t i = 0;
     while (i == 0) { // Only true when arriving at a fresh vertex
         for (; i < m_walks[index].size(); i++) { // Iterate through adjacent vertices
@@ -214,6 +221,17 @@ uint32_t ConvexHull::walk(const glm::vec3& axis, uint32_t index) const
     }
 
     return index;
+}
+
+const glm::vec3& ConvexHull::extreme(const glm::vec3& axis) const
+{
+    return m_vertices[walk(axis)];
+}
+
+void ConvexHull::extents(const glm::vec3& axis, float& near, float& far) const
+{
+    near = glm::dot(axis, extreme(-axis));
+    far = glm::dot(axis, extreme(axis));
 }
 
 const std::vector<uint32_t>& ConvexHull::neighbors(uint32_t index) const
@@ -448,6 +466,37 @@ uint32_t ConvexHull::step(const glm::vec3& normal, const glm::vec3& axis, uint32
     }
 
     return next;
+}
+
+float ConvexHull::volume() const
+{
+    if (m_faces.triangleCount() == 0) {
+        auto faces = m_faces;
+        faces.triangulate(m_vertices);
+        return faces.volume(m_vertices);
+    }
+
+    return m_faces.volume(m_vertices);
+}
+
+ConvexHull ConvexHull::unite(const ConvexHull& hullA, const ConvexHull& hullB)
+{
+    auto vertices = hullA.vertices();
+    vertices.insert(vertices.end(), hullB.vertices().begin(), hullB.vertices().end());
+    return { vertices };
+}
+std::tuple<bool, ConvexHull> ConvexHull::tryMerge(const ConvexHull& hullA, const ConvexHull& hullB)
+{
+    auto collision = Collision::intersection(hullA, hullB);
+    glm::vec3 delta = collision.colliding() ? collision.overlap() : collision.offset();
+
+//    std::cout << collision.colliding() << " " << glm::length(collision.offset()) << " " << glm::length(collision.overlap()) << "}{{}\n";
+    if (glm::dot(delta, delta) < 1e-6) {
+        auto hull = unite(hullA, hullB);
+//        std::cout << "Volumes: " << hull.volume() << " " << hullA.volume() << " " << hullB.volume() << " = " << (hullA.volume() + hullB.volume()) << "\n";
+        if (std::abs(hull.volume() - hullA.volume() - hullB.volume()) < 1e-6) return { true, hull };
+    }
+    return { false, {} };
 }
 
 //bool ConvexHull::raycast(const glm::vec3& origin, const glm::vec3& direction, float& t) const {

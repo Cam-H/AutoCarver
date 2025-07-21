@@ -362,6 +362,18 @@ std::vector<glm::vec3> FaceArray::faceBorder(uint32_t idx, const std::vector<glm
     return border;
 }
 
+float FaceArray::volume(const std::vector<glm::vec3>& vertices) const
+{
+    float sum = 0;
+    for (const Triangle& tri : m_triangles) {
+
+        // Add contribution of tetrahedron to volume
+        sum += glm::dot(vertices[tri.I0], glm::cross(vertices[tri.I1], vertices[tri.I2]));
+    }
+
+    return sum / 6.0f;
+}
+
 uint32_t FaceArray::matchFace(const glm::vec3& axis)
 {
     auto match = std::max_element(m_normals.begin(), m_normals.end(), [axis](const glm::vec3& lhs, const glm::vec3& rhs){

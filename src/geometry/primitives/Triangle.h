@@ -20,6 +20,8 @@ public:
     uint32_t operator[](uint32_t i) const;
     uint32_t& operator[](uint32_t i);
 
+    [[nodiscard]] bool isValid() const;
+
     bool has(uint32_t i) const;
 
     uint32_t last(uint32_t a, uint32_t b) const;

@@ -13,6 +13,8 @@ public:
     Circle();
     Circle(const glm::vec2& center, float radius);
 
+    [[nodiscard]] bool isValid() const;
+
     bool encloses(const glm::vec2& vertex, float tolerance = 1e-9f) const;
 
     static Circle triangleCircumcircle(const glm::vec2& a, const glm::vec2& b, const glm::vec2& c);

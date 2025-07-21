@@ -11,6 +11,11 @@ Circle::Circle() : center(0, 0), radius(-1.0f) {}
 
 Circle::Circle(const glm::vec2& center, float radius) : center(center), radius(radius) {}
 
+bool Circle::isValid() const
+{
+    return radius >= 0;
+}
+
 // Compute circumcenter and radius
 Circle Circle::triangleCircumcircle(const glm::vec2& a, const glm::vec2& b, const glm::vec2& c) {
     float d = 2 * (a.x*(b.y - c.y) + b.x*(c.y - a.y) + c.x*(a.y - b.y));

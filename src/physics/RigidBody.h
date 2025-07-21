@@ -15,8 +15,8 @@
 #include "fileIO/Serializable.h"
 
 #include "geometry/Mesh.h"
-#include "geometry/ConvexHull.h"
-#include "geometry/shape/Sphere.h"
+#include "geometry/primitives/ConvexHull.h"
+#include "geometry/primitives/Sphere.h"
 
 #include "geometry/Transformable.h"
 

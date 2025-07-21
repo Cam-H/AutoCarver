@@ -53,6 +53,11 @@ uint32_t& Triangle::operator[](uint32_t i)
     }
 }
 
+bool Triangle::isValid() const
+{
+    return I0 != I1 && I0 != I2 && I1 != I2;
+}
+
 bool Triangle::has(uint32_t i) const
 {
     return i == I0 || i == I1 || i == I2;

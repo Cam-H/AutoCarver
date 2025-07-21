@@ -144,7 +144,6 @@ int main(int argc, char *argv[])
     processView = window->findChild<QLabel*>("processView");
     polygonWidget = window->findChild<PolygonWidget*>("polygonWidget");
 
-
 #ifndef QT_NO_OPENGL
 
     mesh = MeshHandler::loadAsMeshBody(R"(..\res\meshes\devil.obj)");
@@ -229,6 +228,15 @@ int main(int argc, char *argv[])
 
         sceneWidget->update();
         polygonWidget->repaint();
+    });
+
+    auto mergeButton = window->findChild<QPushButton*>("mergeButton");
+    QObject::connect(mergeButton, &QPushButton::clicked, [&]() {
+        if (body->tryMerge()) {
+            std::cout << "Hulls merged!\n";
+            sceneWidget->updateRenderGeometry(body->mesh());
+            sceneWidget->update();
+        }
     });
 
     auto formButton = window->findChild<QPushButton*>("formButton");

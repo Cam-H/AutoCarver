@@ -4,6 +4,7 @@
 
 #include "Sphere.h"
 #include "geometry/Collision.h"
+#include "ConvexHull.h"
 
 #include <iostream>
 #include <random>
@@ -11,6 +12,16 @@
 Sphere::Sphere() : center({0, 0, 0}), radius(-1.0f){}
 
 Sphere::Sphere(glm::vec3 center, float radius) : center(center), radius(radius) {}
+
+Sphere Sphere::enclose(const ConvexHull& hull)
+{
+    return Sphere::enclose(hull.vertices());
+}
+
+bool Sphere::isValid() const
+{
+    return radius > 0;
+}
 
 Sphere Sphere::enclose(const VertexArray& vertices)
 {
@@ -165,7 +176,7 @@ bool Sphere::raycast(const glm::vec3& origin, const glm::vec3& direction, float&
     return b * b - 4 * a * c > 0 && (b <= 0 || c < 0);
 }
 
-uint32_t Sphere::vertexCount() const
+glm::vec3 Sphere::extreme(const glm::vec3& axis) const
 {
-    return 1;
+    return center - glm::normalize(axis) * radius;
 }

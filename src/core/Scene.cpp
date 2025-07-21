@@ -5,7 +5,7 @@
 #include "Scene.h"
 
 #include "fileIO/MeshHandler.h"
-#include "geometry/ConvexHull.h"
+#include "geometry/primitives/ConvexHull.h"
 #include "geometry/EPA.h"
 #include "physics/Constraint.h"
 

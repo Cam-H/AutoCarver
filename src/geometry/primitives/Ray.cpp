@@ -10,3 +10,8 @@ Ray::Ray(const glm::vec3& origin, const glm::vec3& axis)
 {
 
 }
+
+bool Ray::isValid() const
+{
+    return glm::dot(axis, axis) > 1e-6;
+}

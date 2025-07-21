@@ -4,13 +4,14 @@
 
 #include "Collision.h"
 
-#include "shape/Ray.h"
-#include "shape/Plane.h"
-#include "shape/Triangle.h"
-#include "shape/Circle.h"
-#include "shape/Sphere.h"
-#include "shape/AABB.h"
-#include "ConvexHull.h"
+#include "primitives/Ray.h"
+#include "primitives/Plane.h"
+#include "primitives/Triangle.h"
+#include "primitives/Circle.h"
+#include "primitives/Sphere.h"
+#include "primitives/AABB.h"
+#include "primitives/ConvexHull.h"
+#include "EPA.h"
 
 bool Collision::test(const Plane& bodyA, const Plane& bodyB)
 {
@@ -138,6 +139,15 @@ bool Collision::encloses(const Sphere& body, const glm::vec3& vertex)
     return glm::dot(delta, delta) - body.radius * body.radius < 1e-6;
 }
 
+bool Collision::encloses(const Sphere& body, const std::vector<glm::vec3>& vertices)
+{
+    for (const glm::vec3& vertex : vertices) {
+        if (!encloses(body, vertex)) return false;
+    }
+
+    return true;
+}
+
 bool Collision::encloses(const Sphere& bodyA, const Sphere& bodyB)
 {
     glm::vec3 delta = bodyA.center - bodyB.center;
@@ -165,6 +175,16 @@ bool Collision::encloses(const AABB& bodyA, const Sphere& bodyB)
     return std::abs(delta.x) < 0.5f * bodyA.xLength() - bodyB.radius
         && std::abs(delta.y) < 0.5f * bodyA.yLength() - bodyB.radius
         && std::abs(delta.z) < 0.5f * bodyA.zLength() - bodyB.radius;
+}
+
+bool Collision::encloses(const Sphere& bodyA, const ConvexHull& bodyB)
+{
+    return encloses(bodyA, bodyB.vertices());
+}
+
+bool Collision::encloses(const AABB& bodyA, const ConvexHull& bodyB)
+{
+    return encloses(bodyA, AABB(bodyB));
 }
 
 glm::vec3 Collision::initialAxis(const ConvexHull& bodyA, const ConvexHull& bodyB, std::pair<uint32_t, uint32_t>& idx)
@@ -214,6 +234,14 @@ glm::vec3 Collision::initialAxis(const ConvexHull& bodyA, const AABB& bodyB, std
     idx = { 0, 0 };
 
     return bodyA.center() - bodyB.min;
+}
+
+glm::vec3 Collision::gjkSupport(const ConvexHull& bodyA, const ConvexHull& bodyB, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx)
+{
+    idx.first = bodyA.walk(axis, idx.first);
+    idx.second = bodyB.walk(-axis, idx.second);
+
+    return bodyA.vertices()[idx.first] - bodyB.vertices()[idx.second];
 }
 
 glm::vec3 Collision::gjkSupport(const Sphere& bodyA, const ConvexHull& bodyB, const glm::mat4& transform, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx)
@@ -349,6 +377,11 @@ std::tuple<std::vector<bool>, bool> Collision::partition(const ConvexHull& hull,
     std::get<1>(out) = sum != 0 && sum != above.size();
 
     return out;
+}
+
+EPA Collision::intersection(const ConvexHull& bodyA, const ConvexHull& bodyB)
+{
+    return { bodyA, bodyB, gjk(bodyA, bodyB) };
 }
 
 ConvexHull Collision::fragment(const ConvexHull& hull, const Plane& plane)

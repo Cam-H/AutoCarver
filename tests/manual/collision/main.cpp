@@ -23,7 +23,7 @@
 
 #include "geometry/Mesh.h"
 #include "geometry/MeshBuilder.h"
-#include "geometry/ConvexHull.h"
+#include "geometry/shape/ConvexHull.h"
 #include "geometry/shape/AABB.h"
 #include "geometry/shape/Ray.h"
 
@@ -97,6 +97,18 @@ int main(int argc, char *argv[])
 //    test = MeshBuilder::cylinder(0.5, 2, 6);
 //    test = MeshBuilder::icosphere(1.0f, 3);
     test = MeshBuilder::box();
+
+    auto aVertices = VertexArray("HullA.bin"), bVertices = VertexArray("HullB.bin");
+    std::cout << aVertices.vertexCount() << " " << bVertices.vertexCount() << "\n";
+
+    std::cout << "A:\n";
+    for (auto v : aVertices.vertices()) std::cout << v.x << " " << v.y << " " << v.z << "\n";
+    std::cout << "B:\n";
+    for (auto v : bVertices.vertices()) std::cout << v.x << " " << v.y << " " << v.z << "\n";
+
+    base = std::make_shared<Mesh>(ConvexHull(aVertices));
+    test = std::make_shared<Mesh>(ConvexHull(bVertices));
+    std::cout << "Counts: " << base->vertexCount() << " " << test->vertexCount() << "\n";
 
 //    test->translate({ 0.5, 0.5, 0.5 });
 

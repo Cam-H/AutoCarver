@@ -17,6 +17,8 @@ class Sphere;
 class AABB;
 class ConvexHull;
 
+class EPA;
+
 #include "Simplex.h"
 
 // An array of static collision detection methods for primitive shapes
@@ -50,17 +52,40 @@ public:
     static bool test(const AABB& bodyA, const ConvexHull& bodyB);
     static bool test(const ConvexHull& bodyA, const AABB& bodyB);
 
-
     template<class T1, class T2>
     static Simplex gjk(const T1& bodyA, const T2& bodyB)
     {
-        std::pair<uint32_t, uint32_t> indices = { 0, 0 };
-        return gjk(bodyA, bodyB, glm::mat4(1.0f), indices);
+        if (!bodyA.isValid() || !bodyB.isValid()) throw std::runtime_error("[Collision] Invalid bodies. Can not calculate GJK");
+
+        std::pair<uint32_t, uint32_t> idx = { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() };
+
+        glm::vec3 axis = initialAxis(bodyA, bodyB, idx), next;
+        Simplex simplex({ gjkSupport(bodyA, bodyB, axis, idx), idx });
+
+        axis = -simplex[0].val;
+
+//        int limit = (int)(vertexCount() + body.vertexCount());
+        int limit = 1e6;
+        while (limit-- > 0) {
+            next = gjkSupport(bodyA, bodyB, axis, idx);
+
+            // Check whether cs is impossible
+            if (glm::dot (axis, next) <= 0) return simplex;
+
+            simplex.add({ next, idx });
+
+            // Check whether the cs is certain
+            if (simplex.evaluate(axis)) return simplex;
+        }
+
+        std::cout << "[Collision] GJK Error!\n";
+        return Simplex(Simplex::Vertex{});
     }
 
     template<class T1, class T2>
     static Simplex gjk(const T1& bodyA, const T2& bodyB, const glm::mat4& transform, std::pair<uint32_t, uint32_t>& idx)
     {
+        if (!bodyA.isValid() || !bodyB.isValid()) throw std::runtime_error("[Collision] Invalid bodies. Can not calculate GJK");
 
         glm::vec3 axis = initialAxis(bodyA, bodyB, idx), next;
         Simplex simplex({ gjkSupport(bodyA, bodyB, transform, axis, idx), idx });
@@ -93,6 +118,7 @@ public:
 
     // Determine if the first body (A) encloses the second body (B)
     static bool encloses(const Sphere& body, const glm::vec3& vertex);
+    static bool encloses(const Sphere& body, const std::vector<glm::vec3>& vertices);
 
     static bool encloses(const Sphere& bodyA, const Sphere& bodyB);
     static bool encloses(const AABB& bodyA, const AABB& bodyB);
@@ -100,11 +126,14 @@ public:
     static bool encloses(const Sphere& bodyA, const AABB& bodyB);
     static bool encloses(const AABB& bodyA, const Sphere& bodyB);
 
+    static bool encloses(const Sphere& bodyA, const ConvexHull& bodyB);
+    static bool encloses(const AABB& bodyA, const ConvexHull& bodyB);
 
     // Determine the intersection between the specified bodies
     static std::tuple<bool, float, glm::vec3> intersection(const AABB& body, const Ray& ray);
 
     static std::vector<glm::vec3> intersection(const ConvexHull& hull, const Plane& plane);
+    static EPA intersection(const ConvexHull& bodyA, const ConvexHull& bodyB);
 
     // Determine the relative position of the specified body to the plane
     static bool above(const ConvexHull& hull, const Plane& plane);
@@ -125,6 +154,15 @@ private:
     static glm::vec3 initialAxis(const AABB& bodyA, const ConvexHull& bodyB, std::pair<uint32_t, uint32_t>& idx);
     static glm::vec3 initialAxis(const ConvexHull& bodyA, const AABB& bodyB, std::pair<uint32_t, uint32_t>& idx);
 
+    static glm::vec3 gjkSupport(const ConvexHull& bodyA, const ConvexHull& bodyB, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx);
+
+    template<class T1, class T2>
+    static glm::vec3 gjkSupport(const T1& bodyA, const T2& bodyB, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx)
+    {
+        return bodyA.extreme(axis) - bodyB.extreme(-axis);
+    }
+
+
     static glm::vec3 gjkSupport(const Sphere& bodyA, const ConvexHull& bodyB, const glm::mat4& transform, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx);
     static glm::vec3 gjkSupport(const ConvexHull& bodyA, const Sphere& bodyB, const glm::mat4& transform, const glm::vec3& axis, std::pair<uint32_t, uint32_t>& idx);
 
@@ -136,7 +174,6 @@ private:
 
     static std::vector<glm::vec3> intersection(const ConvexHull& hull, const Plane& plane, const std::vector<bool>& partition);
     static std::tuple<std::vector<bool>, bool> partition(const ConvexHull& hull, const Plane& plane);
-
 
 };
 

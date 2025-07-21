@@ -4,7 +4,7 @@
 
 #include "AABB.h"
 
-#include "geometry/ConvexHull.h"
+#include "ConvexHull.h"
 #include "geometry/VertexArray.h"
 
 AABB::AABB(const glm::vec3& min, float sideLength)
@@ -20,23 +20,46 @@ AABB::AABB(const glm::vec3& min, const glm::vec3& max)
 
 }
 AABB::AABB(const ConvexHull& hull)
-    : min()
-    , max()
+        : min()
+        , max()
 {
     float near, far;
 
-    VertexArray::extents(hull.vertices(), { 1, 0, 0 }, near, far);
+    hull.extents({ 1, 0, 0 }, near, far);
     min.x = near;
     max.x = far;
 
-    VertexArray::extents(hull.vertices(), { 0, 1, 0 }, near, far);
+    hull.extents({ 0, 1, 0 }, near, far);
     min.y = near;
     max.y = far;
 
-    VertexArray::extents(hull.vertices(), { 0, 0, 1 }, near, far);
+    hull.extents({ 0, 0, 1 }, near, far);
     min.z = near;
     max.z = far;
+}
 
+AABB::AABB(const std::vector<glm::vec3>& vertices)
+        : min()
+        , max()
+{
+    float near, far;
+
+    VertexArray::extents(vertices, { 1, 0, 0 }, near, far);
+    min.x = near;
+    max.x = far;
+
+    VertexArray::extents(vertices, { 0, 1, 0 }, near, far);
+    min.y = near;
+    max.y = far;
+
+    VertexArray::extents(vertices, { 0, 0, 1 }, near, far);
+    min.z = near;
+    max.z = far;
+}
+
+bool AABB::isValid() const
+{
+    return max.x < min.x || max.y < min.y || max.z < min.z;
 }
 
 float AABB::xLength() const
@@ -50,6 +73,11 @@ float AABB::yLength() const
 float AABB::zLength() const
 {
     return max.z - min.z;
+}
+
+float AABB::maxLength() const
+{
+    return std::max(xLength(), std::max(yLength(), zLength()));
 }
 
 glm::vec3 AABB::center() const
@@ -79,4 +107,11 @@ glm::vec3 AABB::extreme(const glm::vec3& axis) const
         axis.y < 0 ? min.y : max.y,
         axis.z < 0 ? min.z : max.z,
     };
+}
+
+void AABB::print() const
+{
+    std::cout << "[AABB] x-span: (" << min.x << ", " << max.x
+                  << "), y-span: (" << min.y << ", " << max.y
+                  << "), z-span: (" << min.z << ", " << max.z << ")\n";
 }
