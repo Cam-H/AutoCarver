@@ -19,16 +19,39 @@ qt_add_library(AutoCarverLib
         fileIO/Serializer.h
 
 
-        physics/RigidBody.h
-        physics/RigidBody.cpp
+        geometry/poly/Polygon.h
+        geometry/poly/Polygon.cpp
+        geometry/poly/Profile.h
+        geometry/poly/Profile.cpp
+
+        geometry/primitives/AABB.cpp
+        geometry/primitives/AABB.h
+        geometry/primitives/Circle.cpp
+        geometry/primitives/Circle.h
         geometry/primitives/ConvexHull.h
         geometry/primitives/ConvexHull.cpp
+        geometry/primitives/Plane.cpp
+        geometry/primitives/Plane.h
+        geometry/primitives/Ray.cpp
+        geometry/primitives/Ray.h
+        geometry/primitives/Sphere.cpp
+        geometry/primitives/Sphere.h
+        geometry/primitives/Triangle.h
+        geometry/primitives/Triangle.cpp
+
+        geometry/Collision.cpp
+        geometry/Collision.h
+        geometry/EPA.cpp
+        geometry/EPA.h
+
+        geometry/Octree.cpp
+        geometry/Octree.h
+
         geometry/Mesh.h
         geometry/Mesh.cpp
         geometry/MeshBuilder.h
         geometry/MeshBuilder.cpp
-        geometry/primitives/Triangle.h
-        geometry/primitives/Triangle.cpp
+
         geometry/VertexArray.h
         geometry/VertexArray.cpp
         geometry/FaceArray.cpp
@@ -38,17 +61,6 @@ qt_add_library(AutoCarverLib
         geometry/Transformable.h
         geometry/Simplex.cpp
         geometry/Simplex.h
-        geometry/EPA.cpp
-        geometry/EPA.h
-        geometry/primitives/Circle.cpp
-        geometry/primitives/Circle.h
-        geometry/primitives/Sphere.cpp
-        geometry/primitives/Sphere.h
-
-        geometry/poly/Polygon.h
-        geometry/poly/Polygon.cpp
-        geometry/poly/Profile.h
-        geometry/poly/Profile.cpp
 
         robot/KinematicChain.cpp
         robot/KinematicChain.h
@@ -65,6 +77,10 @@ qt_add_library(AutoCarverLib
         robot/planning/PathPlanner.h
 
 
+        physics/RigidBody.h
+        physics/RigidBody.cpp
+        physics/CompositeBody.cpp
+        physics/CompositeBody.h
         physics/Constraint.cpp
         physics/Constraint.h
 
@@ -82,22 +98,21 @@ qt_add_library(AutoCarverLib
         renderer/UiLoader.cpp
         renderer/UiLoader.h
 
-        renderer/Camera.cpp renderer/Camera.h
+        renderer/Camera.cpp
+        renderer/Camera.h
         renderer/EdgeDetect.cpp
         renderer/EdgeDetect.h
 
         renderer/PolygonWidget.cpp
         renderer/PolygonWidget.h
-        physics/CompositeBody.cpp
-        physics/CompositeBody.h
-        geometry/Octree.cpp
-        geometry/Octree.h
-        renderer/Colors.h
-        geometry/primitives/Plane.cpp
-        geometry/primitives/Plane.h
 
-        geometry/Collision.cpp
-        geometry/Collision.h geometry/primitives/AABB.cpp geometry/primitives/AABB.h geometry/primitives/Ray.cpp geometry/primitives/Ray.h)
+
+        renderer/Colors.h
+
+
+        geometry/Axis3D.cpp
+        geometry/Axis3D.h
+        )
 
 target_link_libraries(AutoCarverLib PRIVATE
         Qt::Core

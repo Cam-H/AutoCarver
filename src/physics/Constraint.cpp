@@ -11,6 +11,7 @@
 
 #include "RigidBody.h"
 #include "geometry/EPA.h"
+#include "geometry/Axis3D.h"
 
 const float BETA = 0.01f;
 const float DEPTH_SLOP = 0.01f;
@@ -33,9 +34,9 @@ Constraint::Constraint(const std::shared_ptr<RigidBody>& a, const std::shared_pt
     glm::vec3 ca = a->mesh()->centroid(), cb = b->mesh()->centroid();
     std::cout << a << " " << ca.x << " " << ca.y << " " << ca.z << " || " << b << " " << cb.x << " " << cb.y << " " << cb.z << "\n";
 
-    glm::vec3 ref = normal.x * normal.x > 0.99f ? glm::vec3{ 0, 1, 0 } : glm::vec3{ 1, 0, 0 };
-    m_tangent1 = glm::normalize(glm::cross(normal, ref));
-    m_tangent2 = glm::normalize(glm::cross(normal, m_tangent1));
+    Axis3D system(normal);
+    m_tangent1 = system.xAxis;
+    m_tangent2 = system.yAxis;
 
     m_JT1 = jacobian(m_tangent1);
     m_JT2 = jacobian(m_tangent2);

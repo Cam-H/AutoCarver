@@ -118,7 +118,17 @@ public:
 
     // Determine if the first body (A) encloses the second body (B)
     static bool encloses(const Sphere& body, const glm::vec3& vertex);
-    static bool encloses(const Sphere& body, const std::vector<glm::vec3>& vertices);
+    static bool encloses(const AABB& body, const glm::vec3& vertex);
+
+    template<class T>
+    static bool encloses(const T& body, const std::vector<glm::vec3>& vertices)
+    {
+        for (const glm::vec3& vertex : vertices) {
+            if (!encloses(body, vertex)) return false;
+        }
+
+        return true;
+    }
 
     static bool encloses(const Sphere& bodyA, const Sphere& bodyB);
     static bool encloses(const AABB& bodyA, const AABB& bodyB);

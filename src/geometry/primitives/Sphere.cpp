@@ -20,7 +20,7 @@ Sphere Sphere::enclose(const ConvexHull& hull)
 
 bool Sphere::isValid() const
 {
-    return radius > 0;
+    return radius >= 0;
 }
 
 Sphere Sphere::enclose(const VertexArray& vertices)

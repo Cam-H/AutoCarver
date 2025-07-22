@@ -41,7 +41,12 @@ protected:
 
 private:
 
-    void addChild(uint32_t childIndex);
+    void addLink(uint32_t childIndex);
+    void removeLink(uint32_t childIndex);
+
+    void queueTest(uint32_t hullIndex);
+    void replaceTest(uint32_t originalIndex, uint32_t newIndex);
+    void skipTest(uint32_t hullIndex);
 
     bool tryMerge(uint32_t octantIndex, uint32_t hullIndex, std::vector<bool>& originals);
 
@@ -57,6 +62,7 @@ private:
     std::shared_ptr<Octree> m_tree;
     std::vector<uint32_t> m_locations;
     std::unordered_map<uint32_t, std::vector<uint32_t>> m_map;
+    std::vector<uint32_t> m_mergeTests; // Track hulls that could (maybe) still be merged
 
     // Styling
     glm::vec3 m_baseColor;

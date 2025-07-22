@@ -36,6 +36,8 @@ PolygonWidget* polygonWidget = nullptr;
 std::shared_ptr<Scene> scene = nullptr;
 SceneWidget *sceneWidget = nullptr;
 
+QCheckBox *showModelSetting = nullptr;
+QCheckBox *showSculptureSetting = nullptr;
 QCheckBox *showHullSetting = nullptr;
 QPushButton *stepButton = nullptr;
 
@@ -112,6 +114,30 @@ void updateImage()
     sceneWidget->update();
 }
 
+void updateBodyVisibility()
+{
+    if (showSculptureSetting->checkState() == Qt::CheckState::Checked) sceneWidget->show(0);
+    else sceneWidget->hide(0);
+
+    sceneWidget->update();
+}
+
+void updateModelVisibility()
+{
+    if (showModelSetting->checkState() == Qt::CheckState::Checked) sceneWidget->show(1);
+    else sceneWidget->hide(1);
+
+    sceneWidget->update();
+}
+
+void updateColoring()
+{
+    body->applyCompositeColors(showHullSetting->checkState() == Qt::CheckState::Checked);
+
+    sceneWidget->updateRenderGeometry(body->mesh());
+    sceneWidget->update();
+}
+
 void refine()
 {
     bool external = profile.isNextExternal();
@@ -158,6 +184,7 @@ int main(int argc, char *argv[])
     scene = std::make_shared<Scene>();
     body = std::make_shared<Sculpture>(mesh, 1.0f, 1.0f);
     scene->prepareBody(body);
+    scene->prepareBody(body->model());
 
 //    body = scene->createBody(mesh);
 //    body = scene->createBody(std::make_shared<Mesh>(ConvexHull(mesh)));
@@ -187,16 +214,37 @@ int main(int argc, char *argv[])
     note.show();
 #endif
 
+    showModelSetting = window->findChild<QCheckBox*>("showModelSetting");
+    QObject::connect(showModelSetting, &QCheckBox::clicked, [&]() {
+        updateModelVisibility();
+        sceneWidget->update();
+    });
+
+    showSculptureSetting = window->findChild<QCheckBox*>("showSculptureSetting");
+    QObject::connect(showSculptureSetting, &QCheckBox::clicked, [&]() {
+        if (showSculptureSetting->checkState() == Qt::CheckState::Unchecked) {
+            showHullSetting->setCheckState(Qt::CheckState::Unchecked);
+        }
+
+        updateBodyVisibility();
+    });
+
     showHullSetting = window->findChild<QCheckBox*>("showHullSetting");
     QObject::connect(showHullSetting, &QCheckBox::clicked, [&]() {
-        body->applyCompositeColors(showHullSetting->checkState() == Qt::CheckState::Checked);
-        sceneWidget->updateRenderGeometry(body->mesh());
-        sceneWidget->update();
+        if (showHullSetting->checkState() == Qt::CheckState::Checked) {
+            showSculptureSetting->setCheckState(Qt::CheckState::Checked);
+            updateBodyVisibility();
+        }
+
+        updateColoring();
     });
 
     auto resetButton = window->findChild<QPushButton*>("resetButton");
     QObject::connect(resetButton, &QPushButton::clicked, [&]() {
         body->restoreAsHull();
+
+        updateBodyVisibility();
+
         updateImage();
     });
 
@@ -205,16 +253,13 @@ int main(int argc, char *argv[])
         detector->capture()->camera().rotate(5);
         detector->capture()->focus();
         updateImage();
-
-        auto vec = mesh->boundedOffset();
-        auto sc = profile.spanCenter();
-        std::cout << vec.x << " " << vec.y << " " << vec.z << " ~~~ " << body->position().x << " " << body->position().y << " " << body->position().z << "\n";
-        std::cout << profile.xSpan() << " " << profile.ySpan() << " " << sc.x << " " << sc.y << "\n";
     });
 
     auto refineButton = window->findChild<QPushButton*>("refineButton");
     QObject::connect(refineButton, &QPushButton::clicked, [&]() {
         refine();
+
+        updateBodyVisibility();
 
         sceneWidget->update();
         polygonWidget->repaint();
@@ -226,6 +271,8 @@ int main(int argc, char *argv[])
             refine();
         }
 
+        updateBodyVisibility();
+
         sceneWidget->update();
         polygonWidget->repaint();
     });
@@ -234,6 +281,7 @@ int main(int argc, char *argv[])
     QObject::connect(mergeButton, &QPushButton::clicked, [&]() {
         if (body->tryMerge()) {
             std::cout << "Hulls merged!\n";
+            updateBodyVisibility();
             sceneWidget->updateRenderGeometry(body->mesh());
             sceneWidget->update();
         }
@@ -242,6 +290,7 @@ int main(int argc, char *argv[])
     auto formButton = window->findChild<QPushButton*>("formButton");
     QObject::connect(formButton, &QPushButton::clicked, [&]() {
         if (body->form()) {
+            updateBodyVisibility();
             sceneWidget->updateRenderGeometry(body->mesh());
             sceneWidget->update();
         }
@@ -263,8 +312,15 @@ int main(int argc, char *argv[])
 
             scene->clear();
             body = std::make_shared<Sculpture>(mesh, 1.0f, 1.0f);
+            showModelSetting->setCheckState(Qt::CheckState::Checked);
+            showSculptureSetting->setCheckState(Qt::CheckState::Checked);
             body->applyCompositeColors(showHullSetting->checkState() == Qt::CheckState::Checked);
             scene->prepareBody(body);
+            scene->prepareBody(body->model());
+
+            body->print();
+            body->model()->print();
+
 //            body->restoreAsHull();
 
 //            body->setMesh(mesh, false);
@@ -286,6 +342,8 @@ int main(int argc, char *argv[])
     detector->capture()->camera().setViewingAngle(0, 0);
     detector->capture()->focus();
 
+    body->print();
+    body->model()->print();
 
     window->show();
 

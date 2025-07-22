@@ -201,7 +201,10 @@ void FaceArray::calculateNormals(const std::vector<glm::vec3>& vertices)
 
 void FaceArray::triangulate(const std::vector<glm::vec3>& vertices)
 {
-    if (m_normals.empty()) calculateNormals(vertices);
+//    std::cout << "Triangulating... " << m_normals.size() << " " << m_faceCount << "\n"; TODO verify
+//    if (!m_normals.empty() && m_normals.size() != m_faceCount) throw std::runtime_error("[FaceArray] Mystery normal error");
+//    if (m_normals.size() < m_faceCount) calculateNormals(vertices);
+    calculateNormals(vertices);
 
     m_triangles.clear();
     m_triFaceLookup.clear();
@@ -219,6 +222,9 @@ void FaceArray::triangulate(const std::vector<glm::vec3>& vertices)
 
             // Find the Delaunay triangulation of the projected 2D polygon
             auto triangles = Polygon::triangulate(VertexArray::project(border, m_normals[i]));
+            if (triangles.empty()) {
+                throw std::runtime_error("[FaceArray] Face triangulation failed");
+            }
 
             // Map indices to the original set
             m_triFaceLookup.emplace_back(m_triangles.size());

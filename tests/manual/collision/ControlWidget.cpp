@@ -6,7 +6,7 @@
 #include "geometry/MeshBuilder.h"
 #include "geometry/EPA.h"
 #include "geometry/Collision.h"
-#include "geometry/shape/AABB.h"
+#include "geometry/primitives/AABB.h"
 
 ControlWidget::ControlWidget(const std::shared_ptr<Scene>& scene, QWidget* parent)
         : SceneWidget(scene, parent)
@@ -90,8 +90,8 @@ void ControlWidget::handleCollision(uint32_t active)
     m_scene->bodies()[active]->mesh()->setBaseColor(result.colliding() ? glm::vec3{0.6, 0, 0} : glm::vec3{1, 1, 1});
     updateRenderGeometry(m_scene->bodies()[active]->mesh());
 
-//    m_scene->bodies()[2]->setPosition(result.colliderAClosest());
-//    m_scene->bodies()[3]->setPosition(result.colliderBClosest());
+    m_scene->bodies()[2]->setPosition(result.colliderAClosest());
+    m_scene->bodies()[3]->setPosition(result.colliderBClosest());
 
     update();
 }

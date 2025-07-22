@@ -35,6 +35,8 @@ public:
 
     ConvexHull(const ConvexHull& rhs) = default;
 
+    void evaluate();
+
     [[nodiscard]] bool isValid() const;
 
     [[nodiscard]] uint32_t vertexCount() const;
@@ -42,8 +44,6 @@ public:
 
     [[nodiscard]] uint32_t facetCount() const;
     [[nodiscard]] const FaceArray& faces() const;
-
-    [[nodiscard]] glm::vec3 facetNormal(uint32_t idx) const;
 
     [[nodiscard]] glm::vec3 center() const;
 
@@ -65,6 +65,8 @@ public:
 
     static ConvexHull unite(const ConvexHull& hullA, const ConvexHull& hullB);
     static std::tuple<bool, ConvexHull> tryMerge(const ConvexHull& hullA, const ConvexHull& hullB);
+
+    void print() const;
 
 private:
 
@@ -90,6 +92,9 @@ private:
     void sortCloud(std::vector<uint32_t>& free, Facet& facet);
     void calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
 
+    void prepareFaces();
+    void purgeOrphans(std::vector<std::vector<uint32_t>>& faces);
+
 private:
 
     std::vector<glm::vec3> m_cloud;
@@ -104,6 +109,8 @@ private:
 
     glm::vec3 m_center;
     std::vector<std::vector<uint32_t>> m_walks;
+
+    float m_volume;
 
     const static uint8_t STRIDE = 3;
 

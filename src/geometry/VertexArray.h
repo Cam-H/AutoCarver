@@ -21,6 +21,7 @@ public:
     VertexArray(const float* vertices, uint32_t vertexCount);
 
     explicit VertexArray(uint32_t vertexCount);
+    explicit VertexArray(const std::vector<glm::vec2>& vertices);
     explicit VertexArray(const std::vector<glm::vec3>& vertices);
 
     explicit VertexArray(const std::string& filename);

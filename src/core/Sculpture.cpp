@@ -20,6 +20,9 @@ Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, float width, float heig
     , m_highlightColor(0.3f, 0.3f, 0.8f)
 {
 
+    // Prepare a copy to use so that it is unaffected by transformations outside this class
+//    auto copy = std::make_shared<Mesh>(model->vertices(), model->faces());
+
     scaleToFit(model, m_width, m_height);
     prepareBox();
 
@@ -58,6 +61,7 @@ void Sculpture::scaleToFit(const std::shared_ptr<Mesh>& model, float width, floa
     m_height *= m_scalar;
 
     model->scale(m_scalar); // Scale model to fit within specified limits
+//    model->translate({ 0, -m_height / 2, 0 });
 }
 
 void Sculpture::prepareBox()
@@ -148,9 +152,7 @@ bool Sculpture::applySection()
                 break;
             default:
                 std::cout << "[Sculpture] Queued section not handled. Not currently supported\n";
-
         }
-
     }
 
     return false;
@@ -224,7 +226,10 @@ bool Sculpture::triangleSection(const Plane& planeA, const Plane& planeB, const 
     }
 
 //    std::cout << "R " << m_hulls.size() << "\n";
-    remesh();
+
+    // Manually remesh only if no hulls were merged (If they are the superclass already remeshes)
+    if (!tryMerge()) remesh();
+//    remesh();
 
     return true;
 }

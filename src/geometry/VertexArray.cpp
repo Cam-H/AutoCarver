@@ -4,6 +4,7 @@
 
 #include "VertexArray.h"
 #include "fileIO/Serializable.h"
+#include "Axis3D.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <gtx/quaternion.hpp>
@@ -23,6 +24,12 @@ VertexArray::VertexArray(uint32_t vertexCount)
         : m_vertices(vertexCount)
 {
 
+}
+
+VertexArray::VertexArray(const std::vector<glm::vec2>& vertices)
+    : m_vertices(vertices.size())
+{
+    for (uint32_t i = 0; i < vertices.size(); i++) m_vertices[i] = { vertices[i].x, vertices[i].y, 0 };
 }
 
 VertexArray::VertexArray(const std::vector<glm::vec3>& vertices)
@@ -137,10 +144,9 @@ std::vector<glm::vec2> VertexArray::project(const glm::vec3& normal)
 }
 std::vector<glm::vec2> VertexArray::project(const std::vector<glm::vec3>& vertices, const glm::vec3& normal)
 {
-    glm::vec3 ref = normal.x * normal.x > 0.99f ? glm::vec3{ 0, 1, 0 } : glm::vec3{ 1, 0, 0 };
-    glm::vec3 xAxis = glm::normalize(glm::cross(normal, ref));
+    Axis3D system(normal);
 
-    return project(vertices, xAxis, glm::normalize(glm::cross(normal, xAxis)));
+    return project(vertices, system.xAxis, system.yAxis);
 }
 
 std::vector<glm::vec2> VertexArray::project(const std::vector<glm::vec3>& vertices, const glm::vec3& xAxis, const glm::vec3& yAxis)

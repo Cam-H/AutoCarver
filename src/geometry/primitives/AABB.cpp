@@ -59,7 +59,7 @@ AABB::AABB(const std::vector<glm::vec3>& vertices)
 
 bool AABB::isValid() const
 {
-    return max.x < min.x || max.y < min.y || max.z < min.z;
+    return min.x < max.x && min.y < max.y && min.z < max.z;
 }
 
 float AABB::xLength() const

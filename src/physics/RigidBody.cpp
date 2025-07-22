@@ -366,3 +366,10 @@ void RigidBody::calculateInertiaTensor()
     m_inertiaTensor = (m_mesh != nullptr) ? glm::inverse(m_mesh->inertiaTensor() * m_density) : 0;
     m_inertiaTensorOK = true;
 }
+
+void RigidBody::print() const
+{
+    auto pos = position();
+
+    std::cout << "[RigidBody] position: (" << pos.x << ", " << pos.y << ", " << pos.z << ")\n";
+}

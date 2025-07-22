@@ -86,9 +86,9 @@ void Profile::initialize()
         last = m_hull[i];
     }
 
-    std::cout << "Border: ";
-    for (uint32_t b : m_hull) std::cout << b << " ";
-    std::cout << "\n";
+//    std::cout << "Border: ";
+//    for (uint32_t b : m_hull) std::cout << b << " ";
+//    std::cout << "\n";
 
 
     // Identify concave faces, noting boundaries with the convex hull
@@ -97,7 +97,7 @@ void Profile::initialize()
         if (count > 2) emplaceRemainder(m_hull[i], count);
     }
 
-    std::cout << "Profile: " << isCCW() << " " << m_hull.size() << " " << m_vertices.size() << " " << m_remainder.size() << " " << "\n";
+//    std::cout << "Profile: " << isCCW() << " " << m_hull.size() << " " << m_vertices.size() << " " << m_remainder.size() << " " << "\n";
     for (auto& r : m_remainder) std::cout << r.first << " " << r.second << "\n";
 
 }
@@ -230,7 +230,7 @@ bool Profile::complete() const
 
 bool Profile::isNextExternal() const
 {
-    std::cout << "EXT Check: " << m_remainder[m_next].first << " " << offsetIndex(m_remainder[m_next].first + m_remainder[m_next].second - 2) << "\n";
+//    std::cout << "EXT Check: " << m_remainder[m_next].first << " " << offsetIndex(m_remainder[m_next].first + m_remainder[m_next].second - 2) << "\n";
     return !complete()
         && std::binary_search(m_hull.begin(), m_hull.end(), m_remainder[m_next].first)
         && std::binary_search(m_hull.begin(), m_hull.end(), offsetIndex(m_remainder[m_next].first + m_remainder[m_next].second - 2));
@@ -301,7 +301,7 @@ std::vector<uint32_t> Profile::delauneyRefinement()
             m_remainder[m_next] = { triangle[1], d2 + 1};
         }
 
-        std::cout << triangle[0] << " " << triangle[1] << " " << triangle[2] << " Tri\n";
+//        std::cout << triangle[0] << " " << triangle[1] << " " << triangle[2] << " Tri\n";
 
 //        return { triangle[2], triangle[1], triangle[0] };
         return triangle;
@@ -319,9 +319,9 @@ std::vector<uint32_t> Profile::testRefinement()
 
 bool Profile::isValidRefinement(const std::vector<uint32_t>& indices) const
 {
-    std::cout << "VR: " << area(indices) << "\n";
+//    std::cout << "VR: " << area(indices) << "\n";
     if (area(indices) < m_minimumArea) {
-        std::cout << indices.size() << "=]\n";
+        std::cout << "Invalid refinement " << area(indices) << " ~ " << m_minimumArea << "\n";
         for (auto i : indices) std::cout << i << "|" << m_vertices[i].x << " " << m_vertices[i].y << "\n";
     }
     return !indices.empty() && area(indices) > m_minimumArea;

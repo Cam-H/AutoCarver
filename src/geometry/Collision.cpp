@@ -139,13 +139,11 @@ bool Collision::encloses(const Sphere& body, const glm::vec3& vertex)
     return glm::dot(delta, delta) - body.radius * body.radius < 1e-6;
 }
 
-bool Collision::encloses(const Sphere& body, const std::vector<glm::vec3>& vertices)
+bool Collision::encloses(const AABB& body, const glm::vec3& vertex)
 {
-    for (const glm::vec3& vertex : vertices) {
-        if (!encloses(body, vertex)) return false;
-    }
-
-    return true;
+    return body.min.x < vertex.x && body.max.x > vertex.x
+        && body.min.y < vertex.y && body.max.y > vertex.y
+        && body.min.z < vertex.z && body.max.z > vertex.z;
 }
 
 bool Collision::encloses(const Sphere& bodyA, const Sphere& bodyB)

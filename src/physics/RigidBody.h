@@ -90,6 +90,8 @@ public:
 
     EPA collision(const std::shared_ptr<RigidBody>& body);
 
+    void print() const;
+
 private:
 
     void prepareHullVisual();

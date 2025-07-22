@@ -9,6 +9,7 @@
 #include "geometry/primitives/ConvexHull.h"
 #include "Simplex.h"
 #include "fileIO/MeshHandler.h"
+#include "Axis3D.h"
 
 EPA::EPA()
     : m_colliding(false)
@@ -169,8 +170,8 @@ void EPA::expandSimplex(const ConvexHull& a, const ConvexHull& b, const glm::mat
             glm::vec3 line = glm::normalize(simplex[1].val - simplex[0].val);
 
             // Create reasonable initial search direction
-            glm::vec3 ref = line.x * line.x == 1 ? glm::vec3{ 0, 1, 0 } : glm::vec3{ 1, 0, 0 };
-            glm::vec3 axis = glm::normalize(glm::cross(line, ref));
+            Axis3D system(line);
+            glm::vec3 axis = system.xAxis;
 
             glm::quat rotation = glm::angleAxis(2.0f / 3.0f  * (float)M_PI, line);
 

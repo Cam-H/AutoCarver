@@ -160,7 +160,7 @@ void SculptProcess::planConvexTrim()
 
     for (uint32_t i = 0; i < hull.facetCount(); i++) {
         uint32_t idx = hull.faces()[i][0];
-        steps.emplace_back(hull.vertices()[idx], -hull.facetNormal(i));
+//        steps.emplace_back(hull.vertices()[idx], -hull.facetNormal(i));TODO
     }
 
     // Plan initial cuts, beginning from the top and moving towards the base

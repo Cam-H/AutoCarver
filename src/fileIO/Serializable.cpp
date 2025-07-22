@@ -23,7 +23,7 @@ bool Serializable::serialize(const std::string& filename)
 
     file.close();
 
-    if (success) std::cout << "Object serialized successfully\n";
+    if (success) std::cout << "Object serialized successfully at: [" << filename << "]\n";
     else std::cerr << "Failed to serialize the object\n";
 
     return success;
