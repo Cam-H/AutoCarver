@@ -20,9 +20,6 @@ Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, float width, float heig
     , m_highlightColor(0.3f, 0.3f, 0.8f)
 {
 
-    // Prepare a copy to use so that it is unaffected by transformations outside this class
-//    auto copy = std::make_shared<Mesh>(model->vertices(), model->faces());
-
     scaleToFit(model, m_width, m_height);
     prepareBox();
 

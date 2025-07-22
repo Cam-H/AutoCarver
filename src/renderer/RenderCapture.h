@@ -17,6 +17,8 @@
 #include <memory>
 #include <mutex>
 
+#include <vec3.hpp>
+
 class Mesh;
 class RenderGeometry;
 
@@ -47,6 +49,25 @@ public:
     QImage grabFramebuffer();
 
 protected:
+
+    struct Target {
+
+        Target (const std::shared_ptr<Mesh>& mesh);
+
+        std::shared_ptr<Mesh> mesh;
+        uint32_t count;
+
+        QOpenGLBuffer vbo;
+        QOpenGLBuffer ibo;
+
+        QColor color;
+    };
+
+    void focusScene();
+    void focusTarget(const Target& target);
+
+    std::tuple<float, float, float, float> getBounds(const Target& target, const glm::vec3& fwd, const glm::vec3& horz, const glm::vec3& vert);
+    static void correctBounds(float& left, float& right, float& bot, float& top);
 
     void initialize();
     void prepare();
@@ -85,19 +106,6 @@ private:
     QSize m_size;
 
     Camera m_camera;
-
-    struct Target {
-
-        Target (const std::shared_ptr<Mesh>& mesh);
-
-        std::shared_ptr<Mesh> mesh;
-        uint32_t count;
-
-        QOpenGLBuffer vbo;
-        QOpenGLBuffer ibo;
-
-        QColor color;
-    };
 
     std::vector<Target> m_targets;
 };

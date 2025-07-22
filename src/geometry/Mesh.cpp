@@ -168,13 +168,17 @@ void Mesh::calculateVertexNormals()
 
 void Mesh::print() const
 {
-    std::cout << "==========[ MESH ]==========\n";
+    auto center = centroid(), sc = boundedOffset();
 
-    m_vertices.print();
+    std::cout << "[MESH] Vertices: " << m_vertices.vertexCount() << ", Faces: " << m_faces.faceCount()
+                << "\ncentroid: (" << center.x << ", " << center.y << ", " << center.z << ")"
+                << ", span-center: (" << sc.x << ", " << sc.y << ", " << sc.z << ")"
+                << "\nspan: (" << xSpan() << ", " << ySpan() << ", " << zSpan() << ")" << "\n";
 
-    m_faces.print();
+//    m_vertices.print();
 
-    std::cout << "============================\n";
+//    m_faces.print();
+
 }
 
 void Mesh::scale(float scalar)

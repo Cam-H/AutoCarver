@@ -35,14 +35,13 @@ void EdgeDetect::setMesh(const std::shared_ptr<Mesh>& newMesh)
     m_hull = ConvexHull(mesh->vertices());
 
     prepareTargets();
+
+
 }
 
 void EdgeDetect::prepareTargets()
 {
     m_capture->clearTargets();
-
-//    auto hull = std::make_shared<Mesh>(ConvexHull(mesh->vertices()));
-//    m_capture->addTarget(hull, QColor(0, 0, 180));
 
     m_capture->addTarget(mesh, QColor(255, 255, 255));
 }
@@ -313,6 +312,9 @@ void EdgeDetect::findBorder(std::vector<glm::vec2>& contour)
 //    std::reverse(contour.begin(), contour.end());
 
 //    for (glm::vec2& vertex : contour) vertex = (vertex - offset) * scale;
+
+
+    // Apply second transformation to contour to compensate for
 
     m_profile = Profile(contour, m_axis, m_right, m_up);
 

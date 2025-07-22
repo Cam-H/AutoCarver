@@ -137,7 +137,8 @@ void RenderCapture::addTarget(const std::shared_ptr<Mesh>& mesh, const QColor& c
 
     m_targets.emplace_back(mesh);
     Target& target = m_targets[m_targets.size() - 1];
-    target.mesh->center();
+//    target.mesh->center();
+
 
     target.vbo.create();
     target.ibo.create();
@@ -196,6 +197,12 @@ void RenderCapture::resize(const QSize& size)
 
 void RenderCapture::focus()
 {
+    if (m_targets.size() == 1) focusTarget(m_targets[0]);
+    else focusScene();
+}
+
+void RenderCapture::focusScene()
+{
     QVector3D fwd = m_camera.forward(), horz = m_camera.horizontal(), vert = m_camera.vertical();
 
     glm::vec3 axis = { fwd.x(), fwd.y(), fwd.z() };
@@ -204,22 +211,55 @@ void RenderCapture::focus()
     // Find maximum extents of the targets along the camera view axes
     float left = 1e6, right = -1e6, bot = 1e6, top = -1e6;
     for (const Target& target : m_targets) {
-        float min, max;
 
-        //
-        target.mesh->extents(axis, min, max);
-        float dist = std::max(std::abs(min), max) + 1;
-        if (m_camera.getRadius() < dist) m_camera.setRadius(dist);
-
-        target.mesh->extents(hAxis, min, max);
-        if (min < left) left = min;
-        if (max > right) right = max;
-
-        target.mesh->extents(vAxis, min, max);
-        if (min < bot) bot = min;
-        if (max > top) top = max;
+        auto [tLeft, tRight, tBot, tTop] = getBounds(target, axis, hAxis, vAxis);
+        if (tLeft < left) left = tLeft;
+        if (tRight > right) right = tRight;
+        if (tBot < bot) bot = tBot;
+        if (tTop > top) top = tTop;
     }
 
+    correctBounds(left, right, bot, top);
+
+    // Ensure that the targets are centered in the screen
+    QVector3D center = horz * (left + right) / 2 + vert * (bot + top) / 2;
+    m_camera.setCenter(center);
+
+    m_camera.setRect(left, right, bot, top);
+}
+void RenderCapture::focusTarget(const Target& target)
+{
+    QVector3D fwd = m_camera.forward(), horz = m_camera.horizontal(), vert = m_camera.vertical();
+
+    glm::vec3 axis = { fwd.x(), fwd.y(), fwd.z() };
+    glm::vec3 hAxis = { horz.x(), horz.y(), horz.z() }, vAxis = { vert.x(), vert.y(), vert.z() };
+
+    auto [left, right, bot, top] = getBounds(target, axis, hAxis, vAxis);
+
+    correctBounds(left, right, bot, top);
+
+    m_camera.setRect(left, right, bot, top);
+}
+
+std::tuple<float, float, float, float> RenderCapture::getBounds(const Target& target, const glm::vec3& fwd, const glm::vec3& horz, const glm::vec3& vert)
+{
+    std::tuple<float, float, float, float> bounds;
+    float min, max;
+
+    // Ensure the camera is behind the target
+    target.mesh->extents(fwd, min, max);
+    float dist = std::max(std::abs(min), max) + 1;
+    if (m_camera.getRadius() < dist) m_camera.setRadius(dist);
+
+    // Find extents in horizontal and vertical directions
+    target.mesh->extents(horz, std::get<0>(bounds), std::get<1>(bounds));
+    target.mesh->extents(vert, std::get<2>(bounds), std::get<3>(bounds));
+
+    return bounds;
+}
+
+void RenderCapture::correctBounds(float& left, float& right, float& bot, float& top)
+{
     // Square bounds - Prevent distortion of the render
     float width = right - left, height = top - bot;
     if (width < height) {
@@ -239,12 +279,6 @@ void RenderCapture::focus()
     right += margin;
     bot -= margin;
     top += margin;
-
-    // Ensure that the targets are centered in the screen
-    QVector3D center = horz * (left + right) / 2 + vert * (bot + top) / 2;
-    m_camera.setCenter(center);
-
-    m_camera.setRect(left, right, bot, top);
 }
 
 void RenderCapture::setClearColor(QColor color)

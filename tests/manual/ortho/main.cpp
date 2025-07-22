@@ -80,7 +80,7 @@ void updateImage()
 //    profile.rotateAbout({ 0, 1, 0 }, -body->rotation());
 //        profile.centerScale(scalar);
 //    profile.scale(scalar);
-    profile.translate(offset);
+//    profile.translate(offset);
 
 //    auto sc = profile.spanCenter();
 //    profile.translate(-sc);
@@ -148,10 +148,10 @@ void refine()
         body->queueSection(border[0], border[1], border[2], profile.normal(), external);
         body->applySection();
 
-//            auto extrude = MeshBuilder::extrude(border, profile.normal(), 1);
-//            extrude->translate(0.5f * -profile.normal());
-//            extrude->setFaceColor({ 0, 1, 1 });
-//            scene->createBody(extrude);
+//        auto extrude = MeshBuilder::extrude(border, profile.normal(), 1);
+//        extrude->translate(0.5f * -profile.normal());
+//        extrude->setFaceColor({ 0, 1, 1 });
+//        scene->createBody(extrude);
     }
 }
 
@@ -170,49 +170,6 @@ int main(int argc, char *argv[])
     processView = window->findChild<QLabel*>("processView");
     polygonWidget = window->findChild<PolygonWidget*>("polygonWidget");
 
-#ifndef QT_NO_OPENGL
-
-    mesh = MeshHandler::loadAsMeshBody(R"(..\res\meshes\devil.obj)");
-    mesh->center();
-//    mesh->normalize(5.0f);
-
-//    hull = std::make_shared<Mesh>(ConvexHull(mesh->vertices()));
-//    glm::vec3 centroid = -hull->centroid();
-//    mesh->translate(centroid.x, centroid.y, centroid.z);
-//    hull->zero();
-
-    scene = std::make_shared<Scene>();
-    body = std::make_shared<Sculpture>(mesh, 1.0f, 1.0f);
-    scene->prepareBody(body);
-    scene->prepareBody(body->model());
-
-//    body = scene->createBody(mesh);
-//    body = scene->createBody(std::make_shared<Mesh>(ConvexHull(mesh)));
-//    body->prepareColliderVisuals();
-//    body->zero();
-
-//    std::vector<glm::vec3> border = {
-//            {0, 0, 0},
-//            {2, 0, 0},
-//            {2, 2, 0},
-//            {0, 2, 0}
-//    };
-//    auto normal = FaceArray::calculateNormal(border);
-//    std::cout << normal.x << " " << normal.y << " " << normal.z << " Normal\n";
-//    auto mesh = MeshBuilder::extrude(border, normal, 5.0f);
-//    mesh->setFaceColor({0, 0, 1});
-//    scene->createBody(mesh);
-
-    sceneWidget = window->findChild<SceneWidget*>("sceneWidget");
-    sceneWidget->camera().setPosition(QVector3D(5, 0, 0));
-    sceneWidget->setScene(scene);
-
-//    sceneWidget->show(0, Scene::Model::HULL);
-
-#else
-    QLabel note("OpenGL Support required");
-    note.show();
-#endif
 
     showModelSetting = window->findChild<QCheckBox*>("showModelSetting");
     QObject::connect(showModelSetting, &QCheckBox::clicked, [&]() {
@@ -334,16 +291,35 @@ int main(int argc, char *argv[])
 
     });
 
+
+    mesh = MeshHandler::loadAsMeshBody(R"(..\res\meshes\devil.obj)");
+    mesh->center();
+
+
+    scene = std::make_shared<Scene>();
+    body = std::make_shared<Sculpture>(mesh, 1.0f, 1.0f);
+    scene->prepareBody(body);
+    scene->prepareBody(body->model());
+
+
     detector = new EdgeDetect(mesh);
+
+    mesh->print();
+    body->model()->mesh()->print();
 
     detector->setSize(400);
     detector->setEpsilon((float)epsilonField->value());
 
-    detector->capture()->camera().setViewingAngle(0, 0);
+    detector->capture()->camera().setViewingAngle(-180 * body->rotation() / M_PI, 0);
     detector->capture()->focus();
 
     body->print();
     body->model()->print();
+
+
+    sceneWidget = window->findChild<SceneWidget*>("sceneWidget");
+    sceneWidget->camera().setPosition(QVector3D(5, 0, 0));
+    sceneWidget->setScene(scene);
 
     window->show();
 
