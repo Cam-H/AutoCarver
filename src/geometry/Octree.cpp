@@ -11,7 +11,7 @@
 #include "geometry/primitives/Sphere.h"
 #include "geometry/primitives/AABB.h"
 #include "geometry/primitives/ConvexHull.h"
-#include "Collision.h"
+#include "geometry/collision/Collision.h"
 
 Octree::Octant::Octant(uint32_t parent, const glm::vec3& top, uint8_t depth)
     : parent(parent)

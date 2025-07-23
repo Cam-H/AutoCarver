@@ -6,7 +6,7 @@
 
 #include "fileIO/MeshHandler.h"
 #include "geometry/primitives/ConvexHull.h"
-#include "geometry/EPA.h"
+#include "geometry/collision/EPA.h"
 #include "physics/Constraint.h"
 
 Scene::Scene()

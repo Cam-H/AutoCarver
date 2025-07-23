@@ -78,6 +78,7 @@ public:
     float span(const glm::vec3& axis) const;
     static float span(const std::vector<glm::vec3>& vertices, const glm::vec3& axis);
 
+    // Removes duplicate vertices
     void clean();
 
     template<class T>

@@ -31,7 +31,9 @@ public:
     [[nodiscard]] bool raycast(const glm::vec3& origin, const glm::vec3& direction) const;
     bool raycast(const glm::vec3& origin, const glm::vec3& direction, float& t1, float& t2) const;
 
-    [[nodiscard]] glm::vec3 extreme(const glm::vec3& axis) const;
+    [[nodiscard]] const glm::vec3& start() const;
+    [[nodiscard]] uint32_t supportIndex(const glm::vec3& axis, uint32_t startIndex = 0) const;
+    [[nodiscard]] std::tuple<uint32_t, glm::vec3> extreme(const glm::vec3& axis, uint32_t startIndex = 0) const;
 
 private:
     static Sphere welzl(std::vector<glm::vec3>& vertices, std::vector<glm::vec3> set, uint32_t n);

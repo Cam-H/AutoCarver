@@ -3,7 +3,7 @@
 //
 
 #include "Sphere.h"
-#include "geometry/Collision.h"
+#include "geometry/collision/Collision.h"
 #include "ConvexHull.h"
 
 #include <iostream>
@@ -176,7 +176,15 @@ bool Sphere::raycast(const glm::vec3& origin, const glm::vec3& direction, float&
     return b * b - 4 * a * c > 0 && (b <= 0 || c < 0);
 }
 
-glm::vec3 Sphere::extreme(const glm::vec3& axis) const
+const glm::vec3& Sphere::start() const
 {
-    return center - glm::normalize(axis) * radius;
+    return center;
+}
+uint32_t Sphere::supportIndex(const glm::vec3& axis, uint32_t startIndex) const
+{
+    return 0;
+}
+std::tuple<uint32_t, glm::vec3> Sphere::extreme(const glm::vec3& axis, uint32_t startIndex) const
+{
+    return { 0, center - glm::normalize(axis) * radius };
 }

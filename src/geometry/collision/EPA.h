@@ -1,5 +1,6 @@
 //
 // Created by Cam on 2025-04-10.
+// Implementation of the Expanding Polytope Algorithm
 //
 
 #ifndef AUTOCARVER_EPA_H
@@ -7,7 +8,7 @@
 
 #include <string>
 #include <vector>
-#include <glm.hpp>
+#include "glm.hpp"
 
 class ConvexHull;
 
@@ -18,8 +19,14 @@ class EPA {
 public:
 
     EPA();
-    EPA(const ConvexHull& a, const ConvexHull& b, Simplex simplex);
-    EPA(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, const glm::mat4& relativeTransform, Simplex simplex);
+
+    template<class T1, class T2>
+    EPA(const T1& a, const T2& b, Simplex simplex);
+
+    template<class T1, class T2>
+    EPA(const T1& a, const T2& b, Simplex simplex, const glm::mat4& relative);
+
+    void setWorldTransform(const glm::mat4& transform);
 
     [[nodiscard]] bool colliding() const;
 
@@ -36,6 +43,13 @@ public:
 
     [[nodiscard]] float distance() const;
 
+    template<class T1, class T2>
+    static std::tuple<uint32_t, uint32_t, glm::vec3> gjkSupport(const T1& bodyA, const T2& bodyB, const glm::vec3& axis, const std::pair<uint32_t, uint32_t>& idx);
+
+    template<class T1, class T2>
+    static std::tuple<uint32_t, uint32_t, glm::vec3> gjkSupport(const T1& bodyA, const T2& bodyB, const glm::vec3& axis, const glm::mat4& transform, const std::pair<uint32_t, uint32_t>& idx);
+
+
 private:
 
     struct Facet {
@@ -47,11 +61,11 @@ private:
         bool onHull;
     };
 
-    static Simplex::Vertex support(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, const glm::vec3& axis, std::pair<uint32_t, uint32_t> idx);
-
     glm::vec3 normal(uint32_t a, uint32_t b, uint32_t c);
 
-    static void expandSimplex(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, Simplex& simplex);
+    template<class T1, class T2>
+    static void expandSimplex(const T1& a, const T2& b, const glm::mat4& relative, Simplex& simplex);
+
     static bool isValid(const Simplex& simplex);
 
     void prepareFacets(const Simplex& simplex, std::vector<std::pair<float, uint32_t>>& order);
@@ -69,9 +83,11 @@ private:
     std::vector<Simplex::Vertex> vertices;
 
     bool m_colliding;
-    glm::vec3 m_offset;
 
     std::pair<uint32_t, uint32_t> m_nearest;
+
+    glm::vec3 m_localOffset;
+    glm::vec3 m_worldOffset;
 
     glm::vec3 m_aLocal;
     glm::vec3 m_aWorld;
@@ -81,5 +97,6 @@ private:
 
 };
 
+#include "EPA.tpp"
 
 #endif //AUTOCARVER_EPA_H

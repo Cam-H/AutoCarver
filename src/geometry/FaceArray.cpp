@@ -462,6 +462,16 @@ std::vector<uint32_t> FaceArray::instances(uint32_t maxIndex) const
     return count;
 }
 
+bool FaceArray::hasFreeIndices(uint32_t maxIndex) const
+{
+    const auto& counts = instances(maxIndex);
+    for (uint32_t count : counts) {
+        if (count == 0) return true;
+    }
+
+    return false;
+}
+
 inline uint64_t FaceArray::linkKey(uint32_t I0, uint32_t I1)
 {
     if (I0 < I1) return ((uint64_t)I0 << 32) + I1;

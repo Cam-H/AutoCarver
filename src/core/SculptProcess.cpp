@@ -13,7 +13,7 @@
 
 #include "robot/planning/Trajectory.h"
 #include "geometry/MeshBuilder.h"
-#include "geometry/Collision.h"
+#include "geometry/collision/Collision.h"
 
 SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     : Scene()

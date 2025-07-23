@@ -5,22 +5,16 @@
 #ifndef AUTOCARVER_CONVEXHULL_H
 #define AUTOCARVER_CONVEXHULL_H
 
-#include <QColor>
-
 #include <string>
 #include <memory>
 #include <vector>
 
-//#include "VHACD.h"
-
 #include "geometry/VertexArray.h"
 #include "geometry/FaceArray.h"
-#include "geometry/Simplex.h"
 #include "geometry/primitives/Triangle.h"
 #include "geometry/primitives/Sphere.h"
 
 class Mesh;
-class EPA;
 class Plane;
 
 class ConvexHull {
@@ -28,14 +22,18 @@ public:
 
     ConvexHull();
 
-    ConvexHull(const VertexArray&  cloud);
-    ConvexHull(const std::vector<glm::vec3>&  cloud);
+    explicit ConvexHull(const VertexArray& cloud);
+    explicit ConvexHull(const std::shared_ptr<Mesh>& mesh);
 
-    ConvexHull(const std::shared_ptr<Mesh>& mesh);
+    explicit ConvexHull(const std::vector<glm::vec3>& cloud);
+
 
     ConvexHull(const ConvexHull& rhs) = default;
 
     void evaluate();
+
+    void setWalkStart(uint32_t startIndex);
+    [[nodiscard]] bool getWalkStart() const;
 
     [[nodiscard]] bool isValid() const;
 
@@ -47,10 +45,19 @@ public:
 
     [[nodiscard]] glm::vec3 center() const;
 
+    [[nodiscard]] const glm::vec3& start() const;
+
+    [[nodiscard]] uint32_t supportIndex(const glm::vec3& axis) const;
+    [[nodiscard]] std::tuple<uint32_t, glm::vec3> extreme(const glm::vec3& axis) const;
+
+    [[nodiscard]] uint32_t supportIndex(const glm::vec3& axis, uint32_t startIndex) const;
+    [[nodiscard]] std::tuple<uint32_t, glm::vec3> extreme(const glm::vec3& axis, uint32_t startIndex) const;
+
     [[nodiscard]] bool empty() const;
 
-    [[nodiscard]] uint32_t walk(const glm::vec3& axis, uint32_t index = 0) const;
-    [[nodiscard]] const glm::vec3& extreme(const glm::vec3& axis) const;
+    [[nodiscard]] uint32_t walk(const glm::vec3& axis) const;
+    [[nodiscard]] uint32_t walk(const glm::vec3& axis, uint32_t index) const;
+
     void extents(const glm::vec3& axis, float& near, float& far) const;
 
     [[nodiscard]] const std::vector<uint32_t>& neighbors(uint32_t index) const;
@@ -58,8 +65,6 @@ public:
 
     [[nodiscard]] std::vector<uint32_t> horizon(const glm::vec3& axis) const;
     [[nodiscard]] std::vector<uint32_t> horizon(const glm::vec3& axis, const glm::vec3& support) const;
-
-    [[nodiscard]] EPA epaIntersection(const ConvexHull& body, const glm::mat4& transform, const glm::mat4& relativeTransform, std::pair<uint32_t, uint32_t>& idx) const;
 
     [[nodiscard]] float volume() const;
 
@@ -109,6 +114,7 @@ private:
 
     glm::vec3 m_center;
     std::vector<std::vector<uint32_t>> m_walks;
+    uint32_t m_walkStart;
 
     float m_volume;
 

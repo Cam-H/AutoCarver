@@ -39,10 +39,10 @@ qt_add_library(AutoCarverLib
         geometry/primitives/Triangle.h
         geometry/primitives/Triangle.cpp
 
-        geometry/Collision.cpp
-        geometry/Collision.h
-        geometry/EPA.cpp
-        geometry/EPA.h
+        geometry/collision/Collision.cpp
+        geometry/collision/Collision.h
+        geometry/collision/EPA.cpp
+        geometry/collision/EPA.h
 
         geometry/Octree.cpp
         geometry/Octree.h
@@ -59,8 +59,8 @@ qt_add_library(AutoCarverLib
 
         geometry/Transformable.cpp
         geometry/Transformable.h
-        geometry/Simplex.cpp
-        geometry/Simplex.h
+        geometry/collision/Simplex.cpp
+        geometry/collision/Simplex.h
 
         robot/KinematicChain.cpp
         robot/KinematicChain.h

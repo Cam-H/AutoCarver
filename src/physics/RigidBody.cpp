@@ -11,9 +11,9 @@
 //#include <glm/gtc/matrix_inverse.hpp>
 
 #include "core/Timer.h"
-#include "geometry/EPA.h"
+#include "geometry/collision/EPA.h"
 #include "geometry/MeshBuilder.h"
-#include "geometry/Collision.h"
+#include "geometry/collision/Collision.h"
 
 RigidBody::RigidBody(const std::string& filename)
         : RigidBody((const std::shared_ptr<Mesh>&)nullptr)
@@ -144,17 +144,19 @@ bool RigidBody::collides(const std::shared_ptr<RigidBody>& body)
 
     std::pair<uint32_t, uint32_t> nearest = cachedCollision(body);
 
-    Simplex simplex = Collision::gjk(m_hull, body->m_hull, relative, nearest);
+    try {
+        Simplex simplex = Collision::gjk(m_hull, body->m_hull, relative, nearest);
 
-    cacheCollision(body, simplex[0].idx);
-
-    return simplex.colliding();
+        cacheCollision(body, simplex[0].idx);
+        return simplex.colliding();
+    } catch (std::exception& e) {
+        std::cout << "\033[93m[RigidBody] Failed to test collision\n" << e.what() << "\033[0m\n";
+        return false;
+    }
 }
 
 bool RigidBody::collision(const std::shared_ptr<RigidBody>& body, glm::vec3& offset)
 {
-    if (!m_hullOK || !body->m_hullOK || !boundaryCollision(body)) return false;
-
     EPA epa = collision(body);
     offset = epa.colliding() ? epa.overlap() : epa.offset();
 
@@ -169,7 +171,9 @@ EPA RigidBody::collision(const std::shared_ptr<RigidBody>& body)
 
     std::pair<uint32_t, uint32_t> nearest = cachedCollision(body);
 
-    EPA epa = m_hull.epaIntersection(body->m_hull, m_transform, relative, nearest);
+    EPA epa = Collision::intersection(m_hull, body->m_hull, relative, nearest);
+    epa.setWorldTransform(m_transform);
+
     cacheCollision(body, epa.nearest());
 
     return epa;
@@ -183,7 +187,9 @@ void RigidBody::cacheCollision(const std::shared_ptr<RigidBody>& body, const std
 std::pair<uint32_t, uint32_t> RigidBody::cachedCollision(const std::shared_ptr<RigidBody>& body)
 {
     // TODO caching last index
-    return { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() };
+//    return { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() };
+    return { 0, 0 };
+
 }
 
 void RigidBody::step(float delta)

@@ -4,17 +4,15 @@
 
 #include "EPA.h"
 
-#include <gtc/quaternion.hpp>
-
 #include "geometry/primitives/ConvexHull.h"
 #include "Simplex.h"
 #include "fileIO/MeshHandler.h"
-#include "Axis3D.h"
 
 EPA::EPA()
     : m_colliding(false)
-    , m_offset()
     , m_nearest(std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max())
+    , m_localOffset()
+    , m_worldOffset()
     , m_aLocal()
     , m_aWorld()
     , m_bLocal()
@@ -23,77 +21,16 @@ EPA::EPA()
 
 }
 
-EPA::EPA(const ConvexHull& a, const ConvexHull& b, Simplex simplex)
-    : EPA(a, b, glm::mat4(1.0f), glm::mat4(1.0f), simplex)
+void EPA::setWorldTransform(const glm::mat4& transform)
 {
-    // TODO implement without transformations to optimize
-}
-
-EPA::EPA(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, const glm::mat4& relativeTransform, Simplex simplex)
-    : EPA()
-{
-
-    std::vector<std::pair<float, uint32_t>> order;
-
-    // Expand the input simplex, ensuring the algorithm starts with a tetrahedron
-    expandSimplex(a, b, relativeTransform, simplex);
-    if (!isValid(simplex)) return;
-
-    // Prepare the initial set of facets from the simplex
-    prepareFacets(simplex, order);
-
-    while (true) {
-        Facet& facet = facets[order[0].second];
-
-        // Skip facet if it has already been eliminated from the hull
-        if (!facets[order[0].second].onHull) {
-            order.erase(order.begin());
-            continue;
-        }
-
-        // Find next vertex to expand to, based on current shortest overlap. Verify it protrudes from the reference facet
-        auto vertex = support(a, b, relativeTransform, facet.normal, vertices[facet.triangle.I0].idx);
-        if (glm::dot(facet.normal, vertex.val - vertices[facet.triangle.I0].val) <= 1e-6) break;
-
-        vertices.push_back(vertex);
-
-        // Calculate the horizon visible relative to the newest vertex
-        std::vector<uint32_t> horizon;
-        calculateHorizon(vertices[vertices.size() - 1].val, -1, order[0].second, horizon);
-
-        prepareFacets(horizon, order);// Generate a strip of new facets between the apex and the horizon
-    }
-
-    uint32_t idx = order[0].second;
-    const Triangle& tri = facets[idx].triangle;
-
-
-    // Record cs results
-    m_colliding = order[0].first < 0;
-
-    // Calculate the projection of the origin on to the nearest facet
-    glm::vec3 proj = glm::dot(facets[idx].normal, vertices[tri.I0].val) * facets[idx].normal;
-    m_offset = glm::mat3(transform) * -proj;
-
-    // TODO - Barycentric does not always give a reliable result for closest points. Need to evaluate closest of triangle-line or triangle-triangle
-    // Calculate the barycentric co-ordinates of the intersection point
-    glm::vec3 bary = Triangle::clampedBarycentric(vertices[tri.I0].val, vertices[tri.I1].val, vertices[tri.I2].val, proj);
-
-    Triangle triA = { vertices[tri.I0].idx.first, vertices[tri.I1].idx.first, vertices[tri.I2].idx.first };
-    Triangle triB = { vertices[tri.I0].idx.second, vertices[tri.I1].idx.second, vertices[tri.I2].idx.second };
-
-    // Calculate the closest points (locally) on the colliders
-    m_aLocal = fromBarycentric(a.vertices(), triA, bary);
-    m_bLocal = fromBarycentric(b.vertices(), triB, bary);
+    m_worldOffset = glm::mat3(transform) * m_localOffset;
 
     // Calculate the world positions from the local points
     glm::vec4 temp =  transform * glm::vec4(m_aLocal.x, m_aLocal.y, m_aLocal.z, 1.0);
     m_aWorld = { temp.x, temp.y, temp.z };
 
-    temp = transform * relativeTransform * glm::vec4(m_bLocal.x, m_bLocal.y, m_bLocal.z, 1.0);
+    temp = transform * glm::vec4(m_bLocal.x, m_bLocal.y, m_bLocal.z, 1.0);
     m_bWorld = { temp.x, temp.y, temp.z };
-
-    m_nearest = vertices[tri.I0].idx;
 }
 
 glm::vec3 EPA::fromBarycentric(const std::vector<glm::vec3>& va, const Triangle& triangle, const glm::vec3& bary)
@@ -120,96 +57,9 @@ void EPA::exportState(const std::string& path)
     MeshHandler::exportMesh(std::make_shared<Mesh>(vx, vertices.size(), fx, facets.size()), path);
 }
 
-Simplex::Vertex EPA::support(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, const glm::vec3& axis, std::pair<uint32_t, uint32_t> idx)
-{
-    idx.first = a.walk(axis, idx.first);
-    idx.second = b.walk(-axis * glm::mat3(transform), idx.second);
-
-    glm::vec4 vec = transform * glm::vec4(b.vertices()[idx.second].x, b.vertices()[idx.second].y, b.vertices()[idx.second].z, 1.0f);
-
-
-    return { a.vertices()[idx.first] - glm::vec3{ vec.x, vec.y, vec.z }, idx };
-}
-
 glm::vec3 EPA::normal(uint32_t a, uint32_t b, uint32_t c)
 {
     return glm::normalize(glm::cross(vertices[b].val - vertices[a].val, vertices[c].val - vertices[a].val));
-}
-
-void EPA::expandSimplex(const ConvexHull& a, const ConvexHull& b, const glm::mat4& transform, Simplex& simplex)
-{
-    switch (simplex.size()) {
-        case 1: // Point case
-        {
-//            glm::vec4 temp = transform * glm::vec4(b.center().x, b.center().y, b.center().z, 1.0f);
-//            glm::vec3 axis = glm::vec3{temp.x, temp.y, temp.z} - a.center();
-            static const glm::vec3 searchDirections[6] = {
-//                                axis,
-//                                -axis,
-                            {  1.0f,  0.0f,  0.0f },
-                            { -1.0f,  0.0f,  0.0f },
-                            {  0.0f,  1.0f,  0.0f },
-                            {  0.0f, -1.0f,  0.0f },
-                            {  0.0f,  0.0f,  1.0f },
-                            {  0.0f,  0.0f, -1.0f }
-            };
-
-            for (const glm::vec3& direction : searchDirections) {
-                Simplex::Vertex vertex = support(a, b, transform, direction, simplex[0].idx);
-
-                glm::vec3 delta = vertex.val - simplex[0].val;
-                if (glm::dot(delta, delta) >= 1e-6) {
-                    simplex.add(vertex);
-                    break;
-                }
-            }
-        }
-        if (simplex.size() < 2) break; // Stop if for some reason the point case failed
-        case 2: // Line case
-        {
-            glm::vec3 line = glm::normalize(simplex[1].val - simplex[0].val);
-
-            // Create reasonable initial search direction
-            Axis3D system(line);
-            glm::vec3 axis = system.xAxis;
-
-            glm::quat rotation = glm::angleAxis(2.0f / 3.0f  * (float)M_PI, line);
-
-            // Find a vertex off the line to expand to
-            for (uint32_t i = 0; i < 3; i++) {
-                Simplex::Vertex vertex = support(a, b, transform, axis, simplex[0].idx);
-
-                if (std::abs(glm::dot(axis, vertex.val - simplex[0].val)) >= 1e-6) {
-                    simplex.add(vertex);
-                    break;
-                }
-
-                // Prepare to try a new search direction (rotated by 60dg)
-                axis = rotation * axis;
-            }
-        }
-        if (simplex.size() < 3) break; // Stop if for some reason the line case failed
-        case 3: // Triangle case
-        {
-            glm::vec3 axis = glm::normalize(glm::cross(simplex[1].val - simplex[0].val, simplex[2].val - simplex[0].val));
-
-            Simplex::Vertex vertex = support(a, b, transform, axis, simplex[0].idx);
-            float delta = std::abs(glm::dot(axis, vertex.val - simplex[0].val));
-
-            // Try the opposite direction of the plane in case the triangle is extreme
-            if (delta <= 1e-6) {
-                vertex = support(a, b, transform, -axis, simplex[0].idx);
-                delta = std::abs(glm::dot(axis, vertex.val - simplex[0].val));
-            }
-
-            // Confirm selected vertex is off the plane
-            if (delta >= 1e-6) {
-                simplex.add(vertex);
-            }
-        }
-    }
-
-    simplex.correctWinding();
 }
 
 // Debug method to check correctness of algorithm input
@@ -272,6 +122,7 @@ void EPA::prepareFacets(const std::vector<uint32_t>& horizon, std::vector<std::p
         if (std::isnan(facet.value)) {
             std::cout << "EPA BR " << norm.x << " " << norm.y << " " << norm.z << " | " << triangle.I0 << " " << triangle.I1 << " " << triangle.I2
                 << "\n" << lastFacet << " " << horizon[j] << " " << nextFacet << "\n";
+            throw std::runtime_error("[EPA] Error preparing facets for algorithm");
         }
 
         facets.push_back(facet);
@@ -322,11 +173,11 @@ bool EPA::colliding() const
 
 glm::vec3 EPA::overlap() const
 {
-    return m_colliding ? m_offset : glm::vec3();
+    return m_colliding ? m_worldOffset : glm::vec3();
 }
 glm::vec3 EPA::offset() const
 {
-    return m_colliding ? glm::vec3() : m_offset;
+    return m_colliding ? glm::vec3() : m_worldOffset;
 }
 
 const std::pair<uint32_t, uint32_t>& EPA::nearest() const

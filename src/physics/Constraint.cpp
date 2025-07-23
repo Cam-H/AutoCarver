@@ -10,7 +10,7 @@
 #include <gtx/string_cast.hpp>
 
 #include "RigidBody.h"
-#include "geometry/EPA.h"
+#include "geometry/collision/EPA.h"
 #include "geometry/Axis3D.h"
 
 const float BETA = 0.01f;

@@ -10,7 +10,7 @@
 #include <QSpinBox>
 #include <QRandomGenerator>
 
-#include "geometry/Collision.h"
+#include "geometry/collision/Collision.h"
 
 #ifndef QT_NO_OPENGL
 #include "ControlWidget.h"
@@ -29,7 +29,7 @@
 #include "geometry/primitives/AABB.h"
 #include "geometry/primitives/Ray.h"
 #include "geometry/primitives/Ray.h"
-#include "geometry/EPA.h"
+#include "geometry/collision/EPA.h"
 
 std::shared_ptr<Mesh> base;
 std::shared_ptr<Mesh> test;
@@ -93,6 +93,7 @@ int main(int argc, char *argv[])
     vLayout->addWidget(control);
 
 #ifndef QT_NO_OPENGL
+    std::cout << "ax\n";
 
     scene = std::make_shared<Scene>();
 
@@ -100,15 +101,29 @@ int main(int argc, char *argv[])
 
 //    test = MeshBuilder::cylinder(0.5, 2, 6);
 //    test = MeshBuilder::icosphere(1.0f, 3);
-    test = MeshBuilder::box(0.1f);
+    test = MeshBuilder::icosphere();
 
-    auto hull = ConvexHull(VertexArray("VertexSet.bin"));
-    VertexArray(hull.vertices()).print();
-    hull.faces().print();
-    hull.evaluate();
-    hull.print();
-    std::cout << "==============\n";
-    base = std::make_shared<Mesh>(hull);
+//    auto hull = ConvexHull(VertexArray("VertexSet.bin"));
+//    VertexArray(hull.vertices()).print();
+//    hull.faces().print();
+//    hull.evaluate();
+//    hull.print();
+//    std::cout << "==============\n";
+//    base = std::make_shared<Mesh>(hull);
+
+//    auto box = AABB({-1, -1, -1}, {1, 1, 1});
+//    auto axes = std::vector<glm::vec3>{
+//            {0, 1, 0},
+//            glm::normalize(glm::vec3{1, 1, 0}),
+//            {1, 0, 0},
+//            glm::normalize(glm::vec3{1, -0.5f, 0}),
+//            {0, -1, 0}
+//    };
+//
+//    for (const auto& axis : axes) {
+//        const auto& [col, t, c] = Collision::intersection(box, Ray({}, axis));
+//        std::cout << col << " " << t << " " << c.x << " " << c.y << " " << c.z << "~\n";
+//    }
 
     scene->createBody(base);
     scene->createBody(test);
@@ -118,22 +133,12 @@ int main(int argc, char *argv[])
 
     hRenderLayout->addWidget(sceneWidget);
 
-    auto box = AABB({-1, -1, -1}, {1, 1, 1});
-    auto axes = std::vector<glm::vec3>{
-            {0, 1, 0},
-            glm::normalize(glm::vec3{1, 1, 0}),
-            {1, 0, 0},
-            glm::normalize(glm::vec3{1, -0.5f, 0}),
-            {0, -1, 0}
-    };
 
-    for (const auto& axis : axes) {
-        const auto& [col, t, c] = Collision::intersection(box, Ray({}, axis));
-        std::cout << col << " " << t << " " << c.x << " " << c.y << " " << c.z << "~\n";
-    }
 
+    std::cout << "bx\n";
 
     sceneWidget->update();
+    std::cout << "cx\n";
 
 #else
     QLabel note("OpenGL Support required");
@@ -145,7 +150,7 @@ int main(int argc, char *argv[])
 
     QObject::connect(randomButton, &QPushButton::clicked, [&]() {
         scene->bodies()[0]->setMesh(randomMesh(), true);
-//        scene->bodies()[1]->setMesh(randomMesh(), true);
+        scene->bodies()[1]->setMesh(randomMesh(), true);
 
         sceneWidget->update();
     });
@@ -175,6 +180,8 @@ int main(int argc, char *argv[])
 
         sceneWidget->update();
     });
+
+    std::cout << "x\n";
 
     window.show();
 

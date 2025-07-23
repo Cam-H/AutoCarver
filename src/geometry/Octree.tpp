@@ -1,6 +1,6 @@
 #include "Octree.h"
 
-#include "Collision.h"
+#include "geometry/collision/Collision.h"
 #include "primitives/AABB.h"
 
 template <bool IsConst>

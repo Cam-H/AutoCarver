@@ -16,6 +16,22 @@ bool Circle::isValid() const
     return radius >= 0;
 }
 
+
+glm::vec2 Circle::start() const
+{
+    return center;
+}
+
+//uint32_t Circle::supportIndex(const glm::vec2& axis) const
+//{
+//    return 0;
+//}
+//
+//std::tuple<uint32_t, glm::vec2> Circle::extreme(const glm::vec2& axis) const
+//{
+//    return { 0, center };
+//}
+
 // Compute circumcenter and radius
 Circle Circle::triangleCircumcircle(const glm::vec2& a, const glm::vec2& b, const glm::vec2& c) {
     float d = 2 * (a.x*(b.y - c.y) + b.x*(c.y - a.y) + c.x*(a.y - b.y));

@@ -8,13 +8,20 @@
 
 #include "geometry/primitives/ConvexHull.h"
 
+Simplex::Simplex(const std::tuple<uint32_t, uint32_t, glm::vec3>& start)
+    : Simplex(Vertex(start))
+{
+
+}
+
 Simplex::Simplex(const Vertex& start)
-    : vertices{start, {}, {}, {}}
+    : vertices{ start }
     , m_size(1)
-    , m_colliding()
+    , m_colliding(false)
 {
 }
 
+// Adds the given vertex to the simplex. Only adds unique vertices, in which case 'true' is returned
 void Simplex::add(const Vertex& vertex)
 {
     vertices[3] = vertices[2];
@@ -49,10 +56,14 @@ uint32_t Simplex::size() const
 
 bool Simplex::evaluate(glm::vec3& axis)
 {
+    glm::vec3 a = vertices[0].val;
+    glm::vec3 ao = -a;
+
     switch (m_size) {
         case 2: evaluateLine(axis); break;
         case 3: evaluateTriangle(axis); break;
         case 4: return evaluateTetrahedron(axis);
+        default: throw std::runtime_error("[Simplex] Failed to evaluate. Impossible size reached");
     }
 
     return false;
@@ -60,17 +71,10 @@ bool Simplex::evaluate(glm::vec3& axis)
 
 void Simplex::evaluateLine(glm::vec3& axis)
 {
-    evaluateLine(axis, vertices[1].val - vertices[0].val, -vertices[0].val);
-}
+    glm::vec3 AB = vertices[1].val - vertices[0].val, AO = -vertices[0].val;
+    if (glm::dot(AB, AO) < 0) throw std::runtime_error("[Simplex] EL Less");
 
-void Simplex::evaluateLine(glm::vec3& axis, const glm::vec3& AB, const glm::vec3& AO)
-{
-    if (glm::dot(AB, AO) > 0) {
-        axis = glm::cross(glm::cross(AB, AO), AB);
-    } else {
-        m_size = 1;
-        axis = AO;
-    }
+    axis = glm::cross(glm::cross(AB, AO), AB);
 }
 
 void Simplex::evaluateTriangle(glm::vec3& axis)
@@ -78,29 +82,22 @@ void Simplex::evaluateTriangle(glm::vec3& axis)
     auto AB = vertices[1].val - vertices[0].val, AC = vertices[2].val - vertices[0].val, AO = -vertices[0].val;
     auto ABC = glm::cross(AB, AC);
 
-    if (glm::dot(glm::cross(ABC, AC), AO) > 0) {
-        if (glm::dot(AC, AO) > 0) {
-            vertices[1] = vertices[2]; m_size = 2;
-            axis = glm::cross(glm::cross(AC, AO), AC);
-        } else {
-            m_size = 2;
-            evaluateLine(axis, AB, AO);
-        }
-    } else {
-        if (glm::dot(glm::cross(AB, ABC), AO) > 0) {
-            m_size = 2;
-            evaluateLine(axis, AB, AO);
-        } else {
-            if (glm::dot(ABC, AO) > 0) {
-                axis = ABC;
-            } else {
-                auto temp = vertices[1];
-                vertices[1] = vertices[2];
-                vertices[2] = temp;
-                axis = -ABC;
-            }
-        }
+    auto perp = glm::cross(ABC, AC);
+    if (glm::dot(perp, AO) > 0) {
+        vertices[1] = vertices[2];
+        m_size = 2;
+        axis = perp;
+        return;
     }
+
+    perp = glm::cross(AB, ABC);
+    if (glm::dot(perp, AO) > 0) {
+        m_size = 2;
+        axis = perp;
+        return;
+    }
+
+    axis = glm::dot(ABC, AO) > 0 ? ABC : -ABC;
 }
 
 bool Simplex::evaluateTetrahedron(glm::vec3& axis)
@@ -110,21 +107,33 @@ bool Simplex::evaluateTetrahedron(glm::vec3& axis)
 
     if (glm::dot(ABC, AO) > 0) {
         m_size = 3;
-        evaluateTriangle( axis);
+        axis = ABC;
+        return false;
     } else if (glm::dot(ACD, AO) > 0) {
-        vertices[1] = vertices[2]; vertices[2] = vertices[3]; m_size = 3;
-        evaluateTriangle(axis);
+        vertices[1] = vertices[2];
+        vertices[2] = vertices[3];
+        m_size = 3;
+        axis = ACD;
+        return false;
     } else if (glm::dot(ADB, AO) > 0) {
-        vertices[2] = vertices[1]; vertices[1] = vertices[3]; m_size = 3;
-        evaluateTriangle(axis);
-    } else {
-        return (m_colliding = true);
+        vertices[2] = vertices[1];
+        vertices[1] = vertices[3];
+        m_size = 3;
+        axis = ADB;
+        return false;
     }
 
-    return false;
+    return (m_colliding = true);
 }
 
 bool Simplex::colliding() const
 {
     return m_colliding;
+}
+
+void Simplex::print() const
+{
+    std::cout << "[Simplex] size: " << m_size << ", colliding: " << m_colliding << "\n";
+    for (uint32_t i = 0; i < m_size; i++)
+        std::cout << "V" << i << " [" << vertices[i].idx.first << ", " << vertices[i].idx.second << "]: (" << vertices[i].val.x << ", " << vertices[i].val.y << ", " << vertices[i].val.z << ")\n";
 }

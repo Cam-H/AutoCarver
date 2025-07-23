@@ -26,9 +26,12 @@ public:
     [[nodiscard]] float maxLength() const;
 
     [[nodiscard]] glm::vec3 center() const;
-
     [[nodiscard]] glm::vec3 vertex(uint32_t index) const;
-    [[nodiscard]] glm::vec3 extreme(const glm::vec3& axis) const;
+
+    // Required functions for GJK collision tests
+    [[nodiscard]] glm::vec3 start() const;
+    [[nodiscard]] uint32_t supportIndex(const glm::vec3& axis, uint32_t startIndex = 0) const;
+    [[nodiscard]] std::tuple<uint32_t, glm::vec3> extreme(const glm::vec3& axis, uint32_t startIndex = 0) const;
 
     void print() const;
 

@@ -5,7 +5,7 @@
 #include "Sculpture.h"
 
 #include "geometry/MeshBuilder.h"
-#include "geometry/Collision.h"
+#include "geometry/collision/Collision.h"
 
 
 Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, float width, float height)

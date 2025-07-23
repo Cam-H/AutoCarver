@@ -77,6 +77,9 @@ public:
     // Calculates the number of instances of every vertex in a face
     [[nodiscard]] std::vector<uint32_t> instances(uint32_t maxIndex) const;
 
+    // Determines if there are any unused indices in the range [0, maxIndex]
+    [[nodiscard]] bool hasFreeIndices(uint32_t maxIndex) const;
+
     [[nodiscard]] uint32_t size() const; // Get the size of the array in bytes
     [[nodiscard]] bool empty() const;
 

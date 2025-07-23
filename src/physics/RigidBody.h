@@ -19,6 +19,7 @@
 #include "geometry/primitives/Sphere.h"
 
 #include "geometry/Transformable.h"
+#include "geometry/collision/EPA.h"
 
 
 class RigidBody : public Serializable, public Transformable {

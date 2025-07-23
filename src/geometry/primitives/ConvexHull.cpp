@@ -6,13 +6,11 @@
 #include "ConvexHull.h"
 
 #include "geometry/Mesh.h"
-#include "geometry/EPA.h"
-
 
 #include <glm.hpp>
 
 #include "core/Timer.h"
-#include "geometry/Collision.h"
+#include "geometry/collision/Collision.h"
 #include "geometry/poly/Polygon.h"
 
 #include <thread>
@@ -21,42 +19,32 @@
 #include <utility>
 
 ConvexHull::ConvexHull()
-    : m_center()
-    , m_faces(nullptr, nullptr, 0)
-    , m_volume(-1.0f)
+    : ConvexHull(std::vector<glm::vec3>{})
 {
 }
 
-ConvexHull::ConvexHull(const VertexArray&  cloud)
+ConvexHull::ConvexHull(const VertexArray& cloud)
     : ConvexHull(cloud.vertices())
 {
 
 }
 
-ConvexHull::ConvexHull(const std::vector<glm::vec3>& cloud)
-    : m_center()
-    , m_cloud(cloud)
-    , m_faces(nullptr, nullptr, 0)
-    , m_volume(-1.0f)
-
+ConvexHull::ConvexHull(const std::shared_ptr<Mesh>& mesh)
+        : ConvexHull(mesh->vertices().vertices())
 {
-    initialize();
+    if (mesh->faces().hasFreeIndices(mesh->vertexCount())) {
+        std::cout << "\033[93m[ConvexHull] Generated from a mesh with orphan vertices! Result may noy be as expected\033[0m\n";
+    }
 }
 
-ConvexHull::ConvexHull(const std::shared_ptr<Mesh>& mesh)
-        : m_center(0)
-        , m_cloud(std::vector<glm::vec3>())
+ConvexHull::ConvexHull(const std::vector<glm::vec3>& cloud)
+        : m_center()
+        , m_cloud(cloud)
         , m_faces(nullptr, nullptr, 0)
         , m_volume(-1.0f)
+        , m_walkStart(0)
+
 {
-    m_cloud.reserve(mesh->vertexCount());
-
-    // Excludes orphan vertices that may be part of the mesh
-    std::vector<uint32_t> instances = mesh->faces().instances(mesh->vertexCount());
-    for (uint32_t i = 0; i < instances.size(); i++) {
-        if (instances[i] > 0) m_cloud.push_back(mesh->vertices()[i]);
-    }
-
     initialize();
 }
 
@@ -192,6 +180,18 @@ void ConvexHull::evaluate()
     }
 }
 
+void ConvexHull::setWalkStart(uint32_t startIndex)
+{
+    if (startIndex < m_walks.size()) {
+        m_walkStart = startIndex;
+        if (m_walks[m_walkStart].empty()) std::cout << "\033[93m[ConvexHull] Walk start assigned to orphan vertex\033[0m\n";
+    } else throw std::runtime_error("[ConvexHull] Invalid walk start assignment");
+}
+bool ConvexHull::getWalkStart() const
+{
+    return m_walkStart;
+}
+
 bool ConvexHull::isValid() const
 {
     return !m_vertices.empty();
@@ -227,18 +227,20 @@ bool ConvexHull::empty() const
     return m_vertices.empty();
 }
 
-EPA ConvexHull::epaIntersection(const ConvexHull& body, const glm::mat4& transform, const glm::mat4& relativeTransform, std::pair<uint32_t, uint32_t>& idx) const
+uint32_t ConvexHull::walk(const glm::vec3& axis) const
 {
-    return { *this, body, transform, relativeTransform, Collision::gjk(*this, body, relativeTransform, idx) };
+    uint32_t index = m_walkStart;
+
+    // Skip over any orphan vertices
+    while (index < m_walks.size() && m_walks[index].empty()) index++;
+
+    return walk(axis, index);
 }
 
 uint32_t ConvexHull::walk(const glm::vec3& axis, uint32_t index) const
 {
-    while (index < m_walks.size() && m_walks[index].empty()) { // Skip over any orphan vertices
-        index++;
-    }
-
     if (index >= m_walks.size()) throw std::runtime_error("[ConvexHull] Index out of bounds. Can not walk");
+    else if (m_walks[index].empty()) throw std::runtime_error("[ConvexHull] Orphaned start point. Can not walk");
 
     uint32_t i = 0;
     while (i == 0) { // Only true when arriving at a fresh vertex
@@ -254,15 +256,43 @@ uint32_t ConvexHull::walk(const glm::vec3& axis, uint32_t index) const
     return index;
 }
 
-const glm::vec3& ConvexHull::extreme(const glm::vec3& axis) const
+const glm::vec3& ConvexHull::start() const
 {
-    return m_vertices[walk(axis)];
+    return m_vertices[m_walkStart];
 }
+
+uint32_t ConvexHull::supportIndex(const glm::vec3& axis) const
+{
+    return supportIndex(axis, m_walkStart);
+}
+std::tuple<uint32_t, glm::vec3> ConvexHull::extreme(const glm::vec3& axis) const
+{
+    return extreme(axis, m_walkStart);
+}
+
+uint32_t ConvexHull::supportIndex(const glm::vec3& axis, uint32_t startIndex) const
+{
+    return walk(axis, startIndex);
+}
+
+std::tuple<uint32_t, glm::vec3> ConvexHull::extreme(const glm::vec3& axis, uint32_t startIndex) const
+{
+    auto index = supportIndex(axis, startIndex);
+    return { index, m_vertices[index] };
+}
+
 
 void ConvexHull::extents(const glm::vec3& axis, float& near, float& far) const
 {
-    near = glm::dot(axis, extreme(-axis));
-    far = glm::dot(axis, extreme(axis));
+    {
+        auto [idx, vertex] = extreme(-axis);
+        near = glm::dot(axis, vertex);
+    }
+
+    {
+        auto [idx, vertex] = extreme(axis);
+        far = glm::dot(axis, vertex);
+    }
 }
 
 const std::vector<uint32_t>& ConvexHull::neighbors(uint32_t index) const
@@ -515,11 +545,11 @@ ConvexHull ConvexHull::unite(const ConvexHull& hullA, const ConvexHull& hullB)
 {
     auto vertices = hullA.vertices();
     vertices.insert(vertices.end(), hullB.vertices().begin(), hullB.vertices().end());
-    return { vertices };
+    return ConvexHull(vertices);
 }
 std::tuple<bool, ConvexHull> ConvexHull::tryMerge(const ConvexHull& hullA, const ConvexHull& hullB)
 {
-    auto collision = Collision::intersection(hullA, hullB);
+    auto collision = Collision::intersection(hullA, hullB, { 0, 0 });
     glm::vec3 delta = collision.colliding() ? collision.overlap() : collision.offset();
 
 //    std::cout << collision.colliding() << " " << glm::length(collision.offset()) << " " << glm::length(collision.overlap()) << "}{{}\n";
