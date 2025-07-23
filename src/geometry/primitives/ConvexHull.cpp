@@ -11,6 +11,7 @@
 
 #include "core/Timer.h"
 #include "geometry/collision/Collision.h"
+#include "geometry/primitives/Plane.h"
 #include "geometry/poly/Polygon.h"
 
 #include <thread>
@@ -116,7 +117,6 @@ void ConvexHull::prepareFaces()
         }
     }
 
-    uint32_t count = 0;
     for (uint32_t i = 0; i < faces.size(); i++) {
         if (faces[i].size() >= 4) {
             std::vector<glm::vec3> vertices(faces[i].size());
@@ -128,19 +128,12 @@ void ConvexHull::prepareFaces()
             for (uint32_t& index : hull) index = faces[i][index];
             faces[i] = hull;
         }
-
-        count += faces[i].size();
     }
 
 //    purgeOrphans(faces); TODO consider - Expensive but leaving orphans affects walk operations
 
-    m_faces = FaceArray(faces.size(), count);
-
-    uint32_t *idxPtr = m_faces[0], *sizePtr = m_faces.faceSizes();
-    for (const auto& face : faces) {
-        *sizePtr++ = face.size();
-        for (uint32_t index : face) *idxPtr++ = index;
-    }
+    m_faces = FaceArray(faces);
+    m_faces.assignNormals(normals);
 
     // Do away with working memory
     facets.clear();
@@ -220,6 +213,12 @@ const FaceArray& ConvexHull::faces() const
 glm::vec3 ConvexHull::center() const
 {
     return m_center;
+}
+
+Plane ConvexHull::facePlane(uint32_t idx) const
+{
+    if (idx >= m_faces.faceCount()) throw std::runtime_error("[ConvexHull] Index out of bounds. Can not generate plane");
+    return { m_vertices[m_faces[idx][0]], m_faces.normal(idx) };
 }
 
 bool ConvexHull::empty() const

@@ -30,6 +30,7 @@ public:
 
     ConvexHull(const ConvexHull& rhs) = default;
 
+    void calculateNormals();
     void evaluate();
 
     void setWalkStart(uint32_t startIndex);
@@ -44,6 +45,7 @@ public:
     [[nodiscard]] const FaceArray& faces() const;
 
     [[nodiscard]] glm::vec3 center() const;
+    [[nodiscard]] Plane facePlane(uint32_t idx) const;
 
     [[nodiscard]] const glm::vec3& start() const;
 

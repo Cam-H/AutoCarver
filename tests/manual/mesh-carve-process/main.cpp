@@ -60,13 +60,12 @@ int main(int argc, char *argv[])
     window = loadUiFile(nullptr);
     if (window == nullptr) return -1;
 
-    std::string source = "../res/meshes/ogre.obj";
+    std::string source = "../res/meshes/devil.obj";
     auto model = MeshHandler::loadAsMeshBody(source);
     model->setBaseColor({1, 0, 1});
 
-
     scene = std::make_shared<SculptProcess>(model);
-    scene->enableConvexTrim(false);
+//    scene->enableConvexTrim(false);
 //    scene->setContinuous(true);
 
     robot = scene->createRobot(new ArticulatedWrist(0.2, 1.2, 1.2, 1));
@@ -78,7 +77,6 @@ int main(int argc, char *argv[])
     sceneWidget = window->findChild<SceneWidget*>("sceneWidget");
 //    sceneWidget->camera().setPosition(QVector3D(15, 0, 0));
     sceneWidget->setScene(scene);
-
 
     auto sculptureButton = window->findChild<QCheckBox*>("sculptureButton");
     QObject::connect(sculptureButton, &QCheckBox::clicked, [&](bool checked) {
@@ -118,7 +116,6 @@ int main(int argc, char *argv[])
             image.save(("../out/capture.png"));
         }
     });
-
 
     // Handle updating robot
     updateThread = std::make_unique<std::thread>([](){

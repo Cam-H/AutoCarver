@@ -28,6 +28,7 @@ void Robot::prepareLinks()
     for (const Joint& joint : m_kinematics->getJoints()) {
 //        auto mesh = MeshBuilder::cylinder(0.25f, height, 8);
         auto mesh = MeshBuilder::cylinder(0.12f, height, 8);
+
         mesh->translate({ 0, -height / 2, 0 });
         mesh->rotate({ 1, 0, 0 }, M_PI / 2);
         mesh->setFaceColor({0.1f, 0.1f, 0.1f});

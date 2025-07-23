@@ -23,16 +23,10 @@ public:
 
     explicit FaceArray(const std::vector<std::vector<uint32_t>>& indices);
 
-    FaceArray(const FaceArray &);
-    FaceArray& operator=(const FaceArray &);
-
-    FaceArray(FaceArray &&) noexcept;
-    FaceArray& operator=(FaceArray &&) noexcept;
-
-    ~FaceArray();
-
     bool serialize(std::ofstream& file);
     static FaceArray deserialize(std::ifstream& file);
+
+    void assignNormals(const std::vector<glm::vec3>& normals);
 
     static glm::vec3 calculateNormal(const std::vector<glm::vec3>& boundary);
     void calculateNormals(const std::vector<glm::vec3>& vertices);
@@ -47,10 +41,10 @@ public:
     [[nodiscard]] uint32_t faceCount() const;
     [[nodiscard]] uint32_t indexCount() const;
 
-    [[nodiscard]] const uint32_t* faces() const;
+    [[nodiscard]] const std::vector<uint32_t>& faces() const;
 
+    [[nodiscard]] const std::vector<uint32_t>& faceSizes() const;
     [[nodiscard]] uint32_t* faceSizes();
-    [[nodiscard]] const uint32_t* faceSizes() const;
 
     [[nodiscard]] const std::vector<glm::vec3>& normals() const;
     [[nodiscard]] glm::vec3 normal(uint32_t idx) const;
@@ -90,13 +84,13 @@ private:
     static bool inRange(const uint32_t *idx, uint32_t count, uint32_t limit);
 
     uint32_t* idxPtr(uint32_t idx);
-    uint32_t* idxPtr(uint32_t idx) const;
+    const uint32_t* idxPtr(uint32_t idx) const;
 
     inline static uint64_t linkKey(uint32_t I0, uint32_t I1);
 
 private:
-    uint32_t *m_faces; // Loops of vertex indices that compose each face
-    uint32_t *m_faceSizes; // Size of each individual face in vertices
+    std::vector<uint32_t> m_faces; // Loops of vertex indices that compose each face
+    std::vector<uint32_t> m_faceSizes; // Size of each individual face in vertices
 
     std::vector<glm::vec3> m_normals;
     std::vector<glm::vec3> m_colors;

@@ -60,7 +60,8 @@ Mesh::Mesh(std::ifstream& file)
 }
 
 Mesh::Mesh(VertexArray vertices, FaceArray faces)
-    : m_vertices(std::move(vertices))
+    : m_initialized(false)
+    , m_vertices(std::move(vertices))
     , m_faces(std::move(faces))
     , m_vertexNormals(nullptr, 0)
     , m_colorOverride(false)
@@ -70,20 +71,9 @@ Mesh::Mesh(VertexArray vertices, FaceArray faces)
     initialize();
 }
 
-Mesh::Mesh(const Mesh& mesh)
-        : m_vertices(mesh.m_vertices)
-        , m_faces(mesh.m_faces)
-        , m_vertexNormals(mesh.m_vertexNormals)
-        , m_colorOverride(mesh.m_colorOverride)
-        , m_baseColor(mesh.m_baseColor)
-        , m_vertexColors(mesh.m_vertexColors)
-        , m_adjacencyOK(mesh.m_adjacencyOK)
-{
-
-}
-
 Mesh::Mesh(uint32_t vertexCount, uint32_t faceCount, uint32_t indexCount)
-    : m_vertices(vertexCount)
+    : m_initialized(false)
+    , m_vertices(vertexCount)
     , m_faces(faceCount, indexCount)
     , m_vertexNormals(nullptr, 0)
     , m_colorOverride(false)
@@ -95,9 +85,12 @@ Mesh::Mesh(uint32_t vertexCount, uint32_t faceCount, uint32_t indexCount)
 
 void Mesh::initialize()
 {
-    m_faces.calculateNormals(m_vertices.vertices());
-    m_faces.triangulate(m_vertices.vertices());
-    calculateVertexNormals();
+    if (!m_initialized) {
+        m_faces.calculateNormals(m_vertices.vertices());
+        m_faces.triangulate(m_vertices.vertices());
+        calculateVertexNormals();
+        m_initialized = true;
+    }
 }
 
 bool Mesh::serialize(const std::string& filename)
@@ -175,9 +168,9 @@ void Mesh::print() const
                 << ", span-center: (" << sc.x << ", " << sc.y << ", " << sc.z << ")"
                 << "\nspan: (" << xSpan() << ", " << ySpan() << ", " << zSpan() << ")" << "\n";
 
-//    m_vertices.print();
+    m_vertices.print();
 
-//    m_faces.print();
+    m_faces.print();
 
 }
 
@@ -218,6 +211,11 @@ void Mesh::zero()
 //    translate(-ConvexHull(m_vertices).center());
     translate(-centroid());
 
+}
+
+bool Mesh::isInitialized() const
+{
+    return m_initialized;
 }
 
 void Mesh::xExtents(float &near, float &far) const
@@ -302,6 +300,7 @@ const VertexArray& Mesh::vertices() const
 
 const VertexArray& Mesh::vertexNormals() const
 {
+    if (!m_initialized) throw std::runtime_error("[Mesh] Can not access vertex normals. Mesh has yet to be initialized!");
     return m_vertexNormals;
 }
 

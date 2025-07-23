@@ -36,7 +36,6 @@ public:
     explicit Mesh(std::ifstream& file);
 
     explicit Mesh(VertexArray vertices, FaceArray faces);
-    explicit Mesh(const Mesh& mesh);
 
     Mesh(uint32_t vertexCount, uint32_t faceCount, uint32_t indexCount);
 
@@ -55,6 +54,7 @@ public:
     void center();
     void zero();
 
+    bool isInitialized() const;
 
     void xExtents(float &near, float &far) const;
     void yExtents(float &near, float &far) const;
@@ -128,8 +128,9 @@ private:
 
 private:
 
-    VertexArray m_vertices;
+    bool m_initialized;
 
+    VertexArray m_vertices;
     FaceArray m_faces;
 
     VertexArray m_vertexNormals;

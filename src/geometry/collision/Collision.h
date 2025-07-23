@@ -61,21 +61,25 @@ public:
     // Determine the furthest vertex on the body to the reference
     static glm::vec3 farthest(const AABB& body, const glm::vec3& reference);
 
-    // Determine if the first body (A) encloses the second body (B)
+    // Determine if the first body (A) encloses the vertex
     static bool encloses(const Sphere& body, const glm::vec3& vertex);
     static bool encloses(const AABB& body, const glm::vec3& vertex);
+    static bool encloses(const ConvexHull& body, const glm::vec3& vertex);
 
     template<class T>
     static bool encloses(const T& body, const std::vector<glm::vec3>& vertices);
 
     static bool encloses(const Sphere& bodyA, const Sphere& bodyB);
-    static bool encloses(const AABB& bodyA, const AABB& bodyB);
-
     static bool encloses(const Sphere& bodyA, const AABB& bodyB);
-    static bool encloses(const AABB& bodyA, const Sphere& bodyB);
-
     static bool encloses(const Sphere& bodyA, const ConvexHull& bodyB);
+
+    static bool encloses(const AABB& bodyA, const Sphere& bodyB);
+    static bool encloses(const AABB& bodyA, const AABB& bodyB);
     static bool encloses(const AABB& bodyA, const ConvexHull& bodyB);
+
+    static bool encloses(const ConvexHull& bodyA, const Sphere& bodyB);
+    static bool encloses(const ConvexHull& bodyA, const AABB& bodyB);
+//    static bool encloses(const ConvexHull& bodyA, const ConvexHull& bodyB);
 
     // Determine the intersection between the specified bodies
     static std::tuple<bool, float, glm::vec3> intersection(const AABB& body, const Ray& ray);

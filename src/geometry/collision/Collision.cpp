@@ -120,6 +120,16 @@ bool Collision::encloses(const AABB& body, const glm::vec3& vertex)
         && body.min.z < vertex.z && body.max.z > vertex.z;
 }
 
+bool Collision::encloses(const ConvexHull& body, const glm::vec3& vertex)
+{
+    for (uint32_t i = 0; i < body.facetCount(); i++) {
+        const Plane& plane = body.facePlane(i);
+        if (glm::dot(plane.normal, vertex - plane.origin) > 0) return false;
+    }
+
+    return true;
+}
+
 bool Collision::encloses(const Sphere& bodyA, const Sphere& bodyB)
 {
     glm::vec3 delta = bodyA.center - bodyB.center;
@@ -157,6 +167,27 @@ bool Collision::encloses(const Sphere& bodyA, const ConvexHull& bodyB)
 bool Collision::encloses(const AABB& bodyA, const ConvexHull& bodyB)
 {
     return encloses(bodyA, AABB(bodyB));
+}
+
+bool Collision::encloses(const ConvexHull& bodyA, const Sphere& bodyB)
+{
+    for (uint32_t i = 0; i < bodyA.facetCount(); i++) {
+        const Plane& plane = bodyA.facePlane(i);
+        if (glm::dot(-plane.normal, bodyB.center - plane.origin) < bodyB.radius) return false;
+    }
+
+    return true;
+}
+bool Collision::encloses(const ConvexHull& bodyA, const AABB& bodyB)
+{
+    return encloses(bodyA, bodyB.min)
+        && encloses(bodyA, bodyB.max)
+        && encloses(bodyA, bodyB.vertex(1))
+        && encloses(bodyA, bodyB.vertex(2))
+        && encloses(bodyA, bodyB.vertex(3))
+        && encloses(bodyA, bodyB.vertex(4))
+        && encloses(bodyA, bodyB.vertex(5))
+        && encloses(bodyA, bodyB.vertex(6));
 }
 
 std::tuple<bool, float, glm::vec3> Collision::intersection(const AABB& body, const Ray& ray)

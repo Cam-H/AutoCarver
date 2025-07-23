@@ -17,9 +17,9 @@
 #include <vector>
 
 #ifndef QT_NO_OPENGL
-#include "geometry/shape/Sphere.h"
-#include "geometry/shape/AABB.h"
-#include "geometry/shape/ConvexHull.h"
+#include "geometry/primitives/Sphere.h"
+#include "geometry/primitives/AABB.h"
+#include "geometry/primitives/ConvexHull.h"
 #include "renderer/SceneWidget.h"
 #include "fileIO/MeshHandler.h"
 #include "geometry/MeshBuilder.h"

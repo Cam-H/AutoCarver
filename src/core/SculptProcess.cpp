@@ -71,11 +71,10 @@ void SculptProcess::plan()
     else m_sculpture->restoreAsHull();
 
     // Repeatedly refined the sculpture by cutting to the outline of the model at discrete orientations
-    planOutlineRefinement(90.0f);
+//    planOutlineRefinement(90.0f);
 
     // Capture model features with fine carving
-    planFeatureRefinement();
-
+//    planFeatureRefinement();
 
     m_planned = true;
     m_step = 0;
@@ -158,10 +157,7 @@ void SculptProcess::planConvexTrim()
 
     ConvexHull hull = ConvexHull(model);
 
-    for (uint32_t i = 0; i < hull.facetCount(); i++) {
-        uint32_t idx = hull.faces()[i][0];
-//        steps.emplace_back(hull.vertices()[idx], -hull.facetNormal(i));TODO
-    }
+    for (uint32_t i = 0; i < hull.facetCount(); i++) steps.emplace_back(hull.facePlane(i));
 
     // Plan initial cuts, beginning from the top and moving towards the base
     std::sort(steps.begin(), steps.end(), [](const Plane& a, const Plane& b){

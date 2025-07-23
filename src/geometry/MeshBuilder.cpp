@@ -28,14 +28,14 @@ std::shared_ptr<Mesh> MeshBuilder::plane(float length, float width, const glm::v
     glm::vec3 wAxis = glm::normalize(glm::cross(normal, ref)), lAxis = glm::normalize(glm::cross(normal, wAxis));
     glm::vec3 a = origin + wAxis * width * 0.5f + lAxis * length * 0.5f, b = a - wAxis * width, c = b - lAxis * length, d = c + wAxis * width;
 
-    auto vertices = VertexArray(4);
-    vertices[0] = { a.x, a.y, a.z };
-    vertices[1] = { b.x, b.y, c.z };
-    vertices[2] = { c.x, c.y, b.z };
-    vertices[3] = { d.x, d.y, d.z };
+    auto mesh = std::make_shared<Mesh>(4, 2, 8);
 
-    auto faces = FaceArray(2, 8);
-    uint32_t *idxPtr = faces[0], *sizePtr = faces.faceSizes();
+    mesh->m_vertices[0] = { a.x, a.y, a.z };
+    mesh->m_vertices[1] = { b.x, b.y, c.z };
+    mesh->m_vertices[2] = { c.x, c.y, b.z };
+    mesh->m_vertices[3] = { d.x, d.y, d.z };
+
+    uint32_t *idxPtr = mesh->m_faces[0], *sizePtr = mesh->m_faces.faceSizes();
 
     *idxPtr++ = 0;
     *idxPtr++ = 1;
@@ -50,7 +50,9 @@ std::shared_ptr<Mesh> MeshBuilder::plane(float length, float width, const glm::v
     *sizePtr++ = 4;
     *sizePtr++ = 4;
 
-    return std::make_shared<Mesh>(vertices, faces);
+    mesh->initialize();
+
+    return mesh;
 }
 
 std::shared_ptr<Mesh> MeshBuilder::box(float sideLength)
@@ -64,71 +66,44 @@ std::shared_ptr<Mesh> MeshBuilder::box(float length, float width, float height)
     width /=2;
     height /=2;
 
-    auto vertices = VertexArray(8);
-    vertices[0] = { -length, -height, -width };
-    vertices[1] = { -length,  height, -width };
-    vertices[2] = {  length,  height, -width };
-    vertices[3] = {  length, -height, -width };
-    vertices[4] = { -length, -height,  width };
-    vertices[5] = { -length,  height,  width };
-    vertices[6] = {  length,  height,  width };
-    vertices[7] = {  length, -height,  width };
+    auto mesh = std::make_shared<Mesh>(8, 6, 24);
 
-    auto faces = FaceArray(6, 24);
-    uint32_t *idxPtr = faces[0], *sizePtr = faces.faceSizes();
+    mesh->m_vertices[0] = { -length, -height, -width };
+    mesh->m_vertices[1] = { -length,  height, -width };
+    mesh->m_vertices[2] = {  length,  height, -width };
+    mesh->m_vertices[3] = {  length, -height, -width };
+    mesh->m_vertices[4] = { -length, -height,  width };
+    mesh->m_vertices[5] = { -length,  height,  width };
+    mesh->m_vertices[6] = {  length,  height,  width };
+    mesh->m_vertices[7] = {  length, -height,  width };
+
+    uint32_t *idxPtr = mesh->m_faces[0], *sizePtr = mesh->m_faces.faceSizes();
     indexBox(idxPtr, sizePtr);
 
-    return std::make_shared<Mesh>(vertices, faces);
+    mesh->initialize();
+
+    return mesh;
 }
 
 std::shared_ptr<Mesh> MeshBuilder::cylinder(float radius, float height, uint32_t segments){
-    uint32_t vertexCount = 2 * segments, faceCount = 2 + segments;
 
-    // Generate vertices to approximate a cylinder
-    auto *vertices = new float[3 * vertexCount], *vPtr = vertices;
+    std::vector<glm::vec3> border(segments);
 
     float theta = 0;
-    float inc = 2 * M_PI / segments;
-    while(theta < 2 * M_PI - 1e-6){
-        *vPtr++ = radius * cosf(theta);
-        *vPtr++ = 0;
-        *vPtr++ = radius * sinf(theta);
-
-        *vPtr++ = radius * cosf(theta);
-        *vPtr++ = height;
-        *vPtr++ = radius * sinf(theta);
-
-        theta += inc;
-    }
-
-    auto *faces = new uint32_t[2 * vertexCount + 4 * segments], *fPtr = faces;
-    auto *faceSizes = new uint32_t[faceCount], *fsPtr = faceSizes;
-
-    // Generate flat faces
-    for(uint32_t i = 0; i < vertexCount; i+=2) *fPtr++ = i;
-    for(uint32_t i = 1; i < vertexCount; i+=2) *fPtr++ = vertexCount - i;
-
-    *fsPtr++ = vertexCount / 2;
-    *fsPtr++ = vertexCount / 2;
-
-    // Generate cylindrical faces
+    const float increment = 2.0f * (float)(M_PI / segments);
     for (uint32_t i = 0; i < segments; i++) {
-        *fPtr++ = 2 * i;
-        *fPtr++ = 2 * i + 1;
-        *fPtr++ = (2 * i + 3) % (2 * segments);
-        *fPtr++ = (2 * i + 2) % (2 * segments);
-        *fsPtr++ = 4;
+        border[i] = {radius * cosf(theta), height, radius * sinf(theta) };
+        theta += increment;
     }
 
-    return std::make_shared<Mesh>(vertices, vertexCount, faces, faceSizes, faceCount);
-
+    return extrude(border, { 0, -1, 0 }, height);
 }
 
 std::shared_ptr<Mesh> MeshBuilder::extrude(const std::vector<glm::vec3>& border, const glm::vec3& normal, float depth){
     if (border.size() < 3) return nullptr;
 
     uint32_t segments = border.size(), idx = 0;
-    uint32_t vertexCount = 2 * border.size(), faceCount = 2 + segments, indexCount = 2 * vertexCount + 4 * segments;
+    uint32_t vertexCount = 2 * border.size(), faceCount = 2 + segments, indexCount = vertexCount + 4 * segments;
 
     auto mesh = std::make_shared<Mesh>(vertexCount, faceCount, indexCount);
 
@@ -362,49 +337,40 @@ void MeshBuilder::indexBox(uint32_t *facePtr, uint32_t *sizePtr, uint32_t offset
 
 std::shared_ptr<Mesh> MeshBuilder::merge(const std::shared_ptr<Mesh>& a, const std::shared_ptr<Mesh>& b)
 {
-    // Some values directly from the meshes
-    uint32_t aVC = a->vertexCount(), bVC = b->vertexCount();
-    uint32_t aFC = a->faceCount(), bFC = b->faceCount();
-    uint32_t aIC = a->faces().indexCount(), bIC = b->faces().indexCount();
 
-    // Copy vertex data directly
-    uint32_t vertexCount = aVC + bVC;
-    auto *vertices = new float[3 * vertexCount], *vPtr = vertices;
+    const uint32_t vertexOffset = a->vertexCount();
+    uint32_t vIdx = 0;
 
-    const float *aVPtr = (float*)a->vertices().vertices().data(), *bVPtr = (float*)b->vertices().vertices().data();
-    for (uint32_t i = 0; i < 3 * aVC; i++) *vPtr++ = *aVPtr++;
-    for (uint32_t i = 0; i < 3 * bVC; i++) *vPtr++ = *bVPtr++;
+    auto mesh = std::make_shared<Mesh>(
+            vertexOffset + b->vertexCount(),
+            a->faceCount() + b->faceCount(),
+            a->faces().indexCount() + b->faces().indexCount());
 
-
-    // Count the number of face indices required
-    uint32_t faceCount = aFC + bFC, indexCount = aIC + bIC;
-    auto *faceSizes = new uint32_t[faceCount], *fsPtr = faceSizes;
-
-    const uint32_t *aFSPtr = a->faces().faceSizes(), *bFSPtr = b->faces().faceSizes();
-    for (uint32_t i = 0; i < aFC; i++) *fsPtr++ = *aFSPtr++;
-    for (uint32_t i = 0; i < bFC; i++) *fsPtr++ = *bFSPtr++;
-
+    // Copy vertex data
+    for (const glm::vec3& vertex : a->vertices().vertices()) mesh->m_vertices[vIdx++] = vertex;
+    for (const glm::vec3& vertex : b->vertices().vertices()) mesh->m_vertices[vIdx++] = vertex;
 
     // Copy face data
-    auto *faces = new uint32_t[indexCount], *fPtr = faces;
-    const uint32_t *aPtr = a->faces().faces(), *bPtr = b->faces().faces();
-    for (uint32_t i = 0; i < aIC; i++) *fPtr++ = *aPtr++;
-    for (uint32_t i = 0; i < bIC; i++) *fPtr++ = aVC + *bPtr++;
+    uint32_t *idxPtr = mesh->m_faces[0], *sizePtr = mesh->m_faces.faceSizes();
+    for (uint32_t idx : a->faces().faces()) *idxPtr++ = idx;
+    for (uint32_t idx : b->faces().faces()) *idxPtr++ = idx + vertexOffset;
 
+    for (uint32_t idx : a->faces().faceSizes()) *sizePtr++ = idx;
+    for (uint32_t idx : b->faces().faceSizes()) *sizePtr++ = idx;
 
-    // Create the merged mesh
-    auto mesh = std::make_shared<Mesh>(vertices, vertexCount, faces, faceSizes, faceCount);
 
     // Copy colors
     mesh->setBaseColor(a->baseColor());
     if (a->faceColorsAssigned())
-        for (uint32_t i = 0; i < aFC; i++) mesh->setFaceColor(i, a->faces().color(i));
+        for (uint32_t i = 0; i < a->faceCount(); i++) mesh->setFaceColor(i, a->faces().color(i));
     else mesh->setFaceColor(a->baseColor());
 
     if (b->faceColorsAssigned())
-        for (uint32_t i = 0; i < bFC; i++) mesh->setFaceColor(aFC + i, b->faces().color(i));
+        for (uint32_t i = 0; i < b->faceCount(); i++) mesh->setFaceColor(a->faceCount() + i, b->faces().color(i));
     else
-        for (uint32_t i = 0; i < bFC; i++) mesh->setFaceColor(aFC + i, b->baseColor());
+        for (uint32_t i = 0; i < b->faceCount(); i++) mesh->setFaceColor(a->faceCount() + i, b->baseColor());
+
+    mesh->initialize();
 
     return mesh;
 }

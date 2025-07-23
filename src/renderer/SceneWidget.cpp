@@ -109,6 +109,8 @@ SceneWidget::RenderItem& SceneWidget::getRender(const std::shared_ptr<Mesh>& mes
 {
     auto it = m_renderMap.find(mesh);
     if (it == m_renderMap.end()) { // Mesh has not been processed yet
+        if (!mesh->isInitialized()) throw std::runtime_error("[SceneWidget] Mesh not initialized. Can not prepare render");
+
         auto item = RenderItem{ (uint32_t)m_geometries.size(),m_defaultProgramIdx + 1, defaultVisibility };
         m_renderMap[mesh] = item;
         if (!mesh->faceColorsAssigned()) mesh->setFaceColor(mesh->baseColor());
@@ -314,7 +316,6 @@ void SceneWidget::paintGL()
     glEnable(GL_CULL_FACE);
 
 //    std::cout << m_geometries.size() << "\n";
-
     if (m_scene != nullptr) {
         const std::vector<std::shared_ptr<RigidBody>>& bodies = m_scene->bodies();
 
@@ -346,7 +347,6 @@ void SceneWidget::paintGL()
             render(body->mesh(), transform, true);
             render(body->hullMesh(), transform, false);
             render(body->bSphereMesh(), transform, false);
-
         }
     }
 }

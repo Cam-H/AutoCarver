@@ -90,13 +90,14 @@ void MeshHandler::exportMesh(const std::shared_ptr<Mesh>& mesh, const std::strin
     outputMesh->mFaces = new aiFace[mesh->faceCount()];
     outputMesh->mNormals = new aiVector3f[mesh->vertexCount()];
     memcpy(outputMesh->mNormals, mesh->vertexNormals().vertices().data(), 3 * mesh->vertexCount() * sizeof(float));
-    auto idxPtr = mesh->faces().faces();
+    std::vector<uint32_t> indices = mesh->faces().faces();
+    uint32_t idx = 0;
     for (uint32_t i = 0; i < mesh->faceCount(); i++) {
         outputMesh->mFaces[i].mNumIndices = mesh->faces().faceSizes()[i];
         outputMesh->mFaces[i].mIndices = new uint32_t[outputMesh->mFaces[i].mNumIndices];
 
-        memcpy(outputMesh->mFaces[i].mIndices, idxPtr, outputMesh->mFaces[i].mNumIndices * sizeof(uint32_t));
-        idxPtr += outputMesh->mFaces[i].mNumIndices;
+        memcpy(outputMesh->mFaces[i].mIndices, &indices[idx], outputMesh->mFaces[i].mNumIndices * sizeof(uint32_t));
+        idx += outputMesh->mFaces[i].mNumIndices;
     }
     outputMesh->mPrimitiveTypes = aiPrimitiveType_POLYGON;
 
