@@ -12,7 +12,7 @@
 
 #include "geometry/MeshBuilder.h"
 
-Robot::Robot(KinematicChain* kinematics, const std::shared_ptr<RigidBody>& eoat)
+Robot::Robot(const std::shared_ptr<KinematicChain>& kinematics, const std::shared_ptr<RigidBody>& eoat)
     : m_kinematics(kinematics)
     , m_eoat(eoat)
     , m_eoatRelativeTransform()
@@ -27,7 +27,9 @@ void Robot::prepareLinks()
     float height = 0.3f;
     for (const Joint& joint : m_kinematics->getJoints()) {
 //        auto mesh = MeshBuilder::cylinder(0.25f, height, 8);
+
         auto mesh = MeshBuilder::cylinder(0.12f, height, 8);
+
 
         mesh->translate({ 0, -height / 2, 0 });
         mesh->rotate({ 1, 0, 0 }, M_PI / 2);
@@ -37,6 +39,7 @@ void Robot::prepareLinks()
         uint32_t layer = 0b0010, mask = 0b0001;
 
         if (joint.getParameters().len > 0 || joint.getParameters().dist > 0) {
+
 //            auto linkMesh = MeshBuilder::box(std::max(0.2f, joint.getParameters().len), std::max(0.2f, joint.getParameters().dist), 0.2);
             auto linkMesh = MeshBuilder::box(std::max(0.08f, joint.getParameters().len), std::max(0.08f, joint.getParameters().dist), 0.08f);
             linkMesh->translate({ joint.getParameters().len / 2, 0, joint.getParameters().dist / 2 });
@@ -46,8 +49,8 @@ void Robot::prepareLinks()
             mask = layer = 0; // Ignore collisions on joints without a footprint
         }
 
-
         auto link = std::make_shared<RigidBody>(mesh);
+
         link->setLayer(layer);
         link->setMask(mask);
         link->prepareColliderVisuals();
@@ -192,6 +195,15 @@ glm::vec3 Robot::getEOATEuler() const
 bool Robot::inTransit()
 {
     return m_currentTrajectory != nullptr && !m_currentTrajectory->complete();
+}
+
+Waypoint Robot::inverse(const glm::vec3& position, const Axis3D& axes) const
+{
+    return {
+            m_kinematics->invkin(position, axes),
+            1.0f,
+            false
+    };
 }
 
 Waypoint Robot::inverse(const glm::vec3& position, const glm::vec3& euler) const

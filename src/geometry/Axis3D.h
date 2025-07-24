@@ -15,6 +15,9 @@ public:
     Axis3D(const glm::vec3& xAxis, const glm::vec3& yAxis);
     Axis3D(const glm::vec3& xAxis, const glm::vec3& yAxis, const glm::vec3& zAxis);
 
+    [[nodiscard]] glm::mat3 toTransform() const;
+    [[nodiscard]] glm::quat toQuat() const;
+
     void print() const;
 
 public:

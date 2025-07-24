@@ -29,6 +29,7 @@ public:
 
     void add(const Vertex& vertex);
 
+    void purgeDuplicates();
     void correctWinding();
 
     Vertex operator[](uint32_t idx) const;

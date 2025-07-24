@@ -6,6 +6,10 @@
 
 #include <glm.hpp>
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <gtx/string_cast.hpp>
+#include <gtx/quaternion.hpp>
+
 #include "Sculpture.h"
 #include "geometry/poly/Profile.h"
 #include "renderer/EdgeDetect.h"
@@ -24,22 +28,25 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     , m_convexTrimEnable(true)
     , m_processCutEnable(true)
     , m_continuous(false)
+    , m_fwd(1, 0, 0)
+    , m_lastestRobotCommand()
 {
+    model->center();
     model->normalize();
 
-    m_reference = std::make_shared<Mesh>(*model);
-    m_reference->center();
-
     m_sculpture = std::make_shared<Sculpture>(model, m_config.materialWidth, m_config.materialHeight);
+
 
     prepareBody(m_sculpture, 1);
     prepareBody(m_sculpture->model(), 1);
 
-    auto *chain = new KinematicChain;
+    auto chain = std::make_shared<KinematicChain>();
     chain->addJoint(Joint(Joint::Type::REVOLUTE, { 0.5f, 0.0f, 0.0f, 0.0f }, 0));
+
     m_turntable = createRobot(chain);
     m_turntable->setEOAT(m_sculpture);
 
+    m_lastestTableCommand = m_turntable->getWaypoint();
 }
 
 SculptProcess::~SculptProcess()
@@ -86,17 +93,20 @@ void SculptProcess::proceed()
 
     // Block procession before previous step is complete
     if (simulationIdle()) {
-        std::cout << "PROC| Next step: " << (m_step + 1) << " / " << m_actions.size() << " -> " << m_actions[m_step].target->getWaypoint() << "\n";
 
         nextAction();
-    }
+    } else if (simulationComplete()) std::cout << "Simulation complete!\n";
 }
 
 void SculptProcess::skip()
 {
     if (!m_planned) plan();
 
-    if (simulationComplete()) return;
+    if (simulationComplete()) {
+        std::cout << "Simulation complete!\n";
+        return;
+    }
+
 
     std::cout << "SKIP| Next step: " << (m_step + 1) << " / " << m_actions.size() << " -> " << m_actions[m_step].target->getWaypoint() << "\n";
 
@@ -128,6 +138,11 @@ void SculptProcess::step(float delta)
 
 void SculptProcess::setSculptingRobot(const std::shared_ptr<Robot>& robot){
     m_robot = robot;
+
+    if (m_robot != nullptr) {
+        m_fwd = glm::normalize(m_turntable->position() - m_robot->position());
+        m_lastestRobotCommand = m_robot->getWaypoint();
+    }
 }
 
 void SculptProcess::setContinuous(bool enable)
@@ -161,7 +176,7 @@ void SculptProcess::planConvexTrim()
 
     // Plan initial cuts, beginning from the top and moving towards the base
     std::sort(steps.begin(), steps.end(), [](const Plane& a, const Plane& b){
-        return glm::dot(a.normal, {0, 1, 0}) < glm::dot(b.normal, {0, 1, 0});
+        return glm::dot(a.normal, {0, 1, 0}) > glm::dot(b.normal, {0, 1, 0});
     });
 
     glm::vec3 p = m_sculpture->position();
@@ -169,25 +184,39 @@ void SculptProcess::planConvexTrim()
     p = m_sculpture->up();
     std::cout << p.x << " " << p.y << " " << p.z << "~~~~|\n";
 
-    // Process all the cuts preemptively
-    for (const Plane& step : steps) {
+    std::cout << "PCT " << steps.size() << "\n";
 
-        // TODO Verify length / access - Get min/max
+    // Process all the cuts preemptively
+    for (Plane& step : steps) {
+        step.normal = -step.normal; // Invert direction so normals point into the body (Fragment method takes above plane)
+
         auto border = Collision::intersection(hull, step);
+        std::cout << "Step: " << (&step - &steps[0]) << " " << border.size() << "\n";
         if (border.size() < 3) continue;
 //        if (border.size() < 3) throw std::runtime_error("[SculptProcess] Failed to find intersection for section");
 
 //        glm::vec3 normal = Triangle::normal(border[0], border[1], border[2]);
 
+
         // Generate trajectory for robotic carving
         planTurntableAlignment(step.normal);
-//        planRoboticSection(min, max);
 
+        auto normal = step.normal;
+        VertexArray::rotate(border, { 0, 1, 0 }, -m_lastestTableCommand.values[0]);
+        step.rotate({ 0, 1, 0 }, -m_lastestTableCommand.values[0]);
+
+//        planPlanarSection(step, border);
+
+//        std::cout << "qs\n";
         // Record mesh manipulation operation for later application during carving process
-        m_sculpture->queueSection(step.origin, step.normal);
+        m_sculpture->queueSection(step.origin, -normal);
+
+//        std::cout << "hf\n";
 
         // Prepare for next step
-        hull = Collision::fragment(hull, step);
+//        hull = Collision::fragment(hull, step);
+//        std::cout << "rd\n";
+//        if (m_actions.size() > 4) break;
     }
 }
 
@@ -197,7 +226,7 @@ void SculptProcess::planOutlineRefinement(float stepDg)
     float angle = 0;
 
     // Prepare a 3D render / edge detection system to find the profile of the model
-    auto* detector = new EdgeDetect(m_reference);
+    auto* detector = new EdgeDetect(model);
 
     detector->setSize(1000);
     detector->setEpsilon(120.0f);
@@ -293,29 +322,26 @@ void SculptProcess::planTurntableAlignment(const glm::vec3& axis)
 {
     glm::vec3 up = { 0, 1, 0 }, proj = axis - up * glm::dot(axis, up);
     float theta = atan2f(proj.x, -proj.z);
-
-//    std::cout << "TEST========================\n"
-//        << atan2f(1, 0) << " " << atan2f(0, 1) << " " << atan2f(-1, 0) << " " << atan2f(0, -1) << " "
-//        << atan2f(1, 1) << " " << atan2f(-1, 1) << " " << atan2f(-1, -1) << " " << atan2f(1, -1) << "\n";
-
-//    std::cout << proj.x << " " << proj.y << " " << proj.z << " | " << theta << " Theta\n";
-
     planTurntableAlignment(theta);
 }
 void SculptProcess::planTurntableAlignment(float theta)
 {
     std::vector<Waypoint> waypoints = {
+            m_lastestTableCommand,
             { std::vector<float>{ theta }, 1, false}
     };
+
+    m_lastestTableCommand = waypoints.back();
 
     auto trajectory = std::make_shared<Trajectory>(waypoints, TrajectorySolverType::CUBIC);
     trajectory->setMaxVelocity(M_PI / 2);
 
     m_actions.emplace_back(trajectory, m_turntable);
+    m_actions[m_actions.size() - 1].trigger = true;
 }
 
-void SculptProcess::planRoboticSection(const glm::vec3& a, const glm::vec3& b)
-{
+//void SculptProcess::planRoboticSection(const glm::vec3& a, const glm::vec3& b)
+//{
 //    glm::vec3 delta = m_sculpture->position() - m_robot->position(), uDel = glm::normalize(delta);
 //    std::cout << "DEL: " << delta.x << " " << delta.y << " " << delta.z <<"\n";
 //    glm::vec3 origin = border[0] - uDel * glm::dot(uDel, border[0]);
@@ -330,14 +356,61 @@ void SculptProcess::planRoboticSection(const glm::vec3& a, const glm::vec3& b)
 //
 //    m_actions.emplace_back(trajectory, m_robot);
 //    m_actions[m_actions.size() - 1].trigger = true;
+//}
+
+// Sectioning step wherein the robot moves to remove all material above the specified plane
+void SculptProcess::planPlanarSection(const Plane& plane, const std::vector<glm::vec3>& border)
+{
+    Axis3D axes(m_fwd, plane.normal);
+    uint32_t minIndex, maxIndex;
+    VertexArray::extremes(border, plane.normal, minIndex, maxIndex);
+    auto low = border[minIndex], high = border[maxIndex];
+
+    // Bring the endpoints in plane with the normal m_fwd
+    float lowOff = glm::dot(m_fwd, low), highOff = glm::dot(m_fwd, high);
+//    if (lowOff < highOff) high += (lowOff - highOff) * m_fwd;
+//    else                  low  -= (lowOff - highOff) * m_fwd;
+
+
+    plane.print();
+    axes.print();
+    std::cout << "Split: " << low.x << " " << low.y << " " << low.z << "\n";
+    std::cout << "Split: " << high.x << " " << high.y << " " << high.z << "\n";
+
+    glm::vec3 startPos = { 0, 0, 0 };
+
+    std::cout << "M: " << glm::to_string(axes.toTransform()) << "\n================\n";
+    const Waypoint& start = m_robot->inverse(low, axes);
+    const Waypoint& end = m_robot->inverse(high, axes);
+
+    if (start.values.empty() || end.values.empty()) {
+        std::cout << "[SculptProcess] Can not perform cut. The robot does not reach\n";
+        return;
+    }
+
+    std::vector<Waypoint> waypoints = {
+            m_lastestRobotCommand,
+            start,
+            end
+    };
+
+    m_lastestRobotCommand = start;//todo end
+
+    auto trajectory = std::make_shared<Trajectory>(waypoints, TrajectorySolverType::CUBIC);
+    trajectory->setMaxVelocity(M_PI / 2);
+
+    m_actions.emplace_back(trajectory, m_robot);
+    m_actions[m_actions.size() - 1].trigger = true;
 }
 
 void SculptProcess::planRoboticSection(const std::vector<glm::vec3>& border)
 {
     std::vector<Waypoint> waypoints = {
-            m_robot->getWaypoint(),
+            m_lastestRobotCommand,
             m_robot->getWaypoint()
     };
+
+//    m_lastestCommandWaypoint = LAST POSITION
 
     auto trajectory = std::make_shared<Trajectory>(waypoints, TrajectorySolverType::CUBIC);
     trajectory->setMaxVelocity(M_PI / 2);
@@ -348,11 +421,8 @@ void SculptProcess::planRoboticSection(const std::vector<glm::vec3>& border)
 
 void SculptProcess::nextAction()
 {
+    std::cout << "Step " << m_step << " / " << m_actions.size() << "\n";
     auto& action = m_actions[m_step];
-
-    // Insert deferred start waypoints
-    if (action.trajectory->waypointCount() < 2)
-        action.trajectory->insertWaypoint(0, action.target->getWaypoint());
 
     // Begin motion of the robot
     action.target->traverse(action.trajectory);

@@ -57,6 +57,11 @@ void CompositeBody::restore()
 // Identifies the parents of every hull in relation to the underlying Octree
 void CompositeBody::locate()
 {
+    if (m_tree == nullptr) {
+        m_locations = std::vector<uint32_t>(m_hulls.size(), std::numeric_limits<uint32_t>::max());
+        return;
+    }
+
     m_locations = std::vector<uint32_t>(m_hulls.size());
     for (uint32_t i = 0; i < m_hulls.size(); i++) {
         m_locations[i] = m_tree->locateParent(m_hulls[i]);

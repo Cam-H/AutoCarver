@@ -16,7 +16,7 @@
 class Robot : public Transformable { // TODO make serializable
 public:
 
-    Robot(KinematicChain* kinematics, const std::shared_ptr<RigidBody>& eoat = nullptr);
+    Robot(const std::shared_ptr<KinematicChain>& kinematics, const std::shared_ptr<RigidBody>& eoat = nullptr);
 
     void prepareLinks();
 
@@ -48,6 +48,7 @@ public:
 
     bool inTransit();
 
+    [[nodiscard]] Waypoint inverse(const glm::vec3& position, const Axis3D& axes) const;
     [[nodiscard]] Waypoint inverse(const glm::vec3& position, const glm::vec3& euler) const;
 
 
@@ -57,7 +58,7 @@ protected:
 
 private:
 
-    KinematicChain* m_kinematics;
+    std::shared_ptr<KinematicChain> m_kinematics;
 
     // Maps to the joints of the kinematic chain
     std::vector<std::shared_ptr<RigidBody>> m_links;

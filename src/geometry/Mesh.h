@@ -35,7 +35,7 @@ public:
     explicit Mesh(const std::string& filename);
     explicit Mesh(std::ifstream& file);
 
-    explicit Mesh(VertexArray vertices, FaceArray faces);
+    explicit Mesh(const VertexArray& vertices, const FaceArray& faces);
 
     Mesh(uint32_t vertexCount, uint32_t faceCount, uint32_t indexCount);
 

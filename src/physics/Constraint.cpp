@@ -32,7 +32,7 @@ Constraint::Constraint(const std::shared_ptr<RigidBody>& a, const std::shared_pt
 {
 
     glm::vec3 ca = a->mesh()->centroid(), cb = b->mesh()->centroid();
-    std::cout << a << " " << ca.x << " " << ca.y << " " << ca.z << " || " << b << " " << cb.x << " " << cb.y << " " << cb.z << "\n";
+//    std::cout << a << " " << ca.x << " " << ca.y << " " << ca.z << " || " << b << " " << cb.x << " " << cb.y << " " << cb.z << "\n";
 
     Axis3D system(normal);
     m_tangent1 = system.xAxis;

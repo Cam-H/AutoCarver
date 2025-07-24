@@ -59,10 +59,10 @@ Mesh::Mesh(std::ifstream& file)
     else std::cerr << "Failed to deserialize mesh properly!\n";
 }
 
-Mesh::Mesh(VertexArray vertices, FaceArray faces)
+Mesh::Mesh(const VertexArray& vertices, const FaceArray& faces)
     : m_initialized(false)
-    , m_vertices(std::move(vertices))
-    , m_faces(std::move(faces))
+    , m_vertices(vertices)
+    , m_faces(faces)
     , m_vertexNormals(nullptr, 0)
     , m_colorOverride(false)
     , m_baseColor(1.0f, 1.0f, 1.0f)
@@ -89,6 +89,7 @@ void Mesh::initialize()
         m_faces.calculateNormals(m_vertices.vertices());
         m_faces.triangulate(m_vertices.vertices());
         calculateVertexNormals();
+
         m_initialized = true;
     }
 }

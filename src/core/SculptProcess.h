@@ -70,21 +70,26 @@ private:
     void planTurntableAlignment(const glm::vec3& axis);
     void planTurntableAlignment(float theta);
 
-    void planRoboticSection(const glm::vec3& a, const glm::vec3& b);
+    void planPlanarSection(const Plane& plane, const std::vector<glm::vec3>& border);
     void planRoboticSection(const std::vector<glm::vec3>& border);
 
     void nextAction();
 
     static uint32_t identifySculpture(const std::vector<std::shared_ptr<Mesh>>& fragments);
 
+private:
+
     Configuration m_config;
 
     std::shared_ptr<Mesh> model;
-    std::shared_ptr<Mesh> m_reference;
     std::shared_ptr<Sculpture> m_sculpture;
 
     std::shared_ptr<Robot> m_turntable;
     std::shared_ptr<Robot> m_robot;
+    glm::vec3 m_fwd;
+
+    Waypoint m_lastestTableCommand;
+    Waypoint m_lastestRobotCommand;
 
     std::vector<Action> m_actions;
 

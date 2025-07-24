@@ -111,9 +111,14 @@ void VertexArray::translate(const glm::vec3& translation)
 
 void VertexArray::rotate(const glm::vec3& axis, float theta)
 {
+    rotate(m_vertices, axis, theta);
+}
+
+void VertexArray::rotate(std::vector<glm::vec3>& vertices, const glm::vec3& axis, float theta)
+{
     glm::quat rotation = glm::angleAxis(theta, axis);
 
-    for (glm::vec3& vertex : m_vertices) {
+    for (glm::vec3& vertex : vertices) {
         vertex = vertex * rotation;
     }
 }

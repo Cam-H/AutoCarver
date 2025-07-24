@@ -13,6 +13,8 @@ public:
     Plane();
     Plane(const glm::vec3& origin, const glm::vec3& normal);
 
+    void rotate(const glm::vec3& axis, float theta);
+
     [[nodiscard]] bool isValid() const;
 
     [[nodiscard]] glm::vec3 project(const glm::vec3& vertex) const;
@@ -20,6 +22,8 @@ public:
     inline static glm::vec3 project(const Plane& plane, const glm::vec3& vertex);
 
     [[nodiscard]] inline float d() const { return glm::dot(origin, normal); }
+
+    void print() const;
 
 public:
     glm::vec3 origin;

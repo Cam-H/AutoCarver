@@ -220,6 +220,8 @@ std::shared_ptr<Mesh> MeshBuilder::icosphere(float radius, uint8_t subdivisions)
     icosahedron(radius, vertices, faces);
 
 
+//    std::cout << vertexCount << " " << vertices.size() << " " << faces.size()  << " " << subdivisions << "\n";
+
     // Refine the icosahedron through subdivision of faces
     std::map<uint64_t, uint32_t> table;
     for(uint8_t i = 0; i < subdivisions; i++){
@@ -236,7 +238,6 @@ std::shared_ptr<Mesh> MeshBuilder::icosphere(float radius, uint8_t subdivisions)
             faces[j] = Triangle{a, b, c};
         }
     }
-
 
     return std::make_shared<Mesh>(vertices, faces);
 }

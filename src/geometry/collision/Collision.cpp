@@ -220,6 +220,7 @@ std::vector<glm::vec3> Collision::intersection(const ConvexHull& hull, const Pla
     if (hull.vertexCount() < 4) return {}; // Early exit when the hull is poorly formed
 
     const auto& [above, divided] = partition(hull, plane);
+    std::cout << above[0] << " " << above[1] << " " << divided << "STATE\n";
     if (!divided) return {}; // Early exit when intersection is impossible (hull does not pass through the plane)
 
     return intersection(hull, plane, above);

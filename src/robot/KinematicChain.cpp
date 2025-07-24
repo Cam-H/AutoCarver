@@ -10,6 +10,8 @@
 #include <gtx/matrix_decompose.hpp>
 #include <gtc/epsilon.hpp>
 
+#include "geometry/Axis3D.h"
+
 KinematicChain::KinematicChain()
     : m_axisTransform3(1, 0, 0,
                        0, 0, 1,
@@ -59,9 +61,13 @@ std::vector<float> KinematicChain::invkin(const glm::mat4& transform)
     return invkin(translation, rotation);
 }
 
+std::vector<float> KinematicChain::invkin(const glm::vec3& position, const Axis3D& axes)
+{
+    return invkin(m_axisTransform3 * position, glm::quat_cast(m_axisTransform3 * axes.toTransform()));
+}
+
 std::vector<float> KinematicChain::invkin(const glm::vec3& position, const glm::vec3& euler)
 {
-    std::cout << "INVPK\n";
     return invkin(m_axisTransform3 * position, glm::quat_cast(m_axisTransform3 * glm::mat3_cast(glm::quat(euler))));
 }
 

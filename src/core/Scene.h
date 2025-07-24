@@ -43,7 +43,7 @@ public:
     std::shared_ptr<RigidBody> createBody(const std::shared_ptr<Mesh>& mesh, RigidBody::Type type = RigidBody::Type::STATIC);
     std::shared_ptr<RigidBody> createBody(const ConvexHull& hull, RigidBody::Type type = RigidBody::Type::STATIC);
 
-    std::shared_ptr<Robot> createRobot(KinematicChain* kinematics);
+    std::shared_ptr<Robot> createRobot(const std::shared_ptr<KinematicChain>& kinematics);
 
     const std::vector<std::shared_ptr<RigidBody>>& bodies();
     uint32_t bodyCount();

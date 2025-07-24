@@ -10,6 +10,8 @@
 
 #include "Joint.h"
 
+class Axis3D;
+
 static Joint NULL_JOINT = Joint(Joint::Type::NONE, {0, 0, 0, 0});
 
 class KinematicChain {
@@ -23,6 +25,7 @@ public:
     bool moveTo(const glm::vec3& position, const glm::vec3& euler);
 
     std::vector<float> invkin(const glm::mat4& transform);
+    std::vector<float> invkin(const glm::vec3& position, const Axis3D& axes);
     std::vector<float> invkin(const glm::vec3& position, const glm::vec3& euler);
     virtual std::vector<float> invkin(const glm::vec3& position, const glm::quat& rotation);
 

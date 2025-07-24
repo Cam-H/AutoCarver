@@ -63,10 +63,13 @@ void Sculpture::scaleToFit(const std::shared_ptr<Mesh>& model, float width, floa
 
 void Sculpture::prepareBox()
 {
+
     m_mesh->setBaseColor(baseColor());
     m_mesh->scale({ m_width, m_height, m_width });
     m_mesh->translate({ 0, m_height / 2, 0 });
     m_hull = ConvexHull(m_mesh);
+    CompositeBody::restore();
+
     prepareTree();
 }
 
@@ -144,7 +147,6 @@ bool Sculpture::applySection()
                 planarSection(m_operations[step].surfaces[0]);
                 break;
             case 2:
-                if (hulls().empty()) CompositeBody::restore(); // TODO move when extending to > 2 surface cuts
                 triangleSection(m_operations[step].surfaces[0], m_operations[step].surfaces[1], m_operations[step].limits);
                 break;
             default:
@@ -157,7 +159,9 @@ bool Sculpture::applySection()
 
 bool Sculpture::planarSection(const Plane& plane)
 {
+    std::cout << "PS\n";
     if (!Collision::test(m_hull, plane)) return false;
+    std::cout << "PS1\n";
 
     // TODO expand for multiple hulls
     if (m_preserveDebris) {
@@ -166,13 +170,20 @@ bool Sculpture::planarSection(const Plane& plane)
 
         if (!fragments.second.empty()) prepareFragment(fragments.second);
     } else {
+        std::cout << "PS2\n";
+
         m_hull = Collision::fragment(m_hull, plane);
+        CompositeBody::restore();
+        std::cout << "PS3\n";
+
     }
 
     remesh();
+    std::cout << "PS4\n";
 
     // Highlight cut faces
-    m_mesh->setFaceColor(m_mesh->matchFace(plane.normal), m_highlightColor);
+//    m_mesh->setFaceColor(m_mesh->matchFace(plane.normal), m_highlightColor);
+    std::cout << "PS5\n";
 
     return true;
 }

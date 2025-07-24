@@ -18,6 +18,8 @@ EPA::EPA(const T1& a, const T2& b, Simplex simplex, const glm::mat4& relative)
 {
     std::vector<std::pair<float, uint32_t>> order;
 
+//    simplex.purgeDuplicates();
+
     // Expand the input simplex, ensuring the algorithm starts with a tetrahedron
     expandSimplex(a, b, relative, simplex);
     if (!isValid(simplex)) return;
@@ -146,7 +148,7 @@ void EPA::expandSimplex(const T1& a, const T2& b, const glm::mat4& relative, Sim
         }
     }
 
-//    simplex.correctWinding();
+    simplex.correctWinding();
 }
 
 template<class T1, class T2>

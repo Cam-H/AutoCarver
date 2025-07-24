@@ -32,6 +32,20 @@ void Simplex::add(const Vertex& vertex)
     m_size++;
 }
 
+void Simplex::purgeDuplicates()
+{
+    for (uint32_t i = 0; i < m_size; i++) {
+        for (uint32_t j = i + 1; j < m_size; j++) {
+            glm::vec3 delta = vertices[j].val - vertices[i].val;
+            if (glm::dot(delta, delta) < 1e-6) {
+                std::swap(vertices[j], vertices[m_size]);
+                m_size--;
+                j--;
+            }
+        }
+    }
+}
+
 void Simplex::correctWinding()
 {
     if (m_size < 4) return;

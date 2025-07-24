@@ -45,6 +45,7 @@ public:
     void scale(const glm::vec3& scale);
     void translate(const glm::vec3& translation);
     void rotate(const glm::vec3& axis, float theta);
+    static void rotate(std::vector<glm::vec3>& vertices, const glm::vec3& axis, float theta);
 
     void replace(uint32_t idx, const glm::vec3& replacement);
     void remove(uint32_t idx);

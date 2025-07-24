@@ -224,7 +224,7 @@ std::shared_ptr<RigidBody> Scene::createBody(const ConvexHull& hull, RigidBody::
 }
 
 
-std::shared_ptr<Robot> Scene::createRobot(KinematicChain* kinematics)
+std::shared_ptr<Robot> Scene::createRobot(const std::shared_ptr<KinematicChain>& kinematics)
 {
     auto robot = std::make_shared<Robot>(kinematics);
 

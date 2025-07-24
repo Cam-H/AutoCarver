@@ -6,6 +6,9 @@
 
 #include <iostream>
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <gtx/quaternion.hpp>
+
 Axis3D::Axis3D()
     : xAxis(1, 0, 0)
     , yAxis(0, 1, 0)
@@ -36,6 +39,18 @@ Axis3D::Axis3D(const glm::vec3& xAxis, const glm::vec3& yAxis, const glm::vec3& 
     , zAxis(zAxis)
 {
 
+}
+
+glm::mat3 Axis3D::toTransform() const
+{
+    return {
+        xAxis, yAxis, zAxis
+    };
+}
+
+glm::quat Axis3D::toQuat() const
+{
+    return glm::quat_cast(toTransform());
 }
 
 void Axis3D::print() const

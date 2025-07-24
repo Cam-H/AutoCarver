@@ -564,7 +564,12 @@ std::tuple<bool, ConvexHull> ConvexHull::tryMerge(const ConvexHull& hullA, const
 
 void ConvexHull::print() const
 {
-    std::cout << "[ConvexHull] Vertices: " << m_vertices.size() << ", Faces: " << m_faces.size() << "\nEdges:\n";
+    std::cout << "[ConvexHull] Vertices: " << m_vertices.size() << ", Faces: " << m_faces.faceCount() << "\nVertices:\n";
+    for (const glm::vec3& vertex : m_vertices) std::cout << vertex.x << " " << vertex.y << " " << vertex.z << "\n";
+
+    m_faces.print();
+
+    std::cout << "Edges:\n";
     for (const auto& walk : m_walks) {
         std::cout << &walk - &m_walks[0] << ": ";
         for (auto w : walk) std::cout << w << " ";

@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
 //    scene->enableConvexTrim(false);
 //    scene->setContinuous(true);
 
-    robot = scene->createRobot(new ArticulatedWrist(0.2, 1.2, 1.2, 1));
+    robot = scene->createRobot(std::make_shared<ArticulatedWrist>(0.2, 1.2, 1.2, 1));
     robot->translate({1, 0, 0});
     robot->update();
 
@@ -77,6 +77,8 @@ int main(int argc, char *argv[])
     sceneWidget = window->findChild<SceneWidget*>("sceneWidget");
 //    sceneWidget->camera().setPosition(QVector3D(15, 0, 0));
     sceneWidget->setScene(scene);
+
+    std::cout << "aaw\n";
 
     auto sculptureButton = window->findChild<QCheckBox*>("sculptureButton");
     QObject::connect(sculptureButton, &QCheckBox::clicked, [&](bool checked) {
@@ -117,6 +119,8 @@ int main(int argc, char *argv[])
         }
     });
 
+    std::cout << "awex\n";
+
     // Handle updating robot
     updateThread = std::make_unique<std::thread>([](){
         Timer rateTimer;
@@ -138,8 +142,11 @@ int main(int argc, char *argv[])
             std::this_thread::sleep_for(std::chrono::nanoseconds(80000000));
         }
     });
+    std::cout << "yx\n";
 
     window->show();
+
+    std::cout << "x\n";
 
     return app.exec();
 }
