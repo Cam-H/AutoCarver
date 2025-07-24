@@ -39,6 +39,14 @@ void KinematicChain::setJointValues(const std::vector<double>& values)
     }
 }
 
+bool KinematicChain::moveTo(const glm::dvec3& position, const Axis3D& axes)
+{
+    const std::vector<double>& values = invkin(position, axes);
+    setJointValues(values);
+
+    return !values.empty();
+}
+
 bool KinematicChain::moveTo(const glm::dvec3& position, const glm::dvec3& euler)
 {
     const std::vector<double>& values = invkin(position, euler);
@@ -47,6 +55,8 @@ bool KinematicChain::moveTo(const glm::dvec3& position, const glm::dvec3& euler)
     return !values.empty();
 }
 
+// Calculates required joint angles such that the final link's transform is as specified
+// Parameters must be expressed in the local coordinate system
 std::vector<double> KinematicChain::invkin(const glm::dmat4& transform)
 {
 
@@ -61,16 +71,21 @@ std::vector<double> KinematicChain::invkin(const glm::dmat4& transform)
     return invkin(translation, rotation);
 }
 
+// Calculates required joint angles to reach the specified position and orientation
+// Parameters must be expressed in the local coordinate system
 std::vector<double> KinematicChain::invkin(const glm::dvec3& position, const Axis3D& axes)
 {
     return invkin(m_axisTransform3 * position, glm::quat_cast(m_axisTransform3 * axes.toTransform()));
 }
 
+// Calculates required joint angles to reach the specified position and orientation
+// Parameters must be expressed in the local coordinate system
 std::vector<double> KinematicChain::invkin(const glm::dvec3& position, const glm::dvec3& euler)
 {
     return invkin(m_axisTransform3 * position, glm::quat_cast(m_axisTransform3 * glm::mat3_cast(glm::dquat(euler))));
 }
 
+// Internal method for actually solving the inverse kinematics problem
 std::vector<double> KinematicChain::invkin(const glm::dvec3& position, const glm::dquat& rotation)
 {
     std::cout << "\033[31mUnable to move to desired position. The generic kinematic chain solver has not been implemented\033[0m\n";
@@ -168,7 +183,7 @@ bool KinematicChain::ikValidation(const std::vector<double>& values, const glm::
 //
 //    for (uint8_t i = 0; i < 3; i++) {
 //        for (uint8_t j = 0; j < 3; j++) {
-//            if (std::abs(rDel[i][j]) > 1e-6) {
+//            if (std::abs(rDel[i][j]) > 1e-12) {
 //                std::cout << "\033[31mFailed to solve! Specified rotation does not match calculated result!\033[0m\n";
 //                return false;
 //            }

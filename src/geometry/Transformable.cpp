@@ -58,7 +58,7 @@ void Transformable::rotate(const glm::dvec3& axis, double theta)
 
 void Transformable::rotate(const glm::dvec3& w)
 {
-//    if (glm::dot(w, w) <= 1e-6) return;
+//    if (glm::dot(w, w) <= 1e-12) return;
 
     m_transform = m_transform * glm::eulerAngleXYZ(w.x, w.y, w.z);
 
@@ -91,9 +91,18 @@ void Transformable::setTransform(glm::dmat4x4 transform)
     moved();
 }
 
-const glm::dmat4x4& Transformable::getTransform()
+const glm::dmat4& Transformable::getTransform()
 {
     return m_transform;
+}
+
+glm::dmat3 Transformable::getRotation()
+{
+    return {
+        m_transform[0][0], m_transform[0][1], m_transform[0][2],
+        m_transform[1][0], m_transform[1][1], m_transform[1][2],
+        m_transform[2][0], m_transform[2][1], m_transform[2][2]
+    };
 }
 
 void Transformable::moved()

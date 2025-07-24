@@ -25,7 +25,8 @@ public:
     void transform(const glm::dmat4x4& transform);
 
     void setTransform(glm::dmat4x4 transform);
-    const glm::dmat4x4& getTransform();
+    const glm::dmat4& getTransform();
+    glm::dmat3 getRotation();
 
     virtual void moved();
 

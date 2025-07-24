@@ -20,6 +20,7 @@ set_target_properties(robotmotion PROPERTIES
 target_link_libraries(robotmotion PRIVATE
         Qt::Core
         Qt::Gui
+        Qt::UiTools
         Qt::OpenGL
         Qt::OpenGLWidgets
         Qt::Widgets

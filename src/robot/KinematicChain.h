@@ -22,12 +22,12 @@ public:
     void addJoint(Joint joint);
     void setJointValues(const std::vector<double>& values);
 
+    bool moveTo(const glm::dvec3& position, const Axis3D& axes);
     bool moveTo(const glm::dvec3& position, const glm::dvec3& euler);
 
     std::vector<double> invkin(const glm::dmat4& transform);
     std::vector<double> invkin(const glm::dvec3& position, const Axis3D& axes);
     std::vector<double> invkin(const glm::dvec3& position, const glm::dvec3& euler);
-    virtual std::vector<double> invkin(const glm::dvec3& position, const glm::dquat& rotation);
 
     uint32_t jointCount();
     Joint& getJoint(uint32_t idx);
@@ -36,6 +36,9 @@ public:
     std::vector<glm::dmat4> jointTransforms();
 
 protected:
+
+    virtual std::vector<double> invkin(const glm::dvec3& position, const glm::dquat& rotation);
+
     std::vector<glm::dmat4> jointHTMs();
 
     std::vector<glm::dmat3> jointHRMs(const std::vector<double>& values);

@@ -589,7 +589,7 @@ std::vector<uint32_t> Mesh::sharedFaces(const std::shared_ptr<Mesh>& reference) 
                 if (srcArea[i] == -1) srcArea[i] = faceArea(i);
                 if (refArea[j] == -1) refArea[j] = reference->faceArea(j);
 
-                if (std::abs(srcArea[i] - refArea[j]) > 1e-6) continue;
+                if (std::abs(srcArea[i] - refArea[j]) > 1e-12) continue;
 
                 // TODO Could be good to check face normals, perimeter too to reduce risk of incorrect matches
 

@@ -9,6 +9,7 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <gtx/matrix_decompose.hpp>
+#include <gtx/string_cast.hpp>
 
 #include "geometry/MeshBuilder.h"
 
@@ -17,6 +18,8 @@ Robot::Robot(const std::shared_ptr<KinematicChain>& kinematics, const std::share
     , m_eoat(eoat)
     , m_eoatRelativeTransform()
     , Transformable()
+    , m_invPosition()
+    , m_invRotation()
 {
 
 }
@@ -60,8 +63,7 @@ void Robot::prepareLinks()
 
 
 
-    auto eoatMesh = MeshBuilder::box(0.2f, 0.1f, 0.05f);
-    eoatMesh->setBaseColor({0, 0, 1});
+    auto eoatMesh = MeshBuilder::axes(Axis3D());
     m_links.push_back(std::make_shared<RigidBody>(eoatMesh));
 
     // Block collisions of last joint with EOAT
@@ -70,6 +72,13 @@ void Robot::prepareLinks()
     m_links[m_links.size() - 1]->setMask(0b0011);
 
     updateTransforms();
+}
+
+// Only calculate inverse when updated to save time
+void Robot::moved()
+{
+    m_invRotation = glm::quat_cast(glm::inverse(getRotation()));
+    m_invPosition = -position();
 }
 
 void Robot::step()
@@ -111,11 +120,26 @@ void Robot::setJointValueDg(uint32_t idx, double value)
     setJointValue(idx, (double)(value * M_PI / 180));
 }
 
-void Robot::moveTo(const glm::dvec3& position, const glm::dvec3& euler)
+void Robot::moveTo(const glm::dvec3& position)
 {
-    m_kinematics->moveTo(position, euler);
+    moveTo(position, getEOATAxes());
+}
+void Robot::moveTo(const Axis3D& axes)
+{
+    moveTo(getEOATPosition(), axes);
+}
+
+void Robot::moveTo(const glm::dvec3& position, const Axis3D& axes)
+{
+    m_kinematics->moveTo(position + m_invPosition, axes * m_invRotation);
     update();
 }
+
+//void Robot::moveTo(const glm::dvec3& position, const glm::dvec3& euler)
+//{
+//    m_kinematics->moveTo(position, euler);
+//    update();
+//}
 
 void Robot::moveTo(const Waypoint& waypoint)
 {
@@ -184,6 +208,13 @@ glm::dvec3 Robot::getEOATPosition() const
     return { transform[3][0], transform[3][1], transform[3][2] };
 }
 
+Axis3D Robot::getEOATAxes() const
+{
+    if (m_links.empty()) return {};
+
+    return { m_links[m_links.size() - 1]->getRotation() };
+}
+
 glm::dvec3 Robot::getEOATEuler() const
 {
     if (m_links.empty()) return {};
@@ -200,19 +231,19 @@ bool Robot::inTransit()
 Waypoint Robot::inverse(const glm::dvec3& position, const Axis3D& axes) const
 {
     return {
-            m_kinematics->invkin(position, axes),
+            m_kinematics->invkin(position + m_invPosition, axes * m_invRotation),
             1.0f,
             false
     };
 }
 
-Waypoint Robot::inverse(const glm::dvec3& position, const glm::dvec3& euler) const
-{
-    auto values = m_kinematics->invkin(position, euler);
-
-    return {
-        values,
-        1.0f,
-        false
-    };
-}
+//Waypoint Robot::inverse(const glm::dvec3& position, const glm::dvec3& euler) const
+//{
+//    auto values = m_kinematics->invkin(position, euler);
+//
+//    return {
+//        values,
+//        1.0f,
+//        false
+//    };
+//}

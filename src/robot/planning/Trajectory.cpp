@@ -131,7 +131,7 @@ double JointTrajectory::acceleration(uint32_t step, double t) const
         case TrajectorySolverType::LINEAR:
             return 0;
         case TrajectorySolverType::CUBIC:
-            return 1000.0f * (velocity(step, t + 0.001f) - velocity(step, t));
+            return 1000.0 * (velocity(step, t + 0.001) - velocity(step, t));
         case TrajectorySolverType::QUINTIC:
             return 2 * m_coeffs[6 * step + 2]
             + 6*t * m_coeffs[6 * step + 3] + 12*t*t * m_coeffs[6 * step + 4] + 20*t*t*t * m_coeffs[6 * step + 5];
@@ -237,11 +237,11 @@ Trajectory::Trajectory(const std::vector<Waypoint>& waypoints, TrajectorySolverT
     : m_waypoints(waypoints)
     , m_solver(solverType)
     , m_jointCount(!waypoints.empty() ? waypoints[0].values.size() : 0)
-    , m_t(0.0f)
-    , m_tStep(0.05f)
+    , m_t(0.0)
+    , m_tStep(0.05)
     , m_maxVelocity(0)
     , m_maxAcceleration(0)
-    , m_duration(1.0f)
+    , m_duration(1.0)
 {
     if (m_waypoints.size() > 1) initialize();
 }
@@ -257,7 +257,7 @@ void Trajectory::initialize()
         m_jointTrajectories.emplace_back(jwp, m_solver);
     }
 
-    if (m_maxVelocity != 0.0f) calculateDuration();
+    if (m_maxVelocity != 0.0) calculateDuration();
 }
 
 void Trajectory::insertWaypoint(uint32_t idx, const Waypoint& waypoint)
@@ -288,7 +288,7 @@ void Trajectory::calculateDuration()
     m_duration = maxVelocity / m_maxVelocity; // Duration in seconds
 
 //    std::cout << "Duration: " << m_duration << " | " << maxVelocity << " " << m_maxVelocity << "\n";
-    m_duration = 1.0f / m_duration; // Inverse to use as a multiplier
+    m_duration = 1.0 / m_duration; // Inverse to use as a multiplier
 //    m_duration =
 //    switch (m_solver) {
 //        case TrajectorySolverType::LINEAR:
@@ -331,7 +331,7 @@ Waypoint Trajectory::start()
 }
 Waypoint Trajectory::end()
 {
-    return m_waypoints[m_waypoints.size() - 1];
+    return m_waypoints.back();
 }
 
 Waypoint Trajectory::next()
@@ -345,7 +345,7 @@ Waypoint Trajectory::next()
 Waypoint Trajectory::timestep(double delta)
 {
     // Default to next when no max velocity has been set
-    if (m_maxVelocity == 0.0f) return next();
+    if (m_maxVelocity == 0.0) return next();
 
     return evaluate(m_t += delta * m_duration);
 }
@@ -356,7 +356,7 @@ Waypoint Trajectory::evaluate(double t) const
     else if (t < 0) return m_waypoints[0];
 
     uint32_t idx = std::floor(t);
-    if (std::abs(t - (double)idx) < 1e-6) return m_waypoints[idx];
+    if (std::abs(t - (double)idx) < 1e-12) return m_waypoints[idx];
 
     std::vector<double> values;
     values.reserve(m_waypoints[0].values.size());

@@ -11,9 +11,13 @@
 #include "Mesh.h"
 #include "geometry/primitives/Triangle.h"
 #include "geometry/primitives/ConvexHull.h"
+#include "Axis3D.h"
 #include "Octree.h"
 
 #include "renderer/Colors.h"
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include <gtx/quaternion.hpp>
 
 
 std::shared_ptr<Mesh> MeshBuilder::plane(double width, const glm::dvec3& origin, const glm::dvec3& normal)
@@ -97,6 +101,23 @@ std::shared_ptr<Mesh> MeshBuilder::cylinder(double radius, double height, uint32
     }
 
     return extrude(border, { 0, -1, 0 }, height);
+}
+
+std::shared_ptr<Mesh> MeshBuilder::cylinder(const glm::dvec3& axis, double radius, uint32_t segments)
+{
+    std::vector<glm::dvec3> border(segments);
+
+    double length = glm::length(axis);
+    Axis3D axes(axis / length);
+
+    glm::dquat rotation = glm::angleAxis(2.0 * (M_PI / segments), axes.zAxis);
+    border[0] = axes.xAxis * radius + axis;
+
+    for (uint32_t i = 1; i < segments; i++) {
+        border[i] = border[i - 1] * rotation;
+    }
+
+    return extrude(border, -axis, length);
 }
 
 std::shared_ptr<Mesh> MeshBuilder::extrude(const std::vector<glm::dvec3>& border, const glm::dvec3& normal, double depth){
@@ -256,6 +277,23 @@ uint32_t MeshBuilder::getMidPoint(std::vector<glm::dvec3>& vertices, std::map<ui
     return table[key];
 }
 
+std::shared_ptr<Mesh> MeshBuilder::axes(const Axis3D& system)
+{
+    double radius = 0.02f, length = 1.0f;
+
+    auto xAxis = cylinder(system.xAxis * length, radius, 12);
+    auto yAxis = cylinder(system.yAxis * length, radius, 12);
+    auto zAxis = cylinder(system.zAxis * length, radius, 12);
+    auto origin = icosphere(2 * radius, 1);
+
+    xAxis->setFaceColor(RED);
+    yAxis->setFaceColor(GREEN);
+    zAxis->setFaceColor(BLUE);
+    origin->setFaceColor(WHITE);
+
+    return merge({ xAxis, yAxis, zAxis, origin });
+}
+
 std::shared_ptr<Mesh> MeshBuilder::mesh(const std::shared_ptr<Octree>& tree)
 {
     const uint8_t target = Octree::Octant::Status::TERMINUS;
@@ -338,42 +376,55 @@ void MeshBuilder::indexBox(uint32_t *facePtr, uint32_t *sizePtr, uint32_t offset
 
 std::shared_ptr<Mesh> MeshBuilder::merge(const std::shared_ptr<Mesh>& a, const std::shared_ptr<Mesh>& b)
 {
+    return merge({ a, b });
+}
 
-    const uint32_t vertexOffset = a->vertexCount();
-    uint32_t vIdx = 0;
+std::shared_ptr<Mesh> MeshBuilder::merge(const std::vector<std::shared_ptr<Mesh>>& meshes)
+{
+    if (meshes.empty()) return nullptr;
 
-    auto mesh = std::make_shared<Mesh>(
-            vertexOffset + b->vertexCount(),
-            a->faceCount() + b->faceCount(),
-            a->faces().indexCount() + b->faces().indexCount());
+    // Count the number of features required
+    uint32_t vertexCount = 0, faceCount = 0, indexCount = 0, vIdx = 0, vertexOffset = 0;
+    for (const std::shared_ptr<Mesh>& mesh : meshes) {
+        vertexCount += mesh->vertexCount();
+        faceCount += mesh->faceCount();
+        indexCount += mesh->faces().indexCount();
+    }
 
-    // Copy vertex data
-    for (const glm::dvec3& vertex : a->vertices().vertices()) mesh->m_vertices[vIdx++] = vertex;
-    for (const glm::dvec3& vertex : b->vertices().vertices()) mesh->m_vertices[vIdx++] = vertex;
+    auto newMesh = std::make_shared<Mesh>(vertexCount, faceCount, indexCount);
+    uint32_t *idxPtr = newMesh->m_faces[0], *sizePtr = newMesh->m_faces.faceSizes();
 
-    // Copy face data
-    uint32_t *idxPtr = mesh->m_faces[0], *sizePtr = mesh->m_faces.faceSizes();
-    for (uint32_t idx : a->faces().faces()) *idxPtr++ = idx;
-    for (uint32_t idx : b->faces().faces()) *idxPtr++ = idx + vertexOffset;
+    for (const std::shared_ptr<Mesh>& mesh : meshes) {
 
-    for (uint32_t idx : a->faces().faceSizes()) *sizePtr++ = idx;
-    for (uint32_t idx : b->faces().faceSizes()) *sizePtr++ = idx;
+        // Copy vertex data
+        for (const glm::dvec3& vertex : mesh->vertices().vertices()) newMesh->m_vertices[vIdx++] = vertex;
 
+        // Copy face data
+        for (uint32_t idx : mesh->faces().faces()) *idxPtr++ = idx + vertexOffset;
+        for (uint32_t idx : mesh->faces().faceSizes()) *sizePtr++ = idx;
+
+        vertexOffset += mesh->vertexCount();
+    }
+
+    vIdx = 0;
 
     // Copy colors
-    mesh->setBaseColor(a->baseColor());
-    if (a->faceColorsAssigned())
-        for (uint32_t i = 0; i < a->faceCount(); i++) mesh->setFaceColor(i, a->faces().color(i));
-    else mesh->setFaceColor(a->baseColor());
+    newMesh->setBaseColor(meshes[0]->baseColor());
+    for (const std::shared_ptr<Mesh>& mesh : meshes) {
+        if (mesh->faceColorsAssigned()) {
+            for (uint32_t i = 0; i < mesh->faceCount(); i++) {
+                newMesh->setFaceColor(vIdx++, mesh->faces().color(i));
+            }
+        } else {
+            for (uint32_t i = 0; i < mesh->faceCount(); i++) {
+                newMesh->setFaceColor(vIdx++, mesh->baseColor());
+            }
+        }
+    }
 
-    if (b->faceColorsAssigned())
-        for (uint32_t i = 0; i < b->faceCount(); i++) mesh->setFaceColor(a->faceCount() + i, b->faces().color(i));
-    else
-        for (uint32_t i = 0; i < b->faceCount(); i++) mesh->setFaceColor(a->faceCount() + i, b->baseColor());
+    newMesh->initialize();
 
-    mesh->initialize();
-
-    return mesh;
+    return newMesh;
 }
 
 std::shared_ptr<Mesh> MeshBuilder::composite(const std::vector<ConvexHull>& hulls)
@@ -557,7 +608,7 @@ std::shared_ptr<Mesh> MeshBuilder::cleaned(std::vector<glm::dvec3>& vertices, co
 
 //            std::cout << "DOT: " << normals[i].dot(normals[idx]) << "\n";
             // std::numeric_limits<double>::epsilon() TODO identify reasonable tolerance
-            if (glm::dot(normals[i], normals[idx]) > 1 - 1e-6) { // If coplanar neighbors
+            if (glm::dot(normals[i], normals[idx]) > 1 - 1e-12) { // If coplanar neighbors
                 ptr = faces[idx];
 
                 std::cout << "(" << i << " " << j << " " << idx << " " << 99 << ") ";

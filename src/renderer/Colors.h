@@ -15,6 +15,10 @@ static glm::vec3 rgb(uint32_t hexcode) {
             (double)((hexcode & 0xFF)) / 255
     };
 }
+static glm::vec3 WHITE = { 1, 1, 1 };
+static glm::vec3 RED   = { 1, 0, 0 };
+static glm::vec3 GREEN = { 0, 1, 0 };
+static glm::vec3 BLUE  = { 0, 0, 1 };
 
 static std::array<glm::vec3, 8> PURE_COLORS = {
         glm::vec3{ 1.0f, 0.0f, 0.0f},
