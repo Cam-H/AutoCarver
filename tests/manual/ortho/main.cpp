@@ -68,8 +68,8 @@ static QWidget *loadUiFile(QWidget *parent)
 
 void updateImage()
 {
-    glm::vec3 offset = -mesh->boundedOffset();
-    float scalar = body->scalar();
+    glm::dvec3 offset = -mesh->boundedOffset();
+    double scalar = body->scalar();
 
     std::cout << scalar << " " << offset.x << " " << offset.y << " " << offset.z << "!\n";
 
@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
 
     auto *epsilonField = window->findChild<QSpinBox*>("epsilonField");
     QObject::connect(epsilonField, &QSpinBox::valueChanged, [](int value) {
-        detector->setEpsilon((float)value);
+        detector->setEpsilon((double)value);
         updateImage();
     });
 
@@ -308,7 +308,7 @@ int main(int argc, char *argv[])
     body->model()->mesh()->print();
 
     detector->setSize(400);
-    detector->setEpsilon((float)epsilonField->value());
+    detector->setEpsilon((double)epsilonField->value());
 
     detector->capture()->camera().setViewingAngle(-180 * body->rotation() / M_PI, 0);
     detector->capture()->focus();

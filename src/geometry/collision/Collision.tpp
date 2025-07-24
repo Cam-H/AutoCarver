@@ -17,7 +17,7 @@ Simplex Collision::gjk(const T1& bodyA, const T2& bodyB, const std::pair<uint32_
 {
     if (!bodyA.isValid() || !bodyB.isValid()) throw std::runtime_error("[Collision] Invalid bodies. Can not calculate GJK");
 
-    glm::vec3 axis = { 1, 0, 0 };
+    glm::dvec3 axis = { 1, 0, 0 };
     Simplex simplex(EPA::gjkSupport(bodyA, bodyB, axis, idx));
 
     axis = -simplex[0].val;
@@ -39,11 +39,11 @@ Simplex Collision::gjk(const T1& bodyA, const T2& bodyB, const std::pair<uint32_
 }
 
 template<class T1, class T2>
-Simplex Collision::gjk(const T1& bodyA, const T2& bodyB, const glm::mat4& transform, const std::pair<uint32_t, uint32_t>& idx)
+Simplex Collision::gjk(const T1& bodyA, const T2& bodyB, const glm::dmat4& transform, const std::pair<uint32_t, uint32_t>& idx)
 {
     if (!bodyA.isValid() || !bodyB.isValid()) throw std::runtime_error("[Collision] Invalid bodies. Can not calculate GJK");
 
-    glm::vec3 axis = { 1, 0, 0 };
+    glm::dvec3 axis = { 1, 0, 0 };
     Simplex simplex(EPA::gjkSupport(bodyA, bodyB, axis, transform, idx));
 
     axis = -simplex[0].val;
@@ -65,15 +65,15 @@ Simplex Collision::gjk(const T1& bodyA, const T2& bodyB, const glm::mat4& transf
 }
 
 template<class T1, class T2>
-glm::vec3 Collision::initialAxis(const T1& bodyA, const T2& bodyB)
+glm::dvec3 Collision::initialAxis(const T1& bodyA, const T2& bodyB)
 {
     return bodyA.start() - bodyB.start();
 }
 
 template<class T>
-bool Collision::encloses(const T& body, const std::vector<glm::vec3>& vertices)
+bool Collision::encloses(const T& body, const std::vector<glm::dvec3>& vertices)
 {
-    for (const glm::vec3& vertex : vertices) {
+    for (const glm::dvec3& vertex : vertices) {
         if (!encloses(body, vertex)) return false;
     }
 
@@ -92,7 +92,7 @@ EPA Collision::intersection(const T1& bodyA, const T2& bodyB, const std::pair<ui
 }
 
 template<class T1, class T2>
-EPA Collision::intersection(const T1& bodyA, const T2& bodyB, const glm::mat4& relative, const std::pair<uint32_t, uint32_t>& idx)
+EPA Collision::intersection(const T1& bodyA, const T2& bodyB, const glm::dmat4& relative, const std::pair<uint32_t, uint32_t>& idx)
 {
     try {
         return EPA(bodyA, bodyB, gjk(bodyA, bodyB, relative, idx), relative);

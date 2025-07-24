@@ -45,22 +45,22 @@ void RenderGeometry::initialize(const std::shared_ptr<Mesh>& mesh)
 void* RenderGeometry::vertexData(const std::shared_ptr<Mesh>& mesh)
 {
 
-    std::vector<std::reference_wrapper<const std::vector<glm::vec3>>> attribs = attributes(mesh);
-    for (const std::vector<glm::vec3>& attribute : attribs) {
+    std::vector<std::reference_wrapper<const std::vector<glm::dvec3>>> attribs = attributes(mesh);
+    for (const std::vector<glm::dvec3>& attribute : attribs) {
         if (attribute.empty()) throw std::runtime_error("[RenderGeometry] Attribute data not populated! Can not prepare OpenGL buffers");
     }
 
-    m_stride = 3 * attribs.size() * sizeof(float);
+    m_stride = 3 * attribs.size() * sizeof(double);
 
     // Generate buffer for vertices
     uint32_t vertexCount = m_indexVertices ? mesh->vertexCount() : m_indexCount;
-    auto *data = new float[vertexCount * m_stride];
+    auto *data = new double[vertexCount * m_stride];
     auto *ptr = data;
 
     if (m_indexVertices) {
         for (uint32_t i = 0; i < vertexCount; i++) {
-            for (const std::vector<glm::vec3>& attribute : attribs) {
-                const glm::vec3& value = attribute[i];
+            for (const std::vector<glm::dvec3>& attribute : attribs) {
+                const glm::dvec3& value = attribute[i];
                 *ptr++ = value.x;
                 *ptr++ = value.y;
                 *ptr++ = value.z;
@@ -73,14 +73,14 @@ void* RenderGeometry::vertexData(const std::shared_ptr<Mesh>& mesh)
                 const Triangle& triangle = mesh->faces().triangles()[start + j];
 
                 for (uint32_t k = 0; k < 3; k++) { // Every vertex in each triangle
-                    const glm::vec3& vertex = attribs[0].get()[triangle[k]];
+                    const glm::dvec3& vertex = attribs[0].get()[triangle[k]];
 
                     *ptr++ = vertex.x;
                     *ptr++ = vertex.y;
                     *ptr++ = vertex.z;
 
                     for (uint32_t m = 1; m < attribs.size(); m++) { // Every attribute in each vertex
-                        const glm::vec3& value = attribs[m].get()[i];
+                        const glm::dvec3& value = attribs[m].get()[i];
                         *ptr++ = value.x;
                         *ptr++ = value.y;
                         *ptr++ = value.z;
@@ -94,7 +94,7 @@ void* RenderGeometry::vertexData(const std::shared_ptr<Mesh>& mesh)
     return data;
 }
 
-std::vector<std::reference_wrapper<const std::vector<glm::vec3>>> RenderGeometry::attributes(const std::shared_ptr<Mesh>& mesh)
+std::vector<std::reference_wrapper<const std::vector<glm::dvec3>>> RenderGeometry::attributes(const std::shared_ptr<Mesh>& mesh)
 {
     switch (m_format) {
         case Format::VERTEX:
@@ -170,7 +170,7 @@ void RenderGeometry::bindAttributes(QOpenGLShaderProgram *program)
     int offset = 0;
     for (int location : locations) {
         program->enableAttributeArray(location);
-        program->setAttributeBuffer(location, GL_FLOAT, offset, 3, m_stride);
-        offset += 3 * sizeof(float);
+        program->setAttributeBuffer(location, GL_DOUBLE, offset, 3, m_stride);
+        offset += 3 * sizeof(double);
     }
 }

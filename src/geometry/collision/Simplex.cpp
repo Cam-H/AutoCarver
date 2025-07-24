@@ -8,7 +8,7 @@
 
 #include "geometry/primitives/ConvexHull.h"
 
-Simplex::Simplex(const std::tuple<uint32_t, uint32_t, glm::vec3>& start)
+Simplex::Simplex(const std::tuple<uint32_t, uint32_t, glm::dvec3>& start)
     : Simplex(Vertex(start))
 {
 
@@ -36,7 +36,7 @@ void Simplex::purgeDuplicates()
 {
     for (uint32_t i = 0; i < m_size; i++) {
         for (uint32_t j = i + 1; j < m_size; j++) {
-            glm::vec3 delta = vertices[j].val - vertices[i].val;
+            glm::dvec3 delta = vertices[j].val - vertices[i].val;
             if (glm::dot(delta, delta) < 1e-6) {
                 std::swap(vertices[j], vertices[m_size]);
                 m_size--;
@@ -51,9 +51,9 @@ void Simplex::correctWinding()
     if (m_size < 4) return;
 
     // Correct winding order
-    glm::vec3 v30 = vertices[0].val - vertices[3].val;
-    glm::vec3 v31 = vertices[1].val - vertices[3].val;
-    glm::vec3 v32 = vertices[2].val - vertices[3].val;
+    glm::dvec3 v30 = vertices[0].val - vertices[3].val;
+    glm::dvec3 v31 = vertices[1].val - vertices[3].val;
+    glm::dvec3 v32 = vertices[2].val - vertices[3].val;
 
     if (glm::dot(v30, glm::cross(v31, v32)) < 0.0f) std::swap(vertices[0], vertices[1]);
 }
@@ -68,10 +68,10 @@ uint32_t Simplex::size() const
     return m_size;
 }
 
-bool Simplex::evaluate(glm::vec3& axis)
+bool Simplex::evaluate(glm::dvec3& axis)
 {
-    glm::vec3 a = vertices[0].val;
-    glm::vec3 ao = -a;
+    glm::dvec3 a = vertices[0].val;
+    glm::dvec3 ao = -a;
 
     switch (m_size) {
         case 2: evaluateLine(axis); break;
@@ -83,15 +83,15 @@ bool Simplex::evaluate(glm::vec3& axis)
     return false;
 }
 
-void Simplex::evaluateLine(glm::vec3& axis)
+void Simplex::evaluateLine(glm::dvec3& axis)
 {
-    glm::vec3 AB = vertices[1].val - vertices[0].val, AO = -vertices[0].val;
+    glm::dvec3 AB = vertices[1].val - vertices[0].val, AO = -vertices[0].val;
     if (glm::dot(AB, AO) < 0) throw std::runtime_error("[Simplex] EL Less");
 
     axis = glm::cross(glm::cross(AB, AO), AB);
 }
 
-void Simplex::evaluateTriangle(glm::vec3& axis)
+void Simplex::evaluateTriangle(glm::dvec3& axis)
 {
     auto AB = vertices[1].val - vertices[0].val, AC = vertices[2].val - vertices[0].val, AO = -vertices[0].val;
     auto ABC = glm::cross(AB, AC);
@@ -114,7 +114,7 @@ void Simplex::evaluateTriangle(glm::vec3& axis)
     axis = glm::dot(ABC, AO) > 0 ? ABC : -ABC;
 }
 
-bool Simplex::evaluateTetrahedron(glm::vec3& axis)
+bool Simplex::evaluateTetrahedron(glm::dvec3& axis)
 {
     auto AB = vertices[1].val - vertices[0].val, AC = vertices[2].val - vertices[0].val, AD = vertices[3].val - vertices[0].val, AO = -vertices[0].val;
     auto ABC = glm::cross(AB, AC), ACD = glm::cross(AC, AD), ADB = glm::cross(AD, AB);

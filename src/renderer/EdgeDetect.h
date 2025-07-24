@@ -25,15 +25,15 @@ public:
     void setMesh(const std::shared_ptr<Mesh>& newMesh);
 
     void setSize(uint32_t size);
-    void setEpsilon(float epsilon);
+    void setEpsilon(double epsilon);
 
     void update();
 
     RenderCapture* capture();
 
-    [[nodiscard]] glm::vec3 forward() const;
-    [[nodiscard]] glm::vec3 vertical() const;
-    [[nodiscard]] glm::vec3 horizontal() const;
+    [[nodiscard]] glm::dvec3 forward() const;
+    [[nodiscard]] glm::dvec3 vertical() const;
+    [[nodiscard]] glm::dvec3 horizontal() const;
 
     [[nodiscard]] const QImage& source() const;
     [[nodiscard]] const QImage& sink() const;
@@ -43,7 +43,7 @@ public:
 private:
 
     struct Contour {
-        std::vector<glm::vec2> points;
+        std::vector<glm::dvec2> points;
     };
 
     void prepareTargets();
@@ -54,22 +54,22 @@ private:
     static Contour traceContour(uchar* data, int x, int y, uint32_t width, uint8_t mark);
     static bool inBounds(int x, int y, uint32_t size);
 
-    static void douglasPeucker(Contour& contour, float epsilon);
+    static void douglasPeucker(Contour& contour, double epsilon);
 
-    void findBorder(std::vector<glm::vec2>& contour);
+    void findBorder(std::vector<glm::dvec2>& contour);
 
-    static uint32_t limit(const std::vector<glm::vec2>& contour, const glm::vec2& axis);
+    static uint32_t limit(const std::vector<glm::dvec2>& contour, const glm::dvec2& axis);
 
     void updateModelDirections();
-    float estimateScale(const std::vector<uint32_t>& hull, const std::vector<glm::vec2>& contour);
-    static std::tuple<size_t, size_t> findReferenceVertex(const std::vector<glm::vec2>& hull, const std::vector<glm::vec2>& contour);
+    double estimateScale(const std::vector<uint32_t>& hull, const std::vector<glm::dvec2>& contour);
+    static std::tuple<size_t, size_t> findReferenceVertex(const std::vector<glm::dvec2>& hull, const std::vector<glm::dvec2>& contour);
 
-    static std::vector<std::pair<size_t, size_t>> matchVertices(const std::vector<glm::vec2>& hull, const std::vector<glm::vec2>& contour, uint32_t hShift, uint32_t cShift);
-    static std::vector<std::pair<size_t, size_t>> cyclicTimeWarp(const std::vector<glm::vec2>& hull, const std::vector<glm::vec2>& contour);
-    static std::tuple<std::vector<std::vector<double>>, double> dynamicTimeWarp(const std::vector<glm::vec2>& hull, const std::vector<glm::vec2>& contour, uint32_t hShift, uint32_t cShift);
+    static std::vector<std::pair<size_t, size_t>> matchVertices(const std::vector<glm::dvec2>& hull, const std::vector<glm::dvec2>& contour, uint32_t hShift, uint32_t cShift);
+    static std::vector<std::pair<size_t, size_t>> cyclicTimeWarp(const std::vector<glm::dvec2>& hull, const std::vector<glm::dvec2>& contour);
+    static std::tuple<std::vector<std::vector<double>>, double> dynamicTimeWarp(const std::vector<glm::dvec2>& hull, const std::vector<glm::dvec2>& contour, uint32_t hShift, uint32_t cShift);
     static std::vector<std::pair<size_t, size_t>> dtwPath(const std::vector<std::vector<double>>& cost);
 
-    void drawPolygon(const std::vector<glm::vec2>& vertices, uint8_t value);
+    void drawPolygon(const std::vector<glm::dvec2>& vertices, uint8_t value);
 
 private:
 
@@ -77,16 +77,16 @@ private:
     ConvexHull m_hull;
 
     uint32_t m_size;
-    float m_epsilon;
+    double m_epsilon;
 
     RenderCapture *m_capture;
 
     QImage m_source;
     QImage m_sink;
 
-    glm::vec3 m_axis;
-    glm::vec3 m_up;
-    glm::vec3 m_right;
+    glm::dvec3 m_axis;
+    glm::dvec3 m_up;
+    glm::dvec3 m_right;
 
     Profile m_profile;
 

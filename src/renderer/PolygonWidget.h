@@ -63,7 +63,7 @@ private:
 
     // Polygon positioning
     bool m_centered;
-    float m_scalar;
+    double m_scalar;
     glm::vec2 m_offset;
 
 };

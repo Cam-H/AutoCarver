@@ -66,8 +66,8 @@ protected:
     void focusScene();
     void focusTarget(const Target& target);
 
-    std::tuple<float, float, float, float> getBounds(const Target& target, const glm::vec3& fwd, const glm::vec3& horz, const glm::vec3& vert);
-    static void correctBounds(float& left, float& right, float& bot, float& top);
+    std::tuple<double, double, double, double> getBounds(const Target& target, const glm::dvec3& fwd, const glm::dvec3& horz, const glm::dvec3& vert);
+    static void correctBounds(double& left, double& right, double& bot, double& top);
 
     void initialize();
     void prepare();

@@ -37,12 +37,12 @@ QListWidget* qlw;
 std::vector<QSpinBox*> jointFields;
 
 std::vector<Waypoint> m_waypoints = {
-        { std::vector<float>{ 0, 0, 0, 0, 0, 0 }, M_PI / 180, false },
-        { std::vector<float>{ 180, 55, -25, 0, -50, 0 }, M_PI / 180, false }
+        { std::vector<double>{ 0, 0, 0, 0, 0, 0 }, M_PI / 180, false },
+        { std::vector<double>{ 180, 55, -25, 0, -50, 0 }, M_PI / 180, false }
 };
 std::pair<int, int> m_selection = { 0, 0 };
 std::shared_ptr<Trajectory> m_trajectory = nullptr;
-std::vector<float> m_x = {};
+std::vector<double> m_x = {};
 bool m_inputEnable = true;
 
 LineChartWidget *plotWidget = nullptr;
@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
         QObject::connect(jointField, &QSpinBox::valueChanged, [jointField, i](int value) {
             if (!m_inputEnable) return;
 
-            robot->setJointValueDg(i, (float)value);
+            robot->setJointValueDg(i, (double)value);
 
             scene->step(0);
             sceneWidget->update();

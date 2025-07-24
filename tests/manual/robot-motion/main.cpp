@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
             field->setValue(robot->getJointValueDg(i));
 
             // Update position fields to match
-            glm::vec3 position = robot->getEOATPosition();
+            glm::dvec3 position = robot->getEOATPosition();
             for (uint32_t j = 0; j < 3; j++) {
                 posFields[j]->blockSignals(true);
                 posFields[j]->setValue(position[j]);
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
             }
 
             // Update orientation fields to match
-            glm::vec3 euler = robot->getEOATEuler();
+            glm::dvec3 euler = robot->getEOATEuler();
             for (uint32_t j = 0; j < 3; j++) {
                 posFields[3 + j]->blockSignals(true);
                 posFields[3 + j]->setValue(euler[j]);
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
     positionControl->setLayout(vPositionControlLayout);
     vRobotControlLayout->addWidget(positionControl);
 
-    glm::vec3 position = robot->getEOATPosition();
+    glm::dvec3 position = robot->getEOATPosition();
 
     // EOAT position
     for (uint32_t i = 0; i < 3; i++) {
@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
         field->setRange(-5.0, 5.0);
         field->setValue(position[i]);
         QObject::connect(field, &QDoubleSpinBox::valueChanged, [field, i](double value) {
-            glm::vec3 position = robot->getEOATPosition();
+            glm::dvec3 position = robot->getEOATPosition();
             position[i] = value;
 
 //            robot->moveTo(position);
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
         field->setRange(-5.0, 5.0);
         field->setValue(position[i]);
         QObject::connect(field, &QDoubleSpinBox::valueChanged, [field, i](double value) {
-            glm::vec3 euler = robot->getEOATEuler();
+            glm::dvec3 euler = robot->getEOATEuler();
             euler[i] = value;
 
             robot->moveTo(robot->getEOATPosition(), euler);

@@ -10,13 +10,13 @@
 class Ray {
 public:
 
-    Ray(const glm::vec3& origin, const glm::vec3& axis);
+    Ray(const glm::dvec3& origin, const glm::dvec3& axis);
 
     [[nodiscard]] bool isValid() const;
 
 public:
-    glm::vec3 origin;
-    glm::vec3 axis;
+    glm::dvec3 origin;
+    glm::dvec3 axis;
 
 };
 

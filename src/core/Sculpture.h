@@ -15,9 +15,9 @@
 class Sculpture : public CompositeBody {
 public:
 
-    Sculpture(const std::shared_ptr<Mesh>& model, float width = 2.0f, float height = 6.0f);
+    Sculpture(const std::shared_ptr<Mesh>& model, double width = 2.0f, double height = 6.0f);
 
-    void scaleToFit(const std::shared_ptr<Mesh>& model, float width, float maxHeight);
+    void scaleToFit(const std::shared_ptr<Mesh>& model, double width, double maxHeight);
 
     void update();
 
@@ -26,9 +26,9 @@ public:
     void restore() override;
     void restoreAsHull();
 
-    void queueSection(const glm::vec3& origin, const glm::vec3& normal);
-    void queueSection(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& normal, bool external = false);
-//    void queueSection(const std::vector<glm::vec3>& border, const glm::vec3& normal);
+    void queueSection(const glm::dvec3& origin, const glm::dvec3& normal);
+    void queueSection(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& normal, bool external = false);
+//    void queueSection(const std::vector<glm::dvec3>& border, const glm::dvec3& normal);
 
     bool applySection();
 
@@ -40,18 +40,18 @@ public:
 
     const std::shared_ptr<RigidBody>& model();
 
-    [[nodiscard]] float width() const;
-    [[nodiscard]] float height() const;
-    [[nodiscard]] float rotation() const;
+    [[nodiscard]] double width() const;
+    [[nodiscard]] double height() const;
+    [[nodiscard]] double rotation() const;
 
-    [[nodiscard]] float scalar() const;
+    [[nodiscard]] double scalar() const;
 
-    [[nodiscard]] float initialVolume() const;
-    [[nodiscard]] float currentVolume() const;
-    [[nodiscard]] float finalVolume() const;
+    [[nodiscard]] double initialVolume() const;
+    [[nodiscard]] double currentVolume() const;
+    [[nodiscard]] double finalVolume() const;
 
-    [[nodiscard]] float bulkUsageRatio() const;
-    [[nodiscard]] float remainderRatio() const;
+    [[nodiscard]] double bulkUsageRatio() const;
+    [[nodiscard]] double remainderRatio() const;
 
 private:
 
@@ -71,13 +71,13 @@ private:
         SectionOperation()
             : surfaces() {}
 
-        SectionOperation(const glm::vec3& origin, const glm::vec3& normal)
+        SectionOperation(const glm::dvec3& origin, const glm::dvec3& normal)
             : surfaces({ {origin, normal} }) {}
 
         SectionOperation(const Plane& plane)
                 : surfaces({ plane }) {}
 
-//        SectionOperation(const std::vector<std::pair<glm::vec3, glm::vec3>>& surfaces)
+//        SectionOperation(const std::vector<std::pair<glm::dvec3, glm::dvec3>>& surfaces)
 //            : surfaces(surfaces) {}
     };
 
@@ -87,11 +87,11 @@ private:
 
     std::vector<RigidBody> m_fragments;
 
-    float m_width;
-    float m_height;
-    float m_rotation;
+    double m_width;
+    double m_height;
+    double m_rotation;
 
-    float m_scalar;
+    double m_scalar;
 
     bool m_preserveDebris;
 
@@ -101,7 +101,7 @@ private:
     uint32_t m_formStep;
 
     // Styling
-    glm::vec3 m_highlightColor;
+    glm::dvec3 m_highlightColor;
 
 };
 

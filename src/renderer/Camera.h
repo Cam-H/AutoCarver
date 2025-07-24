@@ -20,31 +20,31 @@ public:
     void setType(Type type);
 
     // Perspective camera controls
-    void setFOV(float fov);
-    void setAspectRatio(float aspect);
+    void setFOV(double fov);
+    void setAspectRatio(double aspect);
 
     // Orthographic camera controls
-    void setRect(float left, float right, float bot, float top);
+    void setRect(double left, double right, double bot, double top);
 
     // Camera positioning
     void setCenter(const QVector3D& center);
     void setPosition(const QVector3D& position);
     void setFocus(const QVector3D& position);
 
-    void setRadius(float radius);
-    void setViewingAngle(float yaw, float pitch);
+    void setRadius(double radius);
+    void setViewingAngle(double yaw, double pitch);
 
     void offset(const QVector3D& offset);
-    void rotate(float theta);
+    void rotate(double theta);
 
 
     // Camera getters
     Type getType() const;
 
-    float getRadius() const;
+    double getRadius() const;
 
-    float getYaw() const;
-    float getPitch() const;
+    double getYaw() const;
+    double getPitch() const;
 
     QVector3D getPosition() const;
     QVector3D getFocus() const;
@@ -69,22 +69,22 @@ private:
     Type m_type;
 
     // Camera projection
-    float m_fov;
-    float m_aspect;
+    double m_fov;
+    double m_aspect;
 
-    float m_left;
-    float m_right;
-    float m_bot;
-    float m_top;
+    double m_left;
+    double m_right;
+    double m_bot;
+    double m_top;
 
-    float m_zNear;
-    float m_zFar;
+    double m_zNear;
+    double m_zFar;
 
     // Camera position
-    float m_radius;
+    double m_radius;
 
-    float m_yaw;
-    float m_pitch;
+    double m_yaw;
+    double m_pitch;
 
     QVector3D m_center;
     QVector3D m_eye;

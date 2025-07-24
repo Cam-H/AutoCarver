@@ -16,7 +16,7 @@
 #include "geometry/primitives/Circle.h"
 #include "geometry/VertexArray.h"
 
-Polygon::Polygon(const std::vector<glm::vec2>& border, bool enforceCCWWinding)
+Polygon::Polygon(const std::vector<glm::dvec2>& border, bool enforceCCWWinding)
     : m_vertices(border)
 {
     if (enforceCCWWinding) correctWinding();
@@ -28,46 +28,46 @@ void Polygon::removeVertex(uint32_t index)
     m_vertices.erase(m_vertices.begin() + index);
 }
 
-void Polygon::insertVertex(const glm::vec2& vertex)
+void Polygon::insertVertex(const glm::dvec2& vertex)
 {
     m_vertices.push_back(vertex);
 }
 
-void Polygon::insertVertex(uint32_t index, const glm::vec2& vertex)
+void Polygon::insertVertex(uint32_t index, const glm::dvec2& vertex)
 {
     if (index >= m_vertices.size()) m_vertices.push_back(vertex);
     else m_vertices.insert(m_vertices.begin() + index, vertex);
 }
 
-void Polygon::positionVertex(uint32_t index, const glm::vec2& position)
+void Polygon::positionVertex(uint32_t index, const glm::dvec2& position)
 {
     if (index >= m_vertices.size()) throw std::runtime_error("[Polygon] Index out of bounds error!");
 
     m_vertices[index] = position;
 }
 
-void Polygon::translate(const glm::vec2& translation)
+void Polygon::translate(const glm::dvec2& translation)
 {
-    for (glm::vec2& vertex : m_vertices) vertex += translation;
+    for (glm::dvec2& vertex : m_vertices) vertex += translation;
 }
 
-void Polygon::scale(float scalar)
+void Polygon::scale(double scalar)
 {
-    for (glm::vec2& vertex : m_vertices) vertex *= scalar;
+    for (glm::dvec2& vertex : m_vertices) vertex *= scalar;
 }
 
-void Polygon::scale(const glm::vec2& anchor, float scalar)
+void Polygon::scale(const glm::dvec2& anchor, double scalar)
 {
-    glm::vec2 delta;
-    for (glm::vec2& vertex : m_vertices) {
+    glm::dvec2 delta;
+    for (glm::dvec2& vertex : m_vertices) {
         delta = vertex - anchor;
         vertex = anchor + delta * scalar;
     }
 }
 
-void Polygon::centerScale(float scalar)
+void Polygon::centerScale(double scalar)
 {
-    glm::vec2 offset = { xSpan(), ySpan() };
+    glm::dvec2 offset = { xSpan(), ySpan() };
     scale(scalar);
 
     offset *= -0.5f * (scalar - 1);
@@ -90,11 +90,11 @@ bool Polygon::isCW() const
 }
 bool Polygon::isCCW() const
 {
-    float sum = 0;
+    double sum = 0;
 
     for (uint32_t i = 0; i < m_vertices.size(); i++) {
-        const glm::vec2& current = m_vertices[i];
-        const glm::vec2& next = m_vertices[(i + 1) % m_vertices.size()];
+        const glm::dvec2& current = m_vertices[i];
+        const glm::dvec2& next = m_vertices[(i + 1) % m_vertices.size()];
 
         sum += (current.x - next.x) * (current.y + next.y);
     }
@@ -102,40 +102,40 @@ bool Polygon::isCCW() const
     return sum > 0;
 }
 
-float Polygon::xSpan() const
+double Polygon::xSpan() const
 {
-    float near, far;
+    double near, far;
     xExtents(near, far);
     return far - near;
 }
-float Polygon::ySpan() const
+double Polygon::ySpan() const
 {
-    float near, far;
+    double near, far;
     yExtents(near, far);
     return far - near;
 }
 
-glm::vec2 Polygon::spanCenter() const
+glm::dvec2 Polygon::spanCenter() const
 {
-    float near, far, x;
+    double near, far, x;
     xExtents(near, far);
     x = (near + far) / 2;
     yExtents(near, far);
     return { x, (near + far) / 2 };
 }
 
-void Polygon::xExtents(float& near, float& far) const
+void Polygon::xExtents(double& near, double& far) const
 {
-    auto [max, min] = std::minmax_element(m_vertices.begin(), m_vertices.end(), [](const glm::vec2& lhs, const glm::vec2& rhs){
+    auto [max, min] = std::minmax_element(m_vertices.begin(), m_vertices.end(), [](const glm::dvec2& lhs, const glm::dvec2& rhs){
         return lhs.x > rhs.x;
     });
 
     near = min->x;
     far = max->x;
 }
-void Polygon::yExtents(float& near, float& far) const
+void Polygon::yExtents(double& near, double& far) const
 {
-    auto [max, min] = std::minmax_element(m_vertices.begin(), m_vertices.end(), [](const glm::vec2& lhs, const glm::vec2& rhs){
+    auto [max, min] = std::minmax_element(m_vertices.begin(), m_vertices.end(), [](const glm::dvec2& lhs, const glm::dvec2& rhs){
         return lhs.y > rhs.y;
     });
 
@@ -148,16 +148,16 @@ uint32_t Polygon::vertexCount() const
     return m_vertices.size();
 }
 
-const std::vector<glm::vec2>& Polygon::border() const
+const std::vector<glm::dvec2>& Polygon::border() const
 {
     return m_vertices;
 }
 
-void Polygon::cullCollinear(std::vector<glm::vec2>& vertices, float tolerance)
+void Polygon::cullCollinear(std::vector<glm::dvec2>& vertices, double tolerance)
 {
-    glm::vec2 prev = glm::normalize(vertices[vertices.size() - 1] - vertices[0]);
+    glm::dvec2 prev = glm::normalize(vertices[vertices.size() - 1] - vertices[0]);
     for (uint32_t i = 0; i < vertices.size(); i++) {
-        glm::vec2 next = glm::normalize(vertices[(i + 1) % vertices.size()] - vertices[i]);
+        glm::dvec2 next = glm::normalize(vertices[(i + 1) % vertices.size()] - vertices[i]);
         if (glm::dot(prev, next) < -1 + tolerance) {
             vertices.erase(vertices.begin() + i);
             i--;
@@ -165,17 +165,17 @@ void Polygon::cullCollinear(std::vector<glm::vec2>& vertices, float tolerance)
     }
 }
 
-std::vector<glm::vec3> Polygon::projected3D(const glm::vec3& xAxis, const glm::vec3& yAxis, const glm::vec3& offset) const
+std::vector<glm::dvec3> Polygon::projected3D(const glm::dvec3& xAxis, const glm::dvec3& yAxis, const glm::dvec3& offset) const
 {
     return Polygon::projected3D(m_vertices, xAxis, yAxis, offset);
 }
 
-std::vector<glm::vec3> Polygon::projected3D(const std::vector<glm::vec2>& vertices, const glm::vec3& xAxis, const glm::vec3& yAxis, const glm::vec3& offset)
+std::vector<glm::dvec3> Polygon::projected3D(const std::vector<glm::dvec2>& vertices, const glm::dvec3& xAxis, const glm::dvec3& yAxis, const glm::dvec3& offset)
 {
-    std::vector<glm::vec3> projection;
+    std::vector<glm::dvec3> projection;
     projection.reserve(vertices.size());
 
-    for (const glm::vec2& vertex : vertices) {
+    for (const glm::dvec2& vertex : vertices) {
         projection.emplace_back(offset + xAxis * vertex.x + yAxis * vertex.y);
     }
 
@@ -187,14 +187,14 @@ std::vector<uint32_t> Polygon::hull() const
     return hull(m_vertices);
 }
 
-std::vector<uint32_t> Polygon::hull(const std::vector<glm::vec2>& vertices)
+std::vector<uint32_t> Polygon::hull(const std::vector<glm::dvec2>& vertices)
 {
 
     uint32_t n = vertices.size(), k = 0;
     if (n <= 3) return { 0, 1, 2 };
 
     struct Vertex {
-        glm::vec2 p;
+        glm::dvec2 p;
         uint32_t idx;
 
         bool operator<(const Vertex& b) const {
@@ -205,7 +205,7 @@ std::vector<uint32_t> Polygon::hull(const std::vector<glm::vec2>& vertices)
     uint32_t idx = 0;
     std::vector<Vertex> points;
     points.reserve(vertices.size());
-    for (const glm::vec2& vertex : vertices) points.push_back({ vertex, idx++ });
+    for (const glm::dvec2& vertex : vertices) points.push_back({ vertex, idx++ });
 
     std::sort(points.begin(), points.end());
     std::vector<uint32_t> hull(2 * n);
@@ -229,7 +229,7 @@ std::vector<uint32_t> Polygon::hull(const std::vector<glm::vec2>& vertices)
     return hull;
 }
 
-float Polygon::cross(const glm::vec2& origin, const glm::vec2& a, const glm::vec2& b)
+double Polygon::cross(const glm::dvec2& origin, const glm::dvec2& a, const glm::dvec2& b)
 {
     return (a.x - origin.x) * (b.y - origin.y) - (a.y - origin.y) * (b.x - origin.x);
 }
@@ -239,14 +239,14 @@ std::vector<Triangle> Polygon::triangulate() const
     return triangulate(m_vertices);
 }
 
-std::vector<Triangle> Polygon::triangulate(const std::vector<glm::vec2>& vertices)
+std::vector<Triangle> Polygon::triangulate(const std::vector<glm::dvec2>& vertices)
 {
-    CDT::Triangulation<float> cdt;
+    CDT::Triangulation<double> cdt;
 
     // Convert polygon data into appropriate CDT types
-    std::vector<CDT::V2d<float>> cVertices;
+    std::vector<CDT::V2d<double>> cVertices;
     cVertices.reserve(vertices.size());
-    for (const glm::vec2& vertex : vertices) cVertices.emplace_back(vertex.x, vertex.y);
+    for (const glm::dvec2& vertex : vertices) cVertices.emplace_back(vertex.x, vertex.y);
 
     std::vector<CDT::Edge> edges;
     edges.reserve(vertices.size());
@@ -290,14 +290,14 @@ void Polygon::clean()
 }
 
 // Remove duplicate vertices from the polygon - Only applies to adjacent vertices
-std::vector<glm::vec2> Polygon::clean(const std::vector<glm::vec2>& vertices)
+std::vector<glm::dvec2> Polygon::clean(const std::vector<glm::dvec2>& vertices)
 {
     if (vertices.empty()) return {};
 
-    std::vector<glm::vec2> cleaned = { vertices[0] };
+    std::vector<glm::dvec2> cleaned = { vertices[0] };
     cleaned.reserve(vertices.size());
 
-    glm::vec2 delta;
+    glm::dvec2 delta;
     for (uint32_t i = 1; i < vertices.size(); i++) {
         delta = vertices[i] - vertices[i - 1];
         if (glm::dot(delta, delta) > 1e-6) { // Non-duplicate vertex = sufficiently far from previous vertex
@@ -312,7 +312,7 @@ std::vector<glm::vec2> Polygon::clean(const std::vector<glm::vec2>& vertices)
     return cleaned;
 }
 
-std::vector<std::pair<glm::vec2, glm::vec2>> Polygon::debugEdges() const
+std::vector<std::pair<glm::dvec2, glm::dvec2>> Polygon::debugEdges() const
 {
     return {};
 }

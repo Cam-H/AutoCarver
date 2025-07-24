@@ -15,7 +15,7 @@
 
 #include "core/Timer.h"
 
-std::shared_ptr<Mesh> MeshHandler::loadAsMeshBody(const std::string& filepath, float scalar)
+std::shared_ptr<Mesh> MeshHandler::loadAsMeshBody(const std::string& filepath, double scalar)
 {
     ScopedTimer timer(filepath + " mesh loading");
     Assimp::Importer importer;
@@ -40,7 +40,7 @@ std::shared_ptr<Mesh> MeshHandler::loadAsMeshBody(const std::string& filepath, f
         }
     }
 
-    float *vertices = new float[3 * vertexCount], *vPtr = vertices;
+    double *vertices = new double[3 * vertexCount], *vPtr = vertices;
     uint32_t *faces = new uint32_t[3 * indexCount], *faceSizes = new uint32_t[faceCount], *fPtr = faces, *fsPtr = faceSizes, offset = 0;
 
     // Convert file content to a usable format
@@ -85,11 +85,11 @@ void MeshHandler::exportMesh(const std::shared_ptr<Mesh>& mesh, const std::strin
     auto outputMesh = new aiMesh();
     outputMesh->mNumVertices = mesh->vertexCount();
     outputMesh->mVertices = new aiVector3f [3 * mesh->vertexCount()];
-    memcpy(outputMesh->mVertices, mesh->vertices().vertices().data(), 3 * mesh->vertexCount() * sizeof(float));
+    memcpy(outputMesh->mVertices, mesh->vertices().vertices().data(), 3 * mesh->vertexCount() * sizeof(double));
     outputMesh->mNumFaces = mesh->faceCount();
     outputMesh->mFaces = new aiFace[mesh->faceCount()];
     outputMesh->mNormals = new aiVector3f[mesh->vertexCount()];
-    memcpy(outputMesh->mNormals, mesh->vertexNormals().vertices().data(), 3 * mesh->vertexCount() * sizeof(float));
+    memcpy(outputMesh->mNormals, mesh->vertexNormals().vertices().data(), 3 * mesh->vertexCount() * sizeof(double));
     std::vector<uint32_t> indices = mesh->faces().faces();
     uint32_t idx = 0;
     for (uint32_t i = 0; i < mesh->faceCount(); i++) {

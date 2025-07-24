@@ -112,7 +112,7 @@ void RigidBody::setMask(uint32_t mask)
     m_mask = mask;
 }
 
-void RigidBody::setDensity(float density)
+void RigidBody::setDensity(double density)
 {
     m_density = density;
 }
@@ -140,7 +140,7 @@ bool RigidBody::collides(const std::shared_ptr<RigidBody>& body)
 {
     if (!m_hullOK || !body->m_hullOK || !boundaryCollision(body)) return false;
 
-    glm::mat4 relative = glm::inverse(m_transform) * body->m_transform;
+    glm::dmat4 relative = glm::inverse(m_transform) * body->m_transform;
 
     std::pair<uint32_t, uint32_t> nearest = cachedCollision(body);
 
@@ -155,7 +155,7 @@ bool RigidBody::collides(const std::shared_ptr<RigidBody>& body)
     }
 }
 
-bool RigidBody::collision(const std::shared_ptr<RigidBody>& body, glm::vec3& offset)
+bool RigidBody::collision(const std::shared_ptr<RigidBody>& body, glm::dvec3& offset)
 {
     EPA epa = collision(body);
     offset = epa.colliding() ? epa.overlap() : epa.offset();
@@ -167,7 +167,7 @@ EPA RigidBody::collision(const std::shared_ptr<RigidBody>& body)
 {
     if (!m_hullOK || !body->m_hullOK || !boundaryCollision(body)) return {};
 
-    glm::mat4 relative = glm::inverse(m_transform) * body->m_transform;
+    glm::dmat4 relative = glm::inverse(m_transform) * body->m_transform;
 
     std::pair<uint32_t, uint32_t> nearest = cachedCollision(body);
 
@@ -192,7 +192,7 @@ std::pair<uint32_t, uint32_t> RigidBody::cachedCollision(const std::shared_ptr<R
 
 }
 
-void RigidBody::step(float delta)
+void RigidBody::step(double delta)
 {
     if (m_type != Type::STATIC) {
         globalTranslate(m_linearVelocity * delta);
@@ -200,7 +200,7 @@ void RigidBody::step(float delta)
     }
 
     // Must happen after translation so there is time for constraints to act
-    if (m_type == Type::DYNAMIC) m_linearVelocity += delta * glm::vec3{0, -9.81, 0};
+    if (m_type == Type::DYNAMIC) m_linearVelocity += delta * glm::dvec3{0, -9.81, 0};
 
 }
 
@@ -208,7 +208,7 @@ void RigidBody::zero()
 {
     if (m_mesh == nullptr) return;
 
-    glm::vec3 centroid = m_mesh->centroid();
+    glm::dvec3 centroid = m_mesh->centroid();
     m_mesh->translate(-centroid);
     globalTranslate(centroid);// TODO confirm
 
@@ -265,55 +265,55 @@ bool RigidBody::isManifold()
     return m_isManifold;
 }
 
-float RigidBody::area()
+double RigidBody::area()
 {
     if (!m_areaOK) calculateArea();
     return m_area;
 }
 
-float RigidBody::density() const
+double RigidBody::density() const
 {
     return m_density;
 }
 
-float RigidBody::volume()
+double RigidBody::volume()
 {
     if (!m_volumeOK) calculateVolume();
     return m_volume;
 }
 
-float RigidBody::mass()
+double RigidBody::mass()
 {
     if (!m_massOK) calculateMass();
     return m_mass;
 }
 
-glm::vec3 RigidBody::centroid()
+glm::dvec3 RigidBody::centroid()
 {
-    return m_mesh != nullptr ? m_mesh->centroid() : glm::vec3{};
+    return m_mesh != nullptr ? m_mesh->centroid() : glm::dvec3{};
 }
 
-glm::mat3x3 RigidBody::inertiaTensor()
+glm::dmat3 RigidBody::inertiaTensor()
 {
     if (!m_inertiaTensorOK) calculateInertiaTensor();
     return m_inertiaTensor;
 }
 
-void RigidBody::setLinearVelocity(glm::vec3 velocity)
+void RigidBody::setLinearVelocity(glm::dvec3 velocity)
 {
     m_linearVelocity = velocity;
 }
 
-const glm::vec3& RigidBody::getLinearVelocity() const
+const glm::dvec3& RigidBody::getLinearVelocity() const
 {
     return m_linearVelocity;
 }
 
-void RigidBody::setAngularVelocity(glm::vec3 velocity)
+void RigidBody::setAngularVelocity(glm::dvec3 velocity)
 {
     m_angularVelocity = velocity;
 }
-const glm::vec3& RigidBody::getAngularVelocity() const
+const glm::dvec3& RigidBody::getAngularVelocity() const
 {
     return m_angularVelocity;
 }

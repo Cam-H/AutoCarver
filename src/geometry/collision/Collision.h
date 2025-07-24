@@ -52,22 +52,22 @@ public:
     static Simplex gjk(const T1& bodyA, const T2& bodyB, const std::pair<uint32_t, uint32_t>& idx);
 
     template<class T1, class T2>
-    static Simplex gjk(const T1& bodyA, const T2& bodyB, const glm::mat4& transform, const std::pair<uint32_t, uint32_t>& idx);
+    static Simplex gjk(const T1& bodyA, const T2& bodyB, const glm::dmat4& transform, const std::pair<uint32_t, uint32_t>& idx);
 
 
     // Determine the closest vertex on the body to the reference
-    static glm::vec3 nearest(const AABB& body, const glm::vec3& reference);
+    static glm::dvec3 nearest(const AABB& body, const glm::dvec3& reference);
 
     // Determine the furthest vertex on the body to the reference
-    static glm::vec3 farthest(const AABB& body, const glm::vec3& reference);
+    static glm::dvec3 farthest(const AABB& body, const glm::dvec3& reference);
 
     // Determine if the first body (A) encloses the vertex
-    static bool encloses(const Sphere& body, const glm::vec3& vertex);
-    static bool encloses(const AABB& body, const glm::vec3& vertex);
-    static bool encloses(const ConvexHull& body, const glm::vec3& vertex);
+    static bool encloses(const Sphere& body, const glm::dvec3& vertex);
+    static bool encloses(const AABB& body, const glm::dvec3& vertex);
+    static bool encloses(const ConvexHull& body, const glm::dvec3& vertex);
 
     template<class T>
-    static bool encloses(const T& body, const std::vector<glm::vec3>& vertices);
+    static bool encloses(const T& body, const std::vector<glm::dvec3>& vertices);
 
     static bool encloses(const Sphere& bodyA, const Sphere& bodyB);
     static bool encloses(const Sphere& bodyA, const AABB& bodyB);
@@ -82,15 +82,15 @@ public:
 //    static bool encloses(const ConvexHull& bodyA, const ConvexHull& bodyB);
 
     // Determine the intersection between the specified bodies
-    static std::tuple<bool, float, glm::vec3> intersection(const AABB& body, const Ray& ray);
+    static std::tuple<bool, double, glm::dvec3> intersection(const AABB& body, const Ray& ray);
 
-    static std::vector<glm::vec3> intersection(const ConvexHull& hull, const Plane& plane);
+    static std::vector<glm::dvec3> intersection(const ConvexHull& hull, const Plane& plane);
 
     template<class T1, class T2>
     static EPA intersection(const T1& bodyA, const T2& bodyB, const std::pair<uint32_t, uint32_t>& idx);
 
     template<class T1, class T2>
-    static EPA intersection(const T1& bodyA, const T2& bodyB, const glm::mat4& relative, const std::pair<uint32_t, uint32_t>& idx);
+    static EPA intersection(const T1& bodyA, const T2& bodyB, const glm::dmat4& relative, const std::pair<uint32_t, uint32_t>& idx);
 
     // Determine the relative position of the specified body to the plane
     static bool above(const ConvexHull& hull, const Plane& plane);
@@ -104,9 +104,9 @@ public:
 private:
 
     template<class T1, class T2>
-    static glm::vec3 initialAxis(const T1& bodyA, const T2& bodyB);
+    static glm::dvec3 initialAxis(const T1& bodyA, const T2& bodyB);
 
-    static std::vector<glm::vec3> intersection(const ConvexHull& hull, const Plane& plane, const std::vector<bool>& partition);
+    static std::vector<glm::dvec3> intersection(const ConvexHull& hull, const Plane& plane, const std::vector<bool>& partition);
     static std::tuple<std::vector<bool>, bool> partition(const ConvexHull& hull, const Plane& plane);
 
 };

@@ -78,7 +78,6 @@ int main(int argc, char *argv[])
 //    sceneWidget->camera().setPosition(QVector3D(15, 0, 0));
     sceneWidget->setScene(scene);
 
-    std::cout << "aaw\n";
 
     auto sculptureButton = window->findChild<QCheckBox*>("sculptureButton");
     QObject::connect(sculptureButton, &QCheckBox::clicked, [&](bool checked) {
@@ -119,15 +118,13 @@ int main(int argc, char *argv[])
         }
     });
 
-    std::cout << "awex\n";
-
     // Handle updating robot
     updateThread = std::make_unique<std::thread>([](){
         Timer rateTimer;
         bool idle = false;
 
         while (true) {
-            scene->step((float)rateTimer.getElapsedSeconds());
+            scene->step((double)rateTimer.getElapsedSeconds());
             rateTimer.reset();
 
             if (scene->simulationActive() || (!idle && scene->simulationIdle())) {
@@ -142,11 +139,8 @@ int main(int argc, char *argv[])
             std::this_thread::sleep_for(std::chrono::nanoseconds(80000000));
         }
     });
-    std::cout << "yx\n";
 
     window->show();
-
-    std::cout << "x\n";
 
     return app.exec();
 }

@@ -32,7 +32,7 @@ public:
 
     void start();
     void pause();
-    virtual void step(float delta);
+    virtual void step(double delta);
     void stop();
 
     void connect(void(*function)());

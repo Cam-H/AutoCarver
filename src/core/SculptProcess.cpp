@@ -124,7 +124,7 @@ void SculptProcess::skip()
     }
 }
 
-void SculptProcess::step(float delta)
+void SculptProcess::step(double delta)
 {
     Scene::step(delta);
 
@@ -179,7 +179,7 @@ void SculptProcess::planConvexTrim()
         return glm::dot(a.normal, {0, 1, 0}) > glm::dot(b.normal, {0, 1, 0});
     });
 
-    glm::vec3 p = m_sculpture->position();
+    glm::dvec3 p = m_sculpture->position();
     std::cout << p.x << " " << p.y << " " << p.z << "~~~~|\n";
     p = m_sculpture->up();
     std::cout << p.x << " " << p.y << " " << p.z << "~~~~|\n";
@@ -195,7 +195,7 @@ void SculptProcess::planConvexTrim()
         if (border.size() < 3) continue;
 //        if (border.size() < 3) throw std::runtime_error("[SculptProcess] Failed to find intersection for section");
 
-//        glm::vec3 normal = Triangle::normal(border[0], border[1], border[2]);
+//        glm::ddvec3 normal = Triangle::normal(border[0], border[1], border[2]);
 
 
         // Generate trajectory for robotic carving
@@ -220,10 +220,10 @@ void SculptProcess::planConvexTrim()
     }
 }
 
-void SculptProcess::planOutlineRefinement(float stepDg)
+void SculptProcess::planOutlineRefinement(double stepDg)
 {
     uint32_t steps = std::floor(180.0f / stepDg);
-    float angle = 0;
+    double angle = 0;
 
     // Prepare a 3D render / edge detection system to find the profile of the model
     auto* detector = new EdgeDetect(model);
@@ -237,8 +237,8 @@ void SculptProcess::planOutlineRefinement(float stepDg)
 //    detector->capture()->capture();
 //    detector->capture()->grabFramebuffer().save(QString("SPOutlineRefinementPrecheck.png"));
 
-    glm::vec3 offset = -model->boundedOffset();
-    float scalar = m_sculpture->scalar();
+    glm::dvec3 offset = -model->boundedOffset();
+    double scalar = m_sculpture->scalar();
     std::cout << "OFFSET: " << offset.x << " " << offset.y << " " << offset.z << " " << scalar << "\n";
 
 
@@ -257,9 +257,9 @@ void SculptProcess::planOutlineRefinement(float stepDg)
         angle += stepDg;
 
         // Use the turntable to align the profile with the carving robot
-        planTurntableAlignment(m_sculpture->rotation() - angle * (float)M_PI / 180.0f + M_PI / 2);
+        planTurntableAlignment(m_sculpture->rotation() - angle * (double)M_PI / 180.0f + M_PI / 2);
 
-        std::cout << angle << " " << (angle * (float)M_PI / 180.0f) << " " << m_sculpture->rotation() << " RR\n";
+        std::cout << angle << " " << (angle * (double)M_PI / 180.0f) << " " << m_sculpture->rotation() << " RR\n";
 
         // Use the profile to prepare appropriate sculpting instructions for the robots
         auto profile = detector->profile();
@@ -292,7 +292,7 @@ void SculptProcess::planOutlineRefinement(Profile& profile)
         for (auto i : indices) std::cout << i << " ";
         std::cout << "\n";
         auto border = profile.projected3D(indices);
-        for(const glm::vec3& v : border) std::cout << v.x << " " << v.y << " " << v.z << "\n";
+        for(const glm::dvec3& v : border) std::cout << v.x << " " << v.y << " " << v.z << "\n";
 
         planRoboticSection(border);
 
@@ -318,17 +318,17 @@ void SculptProcess::planFeatureRefinement()
     // Decompose model into patches and handle separately?
 }
 
-void SculptProcess::planTurntableAlignment(const glm::vec3& axis)
+void SculptProcess::planTurntableAlignment(const glm::dvec3& axis)
 {
-    glm::vec3 up = { 0, 1, 0 }, proj = axis - up * glm::dot(axis, up);
-    float theta = atan2f(proj.x, -proj.z);
+    glm::dvec3 up = { 0, 1, 0 }, proj = axis - up * glm::dot(axis, up);
+    double theta = atan2f(proj.x, -proj.z);
     planTurntableAlignment(theta);
 }
-void SculptProcess::planTurntableAlignment(float theta)
+void SculptProcess::planTurntableAlignment(double theta)
 {
     std::vector<Waypoint> waypoints = {
             m_lastestTableCommand,
-            { std::vector<float>{ theta }, 1, false}
+            { std::vector<double>{ theta }, 1, false}
     };
 
     m_lastestTableCommand = waypoints.back();
@@ -340,11 +340,11 @@ void SculptProcess::planTurntableAlignment(float theta)
     m_actions[m_actions.size() - 1].trigger = true;
 }
 
-//void SculptProcess::planRoboticSection(const glm::vec3& a, const glm::vec3& b)
+//void SculptProcess::planRoboticSection(const glm::dvec3& a, const glm::dvec3& b)
 //{
-//    glm::vec3 delta = m_sculpture->position() - m_robot->position(), uDel = glm::normalize(delta);
+//    glm::dvec3 delta = m_sculpture->position() - m_robot->position(), uDel = glm::normalize(delta);
 //    std::cout << "DEL: " << delta.x << " " << delta.y << " " << delta.z <<"\n";
-//    glm::vec3 origin = border[0] - uDel * glm::dot(uDel, border[0]);
+//    glm::dvec3 origin = border[0] - uDel * glm::dot(uDel, border[0]);
 //
 //    glm::vec4 calc = glm::vec4{ origin.x, origin.y, origin.z, 1 } * m_robot->getTransform();
 //    std::vector<Waypoint> waypoints = {
@@ -359,7 +359,7 @@ void SculptProcess::planTurntableAlignment(float theta)
 //}
 
 // Sectioning step wherein the robot moves to remove all material above the specified plane
-void SculptProcess::planPlanarSection(const Plane& plane, const std::vector<glm::vec3>& border)
+void SculptProcess::planPlanarSection(const Plane& plane, const std::vector<glm::dvec3>& border)
 {
     Axis3D axes(m_fwd, plane.normal);
     uint32_t minIndex, maxIndex;
@@ -367,7 +367,7 @@ void SculptProcess::planPlanarSection(const Plane& plane, const std::vector<glm:
     auto low = border[minIndex], high = border[maxIndex];
 
     // Bring the endpoints in plane with the normal m_fwd
-    float lowOff = glm::dot(m_fwd, low), highOff = glm::dot(m_fwd, high);
+    double lowOff = glm::dot(m_fwd, low), highOff = glm::dot(m_fwd, high);
 //    if (lowOff < highOff) high += (lowOff - highOff) * m_fwd;
 //    else                  low  -= (lowOff - highOff) * m_fwd;
 
@@ -377,7 +377,7 @@ void SculptProcess::planPlanarSection(const Plane& plane, const std::vector<glm:
     std::cout << "Split: " << low.x << " " << low.y << " " << low.z << "\n";
     std::cout << "Split: " << high.x << " " << high.y << " " << high.z << "\n";
 
-    glm::vec3 startPos = { 0, 0, 0 };
+    glm::dvec3 startPos = { 0, 0, 0 };
 
     std::cout << "M: " << glm::to_string(axes.toTransform()) << "\n================\n";
     const Waypoint& start = m_robot->inverse(low, axes);
@@ -403,7 +403,7 @@ void SculptProcess::planPlanarSection(const Plane& plane, const std::vector<glm:
     m_actions[m_actions.size() - 1].trigger = true;
 }
 
-void SculptProcess::planRoboticSection(const std::vector<glm::vec3>& border)
+void SculptProcess::planRoboticSection(const std::vector<glm::dvec3>& border)
 {
     std::vector<Waypoint> waypoints = {
             m_lastestRobotCommand,
@@ -432,10 +432,10 @@ void SculptProcess::nextAction()
 uint32_t SculptProcess::identifySculpture(const std::vector<std::shared_ptr<Mesh>>& fragments)
 {
     uint32_t idx = 0;
-    float volume = fragments[0]->volume();
+    double volume = fragments[0]->volume();
 
     for (uint32_t i = 1; i < fragments.size(); i++) {
-        float temp = fragments[i]->volume();
+        double temp = fragments[i]->volume();
 
         if (volume < temp) {
             volume = temp;

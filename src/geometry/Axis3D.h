@@ -11,19 +11,19 @@ class Axis3D {
 public:
 
     Axis3D();
-    explicit Axis3D(const glm::vec3& axis);
-    Axis3D(const glm::vec3& xAxis, const glm::vec3& yAxis);
-    Axis3D(const glm::vec3& xAxis, const glm::vec3& yAxis, const glm::vec3& zAxis);
+    explicit Axis3D(const glm::dvec3& axis);
+    Axis3D(const glm::dvec3& xAxis, const glm::dvec3& yAxis);
+    Axis3D(const glm::dvec3& xAxis, const glm::dvec3& yAxis, const glm::dvec3& zAxis);
 
-    [[nodiscard]] glm::mat3 toTransform() const;
-    [[nodiscard]] glm::quat toQuat() const;
+    [[nodiscard]] glm::dmat3 toTransform() const;
+    [[nodiscard]] glm::dquat toQuat() const;
 
     void print() const;
 
 public:
-    glm::vec3 xAxis;
-    glm::vec3 yAxis;
-    glm::vec3 zAxis;
+    glm::dvec3 xAxis;
+    glm::dvec3 yAxis;
+    glm::dvec3 zAxis;
 
 };
 

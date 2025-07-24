@@ -70,60 +70,60 @@ uint32_t Triangle::last(uint32_t a, uint32_t b) const
     return I2;
 }
 
-float Triangle::signedArea(const QVector2D& a, const QVector2D& b, const QVector2D& c)
+double Triangle::signedArea(const QVector2D& a, const QVector2D& b, const QVector2D& c)
 {
     return (a.x() - c.x()) * (b.y() - c.y()) - (b.x() - c.x()) * (a.y() - c.y());
 }
 
-float Triangle::area(const QVector2D& a, const QVector2D& b, const QVector2D& c)
+double Triangle::area(const QVector2D& a, const QVector2D& b, const QVector2D& c)
 {
     return 0.5f * (a.x() * (b.y() - c.y()) + b.x() * (c.y() - a.y()) + c.x() * (a.y() - b.y()));
 }
 
-float Triangle::area(const QVector3D& a, const QVector3D& b, const QVector3D& c) {
+double Triangle::area(const QVector3D& a, const QVector3D& b, const QVector3D& c) {
     QVector3D ab = b - a;
     QVector3D ac = c - a;
 
-    return 0.5f * (float)sqrt(pow(ab.y() * ac.z() - ab.z() * ac.y(), 2)
+    return 0.5f * (double)sqrt(pow(ab.y() * ac.z() - ab.z() * ac.y(), 2)
     + pow(ab.z() * ac.x() - ab.x ()* ac.z(), 2)
     + pow(ab.x() * ac.y() - ab.y() * ac.x(), 2));
 }
 
-float Triangle::area(const glm::vec2& a, const glm::vec2& b, const glm::vec2& c)
+double Triangle::area(const glm::vec2& a, const glm::vec2& b, const glm::vec2& c)
 {
     return 0.5f * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y));
 }
-float Triangle::area(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
+double Triangle::area(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c)
 {
     return 0.5f * glm::length(glm::cross(b - a, c - a));
 }
 
-float Triangle::cross(const QVector2D &pivot, const QVector2D &a, const QVector2D &b)
+double Triangle::cross(const QVector2D &pivot, const QVector2D &a, const QVector2D &b)
 {
     return cross(a - pivot, b - pivot);
 }
 
-float Triangle::cross(const QVector2D &v1, const QVector2D &v2)
+double Triangle::cross(const QVector2D &v1, const QVector2D &v2)
 {
     return v1.x() * v2.y() - v2.x() * v1.y();
 }
 
-glm::vec3 Triangle::normal(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
+glm::dvec3 Triangle::normal(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c)
 {
     return glm::normalize(glm::cross(b - a, c - a));
 }
 
-glm::vec3 Triangle::barycentric(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& p)
+glm::dvec3 Triangle::barycentric(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& p)
 {
-    glm::vec3 ab = b - a, ac = c - a, ap = p - a;
+    glm::dvec3 ab = b - a, ac = c - a, ap = p - a;
 
-    float d00 = glm::dot(ab, ab), d01 = glm::dot(ab, ac);
-    float d11 = glm::dot(ac, ac);
-    float d20 = glm::dot(ap, ab), d21 = glm::dot(ap, ac);
-    float den = 1 / (d00 * d11 - d01 * d01);
+    double d00 = glm::dot(ab, ab), d01 = glm::dot(ab, ac);
+    double d11 = glm::dot(ac, ac);
+    double d20 = glm::dot(ap, ab), d21 = glm::dot(ap, ac);
+    double den = 1 / (d00 * d11 - d01 * d01);
 
-    float v = (d11 * d20 - d01 * d21) * den;
-    float w = (d00 * d21 - d01 * d20) * den;
+    double v = (d11 * d20 - d01 * d21) * den;
+    double w = (d00 * d21 - d01 * d20) * den;
 
     return {
             1.0f - v - w,
@@ -132,48 +132,48 @@ glm::vec3 Triangle::barycentric(const glm::vec3& a, const glm::vec3& b, const gl
     };
 }
 
-glm::vec3 Triangle::clampedBarycentric(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& p)
+glm::dvec3 Triangle::clampedBarycentric(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& p)
 {
-    glm::vec3 ab = b - a, ac = c - a, ap = p - a;
+    glm::dvec3 ab = b - a, ac = c - a, ap = p - a;
 
     // Outside a
-    float d1 = glm::dot(ab, ap), d2 = glm::dot(ac, ap);
+    double d1 = glm::dot(ab, ap), d2 = glm::dot(ac, ap);
     if (d1 <= 0 && d2 <= 0) return { 1, 0, 0 };
 
     // Outside b
-    glm::vec3 bp = p - b;
-    float d3 = glm::dot(ab, bp), d4 = glm::dot(ac, bp);
+    glm::dvec3 bp = p - b;
+    double d3 = glm::dot(ab, bp), d4 = glm::dot(ac, bp);
     if (d3 >= 0 && d4 <= d3) return { 0, 1, 0 };
 
     // Outside ab
-    float vc = d1 * d4 - d3 * d2;
+    double vc = d1 * d4 - d3 * d2;
     if (vc <= 0 && d1 >= 0 && d3 <= 0) {
-        float v = d1 / (d1 - d3);
+        double v = d1 / (d1 - d3);
         return { 1 - v, v, 0 };
     }
 
     // Outside c
-    glm::vec3 cp = p - c;
-    float d5 = glm::dot(ab, cp), d6 = glm::dot(ac, cp);
+    glm::dvec3 cp = p - c;
+    double d5 = glm::dot(ab, cp), d6 = glm::dot(ac, cp);
     if (d6 >= 0 && d5 <= d6) return { 0, 0, 1 };
 
     // Outside ac
-    float vb = d5 * d2 - d1 * d6;
+    double vb = d5 * d2 - d1 * d6;
     if (vb <= 0 && d2 >= 0 && d6 <= 0) {
-        float w = d2 / (d2 - d6);
+        double w = d2 / (d2 - d6);
         return { 1 - w, 0, w };
     }
 
     // Outside bc
-    float va = d3 * d6 - d5 * d4;
+    double va = d3 * d6 - d5 * d4;
     if (va <= 0 && (d4 - d3) >= 0 && (d5 - d6) >= 0) {
-        float u = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+        double u = (d4 - d3) / ((d4 - d3) + (d5 - d6));
         return {0, 1 - u, u };
     }
 
     // In face
-    float den = 1.0f / (va + vb + vc);
-    float v = vb * den, w = vc * den;
+    double den = 1.0f / (va + vb + vc);
+    double v = vb * den, w = vc * den;
     return { va * den, v, w };
 }
 

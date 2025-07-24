@@ -43,10 +43,10 @@ std::shared_ptr<Mesh> randomMesh()
 
     // Generate a cloud of count vertices within a cube around the origin
     uint32_t count = rng.global()->bounded(4, 12);
-    std::vector<glm::vec3> cloud(count);
-    auto *ptr = (float*)cloud.data();
+    std::vector<glm::dvec3> cloud(count);
+    auto *ptr = (double*)cloud.data();
 
-    for (uint32_t j = 0; j < 3 * count; j++) *ptr++ = (float)rng.global()->bounded(2.0) - 1.0f;
+    for (uint32_t j = 0; j < 3 * count; j++) *ptr++ = (double)rng.global()->bounded(2.0) - 1.0f;
 
     return std::make_shared<Mesh>(ConvexHull(cloud), false);
 }
@@ -112,11 +112,11 @@ int main(int argc, char *argv[])
 //    base = std::make_shared<Mesh>(hull);
 
 //    auto box = AABB({-1, -1, -1}, {1, 1, 1});
-//    auto axes = std::vector<glm::vec3>{
+//    auto axes = std::vector<glm::dvec3>{
 //            {0, 1, 0},
-//            glm::normalize(glm::vec3{1, 1, 0}),
+//            glm::normalize(glm::dvec3{1, 1, 0}),
 //            {1, 0, 0},
-//            glm::normalize(glm::vec3{1, -0.5f, 0}),
+//            glm::normalize(glm::dvec3{1, -0.5f, 0}),
 //            {0, -1, 0}
 //    };
 //

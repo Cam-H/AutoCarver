@@ -11,7 +11,7 @@
 
 Sphere::Sphere() : center({0, 0, 0}), radius(-1.0f){}
 
-Sphere::Sphere(glm::vec3 center, float radius) : center(center), radius(radius) {}
+Sphere::Sphere(glm::dvec3 center, double radius) : center(center), radius(radius) {}
 
 Sphere Sphere::enclose(const ConvexHull& hull)
 {
@@ -29,16 +29,16 @@ Sphere Sphere::enclose(const VertexArray& vertices)
 }
 
 Sphere Sphere::enclose(const std::vector<Sphere>& spheres){
-    std::vector<glm::vec3> vertices;
+    std::vector<glm::dvec3> vertices;
 
     // Approximate sphere as 6 cardinal vertices
     for (const Sphere& sphere : spheres) {
-        vertices.emplace_back(sphere.center + glm::vec3{sphere.radius, 0, 0});
-        vertices.emplace_back(sphere.center + glm::vec3{-sphere.radius, 0, 0});
-        vertices.emplace_back(sphere.center + glm::vec3{0, sphere.radius, 0});
-        vertices.emplace_back(sphere.center + glm::vec3{0, -sphere.radius, 0});
-        vertices.emplace_back(sphere.center + glm::vec3{0, 0, sphere.radius});
-        vertices.emplace_back(sphere.center + glm::vec3{0, 0, -sphere.radius});
+        vertices.emplace_back(sphere.center + glm::dvec3{sphere.radius, 0, 0});
+        vertices.emplace_back(sphere.center + glm::dvec3{-sphere.radius, 0, 0});
+        vertices.emplace_back(sphere.center + glm::dvec3{0, sphere.radius, 0});
+        vertices.emplace_back(sphere.center + glm::dvec3{0, -sphere.radius, 0});
+        vertices.emplace_back(sphere.center + glm::dvec3{0, 0, sphere.radius});
+        vertices.emplace_back(sphere.center + glm::dvec3{0, 0, -sphere.radius});
     }
 
     // Standard enclosure of a set of vertices
@@ -46,14 +46,14 @@ Sphere Sphere::enclose(const std::vector<Sphere>& spheres){
 
     // Resize approximate bounds if needed to include extremities
     for (const Sphere& sphere : spheres) {
-        float delta = bounds.radius - sphere.radius - glm::length(bounds.center - sphere.center);
+        double delta = bounds.radius - sphere.radius - glm::length(bounds.center - sphere.center);
         if (delta < 0) bounds.radius -= delta;
     }
 
     return bounds;
 }
 
-Sphere Sphere::enclose(const std::vector<glm::vec3>& vertices){
+Sphere Sphere::enclose(const std::vector<glm::dvec3>& vertices){
     if (!vertices.empty()) {
 
 //        uint32_t i = 0;
@@ -62,7 +62,7 @@ Sphere Sphere::enclose(const std::vector<glm::vec3>& vertices){
 //        }
 
         // Shuffle vertices to prevent consecutive consideration of adjacent vertices (massively reduces performance)
-        std::vector<glm::vec3> copy = vertices;
+        std::vector<glm::dvec3> copy = vertices;
         std::shuffle(copy.begin(), copy.end(), std::mt19937(std::random_device()()));
 
         return welzl(copy, {}, copy.size());
@@ -71,45 +71,45 @@ Sphere Sphere::enclose(const std::vector<glm::vec3>& vertices){
     return { { 0, 0, 0 }, 0 };
 }
 
-Sphere Sphere::midpointSphere(const glm::vec3& a, const glm::vec3& b){
-    return { { (a + b) / 2.0f }, glm::length(b - a) / 2.0f };
+Sphere Sphere::midpointSphere(const glm::dvec3& a, const glm::dvec3& b){
+    return { { (a + b) / 2.0 }, glm::length(b - a) / 2.0 };
 }
 
-Sphere Sphere::triangleCircumsphere(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c){
-    glm::vec3 ab = b - a;
-    glm::vec3 ac = c - a;
+Sphere Sphere::triangleCircumsphere(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c){
+    glm::dvec3 ab = b - a;
+    glm::dvec3 ac = c - a;
 
-    float lab = glm::dot(ab, ab);
-    float lac = glm::dot(ac, ac);
+    double lab = glm::dot(ab, ab);
+    double lac = glm::dot(ac, ac);
 
-    glm::vec3 cbc = glm::cross(ab, ac);
+    glm::dvec3 cbc = glm::cross(ab, ac);
 
-    glm::vec3 center = (lac * glm::cross(cbc, ab) + lab * glm::cross(ac, cbc)) / (2.0f * glm::dot(cbc, cbc)) + a;
+    glm::dvec3 center = (lac * glm::cross(cbc, ab) + lab * glm::cross(ac, cbc)) / (2.0 * glm::dot(cbc, cbc)) + a;
     return { center, glm::length(center - a) };
 }
 
-Sphere Sphere::tetrahedronCircumsphere(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& d){
-    glm::vec3 ab = b - a;
-    glm::vec3 ac = c - a;
-    glm::vec3 ad = d - a;
+Sphere Sphere::tetrahedronCircumsphere(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& d){
+    glm::dvec3 ab = b - a;
+    glm::dvec3 ac = c - a;
+    glm::dvec3 ad = d - a;
 
-    glm::vec3 ccd = glm::cross(ac, ad);
+    glm::dvec3 ccd = glm::cross(ac, ad);
 
-    float den = glm::dot(ab, ccd);
-    den = 0.5f / den;
+    double den = glm::dot(ab, ccd);
+    den = 0.5 / den;
 
-    glm::vec3 cdb = glm::cross(ad, ab);
-    glm::vec3 cbc = glm::cross(ab, ac);
+    glm::dvec3 cdb = glm::cross(ad, ab);
+    glm::dvec3 cbc = glm::cross(ab, ac);
 
-    float lab = glm::dot(ab, ab);
-    float lac = glm::dot(ac, ac);
-    float lad = glm::dot(ad, ad);
+    double lab = glm::dot(ab, ab);
+    double lac = glm::dot(ac, ac);
+    double lad = glm::dot(ad, ad);
 
-    glm::vec3 center = (lab * ccd + lac * cdb + lad * cbc) * den + a;
+    glm::dvec3 center = (lab * ccd + lac * cdb + lad * cbc) * den + a;
     return { center, glm::length(center - a) };
 }
 
-Sphere Sphere::welzl(std::vector<glm::vec3>& vertices, std::vector<glm::vec3> set, uint32_t n){
+Sphere Sphere::welzl(std::vector<glm::dvec3>& vertices, std::vector<glm::dvec3> set, uint32_t n){
 
     // Trivial cases
     if (n == 0 || set.size() == 4) {
@@ -127,7 +127,7 @@ Sphere Sphere::welzl(std::vector<glm::vec3>& vertices, std::vector<glm::vec3> se
         }
     }
 
-    glm::vec3 vertex = vertices[0];
+    glm::dvec3 vertex = vertices[0];
     std::swap(vertices[0], vertices[n - 1]);
 
     Sphere test = welzl(vertices, set, n - 1);
@@ -140,17 +140,17 @@ Sphere Sphere::welzl(std::vector<glm::vec3>& vertices, std::vector<glm::vec3> se
     return welzl(vertices, set, n - 1);
 }
 
-bool Sphere::raycast(const glm::vec3& origin, const glm::vec3& direction) const {
-    float a, b, c;
+bool Sphere::raycast(const glm::dvec3& origin, const glm::dvec3& direction) const {
+    double a, b, c;
 
     return raycast(origin, direction, a, b, c);
 }
 
-bool Sphere::raycast(const glm::vec3& origin, const glm::vec3& direction, float& t1, float& t2) const {
-    float a, b, c;
+bool Sphere::raycast(const glm::dvec3& origin, const glm::dvec3& direction, double& t1, double& t2) const {
+    double a, b, c;
 
     if (raycast(origin, direction, a, b, c)) {
-        float den = sqrt(b * b - 4 * a * c);
+        double den = sqrt(b * b - 4 * a * c);
         t1 = (-b - den) / (2 * a);
         t2 = (-b + den) / (2 * a);
 
@@ -165,9 +165,9 @@ bool Sphere::raycast(const glm::vec3& origin, const glm::vec3& direction, float&
     return false;
 }
 
-bool Sphere::raycast(const glm::vec3& origin, const glm::vec3& direction, float& a, float& b, float& c) const {
+bool Sphere::raycast(const glm::dvec3& origin, const glm::dvec3& direction, double& a, double& b, double& c) const {
 
-    glm::vec3 offset = origin - center;
+    glm::dvec3 offset = origin - center;
 
     a = 1;// glm::length2(direction);
     b = 2 * glm::dot(direction, offset);
@@ -176,15 +176,15 @@ bool Sphere::raycast(const glm::vec3& origin, const glm::vec3& direction, float&
     return b * b - 4 * a * c > 0 && (b <= 0 || c < 0);
 }
 
-const glm::vec3& Sphere::start() const
+const glm::dvec3& Sphere::start() const
 {
     return center;
 }
-uint32_t Sphere::supportIndex(const glm::vec3& axis, uint32_t startIndex) const
+uint32_t Sphere::supportIndex(const glm::dvec3& axis, uint32_t startIndex) const
 {
     return 0;
 }
-std::tuple<uint32_t, glm::vec3> Sphere::extreme(const glm::vec3& axis, uint32_t startIndex) const
+std::tuple<uint32_t, glm::dvec3> Sphere::extreme(const glm::dvec3& axis, uint32_t startIndex) const
 {
     return { 0, center - glm::normalize(axis) * radius };
 }

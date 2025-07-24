@@ -10,9 +10,9 @@
 
 static glm::vec3 rgb(uint32_t hexcode) {
     return {
-            (float)((hexcode & 0xFF0000) >> 16) / 255,
-            (float)((hexcode & 0xFF00) >> 8) / 255,
-            (float)((hexcode & 0xFF)) / 255
+            (double)((hexcode & 0xFF0000) >> 16) / 255,
+            (double)((hexcode & 0xFF00) >> 8) / 255,
+            (double)((hexcode & 0xFF)) / 255
     };
 }
 

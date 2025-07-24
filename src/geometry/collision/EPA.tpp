@@ -7,16 +7,16 @@
 
 template<class T1, class T2>
 EPA::EPA(const T1& a, const T2& b, Simplex simplex)
-    : EPA(a, b, simplex, glm::mat4(1.0f))
+    : EPA(a, b, simplex, glm::dmat4(1.0f))
 {
     // TODO implement without transformations to optimize
 }
 
 template<class T1, class T2>
-EPA::EPA(const T1& a, const T2& b, Simplex simplex, const glm::mat4& relative)
+EPA::EPA(const T1& a, const T2& b, Simplex simplex, const glm::dmat4& relative)
     : EPA()
 {
-    std::vector<std::pair<float, uint32_t>> order;
+    std::vector<std::pair<double, uint32_t>> order;
 
 //    simplex.purgeDuplicates();
 
@@ -57,11 +57,11 @@ EPA::EPA(const T1& a, const T2& b, Simplex simplex, const glm::mat4& relative)
     m_colliding = order[0].first < 0;
 
     // Calculate the projection of the origin on to the nearest facet
-    glm::vec3 proj = glm::dot(facets[idx].normal, vertices[tri.I0].val) * facets[idx].normal;
+    glm::dvec3 proj = glm::dot(facets[idx].normal, vertices[tri.I0].val) * facets[idx].normal;
 
     // TODO - Barycentric does not always give a reliable result for closest points. Need to evaluate closest of triangle-line or triangle-triangle
     // Calculate the barycentric co-ordinates of the intersection point
-    glm::vec3 bary = Triangle::clampedBarycentric(vertices[tri.I0].val, vertices[tri.I1].val, vertices[tri.I2].val, proj);
+    glm::dvec3 bary = Triangle::clampedBarycentric(vertices[tri.I0].val, vertices[tri.I1].val, vertices[tri.I2].val, proj);
 
     Triangle triA = { vertices[tri.I0].idx.first, vertices[tri.I1].idx.first, vertices[tri.I2].idx.first };
     Triangle triB = { vertices[tri.I0].idx.second, vertices[tri.I1].idx.second, vertices[tri.I2].idx.second };
@@ -77,12 +77,12 @@ EPA::EPA(const T1& a, const T2& b, Simplex simplex, const glm::mat4& relative)
 }
 
 template<class T1, class T2>
-void EPA::expandSimplex(const T1& a, const T2& b, const glm::mat4& relative, Simplex& simplex)
+void EPA::expandSimplex(const T1& a, const T2& b, const glm::dmat4& relative, Simplex& simplex)
 {
     switch (simplex.size()) {
         case 1: // Point case
         {
-            static const glm::vec3 searchDirections[6] = {
+            static const glm::dvec3 searchDirections[6] = {
 //                                axis,
 //                                -axis,
                     {  1.0f,  0.0f,  0.0f },
@@ -93,10 +93,10 @@ void EPA::expandSimplex(const T1& a, const T2& b, const glm::mat4& relative, Sim
                     {  0.0f,  0.0f, -1.0f }
             };
 
-            for (const glm::vec3& direction : searchDirections) {
+            for (const glm::dvec3& direction : searchDirections) {
                 Simplex::Vertex vertex(gjkSupport(a, b, direction, relative, simplex[0].idx));
 
-                glm::vec3 delta = vertex.val - simplex[0].val;
+                glm::dvec3 delta = vertex.val - simplex[0].val;
                 if (glm::dot(delta, delta) >= 1e-6) {
                     simplex.add(vertex);
                     break;
@@ -106,13 +106,13 @@ void EPA::expandSimplex(const T1& a, const T2& b, const glm::mat4& relative, Sim
             if (simplex.size() < 2) break; // Stop if for some reason the point case failed
         case 2: // Line case
         {
-            glm::vec3 line = glm::normalize(simplex[1].val - simplex[0].val);
+            glm::dvec3 line = glm::normalize(simplex[1].val - simplex[0].val);
 
             // Create reasonable initial search direction
             Axis3D system(line);
-            glm::vec3 axis = system.xAxis;
+            glm::dvec3 axis = system.xAxis;
 
-            glm::quat rotation = glm::angleAxis(2.0f / 3.0f  * (float)M_PI, line);
+            glm::dquat rotation = glm::angleAxis(2.0f / 3.0f  * (double)M_PI, line);
 
             // Find a vertex off the line to expand to
             for (uint32_t i = 0; i < 3; i++) {
@@ -130,10 +130,10 @@ void EPA::expandSimplex(const T1& a, const T2& b, const glm::mat4& relative, Sim
             if (simplex.size() < 3) break; // Stop if for some reason the line case failed
         case 3: // Triangle case
         {
-            glm::vec3 axis = glm::normalize(glm::cross(simplex[1].val - simplex[0].val, simplex[2].val - simplex[0].val));
+            glm::dvec3 axis = glm::normalize(glm::cross(simplex[1].val - simplex[0].val, simplex[2].val - simplex[0].val));
 
             Simplex::Vertex vertex(gjkSupport(a, b, axis, relative, simplex[0].idx));
-            float delta = std::abs(glm::dot(axis, vertex.val - simplex[0].val));
+            double delta = std::abs(glm::dot(axis, vertex.val - simplex[0].val));
 
             // Try the opposite direction of the plane in case the triangle is extreme
             if (delta <= 1e-6) {
@@ -152,7 +152,7 @@ void EPA::expandSimplex(const T1& a, const T2& b, const glm::mat4& relative, Sim
 }
 
 template<class T1, class T2>
-std::tuple<uint32_t, uint32_t, glm::vec3> EPA::gjkSupport(const T1& bodyA, const T2& bodyB, const glm::vec3& axis, const std::pair<uint32_t, uint32_t>& idx)
+std::tuple<uint32_t, uint32_t, glm::dvec3> EPA::gjkSupport(const T1& bodyA, const T2& bodyB, const glm::dvec3& axis, const std::pair<uint32_t, uint32_t>& idx)
 {
     auto [aIdx, aVertex] = bodyA.extreme(axis, idx.first);
     auto [bIdx, bVertex] = bodyB.extreme(-axis, idx.second);
@@ -161,11 +161,11 @@ std::tuple<uint32_t, uint32_t, glm::vec3> EPA::gjkSupport(const T1& bodyA, const
 }
 
 template<class T1, class T2>
-std::tuple<uint32_t, uint32_t, glm::vec3> EPA::gjkSupport(const T1& bodyA, const T2& bodyB, const glm::vec3& axis, const glm::mat4& transform, const std::pair<uint32_t, uint32_t>& idx)
+std::tuple<uint32_t, uint32_t, glm::dvec3> EPA::gjkSupport(const T1& bodyA, const T2& bodyB, const glm::dvec3& axis, const glm::dmat4& transform, const std::pair<uint32_t, uint32_t>& idx)
 {
     auto [aIdx, aVertex] = bodyA.extreme(axis, idx.first);
     auto [bIdx, bVertex] = bodyB.extreme(-axis * glm::mat3(transform), idx.second);
 
     glm::vec4 vec = transform * glm::vec4(bVertex.x, bVertex.y, bVertex.z, 1.0f);
-    return { aIdx, bIdx, aVertex - glm::vec3{ vec.x, vec.y, vec.z }};
+    return { aIdx, bIdx, aVertex - glm::dvec3{ vec.x, vec.y, vec.z }};
 }

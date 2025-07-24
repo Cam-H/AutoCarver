@@ -275,7 +275,7 @@ void CompositeBody::colorHulls()
     if (!m_hulls.empty()) {
         uint32_t faceIdx = 0, hullIdx = 0;
         for (const ConvexHull& hull : m_hulls) {
-            const glm::vec3& color = BRIGHT_SET[hullIdx];
+            const glm::dvec3& color = BRIGHT_SET[hullIdx];
             hullIdx = (hullIdx + 1) % BRIGHT_SET.size();
 
             for (uint32_t i = 0; i < hull.faces().faceCount(); i++) m_mesh->setFaceColor(faceIdx++, color);
@@ -297,7 +297,7 @@ const std::vector<ConvexHull>& CompositeBody::hulls() const
     return m_hulls;
 }
 
-const glm::vec3& CompositeBody::baseColor() const
+const glm::dvec3& CompositeBody::baseColor() const
 {
     return m_baseColor;
 }

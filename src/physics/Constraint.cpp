@@ -13,9 +13,9 @@
 #include "geometry/collision/EPA.h"
 #include "geometry/Axis3D.h"
 
-const float BETA = 0.01f;
-const float DEPTH_SLOP = 0.01f;
-const float RESTITUTION_SLOP = 0.1f;
+const double BETA = 0.01;
+const double DEPTH_SLOP = 0.01;
+const double RESTITUTION_SLOP = 0.1;
 
 Constraint::Constraint(const std::shared_ptr<RigidBody>& a, const std::shared_ptr<RigidBody>& b, const EPA& collision)
     : rb1(a)
@@ -31,7 +31,7 @@ Constraint::Constraint(const std::shared_ptr<RigidBody>& a, const std::shared_pt
     , m_tangent2Impulse(0)
 {
 
-    glm::vec3 ca = a->mesh()->centroid(), cb = b->mesh()->centroid();
+    glm::dvec3 ca = a->mesh()->centroid(), cb = b->mesh()->centroid();
 //    std::cout << a << " " << ca.x << " " << ca.y << " " << ca.z << " || " << b << " " << cb.x << " " << cb.y << " " << cb.z << "\n";
 
     Axis3D system(normal);
@@ -53,11 +53,11 @@ Constraint::Constraint(const std::shared_ptr<RigidBody>& a, const std::shared_pt
     calculateEffectiveMass(m_JT2);
 
     // TODO select based on materials of colliding bodies
-    frictionCoefficient = 0.1f;
-    resitutionCoefficient = 0.0f;
+    frictionCoefficient = 0.1;
+    resitutionCoefficient = 0.0;
 }
 
-Jacobian Constraint::jacobian(const glm::vec3& axis)
+Jacobian Constraint::jacobian(const glm::dvec3& axis)
 {
     return { -axis, glm::cross(-lra, axis), axis, glm::cross(lrb, axis) };
 }
@@ -68,11 +68,11 @@ void Constraint::calculateEffectiveMass(Jacobian& J)
            + glm::dot(J.VB, J.VB) / rb2->mass() + glm::dot(J.WB * rb2->inertiaTensor(), J.WB);
 }
 
-void Constraint::iterateNormal(float step)
+void Constraint::iterateNormal(double step)
 {
-    float lambda = calculateImpulse(m_JN, baumgarteContribution(step) + restitutionContribution());
+    double lambda = calculateImpulse(m_JN, baumgarteContribution(step) + restitutionContribution());
 
-    float sum = std::max(0.0f, m_normalImpulse + lambda);
+    double sum = std::max(0.0, m_normalImpulse + lambda);
 
 //    std::cout << "IT " << lambda << " -> " << sum << " " << m_normalImpulse << "\n";
 
@@ -92,12 +92,12 @@ void Constraint::iterateFriction()
 //            << "\n" << glm::to_string(m_JT2.VA * m_tangent2Impulse / rb2->mass()) << "\n";
 }
 
-void Constraint::iterateFriction(const Jacobian& J, float& impulse)
+void Constraint::iterateFriction(const Jacobian& J, double& impulse)
 {
-    float lambda = calculateImpulse(J, 0);
+    double lambda = calculateImpulse(J, 0);
 
-    float limit = std::abs(frictionCoefficient * m_normalImpulse);
-    float sum = std::clamp(impulse + lambda, -limit, limit);
+    double limit = std::abs(frictionCoefficient * m_normalImpulse);
+    double sum = std::clamp(impulse + lambda, -limit, limit);
 
 //    std::cout << "IT " << lambda << " -> " << sum << " " << m_normalImpulse << "\n";
 
@@ -106,10 +106,10 @@ void Constraint::iterateFriction(const Jacobian& J, float& impulse)
     impulse = sum;
 }
 
-float Constraint::calculateImpulse(const Jacobian& J, float bias)
+double Constraint::calculateImpulse(const Jacobian& J, double bias)
 {
 
-    float numerator = glm::dot(J.VA, rb1->getLinearVelocity()) + glm::dot(J.WA, rb1->getAngularVelocity())
+    double numerator = glm::dot(J.VA, rb1->getLinearVelocity()) + glm::dot(J.WA, rb1->getAngularVelocity())
                     + glm::dot(J.VB, rb2->getLinearVelocity()) + glm::dot(J.WB, rb2->getAngularVelocity());
 
 //    std::cout << bias << " " << numerator << " " << m_effectiveMass << "\n";
@@ -121,25 +121,25 @@ float Constraint::calculateImpulse(const Jacobian& J, float bias)
     return numerator / J.mass;
 }
 
-float Constraint::penetration() const
+double Constraint::penetration() const
 {
     return depth;
 }
 
-float Constraint::baumgarteContribution(float step) const
+double Constraint::baumgarteContribution(double step) const
 {
-    return -BETA / step * std::max(depth - DEPTH_SLOP, 0.0f);
+    return -BETA / step * std::max(depth - DEPTH_SLOP, 0.0);
 }
-float Constraint::restitutionContribution() const
+double Constraint::restitutionContribution() const
 {
-    float speed = glm::dot(normal, -rb1->getLinearVelocity() + rb2->getLinearVelocity()
+    double speed = glm::dot(normal, -rb1->getLinearVelocity() + rb2->getLinearVelocity()
                             - glm::cross(rb1->getAngularVelocity(), lra)
                             + glm::cross(rb2->getAngularVelocity(), lrb));
 
-    return resitutionCoefficient * std::max(speed - RESTITUTION_SLOP, 0.0f);
+    return resitutionCoefficient * std::max(speed - RESTITUTION_SLOP, 0.0);
 }
 
-void Constraint::apply(const Jacobian& J, float impulse)
+void Constraint::apply(const Jacobian& J, double impulse)
 {
 
 //    std::cout << "Delta: " << depth << " " << impulse << "\n";

@@ -24,57 +24,57 @@ public:
     EPA(const T1& a, const T2& b, Simplex simplex);
 
     template<class T1, class T2>
-    EPA(const T1& a, const T2& b, Simplex simplex, const glm::mat4& relative);
+    EPA(const T1& a, const T2& b, Simplex simplex, const glm::dmat4& relative);
 
-    void setWorldTransform(const glm::mat4& transform);
+    void setWorldTransform(const glm::dmat4& transform);
 
     [[nodiscard]] bool colliding() const;
 
-    [[nodiscard]] glm::vec3 overlap() const;
-    [[nodiscard]] glm::vec3 offset() const;
+    [[nodiscard]] glm::dvec3 overlap() const;
+    [[nodiscard]] glm::dvec3 offset() const;
 
     [[nodiscard]] const std::pair<uint32_t, uint32_t>& nearest() const;
 
-    [[nodiscard]] const glm::vec3& colliderAClosestLocal() const;
-    [[nodiscard]] const glm::vec3& colliderAClosest() const;
+    [[nodiscard]] const glm::dvec3& colliderAClosestLocal() const;
+    [[nodiscard]] const glm::dvec3& colliderAClosest() const;
 
-    [[nodiscard]] const glm::vec3& colliderBClosestLocal() const;
-    [[nodiscard]] const glm::vec3& colliderBClosest() const;
+    [[nodiscard]] const glm::dvec3& colliderBClosestLocal() const;
+    [[nodiscard]] const glm::dvec3& colliderBClosest() const;
 
-    [[nodiscard]] float distance() const;
-
-    template<class T1, class T2>
-    static std::tuple<uint32_t, uint32_t, glm::vec3> gjkSupport(const T1& bodyA, const T2& bodyB, const glm::vec3& axis, const std::pair<uint32_t, uint32_t>& idx);
+    [[nodiscard]] double distance() const;
 
     template<class T1, class T2>
-    static std::tuple<uint32_t, uint32_t, glm::vec3> gjkSupport(const T1& bodyA, const T2& bodyB, const glm::vec3& axis, const glm::mat4& transform, const std::pair<uint32_t, uint32_t>& idx);
+    static std::tuple<uint32_t, uint32_t, glm::dvec3> gjkSupport(const T1& bodyA, const T2& bodyB, const glm::dvec3& axis, const std::pair<uint32_t, uint32_t>& idx);
+
+    template<class T1, class T2>
+    static std::tuple<uint32_t, uint32_t, glm::dvec3> gjkSupport(const T1& bodyA, const T2& bodyB, const glm::dvec3& axis, const glm::dmat4& transform, const std::pair<uint32_t, uint32_t>& idx);
 
 
 private:
 
     struct Facet {
         Triangle triangle;
-        glm::vec3 normal;
-        float value;
+        glm::dvec3 normal;
+        double value;
 
         std::vector<uint32_t> neighbors;
         bool onHull;
     };
 
-    glm::vec3 normal(uint32_t a, uint32_t b, uint32_t c);
+    glm::dvec3 normal(uint32_t a, uint32_t b, uint32_t c);
 
     template<class T1, class T2>
-    static void expandSimplex(const T1& a, const T2& b, const glm::mat4& relative, Simplex& simplex);
+    static void expandSimplex(const T1& a, const T2& b, const glm::dmat4& relative, Simplex& simplex);
 
     static bool isValid(const Simplex& simplex);
 
-    void prepareFacets(const Simplex& simplex, std::vector<std::pair<float, uint32_t>>& order);
-    void prepareFacets(const std::vector<uint32_t>& horizon, std::vector<std::pair<float, uint32_t>>& order);
+    void prepareFacets(const Simplex& simplex, std::vector<std::pair<double, uint32_t>>& order);
+    void prepareFacets(const std::vector<uint32_t>& horizon, std::vector<std::pair<double, uint32_t>>& order);
 
-    void calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon);
+    void calculateHorizon(const glm::dvec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon);
 
-    [[nodiscard]] glm::vec3 barycentric(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& p);
-    [[nodiscard]] static glm::vec3 fromBarycentric(const std::vector<glm::vec3>& va, const Triangle& triangle, const glm::vec3& bary);
+    [[nodiscard]] glm::dvec3 barycentric(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& p);
+    [[nodiscard]] static glm::dvec3 fromBarycentric(const std::vector<glm::dvec3>& va, const Triangle& triangle, const glm::dvec3& bary);
 
     void exportState(const std::string& path);
 private:
@@ -86,14 +86,14 @@ private:
 
     std::pair<uint32_t, uint32_t> m_nearest;
 
-    glm::vec3 m_localOffset;
-    glm::vec3 m_worldOffset;
+    glm::dvec3 m_localOffset;
+    glm::dvec3 m_worldOffset;
 
-    glm::vec3 m_aLocal;
-    glm::vec3 m_aWorld;
+    glm::dvec3 m_aLocal;
+    glm::dvec3 m_aWorld;
 
-    glm::vec3 m_bLocal;
-    glm::vec3 m_bWorld;
+    glm::dvec3 m_bLocal;
+    glm::dvec3 m_bWorld;
 
 };
 

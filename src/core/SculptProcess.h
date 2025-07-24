@@ -19,8 +19,8 @@ class SculptProcess : public Scene {
 public:
 
     struct Configuration {
-        float materialWidth = 1.0f;
-        float materialHeight = 2.0f;
+        double materialWidth = 1.0f;
+        double materialHeight = 2.0f;
     };
 
     explicit SculptProcess(const std::shared_ptr<Mesh>& model);
@@ -34,7 +34,7 @@ public:
     void proceed();
     void skip();
 
-    void step(float delta) override;
+    void step(double delta) override;
 
     void setSculptingRobot(const std::shared_ptr<Robot>& robot);
     void setContinuous(bool enable);
@@ -62,16 +62,16 @@ private:
     };
 
     void planConvexTrim();
-    void planOutlineRefinement(float stepDg);
+    void planOutlineRefinement(double stepDg);
     void planOutlineRefinement(Profile& profile);
 
     void planFeatureRefinement();
 
-    void planTurntableAlignment(const glm::vec3& axis);
-    void planTurntableAlignment(float theta);
+    void planTurntableAlignment(const glm::dvec3& axis);
+    void planTurntableAlignment(double theta);
 
-    void planPlanarSection(const Plane& plane, const std::vector<glm::vec3>& border);
-    void planRoboticSection(const std::vector<glm::vec3>& border);
+    void planPlanarSection(const Plane& plane, const std::vector<glm::dvec3>& border);
+    void planRoboticSection(const std::vector<glm::dvec3>& border);
 
     void nextAction();
 
@@ -86,7 +86,7 @@ private:
 
     std::shared_ptr<Robot> m_turntable;
     std::shared_ptr<Robot> m_robot;
-    glm::vec3 m_fwd;
+    glm::dvec3 m_fwd;
 
     Waypoint m_lastestTableCommand;
     Waypoint m_lastestRobotCommand;

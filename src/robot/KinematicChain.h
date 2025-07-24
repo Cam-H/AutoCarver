@@ -20,36 +20,36 @@ public:
     KinematicChain();
 
     void addJoint(Joint joint);
-    void setJointValues(const std::vector<float>& values);
+    void setJointValues(const std::vector<double>& values);
 
-    bool moveTo(const glm::vec3& position, const glm::vec3& euler);
+    bool moveTo(const glm::dvec3& position, const glm::dvec3& euler);
 
-    std::vector<float> invkin(const glm::mat4& transform);
-    std::vector<float> invkin(const glm::vec3& position, const Axis3D& axes);
-    std::vector<float> invkin(const glm::vec3& position, const glm::vec3& euler);
-    virtual std::vector<float> invkin(const glm::vec3& position, const glm::quat& rotation);
+    std::vector<double> invkin(const glm::dmat4& transform);
+    std::vector<double> invkin(const glm::dvec3& position, const Axis3D& axes);
+    std::vector<double> invkin(const glm::dvec3& position, const glm::dvec3& euler);
+    virtual std::vector<double> invkin(const glm::dvec3& position, const glm::dquat& rotation);
 
     uint32_t jointCount();
     Joint& getJoint(uint32_t idx);
     const std::vector<Joint>& getJoints();
 
-    std::vector<glm::mat4> jointTransforms();
+    std::vector<glm::dmat4> jointTransforms();
 
 protected:
-    std::vector<glm::mat4> jointHTMs();
+    std::vector<glm::dmat4> jointHTMs();
 
-    std::vector<glm::mat3> jointHRMs(const std::vector<float>& values);
-    std::vector<glm::mat4> jointHTMs(const std::vector<float>& values);
+    std::vector<glm::dmat3> jointHRMs(const std::vector<double>& values);
+    std::vector<glm::dmat4> jointHTMs(const std::vector<double>& values);
 
-    bool ikValidation(const std::vector<float>& values);
-    bool ikValidation(const std::vector<float>& values, const glm::vec3& position, const glm::quat& rotation);
+    bool ikValidation(const std::vector<double>& values);
+    bool ikValidation(const std::vector<double>& values, const glm::dvec3& position, const glm::dquat& rotation);
 
 protected:
     std::vector<Joint> m_joints;
 
     // YZ Transformation to correct difference in coordinate systems
-    glm::mat3 m_axisTransform3;
-    glm::mat4 m_axisTransform4;
+    glm::dmat3 m_axisTransform3;
+    glm::dmat4 m_axisTransform4;
 
 };
 

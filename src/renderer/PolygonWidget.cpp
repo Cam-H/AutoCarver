@@ -60,13 +60,13 @@ void PolygonWidget::center()
 
     glm::vec2 size = { width(), height() };
 
-    float margin = 0.1f, im = 1.0f - margin;
+    double margin = 0.1, im = 1.0 - margin;
     m_scalar = std::min(im * size.x / ((*xMax).x - (*xMin).x), im * size.y / ((*yMax).y - (*yMin).y));
 
-    m_offset = 0.5f * (-m_scalar * glm::vec2{
+    m_offset = 0.5 * (-m_scalar * glm::dvec2{
             (*xMax).x + (*xMin).x,
             -((*yMax).y + (*yMin).y)
-    } + glm::vec2{ size.x, size.y });
+    } + glm::dvec2{ size.x, size.y });
 
     m_centered = true;
     repaint();
@@ -92,7 +92,7 @@ glm::vec2 PolygonWidget::invTransformed(const glm::vec2& vertex) const
 {
     if (!m_centered) return { vertex.x, height() - vertex.y };
 
-    return glm::vec2{
+    return glm::dvec2{
              vertex.x - m_offset.x,
             -vertex.y + m_offset.y
     } / m_scalar;

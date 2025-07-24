@@ -146,7 +146,7 @@ void RenderCapture::addTarget(const std::shared_ptr<Mesh>& mesh, const QColor& c
     target.vbo.bind();
     target.ibo.bind();
 
-    target.vbo.allocate(mesh->vertices().vertices().data(), 3 * mesh->vertexCount() * sizeof(float));
+    target.vbo.allocate(mesh->vertices().vertices().data(), 3 * mesh->vertexCount() * sizeof(double));
     target.ibo.allocate(mesh->indices(), target.count * sizeof(uint32_t));
 
     target.color = color;
@@ -205,11 +205,11 @@ void RenderCapture::focusScene()
 {
     QVector3D fwd = m_camera.forward(), horz = m_camera.horizontal(), vert = m_camera.vertical();
 
-    glm::vec3 axis = { fwd.x(), fwd.y(), fwd.z() };
-    glm::vec3 hAxis = { horz.x(), horz.y(), horz.z() }, vAxis = { vert.x(), vert.y(), vert.z() };
+    glm::dvec3 axis = { fwd.x(), fwd.y(), fwd.z() };
+    glm::dvec3 hAxis = { horz.x(), horz.y(), horz.z() }, vAxis = { vert.x(), vert.y(), vert.z() };
 
     // Find maximum extents of the targets along the camera view axes
-    float left = 1e6, right = -1e6, bot = 1e6, top = -1e6;
+    double left = 1e6, right = -1e6, bot = 1e6, top = -1e6;
     for (const Target& target : m_targets) {
 
         auto [tLeft, tRight, tBot, tTop] = getBounds(target, axis, hAxis, vAxis);
@@ -231,8 +231,8 @@ void RenderCapture::focusTarget(const Target& target)
 {
     QVector3D fwd = m_camera.forward(), horz = m_camera.horizontal(), vert = m_camera.vertical();
 
-    glm::vec3 axis = { fwd.x(), fwd.y(), fwd.z() };
-    glm::vec3 hAxis = { horz.x(), horz.y(), horz.z() }, vAxis = { vert.x(), vert.y(), vert.z() };
+    glm::dvec3 axis = { fwd.x(), fwd.y(), fwd.z() };
+    glm::dvec3 hAxis = { horz.x(), horz.y(), horz.z() }, vAxis = { vert.x(), vert.y(), vert.z() };
 
     auto [left, right, bot, top] = getBounds(target, axis, hAxis, vAxis);
 
@@ -241,14 +241,14 @@ void RenderCapture::focusTarget(const Target& target)
     m_camera.setRect(left, right, bot, top);
 }
 
-std::tuple<float, float, float, float> RenderCapture::getBounds(const Target& target, const glm::vec3& fwd, const glm::vec3& horz, const glm::vec3& vert)
+std::tuple<double, double, double, double> RenderCapture::getBounds(const Target& target, const glm::dvec3& fwd, const glm::dvec3& horz, const glm::dvec3& vert)
 {
-    std::tuple<float, float, float, float> bounds;
-    float min, max;
+    std::tuple<double, double, double, double> bounds;
+    double min, max;
 
     // Ensure the camera is behind the target
     target.mesh->extents(fwd, min, max);
-    float dist = std::max(std::abs(min), max) + 1;
+    double dist = std::max(std::abs(min), max) + 1;
     if (m_camera.getRadius() < dist) m_camera.setRadius(dist);
 
     // Find extents in horizontal and vertical directions
@@ -258,23 +258,23 @@ std::tuple<float, float, float, float> RenderCapture::getBounds(const Target& ta
     return bounds;
 }
 
-void RenderCapture::correctBounds(float& left, float& right, float& bot, float& top)
+void RenderCapture::correctBounds(double& left, double& right, double& bot, double& top)
 {
     // Square bounds - Prevent distortion of the render
-    float width = right - left, height = top - bot;
+    double width = right - left, height = top - bot;
     if (width < height) {
-        float delta = (height - width) / 2;
+        double delta = (height - width) / 2;
         left -= delta;
         right += delta;
         width = height;
     } else if (height < width) {
-        float delta = (width - height) / 2;
+        double delta = (width - height) / 2;
         bot -= delta;
         top += delta;
     }
 
     // Apply a margin so the render does not touch edges
-    float margin = 0.1f * width;
+    double margin = 0.1f * width;
     left -= margin;
     right += margin;
     bot -= margin;
@@ -408,7 +408,7 @@ void RenderCapture::paintGL()
         target.ibo.bind();
 
         m_program->enableAttributeArray(0);
-        m_program->setAttributeBuffer(0, GL_FLOAT, 0, 3, 3 * sizeof(float));
+        m_program->setAttributeBuffer(0, GL_DOUBLE, 0, 3, 3 * sizeof(double));
 
         m_functions->glDrawElements(GL_TRIANGLES, target.count, GL_UNSIGNED_INT, nullptr);
 

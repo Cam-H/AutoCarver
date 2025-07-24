@@ -1,16 +1,10 @@
 #include <QApplication>
-#include <QLabel>
 #include <QSurfaceFormat>
-#include <QMainWindow>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QVBoxLayout>
 #include <QCheckBox>
-#include <QTextEdit>
-#include <QLineEdit>
 #include <QSpinBox>
-#include <QTableWidget>
-#include <QGraphicsWidget>
 
 #include <QFile>
 #include <QDir>
@@ -46,10 +40,10 @@ std::shared_ptr<RigidBody> collider = nullptr;
 
 bool updateMesh = true;
 
-std::array<float, 6> pos = { 0, 0, 0, 0, 0, 0 };
+std::array<double, 6> pos = { 0, 0, 0, 0, 0, 0 };
 uint32_t shapeType = 0, operationType = 0;
 
-float radius = 0.1f;
+double radius = 0.4;
 
 #include <QRandomGenerator>
 
@@ -59,10 +53,10 @@ std::shared_ptr<Mesh> randomMesh()
 
     // Generate a cloud of count vertices within a cube around the origin
     uint32_t count = rng.global()->bounded(8, 12);
-    std::vector<glm::vec3> cloud(count);
-    auto *ptr = (float*)cloud.data();
+    std::vector<glm::dvec3> cloud(count);
+    auto *ptr = (double*)cloud.data();
 
-    for (uint32_t j = 0; j < 3 * count; j++) *ptr++ = (float)rng.global()->bounded(2 * radius) - radius;
+    for (uint32_t j = 0; j < 3 * count; j++) *ptr++ = (double)rng.global()->bounded(2 * radius) - radius;
 
     return std::make_shared<Mesh>(ConvexHull(cloud), false);
 }
@@ -150,10 +144,10 @@ int main(int argc, char *argv[])
     std::array<std::string, 6> names = { "xField", "yField", "zField", "rxField", "ryField", "rzField" };
     for (uint32_t i = 0; i < 6; i++) {
         auto *jointField = jiw->findChild<QDoubleSpinBox*>(names[i].c_str());
-        QObject::connect(jointField, &QDoubleSpinBox::valueChanged, [i](float value) {
+        QObject::connect(jointField, &QDoubleSpinBox::valueChanged, [i](double value) {
             pos[i] = value;
 
-            const glm::vec3 position = { pos[0], pos[1], pos[2] };
+            const glm::dvec3 position = { pos[0], pos[1], pos[2] };
             collider->setPosition(position);
             collider->setRotation({ pos[3], pos[4], pos[5] });
 
@@ -162,7 +156,7 @@ int main(int argc, char *argv[])
                     apply(Sphere(position, radius));
                     break;
                 case 1:
-                    apply(AABB(position - radius * glm::vec3{ 1, 1, 1 }, radius));
+                    apply(AABB(position - 0.5 * radius * glm::dvec3{ 1, 1, 1 }, radius));
                     break;
                 case 2:
                 {
@@ -177,7 +171,7 @@ int main(int argc, char *argv[])
             sceneWidget->update();
         });
 
-        pos[i] = (float)jointField->value();
+        pos[i] = (double)jointField->value();
     }
 
     collider->setPosition({ pos[0], pos[1], pos[2] });
@@ -199,14 +193,14 @@ int main(int argc, char *argv[])
     // Handle mesh sphere button
     auto *sphereButton = widget->findChild<QPushButton*>("sphereButton");
     QObject::connect(sphereButton, &QPushButton::clicked, [&]() {
-        collider->setMesh(MeshBuilder::icosphere(0.1f, 3), true);
+        collider->setMesh(MeshBuilder::icosphere(radius, 3), true);
         shapeType = 0;
     });
 
     // Handle mesh cube button
     auto *cubeButton = widget->findChild<QPushButton*>("cubeButton");
     QObject::connect(cubeButton, &QPushButton::clicked, [&]() {
-        collider->setMesh(MeshBuilder::box(), true);
+        collider->setMesh(MeshBuilder::box(radius), true);
         shapeType = 1;
     });
 
@@ -254,7 +248,7 @@ int main(int argc, char *argv[])
         operationType = 3;
     });
 
-    oct = std::make_shared<Octree>(depthField->value(), 5.0f);
+    oct = std::make_shared<Octree>(depthField->value(), 5.0);
 
     auto model = MeshBuilder::mesh(oct);
     model->setBaseColor({1, 1, 1 });

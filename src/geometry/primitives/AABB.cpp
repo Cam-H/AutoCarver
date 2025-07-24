@@ -7,13 +7,13 @@
 #include "ConvexHull.h"
 #include "geometry/VertexArray.h"
 
-AABB::AABB(const glm::vec3& min, float sideLength)
-    : AABB(min, min + glm::vec3{ sideLength, sideLength, sideLength})
+AABB::AABB(const glm::dvec3& min, double sideLength)
+    : AABB(min, min + glm::dvec3{ sideLength, sideLength, sideLength})
 {
 
 }
 
-AABB::AABB(const glm::vec3& min, const glm::vec3& max)
+AABB::AABB(const glm::dvec3& min, const glm::dvec3& max)
     : min(min)
     , max(max)
 {
@@ -23,7 +23,7 @@ AABB::AABB(const ConvexHull& hull)
         : min()
         , max()
 {
-    float near, far;
+    double near, far;
 
     hull.extents({ 1, 0, 0 }, near, far);
     min.x = near;
@@ -38,11 +38,11 @@ AABB::AABB(const ConvexHull& hull)
     max.z = far;
 }
 
-AABB::AABB(const std::vector<glm::vec3>& vertices)
+AABB::AABB(const std::vector<glm::dvec3>& vertices)
         : min()
         , max()
 {
-    float near, far;
+    double near, far;
 
     VertexArray::extents(vertices, { 1, 0, 0 }, near, far);
     min.x = near;
@@ -62,30 +62,30 @@ bool AABB::isValid() const
     return min.x < max.x && min.y < max.y && min.z < max.z;
 }
 
-float AABB::xLength() const
+double AABB::xLength() const
 {
     return max.x - min.x;
 }
-float AABB::yLength() const
+double AABB::yLength() const
 {
     return max.y - min.y;
 }
-float AABB::zLength() const
+double AABB::zLength() const
 {
     return max.z - min.z;
 }
 
-float AABB::maxLength() const
+double AABB::maxLength() const
 {
     return std::max(xLength(), std::max(yLength(), zLength()));
 }
 
-glm::vec3 AABB::center() const
+glm::dvec3 AABB::center() const
 {
-    return 0.5f * (min + max);
+    return 0.5 * (min + max);
 }
 
-glm::vec3 AABB::vertex(uint32_t index) const
+glm::dvec3 AABB::vertex(uint32_t index) const
 {
     switch (index) {
         case 0: return min;
@@ -101,17 +101,17 @@ glm::vec3 AABB::vertex(uint32_t index) const
 }
 
 
-glm::vec3 AABB::start() const
+glm::dvec3 AABB::start() const
 {
     return center();
 }
 
-uint32_t AABB::supportIndex(const glm::vec3& axis, uint32_t startIndex) const
+uint32_t AABB::supportIndex(const glm::dvec3& axis, uint32_t startIndex) const
 {
     return 4 * (axis.x < 0) + 2 * (axis.y < 0) + (axis.z < 0);
 }
 
-std::tuple<uint32_t, glm::vec3> AABB::extreme(const glm::vec3& axis, uint32_t startIndex) const
+std::tuple<uint32_t, glm::dvec3> AABB::extreme(const glm::dvec3& axis, uint32_t startIndex) const
 {
     auto index = supportIndex(axis);
     return { index, vertex(index) };

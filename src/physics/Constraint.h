@@ -13,12 +13,12 @@ class RigidBody;
 class EPA;
 
 struct Jacobian {
-    glm::vec3 VA;
-    glm::vec3 WA;
-    glm::vec3 VB;
-    glm::vec3 WB;
+    glm::dvec3 VA;
+    glm::dvec3 WA;
+    glm::dvec3 VB;
+    glm::dvec3 WB;
 
-    float mass;
+    double mass;
 };
 
 class Constraint {
@@ -26,46 +26,46 @@ public:
 
     Constraint(const std::shared_ptr<RigidBody>& a, const std::shared_ptr<RigidBody>& b, const EPA& collision);
 
-    void iterateNormal(float step);
+    void iterateNormal(double step);
     void iterateFriction();
 
-    float penetration() const;
+    double penetration() const;
 
 protected:
 
-    Jacobian jacobian(const glm::vec3& axis);
+    Jacobian jacobian(const glm::dvec3& axis);
     void calculateEffectiveMass(Jacobian& J);
 
-    void iterateFriction(const Jacobian& J, float& impulse);
+    void iterateFriction(const Jacobian& J, double& impulse);
 
 
-    float calculateImpulse(const Jacobian& J, float bias);
+    double calculateImpulse(const Jacobian& J, double bias);
 
-    float baumgarteContribution(float step) const;
-    float restitutionContribution() const;
+    double baumgarteContribution(double step) const;
+    double restitutionContribution() const;
 
-    void apply(const Jacobian& J, float impulse);
+    void apply(const Jacobian& J, double impulse);
 
 protected:
 
     std::shared_ptr<RigidBody> rb1;
     std::shared_ptr<RigidBody> rb2;
 
-    glm::vec3 lra;
-    glm::vec3 lrb;
+    glm::dvec3 lra;
+    glm::dvec3 lrb;
 
-    glm::vec3 normal;
-    float depth;
+    glm::dvec3 normal;
+    double depth;
 
-    glm::vec3 m_tangent1;
-    glm::vec3 m_tangent2;
+    glm::dvec3 m_tangent1;
+    glm::dvec3 m_tangent2;
 
-    float frictionCoefficient;
-    float resitutionCoefficient;
+    double frictionCoefficient;
+    double resitutionCoefficient;
 
-    float m_normalImpulse;
-    float m_tangent1Impulse;
-    float m_tangent2Impulse;
+    double m_normalImpulse;
+    double m_tangent1Impulse;
+    double m_tangent2Impulse;
 
 private:
 

@@ -12,29 +12,29 @@ public:
 
     Transformable();
 
-    void setPosition(const glm::vec3& position);
-    void setRotation(const glm::vec3& euler);
+    void setPosition(const glm::dvec3& position);
+    void setRotation(const glm::dvec3& euler);
 
-    void translate(const glm::vec3& translation);
-    void rotate(const glm::vec3& axis, float theta);
-    void rotate(const glm::vec3& w);
+    void translate(const glm::dvec3& translation);
+    void rotate(const glm::dvec3& axis, double theta);
+    void rotate(const glm::dvec3& w);
 
-    void globalTranslate(const glm::vec3& translation);
-    void globalRotate(const glm::vec3& axis, float theta);
+    void globalTranslate(const glm::dvec3& translation);
+    void globalRotate(const glm::dvec3& axis, double theta);
 
-    void transform(const glm::mat4x4& transform);
+    void transform(const glm::dmat4x4& transform);
 
-    void setTransform(glm::mat4x4 transform);
-    const glm::mat4x4& getTransform();
+    void setTransform(glm::dmat4x4 transform);
+    const glm::dmat4x4& getTransform();
 
     virtual void moved();
 
-    [[nodiscard]] glm::vec3 position() const;
-    [[nodiscard]] glm::vec3 up() const;
+    [[nodiscard]] glm::dvec3 position() const;
+    [[nodiscard]] glm::dvec3 up() const;
 
 protected:
 
-    glm::mat4 m_transform;
+    glm::dmat4 m_transform;
 };
 
 

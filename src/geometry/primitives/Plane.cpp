@@ -11,13 +11,13 @@
 
 Plane::Plane() : origin(0, 0, 0), normal(0, 1, 0) {}
 
-Plane::Plane(const glm::vec3& origin, const glm::vec3& normal)
+Plane::Plane(const glm::dvec3& origin, const glm::dvec3& normal)
     : origin(origin)
     , normal(normal)
 {
 }
 
-void Plane::rotate(const glm::vec3& axis, float theta)
+void Plane::rotate(const glm::dvec3& axis, double theta)
 {
     normal = normal * glm::angleAxis(theta, axis);
 }
@@ -27,16 +27,16 @@ bool Plane::isValid() const
     return glm::dot(normal, normal) > 1e-6;
 }
 
-glm::vec3 Plane::project(const glm::vec3& vertex) const
+glm::dvec3 Plane::project(const glm::dvec3& vertex) const
 {
     return project(*this, vertex);
 }
 
-glm::vec3 Plane::project(const glm::vec3& origin, const glm::vec3& normal, const glm::vec3& vertex)
+glm::dvec3 Plane::project(const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& vertex)
 {
     return vertex - normal * glm::dot(normal, vertex - origin);
 }
-glm::vec3 Plane::project(const Plane& plane, const glm::vec3& vertex)
+glm::dvec3 Plane::project(const Plane& plane, const glm::dvec3& vertex)
 {
     return vertex - plane.normal * glm::dot(plane.normal, vertex - plane.origin);
 }

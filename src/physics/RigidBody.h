@@ -46,9 +46,9 @@ public:
     void setLayer(uint32_t layer);
     void setMask(uint32_t mask);
 
-    void setDensity(float density);
+    void setDensity(double density);
 
-    void step(float delta);
+    void step(double delta);
 
     void zero();
 
@@ -58,18 +58,18 @@ public:
     Type getType() const;
 
     bool isManifold();
-    float area();
+    double area();
 
-    float volume();
-    float density() const;
-    float mass();
-    glm::vec3 centroid();
-    glm::mat3x3 inertiaTensor();
+    double volume();
+    double density() const;
+    double mass();
+    glm::dvec3 centroid();
+    glm::dmat3 inertiaTensor();
 
-    void setLinearVelocity(glm::vec3 velocity);
-    [[nodiscard]] const glm::vec3& getLinearVelocity() const;
-    void setAngularVelocity(glm::vec3 velocity);
-    [[nodiscard]] const glm::vec3& getAngularVelocity() const;
+    void setLinearVelocity(glm::dvec3 velocity);
+    [[nodiscard]] const glm::dvec3& getLinearVelocity() const;
+    void setAngularVelocity(glm::dvec3 velocity);
+    [[nodiscard]] const glm::dvec3& getAngularVelocity() const;
 
     const std::shared_ptr<Mesh>& mesh();
 
@@ -87,7 +87,7 @@ public:
     bool boundaryCollision(const std::shared_ptr<RigidBody>& body);
 
     bool collides(const std::shared_ptr<RigidBody>& body);
-    bool collision(const std::shared_ptr<RigidBody>& body, glm::vec3& offset);
+    bool collision(const std::shared_ptr<RigidBody>& body, glm::dvec3& offset);
 
     EPA collision(const std::shared_ptr<RigidBody>& body);
 
@@ -128,11 +128,11 @@ protected:
 
 
     bool m_isManifold;
-    float m_area;
-    float m_volume;
-    float m_density;
-    float m_mass;
-    glm::mat3x3 m_inertiaTensor;
+    double m_area;
+    double m_volume;
+    double m_density;
+    double m_mass;
+    glm::dmat3 m_inertiaTensor;
 
     bool m_isManifoldOK;
     bool m_areaOK;
@@ -140,8 +140,8 @@ protected:
     bool m_massOK;
     bool m_inertiaTensorOK;
 
-    glm::vec3 m_linearVelocity;
-    glm::vec3 m_angularVelocity;
+    glm::dvec3 m_linearVelocity;
+    glm::dvec3 m_angularVelocity;
 
 
 private:

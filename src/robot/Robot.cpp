@@ -24,11 +24,11 @@ Robot::Robot(const std::shared_ptr<KinematicChain>& kinematics, const std::share
 // Prepare links based on the kinematic chain
 void Robot::prepareLinks()
 {
-    float height = 0.3f;
+    double height = 0.3f;
     for (const Joint& joint : m_kinematics->getJoints()) {
 //        auto mesh = MeshBuilder::cylinder(0.25f, height, 8);
 
-        auto mesh = MeshBuilder::cylinder(0.12f, height, 8);
+        auto mesh = MeshBuilder::cylinder(0.12, height, 8);
 
 
         mesh->translate({ 0, -height / 2, 0 });
@@ -41,7 +41,7 @@ void Robot::prepareLinks()
         if (joint.getParameters().len > 0 || joint.getParameters().dist > 0) {
 
 //            auto linkMesh = MeshBuilder::box(std::max(0.2f, joint.getParameters().len), std::max(0.2f, joint.getParameters().dist), 0.2);
-            auto linkMesh = MeshBuilder::box(std::max(0.08f, joint.getParameters().len), std::max(0.08f, joint.getParameters().dist), 0.08f);
+            auto linkMesh = MeshBuilder::box(std::max(0.08, joint.getParameters().len), std::max(0.08, joint.getParameters().dist), 0.08);
             linkMesh->translate({ joint.getParameters().len / 2, 0, joint.getParameters().dist / 2 });
             linkMesh->setFaceColor({ 1.0f, 1.0f, 0.0f });
             mesh = MeshBuilder::merge(mesh, linkMesh);
@@ -77,7 +77,7 @@ void Robot::step()
     if (inTransit()) moveTo(m_currentTrajectory->next());
 }
 
-void Robot::step(float delta)
+void Robot::step(double delta)
 {
     if (inTransit()) moveTo(m_currentTrajectory->timestep(delta));
 }
@@ -93,10 +93,10 @@ void Robot::setEOAT(const std::shared_ptr<RigidBody>& eoat, bool preserveTransfo
 
     if (m_eoat != nullptr && preserveTransform) {
         m_eoatRelativeTransform = glm::inverse(getEOATTransform()) * m_eoat->getTransform();
-    } else m_eoatRelativeTransform = glm::mat4x4(1.0f);
+    } else m_eoatRelativeTransform = glm::dmat4x4(1.0f);
 }
 
-void Robot::setJointValue(uint32_t idx, float value)
+void Robot::setJointValue(uint32_t idx, double value)
 {
     if (idx < m_kinematics->jointCount()) {
         m_kinematics->getJoint(idx).setValue(value);
@@ -106,12 +106,12 @@ void Robot::setJointValue(uint32_t idx, float value)
     }
 }
 
-void Robot::setJointValueDg(uint32_t idx, float value)
+void Robot::setJointValueDg(uint32_t idx, double value)
 {
-    setJointValue(idx, (float)(value * M_PI / 180));
+    setJointValue(idx, (double)(value * M_PI / 180));
 }
 
-void Robot::moveTo(const glm::vec3& position, const glm::vec3& euler)
+void Robot::moveTo(const glm::dvec3& position, const glm::dvec3& euler)
 {
     m_kinematics->moveTo(position, euler);
     update();
@@ -132,7 +132,7 @@ void Robot::traverse(const std::shared_ptr<Trajectory>& trajectory)
 
 void Robot::updateTransforms()
 {
-    const std::vector<glm::mat4> transforms = m_kinematics->jointTransforms();
+    const std::vector<glm::dmat4> transforms = m_kinematics->jointTransforms();
     for (uint32_t i = 0; i < transforms.size(); i++) { // -1 if no EOAT
         m_links[i]->setTransform(m_transform * transforms[i]);
     }
@@ -147,20 +147,20 @@ const std::vector<std::shared_ptr<RigidBody>>& Robot::links()
     return m_links;
 }
 
-float Robot::getJointValue(uint32_t idx)
+double Robot::getJointValue(uint32_t idx)
 {
     return m_kinematics->getJoint(idx).getValue();
 }
-float Robot::getJointValueDg(uint32_t idx)
+double Robot::getJointValueDg(uint32_t idx)
 {
-    return (float)(getJointValue(idx) * 180.0f / M_PI);
+    return (double)(getJointValue(idx) * 180.0f / M_PI);
 }
 
 Waypoint Robot::getWaypoint() const
 {
     if (m_kinematics == nullptr) return {};
 
-    std::vector<float> values;
+    std::vector<double> values;
     values.reserve(m_kinematics->jointCount());
     for (uint32_t i = 0; i < m_kinematics->jointCount(); i++) values.emplace_back(m_kinematics->getJoint(i).getValue());
     return {
@@ -170,25 +170,25 @@ Waypoint Robot::getWaypoint() const
     };
 }
 
-const glm::mat4x4& Robot::getEOATTransform() const
+const glm::dmat4x4& Robot::getEOATTransform() const
 {
     if (m_links.empty()) throw std::runtime_error("[Robot] No Links!");
     return m_links[m_links.size() - 1]->getTransform();
 }
 
-glm::vec3 Robot::getEOATPosition() const
+glm::dvec3 Robot::getEOATPosition() const
 {
     if (m_links.empty()) return {};
 
-    const glm::mat4& transform = m_links[m_links.size() - 1]->getTransform();
+    const glm::dmat4& transform = m_links[m_links.size() - 1]->getTransform();
     return { transform[3][0], transform[3][1], transform[3][2] };
 }
 
-glm::vec3 Robot::getEOATEuler() const
+glm::dvec3 Robot::getEOATEuler() const
 {
     if (m_links.empty()) return {};
 
-    const glm::mat4& transform = m_links[m_links.size() - 1]->getTransform();
+    const glm::dmat4& transform = m_links[m_links.size() - 1]->getTransform();
     return glm::eulerAngles(glm::quat_cast(transform));
 }
 
@@ -197,7 +197,7 @@ bool Robot::inTransit()
     return m_currentTrajectory != nullptr && !m_currentTrajectory->complete();
 }
 
-Waypoint Robot::inverse(const glm::vec3& position, const Axis3D& axes) const
+Waypoint Robot::inverse(const glm::dvec3& position, const Axis3D& axes) const
 {
     return {
             m_kinematics->invkin(position, axes),
@@ -206,7 +206,7 @@ Waypoint Robot::inverse(const glm::vec3& position, const Axis3D& axes) const
     };
 }
 
-Waypoint Robot::inverse(const glm::vec3& position, const glm::vec3& euler) const
+Waypoint Robot::inverse(const glm::dvec3& position, const glm::dvec3& euler) const
 {
     auto values = m_kinematics->invkin(position, euler);
 

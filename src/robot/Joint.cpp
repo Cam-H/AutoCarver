@@ -6,11 +6,11 @@
 
 #include <iostream>
 
-Joint::Joint(Joint::Type type, const DHParameter& parameters, float initialValue)
+Joint::Joint(Joint::Type type, const DHParameter& parameters, double initialValue)
     : m_jointType(type)
     , m_parameters(parameters)
-    , m_lowerLimit(std::numeric_limits<float>::lowest())
-    , m_upperLimit(std::numeric_limits<float>::max())
+    , m_lowerLimit(std::numeric_limits<double>::lowest())
+    , m_upperLimit(std::numeric_limits<double>::max())
     , m_value(initialValue)
     , m_htm(calculateHTM())
 {
@@ -22,13 +22,13 @@ void Joint::recalculate()
     m_htm = calculateHTM();
 }
 
-void Joint::setJointLimits(float lower, float upper)
+void Joint::setJointLimits(double lower, double upper)
 {
     m_lowerLimit = lower;
     m_upperLimit = upper;
 }
 
-void Joint::setValue(float value)
+void Joint::setValue(double value)
 {
     m_value = std::clamp(value, m_lowerLimit, m_upperLimit);
     recalculate();
@@ -39,38 +39,38 @@ const DHParameter& Joint::getParameters() const
     return m_parameters;
 }
 
-float Joint::getLowerLimit() const
+double Joint::getLowerLimit() const
 {
     return m_lowerLimit;
 }
-float Joint::getUpperLimit() const
+double Joint::getUpperLimit() const
 {
     return m_upperLimit;
 }
 
-float Joint::getValue() const
+double Joint::getValue() const
 {
     return m_value;
 }
 
-bool Joint::withinLimits(float value) const
+bool Joint::withinLimits(double value) const
 {
     return value > m_lowerLimit && value < m_upperLimit;
 }
 
-glm::mat4x4 Joint::calculateHTM() const
+glm::dmat4 Joint::calculateHTM() const
 {
     return calculateHTM(m_value);
 }
 
-glm::mat4x4 Joint::calculateHTM(float value) const
+glm::dmat4 Joint::calculateHTM(double value) const
 {
-    float dist = distance(value), theta = angle(value);
+    double dist = distance(value), theta = angle(value);
 
-    float ct = cosf(theta), st = sinf(theta);
-    float ca = cosf(m_parameters.alpha), sa = sinf(m_parameters.alpha);
+    double ct = cos(theta), st = sin(theta);
+    double ca = cos(m_parameters.alpha), sa = sin(m_parameters.alpha);
 
-    auto htm = glm::mat4x4(
+    auto htm = glm::dmat4x4(
             ct, st, 0, 0,
             -st * ca, ct * ca, sa, 0,
             st * sa, -ct * sa, ca, 0,
@@ -80,16 +80,16 @@ glm::mat4x4 Joint::calculateHTM(float value) const
     return htm;
 }
 
-glm::mat3x3 Joint::calculateHRM() const
+glm::dmat3 Joint::calculateHRM() const
 {
     return calculateHRM(m_value);
 }
-glm::mat3x3 Joint::calculateHRM(float value) const
+glm::dmat3 Joint::calculateHRM(double value) const
 {
-    float theta = angle(value);
+    double theta = angle(value);
 
-    float ct = cosf(theta), st = sinf(theta);
-    float ca = cosf(m_parameters.alpha), sa = sinf(m_parameters.alpha);
+    double ct = cos(theta), st = sin(theta);
+    double ca = cos(m_parameters.alpha), sa = sin(m_parameters.alpha);
 
     return {
             ct, st, 0,
@@ -98,16 +98,16 @@ glm::mat3x3 Joint::calculateHRM(float value) const
     };
 }
 
-const glm::mat4x4& Joint::getHTM() const
+const glm::dmat4& Joint::getHTM() const
 {
     return m_htm;
 }
 
-glm::mat4x4 Joint::localRotationMatrix() const
+glm::dmat4 Joint::localRotationMatrix() const
 {
     if (m_jointType != Joint::Type::REVOLUTE) return {1.0f};
 
-    float ct = cosf(m_value), st = sinf(m_value);
+    double ct = cos(m_value), st = sin(m_value);
 
     return {
             ct, st, 0, 0,
@@ -117,11 +117,11 @@ glm::mat4x4 Joint::localRotationMatrix() const
     };
 }
 
-float Joint::distance(float value) const
+double Joint::distance(double value) const
 {
     return m_parameters.dist + (m_jointType == Joint::Type::PRISMATIC ? value : 0);
 }
-float Joint::angle(float value) const
+double Joint::angle(double value) const
 {
     return m_parameters.theta + (m_jointType == Joint::Type::REVOLUTE ? value : 0);
 }

@@ -52,7 +52,7 @@ void EdgeDetect::setSize(uint32_t size)
     m_size = size;
 }
 
-void EdgeDetect::setEpsilon(float epsilon)
+void EdgeDetect::setEpsilon(double epsilon)
 {
     m_epsilon = epsilon;
 }
@@ -83,7 +83,7 @@ void EdgeDetect::update()
         if (!m_contours.empty()) {
 
             // A bit of styling for debugging purposes
-            for (const glm::vec2& vertex : m_contours[0].points) {
+            for (const glm::dvec2& vertex : m_contours[0].points) {
                 m_data[(int)(std::round(vertex.x + vertex.y * m_size))] = 150;
             }
 
@@ -100,13 +100,13 @@ void EdgeDetect::update()
     m_sink = QImage(m_data, m_size, m_size, QImage::Format::Format_Grayscale8);
 }
 
-uint32_t EdgeDetect::limit(const std::vector<glm::vec2>& contour, const glm::vec2& axis)
+uint32_t EdgeDetect::limit(const std::vector<glm::dvec2>& contour, const glm::dvec2& axis)
 {
     uint32_t idx = 0;
-    float value = std::numeric_limits<float>::lowest();
+    double value = std::numeric_limits<double>::lowest();
 
     for (uint32_t i = 0; i < contour.size(); i++) {
-        float delta = glm::dot(axis, contour[i]);
+        double delta = glm::dot(axis, contour[i]);
         if (delta > value) {
             value = delta;
             idx = i;
@@ -224,23 +224,23 @@ bool EdgeDetect::inBounds(int x, int y, uint32_t size)
     return x >= 0 && y >= 0 && x < size && y < size;
 }
 
-void EdgeDetect::douglasPeucker(Contour& contour, float epsilon)
+void EdgeDetect::douglasPeucker(Contour& contour, double epsilon)
 {
     if (contour.points.size() < 3) return;
 
     std::vector<uint32_t> limits = { 0, (uint32_t)contour.points.size() / 2, (uint32_t)contour.points.size() - 1 };
 
-    float delta = 0;
+    double delta = 0;
     uint32_t current = 1, idx = 0;
 
     while (limits.size() > 1) {
-        glm::vec2 axis = contour.points[limits[current + 1]] - contour.points[limits[current]];
+        glm::dvec2 axis = contour.points[limits[current + 1]] - contour.points[limits[current]];
         axis = { axis.y, -axis.x };
 
         // Identify the vertex that deviates the most from the current line
         uint32_t low = limits[current] + 1, up = limits[current + 1] - 1;
         for (uint32_t i = low; i < up; i++) {
-            float test = std::abs(glm::dot(axis, contour.points[i] - contour.points[limits[current]]));
+            double test = std::abs(glm::dot(axis, contour.points[i] - contour.points[limits[current]]));
             if (test > delta) {
                 delta = test;
                 idx = i;
@@ -259,7 +259,7 @@ void EdgeDetect::douglasPeucker(Contour& contour, float epsilon)
     }
 }
 
-void EdgeDetect::findBorder(std::vector<glm::vec2>& contour)
+void EdgeDetect::findBorder(std::vector<glm::dvec2>& contour)
 {
 
     updateModelDirections();
@@ -269,19 +269,19 @@ void EdgeDetect::findBorder(std::vector<glm::vec2>& contour)
 
     // Convex border around the render
     std::vector<uint32_t> cHull = Polygon::hull(contour);
-    std::vector<glm::vec2> hContour;
+    std::vector<glm::dvec2> hContour;
     hContour.reserve(cHull.size());
     for (uint32_t idx : cHull) hContour.push_back(contour[idx]);
 
     // Estimate scalar between model and render co-ordinates
-    float scale = estimateScale(hull, hContour);
+    double scale = estimateScale(hull, hContour);
 
     // Project model hull on to the render
-    std::vector<glm::vec2> projection;
+    std::vector<glm::dvec2> projection;
     projection.reserve(hull.size());
 
     for (uint32_t i : hull) {
-        projection.emplace_back(scale * glm::vec2{
+        projection.emplace_back(scale * glm::dvec2{
                 glm::dot(m_right, m_hull.vertices()[i]),
                 glm::dot(-m_up, m_hull.vertices()[i])
         });
@@ -291,8 +291,8 @@ void EdgeDetect::findBorder(std::vector<glm::vec2>& contour)
 
     // Find a reasonable reference vertex to use as the origin & offset projection accordingly
     auto [hShift, cShift] = findReferenceVertex(projection, hContour);
-    glm::vec2 offset = hContour[cShift] - projection[hShift];
-    for (glm::vec2& proj : projection) proj += offset;
+    glm::dvec2 offset = hContour[cShift] - projection[hShift];
+    for (glm::dvec2& proj : projection) proj += offset;
 
     // Match model vertices to the image corners
     auto border = matchVertices(projection, hContour, hShift, cShift);
@@ -303,7 +303,7 @@ void EdgeDetect::findBorder(std::vector<glm::vec2>& contour)
     // Apply calculated offsets to render to convert to model space
     scale = 1 / scale;
 
-    for (glm::vec2& vertex : contour) {
+    for (glm::dvec2& vertex : contour) {
         vertex = {
                 (vertex.x - offset.x) * scale,
                 (offset.y - vertex.y) * scale
@@ -311,7 +311,7 @@ void EdgeDetect::findBorder(std::vector<glm::vec2>& contour)
     }
 //    std::reverse(contour.begin(), contour.end());
 
-//    for (glm::vec2& vertex : contour) vertex = (vertex - offset) * scale;
+//    for (glm::dvec2& vertex : contour) vertex = (vertex - offset) * scale;
 
 
     // Apply second transformation to contour to compensate for
@@ -322,43 +322,43 @@ void EdgeDetect::findBorder(std::vector<glm::vec2>& contour)
 
 }
 
-float EdgeDetect::estimateScale(const std::vector<uint32_t>& hull, const std::vector<glm::vec2>& contour)
+double EdgeDetect::estimateScale(const std::vector<uint32_t>& hull, const std::vector<glm::dvec2>& contour)
 {
     // Image scale calculation
     uint32_t top = limit(contour, {0, -1}), bot = limit(contour, {0, 1});
 
-    const float imgScale = glm::dot({0, -1}, contour[top] - contour[bot]);
+    const double imgScale = glm::dot({0, -1}, contour[top] - contour[bot]);
 
     // Model scale calculation
     bot = hull[1];
     for (uint32_t i = 2; i < hull.size(); i++)
         if (glm::dot(m_up, m_hull.vertices()[hull[i]] - m_hull.vertices()[bot]) < 0) bot = hull[i];
 
-    const float modelScale = glm::dot(m_up, m_hull.vertices()[hull[0]] - m_hull.vertices()[bot]);
+    const double modelScale = glm::dot(m_up, m_hull.vertices()[hull[0]] - m_hull.vertices()[bot]);
 
     return imgScale / modelScale;
 }
 
-std::tuple<size_t, size_t> EdgeDetect::findReferenceVertex(const std::vector<glm::vec2>& hull, const std::vector<glm::vec2>& contour)
+std::tuple<size_t, size_t> EdgeDetect::findReferenceVertex(const std::vector<glm::dvec2>& hull, const std::vector<glm::dvec2>& contour)
 {
-    glm::vec2 prev = hull[hull.size() - 1] - hull[0];
-    float pLength = glm::length(prev); prev *= 1 / pLength;
+    glm::dvec2 prev = hull[hull.size() - 1] - hull[0];
+    double pLength = glm::length(prev); prev *= 1 / pLength;
 
     uint32_t hShift = 0, cShift = 0;
-    glm::vec2 shiftDirection = {};
-    float best = std::numeric_limits<float>::lowest();
+    glm::dvec2 shiftDirection = {};
+    double best = std::numeric_limits<double>::lowest();
 
     // Try to select the most isolated vertex to use as a reference (sharp angle + distance from neighbors)
     for (uint32_t i = 0; i < hull.size(); i++) {
-        glm::vec2 next = hull[(i + 1) % hull.size()] - hull[i];
-        float nLength = glm::length(next); next *= 1 / nLength;
+        glm::dvec2 next = hull[(i + 1) % hull.size()] - hull[i];
+        double nLength = glm::length(next); next *= 1 / nLength;
 
-        float value = 1 + glm::dot(prev, next);
+        double value = 1 + glm::dot(prev, next);
         value *= value * (pLength + nLength);
 
         if (value > best) {
             best = value;
-            shiftDirection = -0.5f * (prev + next);
+            shiftDirection = -0.5 * (prev + next);
             hShift = i;
         }
 
@@ -367,9 +367,9 @@ std::tuple<size_t, size_t> EdgeDetect::findReferenceVertex(const std::vector<glm
     }
 
     // Select a matching contour vertex in the same direction
-    best = std::numeric_limits<float>::lowest();
+    best = std::numeric_limits<double>::lowest();
     for (uint32_t i = 0; i < contour.size(); i++) {
-        float value = glm::dot(contour[i], shiftDirection);
+        double value = glm::dot(contour[i], shiftDirection);
         if (value > best) {
             best = value;
             cShift = i;
@@ -379,7 +379,7 @@ std::tuple<size_t, size_t> EdgeDetect::findReferenceVertex(const std::vector<glm
     return { hShift, cShift };
 }
 
-std::vector<std::pair<size_t, size_t>> EdgeDetect::matchVertices(const std::vector<glm::vec2>& hull, const std::vector<glm::vec2>& contour, uint32_t hShift, uint32_t cShift)
+std::vector<std::pair<size_t, size_t>> EdgeDetect::matchVertices(const std::vector<glm::dvec2>& hull, const std::vector<glm::dvec2>& contour, uint32_t hShift, uint32_t cShift)
 {
 
     // Determine the warping path
@@ -395,7 +395,7 @@ std::vector<std::pair<size_t, size_t>> EdgeDetect::matchVertices(const std::vect
     return path;
 }
 
-std::vector<std::pair<size_t, size_t>> EdgeDetect::cyclicTimeWarp(const std::vector<glm::vec2>& hull, const std::vector<glm::vec2>& contour)
+std::vector<std::pair<size_t, size_t>> EdgeDetect::cyclicTimeWarp(const std::vector<glm::dvec2>& hull, const std::vector<glm::dvec2>& contour)
 {
     uint32_t minHShift = 0, minCShift = 0;
     std::vector<std::vector<double>> minMatrix;
@@ -434,7 +434,7 @@ std::vector<std::pair<size_t, size_t>> EdgeDetect::cyclicTimeWarp(const std::vec
     return path;
 }
 
-std::tuple<std::vector<std::vector<double>>, double> EdgeDetect::dynamicTimeWarp(const std::vector<glm::vec2>& hull, const std::vector<glm::vec2>& contour, uint32_t hShift, uint32_t cShift)
+std::tuple<std::vector<std::vector<double>>, double> EdgeDetect::dynamicTimeWarp(const std::vector<glm::dvec2>& hull, const std::vector<glm::dvec2>& contour, uint32_t hShift, uint32_t cShift)
 {
     size_t n = hull.size(), m = contour.size();
 
@@ -450,7 +450,7 @@ std::tuple<std::vector<std::vector<double>>, double> EdgeDetect::dynamicTimeWarp
     for (size_t i = 1; i <= n; i++) {
         uint32_t idx = (i - 1 + hShift) % hull.size();
         for (size_t j = 1; j <= m; j++) {
-            glm::vec2 delta = hull[idx] - contour[(j - 1 + cShift) % contour.size()];
+            glm::dvec2 delta = hull[idx] - contour[(j - 1 + cShift) % contour.size()];
             cost[i][j] = glm::dot(delta, delta)
                     + std::min({ cost[i - 1][j], cost[i][j - 1], cost[i - 1][j - 1] });
         }
@@ -493,20 +493,20 @@ std::vector<std::pair<size_t, size_t>> EdgeDetect::dtwPath(const std::vector<std
     return path;
 }
 
-void EdgeDetect::drawPolygon(const std::vector<glm::vec2>& vertices, uint8_t value)
+void EdgeDetect::drawPolygon(const std::vector<glm::dvec2>& vertices, uint8_t value)
 {
     for (uint32_t i = 0; i < vertices.size(); i++) {
         uint32_t next = (i + 1) % vertices.size();
 
-        glm::vec2 delta = vertices[next] - vertices[i];
-        const float length = glm::length(delta), step = 1.0f;
-        float j = 0;
+        glm::dvec2 delta = vertices[next] - vertices[i];
+        const double length = glm::length(delta), step = 1.0f;
+        double j = 0;
         delta *= step / length;
 
         while (j < length) {
-            const glm::vec2 vec = vertices[i] + delta * j;
+            const glm::dvec2 vec = vertices[i] + delta * j;
 
-            int idx = (int)(std::round(vec.x) + (float)m_size * std::round(vec.y));
+            int idx = (int)(std::round(vec.x) + (double)m_size * std::round(vec.y));
             if (idx > 0 && idx < m_size * m_size) m_data[idx] = value;
 
             j += step;
@@ -530,15 +530,15 @@ void EdgeDetect::updateModelDirections()
     m_right = { horz.x(), horz.y(), horz.z() };
 }
 
-glm::vec3 EdgeDetect::forward() const
+glm::dvec3 EdgeDetect::forward() const
 {
     return m_axis;
 }
-glm::vec3 EdgeDetect::vertical() const
+glm::dvec3 EdgeDetect::vertical() const
 {
     return m_up;
 }
-glm::vec3 EdgeDetect::horizontal() const
+glm::dvec3 EdgeDetect::horizontal() const
 {
     return m_right;
 }

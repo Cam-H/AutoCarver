@@ -74,7 +74,7 @@ void Scene::pause()
     m_paused = !m_paused;
 }
 
-void Scene::step(float delta)
+void Scene::step(double delta)
 {
     // Update robots
     for (const std::shared_ptr<Robot>& robot : m_robots) robot->step();
@@ -150,7 +150,7 @@ void Scene::run()
         auto endTime = std::chrono::system_clock::now();
 
         if (!m_paused) {
-            float delta = 1e-9f * (endTime - startTime).count(); // Calculate timestep in seconds
+            double delta = 1e-9f * (endTime - startTime).count(); // Calculate timestep in seconds
 //            std::cout << "Delta: " << delta << "\n";
             step(delta);
             update();
@@ -171,7 +171,7 @@ void Scene::update()
 
 }
 
-//void Scene::update(float timestep)
+//void Scene::update(double timestep)
 //{
 //    m_world->update(timestep);
 //}

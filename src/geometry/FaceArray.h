@@ -26,14 +26,14 @@ public:
     bool serialize(std::ofstream& file);
     static FaceArray deserialize(std::ifstream& file);
 
-    void assignNormals(const std::vector<glm::vec3>& normals);
+    void assignNormals(const std::vector<glm::dvec3>& normals);
 
-    static glm::vec3 calculateNormal(const std::vector<glm::vec3>& boundary);
-    void calculateNormals(const std::vector<glm::vec3>& vertices);
-    void triangulate(const std::vector<glm::vec3>& vertices);
+    static glm::dvec3 calculateNormal(const std::vector<glm::dvec3>& boundary);
+    void calculateNormals(const std::vector<glm::dvec3>& vertices);
+    void triangulate(const std::vector<glm::dvec3>& vertices);
 
-    void setColor(const glm::vec3& color);
-    void setColor(uint32_t idx, const glm::vec3& color);
+    void setColor(const glm::dvec3& color);
+    void setColor(uint32_t idx, const glm::dvec3& color);
 
     uint32_t* operator[](uint32_t idx);
     const uint32_t* operator[](uint32_t idx) const;
@@ -46,24 +46,24 @@ public:
     [[nodiscard]] const std::vector<uint32_t>& faceSizes() const;
     [[nodiscard]] uint32_t* faceSizes();
 
-    [[nodiscard]] const std::vector<glm::vec3>& normals() const;
-    [[nodiscard]] glm::vec3 normal(uint32_t idx) const;
+    [[nodiscard]] const std::vector<glm::dvec3>& normals() const;
+    [[nodiscard]] glm::dvec3 normal(uint32_t idx) const;
 
-    [[nodiscard]] const std::vector<glm::vec3>& colors() const;
-    [[nodiscard]] glm::vec3 color(uint32_t idx) const;
+    [[nodiscard]] const std::vector<glm::dvec3>& colors() const;
+    [[nodiscard]] glm::dvec3 color(uint32_t idx) const;
 
     [[nodiscard]] uint32_t triangleCount() const;
     [[nodiscard]] const std::vector<Triangle>& triangles() const;
 
     [[nodiscard]] std::tuple<uint32_t, uint32_t> triangleLookup(uint32_t faceIdx) const;
 
-    [[nodiscard]] std::vector<glm::vec3> faceBorder(uint32_t idx, const std::vector<glm::vec3>& vertices) const;
-    [[nodiscard]] float volume(const std::vector<glm::vec3>& vertices) const;
+    [[nodiscard]] std::vector<glm::dvec3> faceBorder(uint32_t idx, const std::vector<glm::dvec3>& vertices) const;
+    [[nodiscard]] double volume(const std::vector<glm::dvec3>& vertices) const;
 
 //    FaceArray triangulated();
 
     // Selects the face with the normal nearest to the specified axis
-    [[nodiscard]] uint32_t matchFace(const glm::vec3& axis);
+    [[nodiscard]] uint32_t matchFace(const glm::dvec3& axis);
 
     [[nodiscard]] std::vector<std::vector<uint32_t>> edgeList() const;
     [[nodiscard]] std::vector<std::vector<uint32_t>> adjacencies() const;
@@ -92,8 +92,8 @@ private:
     std::vector<uint32_t> m_faces; // Loops of vertex indices that compose each face
     std::vector<uint32_t> m_faceSizes; // Size of each individual face in vertices
 
-    std::vector<glm::vec3> m_normals;
-    std::vector<glm::vec3> m_colors;
+    std::vector<glm::dvec3> m_normals;
+    std::vector<glm::dvec3> m_colors;
 
     std::vector<Triangle> m_triangles;
     std::vector<uint32_t> m_triFaceLookup;

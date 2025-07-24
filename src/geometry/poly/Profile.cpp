@@ -14,7 +14,7 @@ Profile::Profile()
 {
 }
 
-Profile::Profile(const std::vector<glm::vec2>& contour, const glm::vec3& normal, const glm::vec3& xAxis, const glm::vec3& yAxis)
+Profile::Profile(const std::vector<glm::dvec2>& contour, const glm::dvec3& normal, const glm::dvec3& xAxis, const glm::dvec3& yAxis)
     : Polygon(contour, false)
     , m_normal(normal)
     , m_xAxis(xAxis)
@@ -44,10 +44,10 @@ bool Profile::serialize(const std::string& filename)
 }
 bool Profile::serialize(std::ofstream& file)
 {
-    Serializer::writeVectorVec2(file, m_vertices);
-    Serializer::writeVec3(file, m_normal);
-    Serializer::writeVec3(file, m_xAxis);
-    Serializer::writeVec3(file, m_yAxis);
+    Serializer::writeVectorDVec2(file, m_vertices);
+    Serializer::writeDVec3(file, m_normal);
+    Serializer::writeDVec3(file, m_xAxis);
+    Serializer::writeDVec3(file, m_yAxis);
 
     return true;
 }
@@ -58,10 +58,10 @@ bool Profile::deserialize(const std::string& filename)
 }
 bool Profile::deserialize(std::ifstream& file)
 {
-    m_vertices = Serializer::readVectorVec2(file);
-    m_normal = Serializer::readVec3(file);
-    m_xAxis = Serializer::readVec3(file);
-    m_yAxis = Serializer::readVec3(file);
+    m_vertices = Serializer::readVectorDVec2(file);
+    m_normal = Serializer::readDVec3(file);
+    m_xAxis = Serializer::readDVec3(file);
+    m_yAxis = Serializer::readDVec3(file);
 
     return true;
 }
@@ -144,20 +144,20 @@ void Profile::insertRemainder(uint32_t index, uint32_t start, uint32_t count)
 
 // Splits a section into subcomponents along protrusions. This is necessary because
 // later triangulation would fail due to 0 thickness sections that would otherwise result
-uint32_t Profile::subdivide(const glm::vec2& normal, uint32_t start, uint32_t count)
+uint32_t Profile::subdivide(const glm::dvec2& normal, uint32_t start, uint32_t count)
 {
     for (uint32_t i = 1; i < count - 1; i++) {
-        float result = glm::dot(normal, glm::normalize(m_vertices[offsetIndex(start, i)] - m_vertices[start]));
+        double result = glm::dot(normal, glm::normalize(m_vertices[offsetIndex(start, i)] - m_vertices[start]));
         if (result > -0.02f) return i;
     }
 
     return count;
 }
 
-glm::vec2 Profile::edgeNormal(uint32_t start, uint32_t end)
+glm::dvec2 Profile::edgeNormal(uint32_t start, uint32_t end)
 {
-    glm::vec2 edge = m_vertices[end] - m_vertices[start];
-    return glm::normalize(glm::vec2{ edge.y, -edge.x });
+    glm::dvec2 edge = m_vertices[end] - m_vertices[start];
+    return glm::normalize(glm::dvec2{ edge.y, -edge.x });
 }
 
 void Profile::setRefinementMethod(RefinementMethod method)
@@ -165,16 +165,16 @@ void Profile::setRefinementMethod(RefinementMethod method)
     m_method = method;
 }
 
-void Profile::setMimimumArea(float area)
+void Profile::setMimimumArea(double area)
 {
     m_minimumArea = area;
 }
-void Profile::translate(const glm::vec2& translation)
+void Profile::translate(const glm::dvec2& translation)
 {
     Polygon::translate(translation);
 }
 
-void Profile::translate(const glm::vec3& translation)
+void Profile::translate(const glm::dvec3& translation)
 {
     Polygon::translate({
         glm::dot(translation, m_xAxis),
@@ -182,7 +182,7 @@ void Profile::translate(const glm::vec3& translation)
     });
 }
 
-void Profile::rotateAbout(const glm::vec3& axis, float theta)
+void Profile::rotateAbout(const glm::dvec3& axis, double theta)
 {
     auto rotation = glm::angleAxis(theta, axis);
     m_normal = rotation * m_normal;
@@ -236,7 +236,7 @@ bool Profile::isNextExternal() const
         && std::binary_search(m_hull.begin(), m_hull.end(), offsetIndex(m_remainder[m_next].first + m_remainder[m_next].second - 2));
 }
 
-const glm::vec3& Profile::normal() const
+const glm::dvec3& Profile::normal() const
 {
     return m_normal;
 }
@@ -274,7 +274,7 @@ std::vector<uint32_t> Profile::directRefinement()
 std::vector<uint32_t> Profile::delauneyRefinement()
 {
     std::vector<uint32_t> indices = sectionIndices(m_remainder[m_next]), triangle;
-    std::vector<glm::vec2> vertices = sectionVertices(indices);
+    std::vector<glm::dvec2> vertices = sectionVertices(indices);
 
     // Find the Delauney triangulation of the remaining section
     auto triangles = Polygon::triangulate(vertices);
@@ -327,7 +327,7 @@ bool Profile::isValidRefinement(const std::vector<uint32_t>& indices) const
     return !indices.empty() && area(indices) > m_minimumArea;
 }
 
-float Profile::area(const std::vector<uint32_t>& indices) const
+double Profile::area(const std::vector<uint32_t>& indices) const
 {
     if (indices.size() < 3) {
         std::cout << indices.size() << " XXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n";
@@ -351,26 +351,26 @@ std::vector<uint32_t> Profile::sectionIndices(const std::pair<uint32_t, uint32_t
     return indices;
 }
 
-std::vector<glm::vec2> Profile::sectionVertices(const std::pair<uint32_t, uint32_t>& limits) const
+std::vector<glm::dvec2> Profile::sectionVertices(const std::pair<uint32_t, uint32_t>& limits) const
 {
     return sectionVertices(sectionIndices(limits));
 }
-std::vector<glm::vec2> Profile::sectionVertices(const std::vector<uint32_t>& indices) const
+std::vector<glm::dvec2> Profile::sectionVertices(const std::vector<uint32_t>& indices) const
 {
-    std::vector<glm::vec2> section(indices.size());
+    std::vector<glm::dvec2> section(indices.size());
     for (uint32_t i = 0; i < indices.size(); i++) section[i] = m_vertices[indices[i]];
     return section;
 }
 
 // Project vertices into 3D space according to the defined axis system
-std::vector<glm::vec3> Profile::projected3D(const glm::vec3& offset)
+std::vector<glm::dvec3> Profile::projected3D(const glm::dvec3& offset)
 {
     return Polygon::projected3D(m_xAxis, m_yAxis, offset);
 }
 
-std::vector<glm::vec3> Profile::projected3D(const std::vector<uint32_t>& indices, const glm::vec3& offset)
+std::vector<glm::dvec3> Profile::projected3D(const std::vector<uint32_t>& indices, const glm::dvec3& offset)
 {
-    std::vector<glm::vec2> vertices;
+    std::vector<glm::dvec2> vertices;
     vertices.reserve(indices.size());
 
     for (uint32_t idx : indices) {
@@ -381,14 +381,14 @@ std::vector<glm::vec3> Profile::projected3D(const std::vector<uint32_t>& indices
     return Polygon::projected3D(vertices, m_xAxis, m_yAxis, offset);
 }
 
-std::vector<std::pair<glm::vec2, glm::vec2>> Profile::debugEdges() const {
+std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
     auto edges = Polygon::debugEdges();
 
     for (const auto& edge : m_remainder)
         edges.emplace_back(m_vertices[edge.first], m_vertices[(edge.first + edge.second - 1) % m_vertices.size()]);
 
     if (m_next < m_remainder.size()) {
-        std::vector<glm::vec2> vertices = sectionVertices(m_remainder[m_next]);
+        std::vector<glm::dvec2> vertices = sectionVertices(m_remainder[m_next]);
         auto triangles = Polygon::triangulate(vertices);
 
         for (const Triangle& tri: triangles) {

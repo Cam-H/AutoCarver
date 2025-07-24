@@ -56,18 +56,18 @@ void SceneWidget::mousePressEvent(QMouseEvent *e)
 void SceneWidget::mouseMoveEvent(QMouseEvent *e)
 {
     if (e->buttons() == Qt::MouseButton::MiddleButton) {
-        QVector2D delta = QVector2D((float)e->position().x(), (float)e->position().y()) - m_mouseLastPosition;
+        QVector2D delta = QVector2D(e->position().x(), e->position().y()) - m_mouseLastPosition;
 
-        float yaw = m_camera.getYaw(), pitch = m_camera.getPitch();
+        double yaw = m_camera.getYaw(), pitch = m_camera.getPitch();
 
         if(QGuiApplication::keyboardModifiers().testFlag(Qt::ShiftModifier)) { // Try moving camera center
             QVector3D horz = -m_camera.horizontal(), vert = m_camera.vertical();
 
-            m_camera.offset(logf(m_camera.getRadius()) * m_translationSensitivity * (delta.x() * horz + delta.y() * vert));
+            m_camera.offset(log(m_camera.getRadius()) * m_translationSensitivity * (delta.x() * horz + delta.y() * vert));
 
         } else { // Rotate the camera about the center instead
             yaw -= m_rotationSensitivity * delta.x();
-            pitch = std::clamp(pitch + m_rotationSensitivity * delta.y(), -89.0f, 89.0f);
+            pitch = std::clamp(pitch + m_rotationSensitivity * delta.y(), -89.0, 89.0);
             m_camera.setViewingAngle(yaw, pitch);
         }
 
@@ -81,9 +81,9 @@ void SceneWidget::mouseMoveEvent(QMouseEvent *e)
 
 void SceneWidget::wheelEvent(QWheelEvent *e)
 {
-    float radius = m_camera.getRadius();
-    float exponential = std::min(m_zoomExponential * (radius - m_minRadius), 4.0f);
-    radius -= m_zoomSensitivity * e->angleDelta().y() * expf(exponential);
+    double radius = m_camera.getRadius();
+    double exponential = std::min(m_zoomExponential * (radius - m_minRadius), 4.0);
+    radius -= m_zoomSensitivity * e->angleDelta().y() * exp(exponential);
     radius = std::clamp(radius, m_minRadius, m_maxRadius);
 
     m_camera.setRadius(radius);
@@ -320,7 +320,7 @@ void SceneWidget::paintGL()
         const std::vector<std::shared_ptr<RigidBody>>& bodies = m_scene->bodies();
 
         for (const std::shared_ptr<RigidBody>& body : bodies) {
-            glm::mat4x4 trans = body->getTransform();
+            glm::dmat4x4 trans = body->getTransform();
 
             QMatrix4x4 transform;
             for (int i = 0; i < 4; i++) transform.setColumn(i, QVector4D(trans[i][0], trans[i][1], trans[i][2], trans[i][3]));
@@ -371,7 +371,7 @@ void SceneWidget::render(const std::shared_ptr<Mesh> &mesh, const QMatrix4x4& tr
     program->setUniformValue("mvp_matrix", m_camera.getViewProjection() * transform);
     program->setUniformValue("n_matrix", transform.normalMatrix());
 
-    const glm::vec3& color = mesh->baseColor();
+    const glm::dvec3& color = mesh->baseColor();
     program->setUniformValue("out_color", QVector3D(color.r, color.g, color.b));
 
     // Draw mesh geometry

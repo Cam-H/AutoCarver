@@ -25,7 +25,7 @@ public:
     explicit ConvexHull(const VertexArray& cloud);
     explicit ConvexHull(const std::shared_ptr<Mesh>& mesh);
 
-    explicit ConvexHull(const std::vector<glm::vec3>& cloud);
+    explicit ConvexHull(const std::vector<glm::dvec3>& cloud);
 
 
     ConvexHull(const ConvexHull& rhs) = default;
@@ -39,36 +39,36 @@ public:
     [[nodiscard]] bool isValid() const;
 
     [[nodiscard]] uint32_t vertexCount() const;
-    [[nodiscard]] const std::vector<glm::vec3>& vertices() const;
+    [[nodiscard]] const std::vector<glm::dvec3>& vertices() const;
 
     [[nodiscard]] uint32_t facetCount() const;
     [[nodiscard]] const FaceArray& faces() const;
 
-    [[nodiscard]] glm::vec3 center() const;
+    [[nodiscard]] glm::dvec3 center() const;
     [[nodiscard]] Plane facePlane(uint32_t idx) const;
 
-    [[nodiscard]] const glm::vec3& start() const;
+    [[nodiscard]] const glm::dvec3& start() const;
 
-    [[nodiscard]] uint32_t supportIndex(const glm::vec3& axis) const;
-    [[nodiscard]] std::tuple<uint32_t, glm::vec3> extreme(const glm::vec3& axis) const;
+    [[nodiscard]] uint32_t supportIndex(const glm::dvec3& axis) const;
+    [[nodiscard]] std::tuple<uint32_t, glm::dvec3> extreme(const glm::dvec3& axis) const;
 
-    [[nodiscard]] uint32_t supportIndex(const glm::vec3& axis, uint32_t startIndex) const;
-    [[nodiscard]] std::tuple<uint32_t, glm::vec3> extreme(const glm::vec3& axis, uint32_t startIndex) const;
+    [[nodiscard]] uint32_t supportIndex(const glm::dvec3& axis, uint32_t startIndex) const;
+    [[nodiscard]] std::tuple<uint32_t, glm::dvec3> extreme(const glm::dvec3& axis, uint32_t startIndex) const;
 
     [[nodiscard]] bool empty() const;
 
-    [[nodiscard]] uint32_t walk(const glm::vec3& axis) const;
-    [[nodiscard]] uint32_t walk(const glm::vec3& axis, uint32_t index) const;
+    [[nodiscard]] uint32_t walk(const glm::dvec3& axis) const;
+    [[nodiscard]] uint32_t walk(const glm::dvec3& axis, uint32_t index) const;
 
-    void extents(const glm::vec3& axis, float& near, float& far) const;
+    void extents(const glm::dvec3& axis, double& near, double& far) const;
 
     [[nodiscard]] const std::vector<uint32_t>& neighbors(uint32_t index) const;
-    [[nodiscard]] std::vector<glm::vec3> border(const glm::vec3& faceNormal) const;
+    [[nodiscard]] std::vector<glm::dvec3> border(const glm::dvec3& faceNormal) const;
 
-    [[nodiscard]] std::vector<uint32_t> horizon(const glm::vec3& axis) const;
-    [[nodiscard]] std::vector<uint32_t> horizon(const glm::vec3& axis, const glm::vec3& support) const;
+    [[nodiscard]] std::vector<uint32_t> horizon(const glm::dvec3& axis) const;
+    [[nodiscard]] std::vector<uint32_t> horizon(const glm::dvec3& axis, const glm::dvec3& support) const;
 
-    [[nodiscard]] float volume() const;
+    [[nodiscard]] double volume() const;
 
     static ConvexHull unite(const ConvexHull& hullA, const ConvexHull& hullB);
     static std::tuple<bool, ConvexHull> tryMerge(const ConvexHull& hullA, const ConvexHull& hullB);
@@ -79,7 +79,7 @@ private:
 
     struct Facet {
         Triangle triangle;
-        glm::vec3 normal;
+        glm::dvec3 normal;
         std::vector<uint32_t> outside;
         std::vector<uint32_t> neighbors;
         bool onHull;
@@ -90,35 +90,35 @@ private:
     void initialize();
 
     std::vector<Triangle> initialApproximation();
-    glm::vec3 wNormal(const Triangle& triangle);
+    glm::dvec3 wNormal(const Triangle& triangle);
 
-    [[nodiscard]] uint32_t step(const glm::vec3& normal, const glm::vec3& axis, uint32_t index) const;
+    [[nodiscard]] uint32_t step(const glm::dvec3& normal, const glm::dvec3& axis, uint32_t index) const;
 
     void prepareFacets(const std::vector<Triangle>& triangles);
     void prepareFacets(const std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
     void sortCloud(std::vector<uint32_t>& free, Facet& facet);
-    void calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
+    void calculateHorizon(const glm::dvec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
 
     void prepareFaces();
     void purgeOrphans(std::vector<std::vector<uint32_t>>& faces);
 
 private:
 
-    std::vector<glm::vec3> m_cloud;
+    std::vector<glm::dvec3> m_cloud;
 
-    std::vector<glm::vec3> m_vertices;
+    std::vector<glm::dvec3> m_vertices;
 
     FaceArray m_faces;
 
-//    std::vector<glm::vec3> w_vertices;
+//    std::vector<glm::dvec3> w_vertices;
     std::vector<Facet> facets;
 
 
-    glm::vec3 m_center;
+    glm::dvec3 m_center;
     std::vector<std::vector<uint32_t>> m_walks;
     uint32_t m_walkStart;
 
-    float m_volume;
+    double m_volume;
 
     const static uint8_t STRIDE = 3;
 

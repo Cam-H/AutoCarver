@@ -29,26 +29,26 @@ void ControlWidget::keyPressEvent(QKeyEvent *e)
 {
     if (m_scene == nullptr || m_scene->bodyCount() < 2) return;
 
-    float delta = 0.05f, rDel = M_PI / 64, theta = 0;
-    glm::vec3 offset = {};
+    double delta = 0.05f, rDel = M_PI / 64, theta = 0;
+    glm::dvec3 offset = {};
     switch (e->key()) {
         case Qt::Key::Key_Up:
-            offset += glm::vec3(0, delta, 0);
+            offset += glm::dvec3(0, delta, 0);
             break;
         case Qt::Key::Key_Down:
-            offset += glm::vec3(0, -delta, 0);
+            offset += glm::dvec3(0, -delta, 0);
             break;
         case Qt::Key::Key_W:
-            offset += glm::vec3(0, 0, delta);
+            offset += glm::dvec3(0, 0, delta);
             break;
         case Qt::Key::Key_S:
-            offset += glm::vec3(0, 0, -delta);
+            offset += glm::dvec3(0, 0, -delta);
             break;
         case Qt::Key::Key_A:
-            offset += glm::vec3(delta, 0, 0);
+            offset += glm::dvec3(delta, 0, 0);
             break;
         case Qt::Key::Key_D:
-            offset += glm::vec3(-delta, 0, 0);
+            offset += glm::dvec3(-delta, 0, 0);
             break;
         case Qt::Key::Key_Q:
             theta += rDel;
@@ -65,7 +65,7 @@ void ControlWidget::keyPressEvent(QKeyEvent *e)
 
     if (glm::length(offset) > 0 || theta != 0) {
         m_scene->bodies()[idx1]->globalTranslate(offset);
-        if (theta != 0) m_scene->bodies()[idx1]->rotate(glm::vec3{1, 0, 0}, theta);
+        if (theta != 0) m_scene->bodies()[idx1]->rotate(glm::dvec3{1, 0, 0}, theta);
 
         handleCollision(idx2);
     }
@@ -75,7 +75,7 @@ void ControlWidget::handleCollision(uint32_t active)
 {
 //    auto center = m_scene->bodies()[1]->position() - m_scene->bodies()[0]->position();
 //    auto body = Sphere{ center, 1.0f };
-////    auto body = AABB{ center - glm::vec3{ 0.5f, 0.5f, 0.5f}, center + glm::vec3{ 0.5f, 0.5f, 0.5f}};
+////    auto body = AABB{ center - glm::dvec3{ 0.5f, 0.5f, 0.5f}, center + glm::dvec3{ 0.5f, 0.5f, 0.5f}};
 //    auto result = Collision::test(m_scene->bodies()[0]->hull(), body);
 //    std::cout << "Intersection: " << result << "\n";
 
@@ -87,9 +87,9 @@ void ControlWidget::handleCollision(uint32_t active)
 
 
     if (lastState != colliding) {
-        m_scene->bodies()[!active]->mesh()->setFaceColor(colliding ? glm::vec3{1, 0, 0} : glm::vec3{1, 1, 1});
+        m_scene->bodies()[!active]->mesh()->setFaceColor(colliding ? glm::dvec3{1, 0, 0} : glm::dvec3{1, 1, 1});
         updateRenderGeometry(m_scene->bodies()[!active]->mesh());
-        m_scene->bodies()[active]->mesh()->setFaceColor(colliding ? glm::vec3{0.6, 0, 0} : glm::vec3{1, 1, 1});
+        m_scene->bodies()[active]->mesh()->setFaceColor(colliding ? glm::dvec3{0.6, 0, 0} : glm::dvec3{1, 1, 1});
         updateRenderGeometry(m_scene->bodies()[active]->mesh());
         lastState = colliding;
     }

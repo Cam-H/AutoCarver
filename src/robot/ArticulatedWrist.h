@@ -10,9 +10,9 @@
 class ArticulatedWrist : public KinematicChain {
 public:
 
-    ArticulatedWrist(float d1, float l2, float l3, float d6);
+    ArticulatedWrist(double d1, double l2, double l3, double d6);
 
-    std::vector<float> invkin(const glm::vec3& position, const glm::quat& rotation) override;
+    std::vector<double> invkin(const glm::dvec3& position, const glm::dquat& rotation) override;
 
 private:
 };

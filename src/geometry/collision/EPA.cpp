@@ -21,7 +21,7 @@ EPA::EPA()
 
 }
 
-void EPA::setWorldTransform(const glm::mat4& transform)
+void EPA::setWorldTransform(const glm::dmat4& transform)
 {
     m_worldOffset = glm::mat3(transform) * m_localOffset;
 
@@ -33,14 +33,14 @@ void EPA::setWorldTransform(const glm::mat4& transform)
     m_bWorld = { temp.x, temp.y, temp.z };
 }
 
-glm::vec3 EPA::fromBarycentric(const std::vector<glm::vec3>& va, const Triangle& triangle, const glm::vec3& bary)
+glm::dvec3 EPA::fromBarycentric(const std::vector<glm::dvec3>& va, const Triangle& triangle, const glm::dvec3& bary)
 {
     return bary.x * va[triangle.I0] + bary.y * va[triangle.I1] + bary.z * va[triangle.I2];
 }
 
 void EPA::exportState(const std::string& path)
 {
-    float *vx = new float[3 * vertices.size()], *vPtr = vx;
+    double *vx = new double[3 * vertices.size()], *vPtr = vx;
     for (const Simplex::Vertex& vertex : vertices) {
         *vPtr++ = vertex.val.x;
         *vPtr++ = vertex.val.y;
@@ -57,7 +57,7 @@ void EPA::exportState(const std::string& path)
     MeshHandler::exportMesh(std::make_shared<Mesh>(vx, vertices.size(), fx, facets.size()), path);
 }
 
-glm::vec3 EPA::normal(uint32_t a, uint32_t b, uint32_t c)
+glm::dvec3 EPA::normal(uint32_t a, uint32_t b, uint32_t c)
 {
     return glm::normalize(glm::cross(vertices[b].val - vertices[a].val, vertices[c].val - vertices[a].val));
 }
@@ -75,7 +75,7 @@ bool EPA::isValid(const Simplex& simplex)
     return simplex.size() == 4;
 }
 
-void EPA::prepareFacets(const Simplex& simplex, std::vector<std::pair<float, uint32_t>>& order)
+void EPA::prepareFacets(const Simplex& simplex, std::vector<std::pair<double, uint32_t>>& order)
 {
     for (uint32_t i = 0; i < 4; i++) vertices.push_back(simplex[i]);
 
@@ -86,7 +86,7 @@ void EPA::prepareFacets(const Simplex& simplex, std::vector<std::pair<float, uin
     std::vector<std::vector<uint32_t>> neighbors = {{2, 3, 1}, {0, 3, 2}, {1, 3, 0}, {1, 0, 2}};
 
     for (uint32_t i = 0; i < 4; i++) {
-        glm::vec3 norm = normal(indices[i].I0, indices[i].I1, indices[i].I2);
+        glm::dvec3 norm = normal(indices[i].I0, indices[i].I1, indices[i].I2);
         facets.push_back({ indices[i], norm, glm::dot(norm, -vertices[indices[i].I0].val), neighbors[i], true });
     }
 
@@ -94,12 +94,12 @@ void EPA::prepareFacets(const Simplex& simplex, std::vector<std::pair<float, uin
             {facets[0].value, 0}, {facets[1].value, 1}, {facets[2].value, 2}, {facets[3].value, 3}
     };
 
-    std::sort(order.begin(), order.end(), [](const std::pair<float, uint32_t>& a, const std::pair<float, uint32_t>& b) {
+    std::sort(order.begin(), order.end(), [](const std::pair<double, uint32_t>& a, const std::pair<double, uint32_t>& b) {
         return a.first > b.first;
     });
 }
 
-void EPA::prepareFacets(const std::vector<uint32_t>& horizon, std::vector<std::pair<float, uint32_t>>& order) {
+void EPA::prepareFacets(const std::vector<uint32_t>& horizon, std::vector<std::pair<double, uint32_t>>& order) {
 
     order.erase(order.begin()); // Remove the current facet from consideration
 
@@ -114,7 +114,7 @@ void EPA::prepareFacets(const std::vector<uint32_t>& horizon, std::vector<std::p
 
         // Prepare the new facet and link
         Triangle triangle = {(uint32_t)vertices.size() - 1, lastVertex, horizon[j + 1] };
-        glm::vec3 norm = normal(triangle.I0, triangle.I1, triangle.I2);
+        glm::dvec3 norm = normal(triangle.I0, triangle.I1, triangle.I2);
 
         Facet facet = {triangle, norm, glm::dot(norm, -vertices[triangle.I0].val), {lastFacet, horizon[j], nextFacet}, true };
         order.emplace_back(facet.value, facets.size());
@@ -131,17 +131,17 @@ void EPA::prepareFacets(const std::vector<uint32_t>& horizon, std::vector<std::p
     }
 
     // TODO better than sort
-    std::sort(order.begin(), order.end(), [](const std::pair<float, uint32_t>& a, const std::pair<float, uint32_t>& b) {
+    std::sort(order.begin(), order.end(), [](const std::pair<double, uint32_t>& a, const std::pair<double, uint32_t>& b) {
         return a.first > b.first;
     });
 }
 
-void EPA::calculateHorizon(const glm::vec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon){
+void EPA::calculateHorizon(const glm::dvec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon){
     if(!facets[current].onHull){
         return;
     }
 
-    float test = glm::dot(facets[current].normal, apex - vertices[facets[current].triangle.I0].val);
+    double test = glm::dot(facets[current].normal, apex - vertices[facets[current].triangle.I0].val);
 
     if(test > 1e-6){ // Check whether facet is visible to apex
         facets[current].onHull = false;
@@ -171,13 +171,13 @@ bool EPA::colliding() const
     return m_colliding;
 }
 
-glm::vec3 EPA::overlap() const
+glm::dvec3 EPA::overlap() const
 {
-    return m_colliding ? m_worldOffset : glm::vec3();
+    return m_colliding ? m_worldOffset : glm::dvec3();
 }
-glm::vec3 EPA::offset() const
+glm::dvec3 EPA::offset() const
 {
-    return m_colliding ? glm::vec3() : m_worldOffset;
+    return m_colliding ? glm::dvec3() : m_worldOffset;
 }
 
 const std::pair<uint32_t, uint32_t>& EPA::nearest() const
@@ -185,25 +185,25 @@ const std::pair<uint32_t, uint32_t>& EPA::nearest() const
     return m_nearest;
 }
 
-const glm::vec3& EPA::colliderAClosestLocal() const
+const glm::dvec3& EPA::colliderAClosestLocal() const
 {
     return m_aLocal;
 }
-const glm::vec3& EPA::colliderAClosest() const
+const glm::dvec3& EPA::colliderAClosest() const
 {
     return m_aWorld;
 }
 
-const glm::vec3& EPA::colliderBClosestLocal() const
+const glm::dvec3& EPA::colliderBClosestLocal() const
 {
     return m_bLocal;
 }
-const glm::vec3& EPA::colliderBClosest() const
+const glm::dvec3& EPA::colliderBClosest() const
 {
     return m_bWorld;
 }
 
-float EPA::distance() const
+double EPA::distance() const
 {
     return glm::length(m_aWorld - m_bWorld);
 }

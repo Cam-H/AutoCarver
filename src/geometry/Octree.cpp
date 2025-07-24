@@ -13,7 +13,7 @@
 #include "geometry/primitives/ConvexHull.h"
 #include "geometry/collision/Collision.h"
 
-Octree::Octant::Octant(uint32_t parent, const glm::vec3& top, uint8_t depth)
+Octree::Octant::Octant(uint32_t parent, const glm::dvec3& top, uint8_t depth)
     : parent(parent)
     , index(std::numeric_limits<uint32_t>::max())
     , status(Status::TERMINUS)
@@ -23,7 +23,7 @@ Octree::Octant::Octant(uint32_t parent, const glm::vec3& top, uint8_t depth)
 
 }
 
-Octree::Octree(uint8_t maximumDepth, float length)
+Octree::Octree(uint8_t maximumDepth, double length)
     : m_maxDepth(std::max(maximumDepth, (uint8_t)1))
     , m_lengths({ length })
     , m_offset(0)
@@ -42,13 +42,13 @@ void Octree::reset()
     m_octants.reserve(maximumOctantCount(m_maxDepth));
 }
 
-void Octree::translate(const glm::vec3& translation)
+void Octree::translate(const glm::dvec3& translation)
 {
     for (Octant& octant : m_octants) octant.top += translation;
     m_offset += translation;
 }
 
-void Octree::setLength(float length)
+void Octree::setLength(double length)
 {
     m_lengths = { length };
     calculateLengths();
@@ -84,9 +84,9 @@ bool Octree::isParent(uint32_t parentIndex, uint32_t childIndex) const
     return false;
 }
 
-glm::vec3 Octree::top() const
+glm::dvec3 Octree::top() const
 {
-    return -m_lengths[0] * 0.5f * glm::vec3{ 1, 1, 1 } + m_offset;
+    return -m_lengths[0] * 0.5f * glm::dvec3{ 1, 1, 1 } + m_offset;
 }
 
 uint32_t Octree::octantCount(uint8_t status) const
@@ -137,7 +137,7 @@ size_t Octree::maximumOctantCount(uint8_t depth)
     return count + (depth > 0);
 }
 
-float Octree::octantLength(const Octant& octant) const
+double Octree::octantLength(const Octant& octant) const
 {
     return m_lengths[octant.depth];
 }
@@ -147,7 +147,7 @@ float Octree::octantLength(const Octant& octant) const
 //    return m_root;
 //}
 
-float Octree::length() const
+double Octree::length() const
 {
     return m_lengths[0];
 }

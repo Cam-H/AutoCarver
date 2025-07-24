@@ -8,10 +8,10 @@
 #include <glm.hpp>
 
 struct DHParameter {
-    float len;
-    float dist;
-    float alpha;
-    float theta;
+    double len;
+    double dist;
+    double alpha;
+    double theta;
 };
 
 class Joint {
@@ -21,51 +21,51 @@ public:
         NONE = 0, PRISMATIC, REVOLUTE
     };
 
-    Joint(Joint::Type type, const DHParameter& parameters, float initialValue = 0.0f);
+    Joint(Joint::Type type, const DHParameter& parameters, double initialValue = 0.0f);
 
     void recalculate();
 
-    void setJointLimits(float lower, float upper);
-    void setValue(float value);
+    void setJointLimits(double lower, double upper);
+    void setValue(double value);
 
     [[nodiscard]] const DHParameter& getParameters() const;
 
-    [[nodiscard]] float getLowerLimit() const;
-    [[nodiscard]] float getUpperLimit() const;
-    [[nodiscard]] float getValue() const;
-    bool withinLimits(float value) const;
-//    const glm::vec3& getCenter() const;
+    [[nodiscard]] double getLowerLimit() const;
+    [[nodiscard]] double getUpperLimit() const;
+    [[nodiscard]] double getValue() const;
+    bool withinLimits(double value) const;
+//    const glm::dvec3& getCenter() const;
 
-//    [[nodiscard]] const glm::mat4x4& getTransform() const;
-    [[nodiscard]] glm::mat4x4 calculateHTM() const;
-    [[nodiscard]] glm::mat4x4 calculateHTM(float value) const;
+//    [[nodiscard]] const glm::dmat4x4& getTransform() const;
+    [[nodiscard]] glm::dmat4 calculateHTM() const;
+    [[nodiscard]] glm::dmat4 calculateHTM(double value) const;
 
-    [[nodiscard]] glm::mat3x3 calculateHRM() const;
-    [[nodiscard]] glm::mat3x3 calculateHRM(float value) const;
+    [[nodiscard]] glm::dmat3 calculateHRM() const;
+    [[nodiscard]] glm::dmat3 calculateHRM(double value) const;
 
-    [[nodiscard]] const glm::mat4x4& getHTM() const;
+    [[nodiscard]] const glm::dmat4& getHTM() const;
 
-    [[nodiscard]] glm::mat4x4 localRotationMatrix() const;
+    [[nodiscard]] glm::dmat4x4 localRotationMatrix() const;
 
 
 protected:
 
-    [[nodiscard]] float distance(float value) const;
-    [[nodiscard]] float angle(float value) const;
+    [[nodiscard]] double distance(double value) const;
+    [[nodiscard]] double angle(double value) const;
 
 protected:
 
     Joint::Type m_jointType;
     DHParameter m_parameters;
 
-    float m_lowerLimit;
-    float m_upperLimit;
+    double m_lowerLimit;
+    double m_upperLimit;
 
-    float m_value;
+    double m_value;
 
 private:
 
-    glm::mat4x4 m_htm;
+    glm::dmat4x4 m_htm;
 
 };
 

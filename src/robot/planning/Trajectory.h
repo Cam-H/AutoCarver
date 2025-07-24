@@ -11,8 +11,8 @@
 #include <functional>
 
 struct Waypoint {
-    std::vector<float> values;
-    float toRad;
+    std::vector<double> values;
+    double toRad;
     bool collides;
 };
 
@@ -29,29 +29,29 @@ enum class TrajectorySolverType {
 class JointTrajectory {
 public:
 
-    JointTrajectory(float start, float end);
-    JointTrajectory(const std::vector<float>& waypoints, TrajectorySolverType solver = TrajectorySolverType::LINEAR);
+    JointTrajectory(double start, double end);
+    JointTrajectory(const std::vector<double>& waypoints, TrajectorySolverType solver = TrajectorySolverType::LINEAR);
 
     void updateCoefficients();
 
-//    void setVelocityEndpoints(float vo, float vf);
-//    void setAccelerationEndpoints(float ao, float af);
+//    void setVelocityEndpoints(double vo, double vf);
+//    void setAccelerationEndpoints(double ao, double af);
 
-    [[nodiscard]] float position(uint32_t step, float t) const;
-    [[nodiscard]] float velocity(uint32_t step, float t) const;
-    [[nodiscard]] float acceleration(uint32_t step, float t) const;
+    [[nodiscard]] double position(uint32_t step, double t) const;
+    [[nodiscard]] double velocity(uint32_t step, double t) const;
+    [[nodiscard]] double acceleration(uint32_t step, double t) const;
 
-    [[nodiscard]] float maxVelocity() const;
-    [[nodiscard]] float maxAcceleration() const;
+    [[nodiscard]] double maxVelocity() const;
+    [[nodiscard]] double maxAcceleration() const;
 
-    [[nodiscard]] float maxVelocity(uint32_t step) const;
-    [[nodiscard]] float maxAcceleration(uint32_t step) const;
+    [[nodiscard]] double maxVelocity(uint32_t step) const;
+    [[nodiscard]] double maxAcceleration(uint32_t step) const;
 
-    [[nodiscard]] std::vector<float> pTrajectory(float tStep = 0.05f) const;
-    [[nodiscard]] std::vector<float> vTrajectory(float tStep = 0.05f) const;
-    [[nodiscard]] std::vector<float> aTrajectory(float tStep = 0.05f) const;
+    [[nodiscard]] std::vector<double> pTrajectory(double tStep = 0.05f) const;
+    [[nodiscard]] std::vector<double> vTrajectory(double tStep = 0.05f) const;
+    [[nodiscard]] std::vector<double> aTrajectory(double tStep = 0.05f) const;
 
-    [[nodiscard]] std::vector<float> t(float tStep = 0.05f) const;
+    [[nodiscard]] std::vector<double> t(double tStep = 0.05f) const;
 
 private:
 
@@ -59,12 +59,12 @@ private:
     void prepareCubicCoefficients();
     void prepareQuinticCoefficients();
 
-    [[nodiscard]] std::vector<float> trajectory(const std::function<float (uint32_t, float)>& func, float tStep = 0.05f) const;
+    [[nodiscard]] std::vector<double> trajectory(const std::function<double (uint32_t, double)>& func, double tStep = 0.05f) const;
 
 private:
 
-    std::vector<float> m_waypoints;
-    std::vector<float> m_coeffs;
+    std::vector<double> m_waypoints;
+    std::vector<double> m_coeffs;
     TrajectorySolverType m_solver;
 
 };
@@ -75,18 +75,18 @@ public:
     Trajectory(const Waypoint& start, const Waypoint& end, TrajectorySolverType solverType);
     Trajectory(const std::vector<Waypoint>& waypoints, TrajectorySolverType solverType);
 
-//    void setEndpoints(const std::vector<float> endpoints);
+//    void setEndpoints(const std::vector<double> endpoints);
 
     void insertWaypoint(uint32_t idx, const Waypoint& waypoint);
 
-    void setMaxVelocity(float velocity);
-//    void setMaxAcceleration(float acceleration);
+    void setMaxVelocity(double velocity);
+//    void setMaxAcceleration(double acceleration);
 
     [[nodiscard]] uint32_t waypointCount() const;
     [[nodiscard]] uint32_t dimensions() const;
 
-    [[nodiscard]] float tStep() const;
-    [[nodiscard]] float t() const;
+    [[nodiscard]] double tStep() const;
+    [[nodiscard]] double t() const;
 
     [[nodiscard]] bool complete() const;
 
@@ -94,8 +94,8 @@ public:
     [[nodiscard]] Waypoint end();
 
     [[nodiscard]] Waypoint next();
-    [[nodiscard]] Waypoint timestep(float delta);
-    [[nodiscard]] Waypoint evaluate(float t) const;
+    [[nodiscard]] Waypoint timestep(double delta);
+    [[nodiscard]] Waypoint evaluate(double t) const;
 
     [[nodiscard]] const JointTrajectory& jointTrajectory(uint32_t idx);
 
@@ -109,15 +109,15 @@ private:
 
     TrajectorySolverType m_solver;
     uint32_t m_jointCount;
-//    std::vector<float> m_endpoints;
+//    std::vector<double> m_endpoints;
 
-    float m_t;
-    float m_tStep;
+    double m_t;
+    double m_tStep;
 
-    float m_maxVelocity;
-    float m_maxAcceleration;
+    double m_maxVelocity;
+    double m_maxAcceleration;
 
-    float m_duration;
+    double m_duration;
 
     std::vector<JointTrajectory> m_jointTrajectories;
 };

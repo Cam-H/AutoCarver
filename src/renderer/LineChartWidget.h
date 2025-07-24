@@ -18,8 +18,8 @@
 struct Series {
     QString name;
 
-    float* x;
-    float* y;
+    double* x;
+    double* y;
     uint32_t count;
 
     QPen pen;
@@ -40,14 +40,14 @@ public:
 
     void reset();
 
-    void setX(const std::vector<float>& x);
-    void setT(float t);
+    void setX(const std::vector<double>& x);
+    void setT(double t);
 
-    void plot(const std::vector<float>& y);
-    void plot(const std::vector<float>& y, const QString& name);
+    void plot(const std::vector<double>& y);
+    void plot(const std::vector<double>& y, const QString& name);
 
-    void plot(const std::vector<float>& y, QPen pen);
-    void plot(const std::vector<float>& y, const QString& name, QPen pen);
+    void plot(const std::vector<double>& y, QPen pen);
+    void plot(const std::vector<double>& y, const QString& name, QPen pen);
 
     void showLegend(bool visible);
 
@@ -55,8 +55,8 @@ public:
     void xlim();
     void ylim();
 
-    void xlim(float minimum, float maximum);
-    void ylim(float minimum, float maximum);
+    void xlim(double minimum, double maximum);
+    void ylim(double minimum, double maximum);
 
 
 protected:
@@ -74,22 +74,22 @@ private:
 
     void updateTransforms();
 
-    [[nodiscard]] inline int xTransform(float x) const;
-    [[nodiscard]] inline int yTransform(float y) const;
+    [[nodiscard]] inline int xTransform(double x) const;
+    [[nodiscard]] inline int yTransform(double y) const;
 
 private:
 
     bool m_legendEnable;
 
-    std::vector<float> m_x;
+    std::vector<double> m_x;
     std::vector<Series> m_series;
-    float m_t;
+    double m_t;
 
-    float m_xMin, m_xMax, m_xMag;
-    float m_yMin, m_yMax, m_yMag;
+    double m_xMin, m_xMax, m_xMag;
+    double m_yMin, m_yMax, m_yMag;
     int m_xOff, m_yOff;
 
-    float m_xMinor, m_yMinor;
+    double m_xMinor, m_yMinor;
 
     QPoint m_translation, m_mouseLast;
 

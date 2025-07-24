@@ -11,23 +11,23 @@ class Plane {
 public:
 
     Plane();
-    Plane(const glm::vec3& origin, const glm::vec3& normal);
+    Plane(const glm::dvec3& origin, const glm::dvec3& normal);
 
-    void rotate(const glm::vec3& axis, float theta);
+    void rotate(const glm::dvec3& axis, double theta);
 
     [[nodiscard]] bool isValid() const;
 
-    [[nodiscard]] glm::vec3 project(const glm::vec3& vertex) const;
-    inline static glm::vec3 project(const glm::vec3& origin, const glm::vec3& normal, const glm::vec3& vertex);
-    inline static glm::vec3 project(const Plane& plane, const glm::vec3& vertex);
+    [[nodiscard]] glm::dvec3 project(const glm::dvec3& vertex) const;
+    inline static glm::dvec3 project(const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& vertex);
+    inline static glm::dvec3 project(const Plane& plane, const glm::dvec3& vertex);
 
-    [[nodiscard]] inline float d() const { return glm::dot(origin, normal); }
+    [[nodiscard]] inline double d() const { return glm::dot(origin, normal); }
 
     void print() const;
 
 public:
-    glm::vec3 origin;
-    glm::vec3 normal;
+    glm::dvec3 origin;
+    glm::dvec3 normal;
 };
 
 

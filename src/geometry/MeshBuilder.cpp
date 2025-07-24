@@ -16,17 +16,17 @@
 #include "renderer/Colors.h"
 
 
-std::shared_ptr<Mesh> MeshBuilder::plane(float width, const glm::vec3& origin, const glm::vec3& normal)
+std::shared_ptr<Mesh> MeshBuilder::plane(double width, const glm::dvec3& origin, const glm::dvec3& normal)
 {
-    glm::vec3 ref = normal.y == 1 ? glm::vec3{1.0f, 0.0f, 0.0f} : glm::vec3{0.0f, 1.0f, 0.0f};
+    glm::dvec3 ref = normal.x * normal.x < 0.99 ? glm::dvec3{1.0, 0.0, 0.0} : glm::dvec3{0.0, 1.0, 0.0};
     return plane(width, width, origin, normal, ref);
 }
 
-std::shared_ptr<Mesh> MeshBuilder::plane(float length, float width, const glm::vec3& origin, const glm::vec3& normal, const glm::vec3& ref)
+std::shared_ptr<Mesh> MeshBuilder::plane(double length, double width, const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& ref)
 {
 
-    glm::vec3 wAxis = glm::normalize(glm::cross(normal, ref)), lAxis = glm::normalize(glm::cross(normal, wAxis));
-    glm::vec3 a = origin + wAxis * width * 0.5f + lAxis * length * 0.5f, b = a - wAxis * width, c = b - lAxis * length, d = c + wAxis * width;
+    glm::dvec3 wAxis = glm::normalize(glm::cross(normal, ref)), lAxis = glm::normalize(glm::cross(normal, wAxis));
+    glm::dvec3 a = origin + wAxis * width * 0.5 + lAxis * length * 0.5, b = a - wAxis * width, c = b - lAxis * length, d = c + wAxis * width;
 
     auto mesh = std::make_shared<Mesh>(4, 2, 8);
 
@@ -55,12 +55,12 @@ std::shared_ptr<Mesh> MeshBuilder::plane(float length, float width, const glm::v
     return mesh;
 }
 
-std::shared_ptr<Mesh> MeshBuilder::box(float sideLength)
+std::shared_ptr<Mesh> MeshBuilder::box(double sideLength)
 {
     return box(sideLength, sideLength, sideLength);
 }
 
-std::shared_ptr<Mesh> MeshBuilder::box(float length, float width, float height)
+std::shared_ptr<Mesh> MeshBuilder::box(double length, double width, double height)
 {
     length /= 2;
     width /=2;
@@ -85,21 +85,21 @@ std::shared_ptr<Mesh> MeshBuilder::box(float length, float width, float height)
     return mesh;
 }
 
-std::shared_ptr<Mesh> MeshBuilder::cylinder(float radius, float height, uint32_t segments){
+std::shared_ptr<Mesh> MeshBuilder::cylinder(double radius, double height, uint32_t segments){
 
-    std::vector<glm::vec3> border(segments);
+    std::vector<glm::dvec3> border(segments);
 
-    float theta = 0;
-    const float increment = 2.0f * (float)(M_PI / segments);
+    double theta = 0;
+    const double increment = 2.0 * (M_PI / segments);
     for (uint32_t i = 0; i < segments; i++) {
-        border[i] = {radius * cosf(theta), height, radius * sinf(theta) };
+        border[i] = {radius * cos(theta), height, radius * sin(theta) };
         theta += increment;
     }
 
     return extrude(border, { 0, -1, 0 }, height);
 }
 
-std::shared_ptr<Mesh> MeshBuilder::extrude(const std::vector<glm::vec3>& border, const glm::vec3& normal, float depth){
+std::shared_ptr<Mesh> MeshBuilder::extrude(const std::vector<glm::dvec3>& border, const glm::dvec3& normal, double depth){
     if (border.size() < 3) return nullptr;
 
     uint32_t segments = border.size(), idx = 0;
@@ -107,7 +107,7 @@ std::shared_ptr<Mesh> MeshBuilder::extrude(const std::vector<glm::vec3>& border,
 
     auto mesh = std::make_shared<Mesh>(vertexCount, faceCount, indexCount);
 
-    for (const glm::vec3& vertex : border) {
+    for (const glm::dvec3& vertex : border) {
         mesh->m_vertices[idx++] = {
                 vertex.x + normal.x * depth,
                 vertex.y + normal.y * depth,
@@ -144,8 +144,8 @@ std::shared_ptr<Mesh> MeshBuilder::extrude(const std::vector<glm::vec3>& border,
     return mesh;
 }
 
-std::shared_ptr<Mesh> MeshBuilder::icosahedron(float radius){
-    std::vector<glm::vec3> vertices;
+std::shared_ptr<Mesh> MeshBuilder::icosahedron(double radius){
+    std::vector<glm::dvec3> vertices;
     std::vector<Triangle> faces;
 
     icosahedron(radius, vertices, faces);
@@ -153,14 +153,14 @@ std::shared_ptr<Mesh> MeshBuilder::icosahedron(float radius){
     return std::make_shared<Mesh>(vertices, faces);
 }
 
-void MeshBuilder::icosahedron(float radius, std::vector<glm::vec3>& vertices, std::vector<Triangle>& faces)
+void MeshBuilder::icosahedron(double radius, std::vector<glm::dvec3>& vertices, std::vector<Triangle>& faces)
 {
 
     vertices.reserve(12);
     faces.reserve(20);
 
     // Prepare icosahedron vertices
-    auto t = (float)(1 + sqrt(5) / 2);
+    auto t = (double)(1 + sqrt(5) / 2);
 
     vertices.emplace_back(-1, t, 0);
     vertices.emplace_back(1, t, 0);
@@ -178,7 +178,7 @@ void MeshBuilder::icosahedron(float radius, std::vector<glm::vec3>& vertices, st
     vertices.emplace_back(-t, 0, 1);
 
     // Bring all vertices on to the unit sphere and scale by parameter
-    for (glm::vec3& vertex : vertices) vertex = radius * glm::normalize(vertex);
+    for (glm::dvec3& vertex : vertices) vertex = radius * glm::normalize(vertex);
 
     // Triangulate the icosahedron
     faces.emplace_back(0,  11, 5);
@@ -207,11 +207,11 @@ void MeshBuilder::icosahedron(float radius, std::vector<glm::vec3>& vertices, st
 }
 
 
-std::shared_ptr<Mesh> MeshBuilder::icosphere(float radius, uint8_t subdivisions)
+std::shared_ptr<Mesh> MeshBuilder::icosphere(double radius, uint8_t subdivisions)
 {
     uint32_t vertexCount = 10 * (uint32_t)pow(2, 2 * subdivisions) + 2;
 
-    std::vector<glm::vec3> vertices;
+    std::vector<glm::dvec3> vertices;
     vertices.reserve(vertexCount);
 
     std::vector<Triangle> faces;
@@ -242,7 +242,7 @@ std::shared_ptr<Mesh> MeshBuilder::icosphere(float radius, uint8_t subdivisions)
     return std::make_shared<Mesh>(vertices, faces);
 }
 
-uint32_t MeshBuilder::getMidPoint(std::vector<glm::vec3>& vertices, std::map<uint64_t, uint32_t> &table, uint64_t iA, uint64_t iB, float scalar){
+uint32_t MeshBuilder::getMidPoint(std::vector<glm::dvec3>& vertices, std::map<uint64_t, uint32_t> &table, uint64_t iA, uint64_t iB, double scalar){
 
     uint64_t key = iA > iB ? (iA << 32) + iB : (iB << 32) + iA;
 
@@ -269,15 +269,15 @@ std::shared_ptr<Mesh> MeshBuilder::mesh(const std::shared_ptr<Octree>& tree)
 
     for (const Octree::Octant& octant : *tree) {
         if (octant.status == target) {
-            float length = tree->octantLength(octant);
+            double length = tree->octantLength(octant);
             mesh->m_vertices[offset    ] = octant.top;
-            mesh->m_vertices[offset + 1] = octant.top + glm::vec3{      0, length,      0 };
-            mesh->m_vertices[offset + 2] = octant.top + glm::vec3{ length, length,      0 };
-            mesh->m_vertices[offset + 3] = octant.top + glm::vec3{ length,      0,      0 };
-            mesh->m_vertices[offset + 4] = octant.top + glm::vec3{      0,      0, length };
-            mesh->m_vertices[offset + 5] = octant.top + glm::vec3{      0, length, length };
-            mesh->m_vertices[offset + 6] = octant.top + glm::vec3{ length, length, length };
-            mesh->m_vertices[offset + 7] = octant.top + glm::vec3{ length,      0, length };
+            mesh->m_vertices[offset + 1] = octant.top + glm::dvec3{      0, length,      0 };
+            mesh->m_vertices[offset + 2] = octant.top + glm::dvec3{ length, length,      0 };
+            mesh->m_vertices[offset + 3] = octant.top + glm::dvec3{ length,      0,      0 };
+            mesh->m_vertices[offset + 4] = octant.top + glm::dvec3{      0,      0, length };
+            mesh->m_vertices[offset + 5] = octant.top + glm::dvec3{      0, length, length };
+            mesh->m_vertices[offset + 6] = octant.top + glm::dvec3{ length, length, length };
+            mesh->m_vertices[offset + 7] = octant.top + glm::dvec3{ length,      0, length };
 
             indexBox(idxPtr, sizePtr, offset);
             idxPtr += 24;
@@ -348,8 +348,8 @@ std::shared_ptr<Mesh> MeshBuilder::merge(const std::shared_ptr<Mesh>& a, const s
             a->faces().indexCount() + b->faces().indexCount());
 
     // Copy vertex data
-    for (const glm::vec3& vertex : a->vertices().vertices()) mesh->m_vertices[vIdx++] = vertex;
-    for (const glm::vec3& vertex : b->vertices().vertices()) mesh->m_vertices[vIdx++] = vertex;
+    for (const glm::dvec3& vertex : a->vertices().vertices()) mesh->m_vertices[vIdx++] = vertex;
+    for (const glm::dvec3& vertex : b->vertices().vertices()) mesh->m_vertices[vIdx++] = vertex;
 
     // Copy face data
     uint32_t *idxPtr = mesh->m_faces[0], *sizePtr = mesh->m_faces.faceSizes();
@@ -394,7 +394,7 @@ std::shared_ptr<Mesh> MeshBuilder::composite(const std::vector<ConvexHull>& hull
 
     uint32_t idxOffset = 0;
     for (const ConvexHull& hull : hulls) {
-        for (const glm::vec3& vertex : hull.vertices()) mesh->m_vertices[vertexIdx++] = vertex;
+        for (const glm::dvec3& vertex : hull.vertices()) mesh->m_vertices[vertexIdx++] = vertex;
 
         hPtr = hull.faces()[0];
         for (uint32_t i = 0; i < hull.faces().faceCount(); i++) {
@@ -415,7 +415,7 @@ std::shared_ptr<Mesh> MeshBuilder::eliminateCoincidentVertices(const std::shared
 {
 
     // Convert vertex data to a more convenient format
-    std::vector<glm::vec3> v(mesh->vertexCount());
+    std::vector<glm::dvec3> v(mesh->vertexCount());
     for (uint32_t i = 0; i < v.size(); i++) v[i] = mesh->vertices()[i];
 
     std::vector<std::vector<uint32_t>> f;
@@ -426,12 +426,12 @@ std::shared_ptr<Mesh> MeshBuilder::eliminateCoincidentVertices(const std::shared
     return std::make_shared<Mesh>(VertexArray(v), FaceArray(f));
 }
 
-void MeshBuilder::eliminateCoincidentVertices(const FaceArray& srcFaces, std::vector<glm::vec3>& vertices, std::vector<std::vector<uint32_t>>& faces)
+void MeshBuilder::eliminateCoincidentVertices(const FaceArray& srcFaces, std::vector<glm::dvec3>& vertices, std::vector<std::vector<uint32_t>>& faces)
 {
 
     uint32_t count = 0;
-    float tolerance = 1e-3, factor = 1 / tolerance; // TODO validate such high tolerance
-    glm::vec3 offset = 0.5f * glm::vec3{1.0f, 1.0f, 1.0f} * tolerance;
+    double tolerance = 1e-3, factor = 1 / tolerance; // TODO validate such high tolerance
+    glm::dvec3 offset = 0.5 * glm::dvec3{1.0, 1.0, 1.0} * tolerance;
     std::unordered_map<size_t, uint32_t> vertexMap;
     std::vector<uint32_t> indexMap(vertices.size(), std::numeric_limits<uint32_t>::max());
 
@@ -476,7 +476,7 @@ std::shared_ptr<Mesh> MeshBuilder::cleaned(const VertexArray& vertices, const Fa
 {
 
     // Convert vertex data to a more convenient format
-    std::vector<glm::vec3> v(vertices.length());
+    std::vector<glm::dvec3> v(vertices.length());
     for (uint32_t i = 0; i < v.size(); i++) v[i] = vertices[i];
 
     std::vector<std::vector<uint32_t>> f;
@@ -485,7 +485,7 @@ std::shared_ptr<Mesh> MeshBuilder::cleaned(const VertexArray& vertices, const Fa
     eliminateCoincidentVertices(faces, v, f);
 
     // Calculate face normals
-    std::vector<glm::vec3> normals;
+    std::vector<glm::dvec3> normals;
     normals.reserve(f.size());
     for (std::vector<uint32_t>& face : f) {
         normals.push_back(glm::normalize(glm::cross(v[face[1]] - v[face[0]], v[face[2]] - v[face[0]])));
@@ -494,7 +494,7 @@ std::shared_ptr<Mesh> MeshBuilder::cleaned(const VertexArray& vertices, const Fa
     return cleaned(v, normals, FaceArray(f));
 }
 
-size_t MeshBuilder::hash(const glm::vec3& vec, float factor)
+size_t MeshBuilder::hash(const glm::dvec3& vec, double factor)
 {
     return hash((uint32_t)(vec.x * factor), (uint32_t)(vec.y * factor), (uint32_t)(vec.z * factor));
 }
@@ -510,7 +510,7 @@ size_t MeshBuilder::cantor(size_t a, size_t b)
     return (a + b + 1) * (a + b) / 2 + b;
 }
 
-std::shared_ptr<Mesh> MeshBuilder::cleaned(std::vector<glm::vec3>& vertices, const std::vector<glm::vec3>& normals, const FaceArray& faces)
+std::shared_ptr<Mesh> MeshBuilder::cleaned(std::vector<glm::dvec3>& vertices, const std::vector<glm::dvec3>& normals, const FaceArray& faces)
 {
 
 //    std::cout << "\033[31mMesh Input is: " << isManifold(faces) << "\033[0m\n";
@@ -522,7 +522,7 @@ std::shared_ptr<Mesh> MeshBuilder::cleaned(std::vector<glm::vec3>& vertices, con
     std::vector<std::vector<uint32_t>> indices;
 
     std::cout << "XXXXXXXXXXXXXXXXXXXX\n";
-//    for (const glm::vec3& vertex : vertices) std::cout << vertex << "\n";
+//    for (const glm::dvec3& vertex : vertices) std::cout << vertex << "\n";
     faces.print();
 
     std::cout << "~~~~~~~~~~~~~~" << neighbors.size() << " " << faces.faceCount() << "~~~~~~~~~~~~~~\n";
@@ -556,7 +556,7 @@ std::shared_ptr<Mesh> MeshBuilder::cleaned(std::vector<glm::vec3>& vertices, con
             if (count != 3) std::cout << "WARNING! Neighbors have more than 3 edges. Faces may not be cleaned properly\n";
 
 //            std::cout << "DOT: " << normals[i].dot(normals[idx]) << "\n";
-            // std::numeric_limits<float>::epsilon() TODO identify reasonable tolerance
+            // std::numeric_limits<double>::epsilon() TODO identify reasonable tolerance
             if (glm::dot(normals[i], normals[idx]) > 1 - 1e-6) { // If coplanar neighbors
                 ptr = faces[idx];
 
@@ -623,7 +623,7 @@ std::shared_ptr<Mesh> MeshBuilder::cleaned(std::vector<glm::vec3>& vertices, con
 //    for (std::vector<uint32_t>& face: indices) {
 //        for (uint32_t i = 0; i < face.size(); i++) {
 //            uint32_t idx = (i + 1) % face.size();
-//            if (vec3f::collinear(vertices[face[i]], vertices[face[idx]], vertices[face[(i + 2) % face.size()]])) {
+//            if (dvec3::collinear(vertices[face[i]], vertices[face[idx]], vertices[face[(i + 2) % face.size()]])) {
 //                face.erase(face.begin() + idx);
 //                i--;
 //            }

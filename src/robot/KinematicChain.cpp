@@ -29,7 +29,7 @@ void KinematicChain::addJoint(Joint joint)
     m_joints.push_back(joint);
 }
 
-void KinematicChain::setJointValues(const std::vector<float>& values)
+void KinematicChain::setJointValues(const std::vector<double>& values)
 {
     size_t max = std::min(values.size(), m_joints.size());
     if (max != m_joints.size()) std::cout << "\033[31mWarning value set length is different from joint number\033[0m\n";
@@ -39,39 +39,39 @@ void KinematicChain::setJointValues(const std::vector<float>& values)
     }
 }
 
-bool KinematicChain::moveTo(const glm::vec3& position, const glm::vec3& euler)
+bool KinematicChain::moveTo(const glm::dvec3& position, const glm::dvec3& euler)
 {
-    const std::vector<float>& values = invkin(position, euler);
+    const std::vector<double>& values = invkin(position, euler);
     setJointValues(values);
 
     return !values.empty();
 }
 
-std::vector<float> KinematicChain::invkin(const glm::mat4& transform)
+std::vector<double> KinematicChain::invkin(const glm::dmat4& transform)
 {
 
-    glm::quat rotation;
-    glm::vec3 translation;
+    glm::dquat rotation;
+    glm::dvec3 translation;
 
-    glm::vec3 scale;
-    glm::vec3 skew;
-    glm::vec4 perspective;
-    glm::decompose(m_axisTransform4 * transform, scale, rotation, translation, skew,perspective);
+    glm::dvec3 scale;
+    glm::dvec3 skew;
+    glm::dvec4 perspective;
+    glm::decompose(m_axisTransform4 * transform, scale, rotation, translation, skew, perspective);
 
     return invkin(translation, rotation);
 }
 
-std::vector<float> KinematicChain::invkin(const glm::vec3& position, const Axis3D& axes)
+std::vector<double> KinematicChain::invkin(const glm::dvec3& position, const Axis3D& axes)
 {
     return invkin(m_axisTransform3 * position, glm::quat_cast(m_axisTransform3 * axes.toTransform()));
 }
 
-std::vector<float> KinematicChain::invkin(const glm::vec3& position, const glm::vec3& euler)
+std::vector<double> KinematicChain::invkin(const glm::dvec3& position, const glm::dvec3& euler)
 {
-    return invkin(m_axisTransform3 * position, glm::quat_cast(m_axisTransform3 * glm::mat3_cast(glm::quat(euler))));
+    return invkin(m_axisTransform3 * position, glm::quat_cast(m_axisTransform3 * glm::mat3_cast(glm::dquat(euler))));
 }
 
-std::vector<float> KinematicChain::invkin(const glm::vec3& position, const glm::quat& rotation)
+std::vector<double> KinematicChain::invkin(const glm::dvec3& position, const glm::dquat& rotation)
 {
     std::cout << "\033[31mUnable to move to desired position. The generic kinematic chain solver has not been implemented\033[0m\n";
     return {};
@@ -92,9 +92,9 @@ const std::vector<Joint>& KinematicChain::getJoints()
     return m_joints;
 }
 
-std::vector<glm::mat4> KinematicChain::jointHTMs()
+std::vector<glm::dmat4> KinematicChain::jointHTMs()
 {
-    std::vector<glm::mat4> transforms { glm::mat4(1.0f) };
+    std::vector<glm::dmat4> transforms { glm::dmat4(1.0f) };
 
     for (uint32_t i = 0; i < m_joints.size(); i++) {
         transforms.push_back(transforms[i] * m_joints[i].getHTM());
@@ -104,9 +104,9 @@ std::vector<glm::mat4> KinematicChain::jointHTMs()
     return transforms;
 }
 
-std::vector<glm::mat3> KinematicChain::jointHRMs(const std::vector<float>& values)
+std::vector<glm::dmat3> KinematicChain::jointHRMs(const std::vector<double>& values)
 {
-    std::vector<glm::mat3> matrices { glm::mat3(1.0f) };
+    std::vector<glm::dmat3> matrices { glm::dmat3(1.0f) };
     uint32_t count = std::min(values.size(), m_joints.size());
 
     for (uint32_t i = 0; i < count; i++) {
@@ -116,9 +116,9 @@ std::vector<glm::mat3> KinematicChain::jointHRMs(const std::vector<float>& value
     return matrices;
 }
 
-std::vector<glm::mat4> KinematicChain::jointHTMs(const std::vector<float>& values)
+std::vector<glm::dmat4> KinematicChain::jointHTMs(const std::vector<double>& values)
 {
-    std::vector<glm::mat4> transforms { glm::mat4(1.0f) };
+    std::vector<glm::dmat4> transforms { glm::dmat4(1.0f) };
     uint32_t count = std::min(values.size(), m_joints.size());
 
     for (uint32_t i = 0; i < count; i++) {
@@ -128,7 +128,7 @@ std::vector<glm::mat4> KinematicChain::jointHTMs(const std::vector<float>& value
     return transforms;
 }
 
-bool KinematicChain::ikValidation(const std::vector<float>& values)
+bool KinematicChain::ikValidation(const std::vector<double>& values)
 {
     for (uint32_t i = 0; i < values.size(); i++) {
         if (std::isnan(values[i])) {
@@ -143,7 +143,7 @@ bool KinematicChain::ikValidation(const std::vector<float>& values)
     return !values.empty();
 }
 
-bool KinematicChain::ikValidation(const std::vector<float>& values, const glm::vec3& position, const glm::quat& rotation)
+bool KinematicChain::ikValidation(const std::vector<double>& values, const glm::dvec3& position, const glm::dquat& rotation)
 {
     if (!ikValidation(values)) return false; // Base joint value validity check
 
@@ -151,7 +151,7 @@ bool KinematicChain::ikValidation(const std::vector<float>& values, const glm::v
     auto transform = jointHTMs(values)[values.size() - 1];
 
     // Verify the calculated iks result in the specified position
-    glm::vec3 delta = position - glm::vec3{ transform[3][0], transform[3][1], transform[3][2] };
+    glm::dvec3 delta = position - glm::dvec3{ transform[3][0], transform[3][1], transform[3][2] };
     if (glm::dot(delta, delta) < 1e-3) {
         std::cout << "\033[31mFailed to solve! Specified position does not match calculated result! Delta: "
             << "[" << delta.x << ", " << delta.y << ", " << delta.z << "]\033[0m\n";
@@ -159,8 +159,8 @@ bool KinematicChain::ikValidation(const std::vector<float>& values, const glm::v
     }
 
     // Verify the calculated iks result in the specified rotation TODO
-//    glm::mat3 rDel = glm::mat3_cast(rotation)
-//            - glm::mat3(
+//    glm::dmat3 rDel = glm::dmat3_cast(rotation)
+//            - glm::dmat3(
 //                transform[0][0], transform[0][1], transform[0][2],
 //                transform[1][0], transform[1][1], transform[1][2],
 //                transform[2][0], transform[2][1], transform[2][2]
@@ -178,10 +178,10 @@ bool KinematicChain::ikValidation(const std::vector<float>& values, const glm::v
     return true;
 }
 
-std::vector<glm::mat4> KinematicChain::jointTransforms()
+std::vector<glm::dmat4> KinematicChain::jointTransforms()
 {
-    std::vector<glm::mat4> transforms = jointHTMs();
-    for (glm::mat4& transform : transforms) {
+    std::vector<glm::dmat4> transforms = jointHTMs();
+    for (glm::dmat4& transform : transforms) {
         transform = m_axisTransform4 * transform;
     }
 

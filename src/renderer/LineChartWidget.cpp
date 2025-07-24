@@ -83,19 +83,19 @@ void LineChartWidget::mouseMoveEvent(QMouseEvent *e)
     m_mouseLast = pos;
 }
 
-void LineChartWidget::plot(const std::vector<float>& y)
+void LineChartWidget::plot(const std::vector<double>& y)
 {
     plot(y, s_pens[m_penIdx]);
     if (++m_penIdx >= s_pens.size()) m_penIdx = 0;
 }
 
-void LineChartWidget::plot(const std::vector<float>& y, const QString& name)
+void LineChartWidget::plot(const std::vector<double>& y, const QString& name)
 {
     plot(y, name, s_pens[m_penIdx]);
     if (++m_penIdx >= s_pens.size()) m_penIdx = 0;
 }
 
-void LineChartWidget::plot(const std::vector<float>& y, QPen pen)
+void LineChartWidget::plot(const std::vector<double>& y, QPen pen)
 {
     QString name = "Series";
     name.append(QString::number(m_series.size()));
@@ -103,9 +103,9 @@ void LineChartWidget::plot(const std::vector<float>& y, QPen pen)
     plot(y, name, pen);
 }
 
-void LineChartWidget::plot(const std::vector<float>& y, const QString& name, QPen pen)
+void LineChartWidget::plot(const std::vector<double>& y, const QString& name, QPen pen)
 {
-    auto *points = new float[y.size()];
+    auto *points = new double[y.size()];
     std::copy(y.begin(), y.end(), points);
 
     m_series.push_back(Series{
@@ -127,14 +127,14 @@ void LineChartWidget::showLegend(bool visible)
     m_legendEnable = visible;
 }
 
-void LineChartWidget::setX(const std::vector<float>& x)
+void LineChartWidget::setX(const std::vector<double>& x)
 {
     m_x = x;
 
     xlim(x[0], x[x.size() - 1]);
 }
 
-void LineChartWidget::setT(float t)
+void LineChartWidget::setT(double t)
 {
     m_t = t;
 }
@@ -148,8 +148,8 @@ void LineChartWidget::xlim()
 
     bool limited = false;
 
-    float min = std::numeric_limits<float>::lowest();
-    float max = std::numeric_limits<float>::max();
+    double min = std::numeric_limits<double>::lowest();
+    double max = std::numeric_limits<double>::max();
 
     for (const Series& series : m_series) {
         if (series.x == nullptr) continue;
@@ -167,19 +167,19 @@ void LineChartWidget::ylim()
 {
     if (m_series.empty()) return;
 
-    float min = m_series[0].y[0], max = m_series[0].y[0];
+    double min = m_series[0].y[0], max = m_series[0].y[0];
 
     for (const Series& series : m_series) {
         for (uint32_t i = 0; i < series.count; i++) {
-            if (min > series.y[i]) min = (float)series.y[i];
-            else if (max < series.y[i]) max = (float)series.y[i];
+            if (min > series.y[i]) min = (double)series.y[i];
+            else if (max < series.y[i]) max = (double)series.y[i];
         }
     }
 
     ylim(min, max);
 }
 
-void LineChartWidget::xlim(float minimum, float maximum)
+void LineChartWidget::xlim(double minimum, double maximum)
 {
     m_xMin = minimum;
     m_xMax = maximum;
@@ -188,7 +188,7 @@ void LineChartWidget::xlim(float minimum, float maximum)
 
     updateTransforms();
 }
-void LineChartWidget::ylim(float minimum, float maximum)
+void LineChartWidget::ylim(double minimum, double maximum)
 {
     m_yMin = minimum;
     m_yMax = maximum;
@@ -198,11 +198,11 @@ void LineChartWidget::ylim(float minimum, float maximum)
     updateTransforms();
 }
 
-inline int LineChartWidget::xTransform(float x) const
+inline int LineChartWidget::xTransform(double x) const
 {
     return (int)(x * m_xMag) + m_xOff;
 }
-inline int LineChartWidget::yTransform(float y) const
+inline int LineChartWidget::yTransform(double y) const
 {
     return -(int)(y * m_yMag) + m_yOff;
 }
@@ -214,10 +214,10 @@ void LineChartWidget::resizeEvent(QResizeEvent *)
 
 void LineChartWidget::updateTransforms()
 {
-    m_xMag = ((float)this->width() - 2) / (m_xMax - m_xMin);
+    m_xMag = ((double)this->width() - 2) / (m_xMax - m_xMin);
     m_xOff = (int)(m_xMin * m_xMag);
 
-    m_yMag = ((float)this->height() - 2) / (m_yMax - m_yMin);
+    m_yMag = ((double)this->height() - 2) / (m_yMax - m_yMin);
     m_yOff = (int)(m_yMax * m_yMag);
 }
 
@@ -247,7 +247,7 @@ void LineChartWidget::paintEvent(QPaintEvent *)
     for (const Series& series : m_series) {
         painter.setPen(series.pen);
 
-        float tStep = m_t / (float)series.count;
+        double tStep = m_t / (double)series.count;
         int x, y, lx, ly;
 
         if (series.x != nullptr) { // Use series-specific x-coordinates

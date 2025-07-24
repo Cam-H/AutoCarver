@@ -27,14 +27,14 @@ public:
             TERMINUS = 2       // The octant has no children
         } Status;
 
-        Octant(uint32_t parent, const glm::vec3& top, uint8_t depth);
+        Octant(uint32_t parent, const glm::dvec3& top, uint8_t depth);
 
         [[nodiscard]] inline bool terminates() const { return index == std::numeric_limits<uint32_t>::max(); }
 
         uint32_t parent;
         uint32_t index;
         uint8_t status;
-        glm::vec3 top;
+        glm::dvec3 top;
         uint8_t depth;
     };
 
@@ -93,11 +93,11 @@ public:
     using Iterator = OctreeIterator<false>;
     using ConstIterator = OctreeIterator<true>;
 
-    Octree(uint8_t maximumDepth = 6, float length = 1.0f);
+    Octree(uint8_t maximumDepth = 6, double length = 1.0f);
 
     void reset();
 
-    void translate(const glm::vec3& translation);
+    void translate(const glm::dvec3& translation);
 
     // Apply boolean operation to the octree
     template<class T>
@@ -108,7 +108,7 @@ public:
 
 //    bool intersect(const Sphere& sphere);
 
-    void setLength(float length);
+    void setLength(double length);
     void setMaximumDepth(uint8_t depth);
 
     template<class T>
@@ -122,16 +122,16 @@ public:
     uint32_t parent(uint32_t childIndex) const;
     bool isParent(uint32_t parentIndex, uint32_t childIndex) const;
 
-    glm::vec3 top() const;
+    glm::dvec3 top() const;
 
     uint32_t octantCount(uint8_t status = 1) const;
     size_t maximumOctantCount() const;
     static size_t maximumOctantCount(uint8_t depth);
 
-    float octantLength(const Octant& octant) const;
+    double octantLength(const Octant& octant) const;
 
 //    const Octant* root() const;
-    float length() const;
+    double length() const;
     uint8_t maximumDepth() const;
 
     size_t size() const;
@@ -161,9 +161,9 @@ private:
     std::vector<Octant> m_octants;
 
     uint8_t m_maxDepth;
-    std::vector<float> m_lengths;
+    std::vector<double> m_lengths;
 
-    glm::vec3 m_offset;
+    glm::dvec3 m_offset;
 
 };
 

@@ -36,7 +36,7 @@ SceneWidget *sceneWidget = nullptr;
 std::shared_ptr<RigidBody> plane;
 std::shared_ptr<RigidBody> base;
 
-std::array<float, 6> pos = { 0, 0, 0, 0, 0, 0 };
+std::array<double, 6> pos = { 0, 0, 0, 0, 0, 0 };
 
 #include <QRandomGenerator>
 
@@ -46,10 +46,10 @@ std::shared_ptr<Mesh> randomMesh()
 
     // Generate a cloud of count vertices within a cube around the origin
     uint32_t count = rng.global()->bounded(4, 12);
-    std::vector<glm::vec3> cloud(count);
-    auto *ptr = (float*)cloud.data();
+    std::vector<glm::dvec3> cloud(count);
+    auto *ptr = (double*)cloud.data();
 
-    for (uint32_t j = 0; j < 3 * count; j++) *ptr++ = (float)rng.global()->bounded(2.0) - 1.0f;
+    for (uint32_t j = 0; j < 3 * count; j++) *ptr++ = (double)rng.global()->bounded(2.0) - 1.0f;
 
     return std::make_shared<Mesh>(ConvexHull(cloud), false);
 }
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
     scene = std::make_shared<Scene>();
 
     // Create a cutting plane
-    auto model = MeshBuilder::plane(10, glm::vec3(), glm::vec3(0, 1, 0));
+    auto model = MeshBuilder::plane(10, glm::dvec3(), glm::dvec3(0, 1, 0));
     model->setBaseColor({1, 1, 1 });
     plane = scene->createBody(model);
     plane->setLayer(0);
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
     std::array<std::string, 6> names = { "xField", "yField", "zField", "rxField", "ryField", "rzField" };
     for (uint32_t i = 0; i < 6; i++) {
         auto *jointField = jiw->findChild<QDoubleSpinBox*>(names[i].c_str());
-        QObject::connect(jointField, &QDoubleSpinBox::valueChanged, [i](float value) {
+        QObject::connect(jointField, &QDoubleSpinBox::valueChanged, [i](double value) {
             pos[i] = value;
 
             plane->setPosition({ pos[0], pos[1], pos[2] });

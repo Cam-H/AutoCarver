@@ -20,18 +20,18 @@ class Octree;
 class MeshBuilder {
 public:
 
-    static std::shared_ptr<Mesh> plane(float width, const glm::vec3& origin, const glm::vec3& normal);
-//    static std::shared_ptr<Mesh> plane(float length, float width, const vec3f& origin, const vec3f& normal, const vec3f& ref);
-    static std::shared_ptr<Mesh> plane(float length, float width, const glm::vec3& origin, const glm::vec3& normal, const glm::vec3& ref);
+    static std::shared_ptr<Mesh> plane(double width, const glm::dvec3& origin, const glm::dvec3& normal);
+//    static std::shared_ptr<Mesh> plane(double length, double width, const dvec3f& origin, const dvec3f& normal, const dvec3f& ref);
+    static std::shared_ptr<Mesh> plane(double length, double width, const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& ref);
 
-    static std::shared_ptr<Mesh> box(float sideLength = 1.0f);
-    static std::shared_ptr<Mesh> box(float length, float width, float height);
+    static std::shared_ptr<Mesh> box(double sideLength = 1.0f);
+    static std::shared_ptr<Mesh> box(double length, double width, double height);
 
-    static std::shared_ptr<Mesh> cylinder(float radius = 1.0f, float height = 1.0f, uint32_t segments = 6);
-    static std::shared_ptr<Mesh> extrude(const std::vector<glm::vec3>& border, const glm::vec3& normal, float depth = 1.0f);
+    static std::shared_ptr<Mesh> cylinder(double radius = 1.0f, double height = 1.0f, uint32_t segments = 6);
+    static std::shared_ptr<Mesh> extrude(const std::vector<glm::dvec3>& border, const glm::dvec3& normal, double depth = 1.0f);
 
-    static std::shared_ptr<Mesh> icosahedron(float radius = 1.0f);
-    static std::shared_ptr<Mesh> icosphere(float radius = 1.0f, uint8_t subdivisions = 1);
+    static std::shared_ptr<Mesh> icosahedron(double radius = 1.0f);
+    static std::shared_ptr<Mesh> icosphere(double radius = 1.0f, uint8_t subdivisions = 1);
 
     static std::shared_ptr<Mesh> mesh(const std::shared_ptr<Octree>& tree);
 
@@ -50,18 +50,18 @@ public:
 
 private:
 
-    static void icosahedron(float radius, std::vector<glm::vec3>& vertices, std::vector<Triangle>& faces);
-    static uint32_t getMidPoint(std::vector<glm::vec3>& vertices, std::map<uint64_t, uint32_t> &table, uint64_t iA, uint64_t iB, float scalar);
+    static void icosahedron(double radius, std::vector<glm::dvec3>& vertices, std::vector<Triangle>& faces);
+    static uint32_t getMidPoint(std::vector<glm::dvec3>& vertices, std::map<uint64_t, uint32_t> &table, uint64_t iA, uint64_t iB, double scalar);
 
-//    static std::shared_ptr<Mesh> cube(glm::vec3 *vertexPtr, uint32_t *facePtr);
+//    static std::shared_ptr<Mesh> cube(glm::dvec3 *vertexPtr, uint32_t *facePtr);
 
     static void indexBox(uint32_t *facePtr, uint32_t *sizePtr, uint32_t offset = 0);
 
-    static void eliminateCoincidentVertices(const FaceArray& srcFaces, std::vector<glm::vec3>& vertices, std::vector<std::vector<uint32_t>>& faces);
+    static void eliminateCoincidentVertices(const FaceArray& srcFaces, std::vector<glm::dvec3>& vertices, std::vector<std::vector<uint32_t>>& faces);
 
-    static std::shared_ptr<Mesh> cleaned(std::vector<glm::vec3>& vertices, const std::vector<glm::vec3>& normals, const FaceArray& faces);
+    static std::shared_ptr<Mesh> cleaned(std::vector<glm::dvec3>& vertices, const std::vector<glm::dvec3>& normals, const FaceArray& faces);
 
-    [[nodiscard]] static size_t hash(const glm::vec3& vec, float factor);
+    [[nodiscard]] static size_t hash(const glm::dvec3& vec, double factor);
     [[nodiscard]] static size_t hash(size_t a, size_t b, size_t c) ;
     [[nodiscard]] static size_t cantor(size_t a, size_t b) ;
 

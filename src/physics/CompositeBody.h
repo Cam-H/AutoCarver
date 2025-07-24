@@ -34,7 +34,7 @@ public:
 
     const std::vector<ConvexHull>& hulls() const;
 
-    const glm::vec3& baseColor() const;
+    const glm::dvec3& baseColor() const;
 
 protected:
     void prepareTree();
@@ -65,7 +65,7 @@ private:
     std::vector<uint32_t> m_mergeTests; // Track hulls that could (maybe) still be merged
 
     // Styling
-    glm::vec3 m_baseColor;
+    glm::dvec3 m_baseColor;
     bool m_applyCompositeColor;
 };
 

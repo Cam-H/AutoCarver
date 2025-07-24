@@ -23,7 +23,7 @@ bool Collision::test(const Plane& bodyA, const Plane& bodyB)
 
 bool Collision::test(const Sphere& bodyA, const Sphere& bodyB)
 {
-    glm::vec3 delta = bodyA.center - bodyB.center;
+    glm::dvec3 delta = bodyA.center - bodyB.center;
     return glm::dot(delta, delta) < pow(bodyA.radius + bodyB.radius, 2);
 }
 
@@ -40,7 +40,7 @@ bool Collision::test(const Plane& bodyA, const Sphere& bodyB)
 }
 bool Collision::test(const Sphere& bodyA, const Plane& bodyB)
 {
-    glm::vec3 delta = bodyA.center - bodyB.origin;
+    glm::dvec3 delta = bodyA.center - bodyB.origin;
     return glm::dot(delta, delta) < bodyA.radius * bodyA.radius;
 }
 
@@ -50,10 +50,10 @@ bool Collision::test(const Plane& bodyA, const AABB& bodyB)
 }
 bool Collision::test(const AABB& bodyA, const Plane& bodyB)
 {
-    auto center = 0.5f * (bodyA.min + bodyA.max);
+    auto center = 0.5 * (bodyA.min + bodyA.max);
     auto extent = bodyA.max - center;
 
-    float r = std::abs(bodyB.normal.x) * extent.x
+    double r = std::abs(bodyB.normal.x) * extent.x
             + std::abs(bodyB.normal.y) * extent.y
             + std::abs(bodyB.normal.z) * extent.z;
 
@@ -83,11 +83,11 @@ bool Collision::test(const Sphere& bodyA, const AABB& bodyB)
 }
 bool Collision::test(const AABB& bodyA, const Sphere& bodyB)
 {
-    glm::vec3 delta = bodyB.center - nearest(bodyA, bodyB.center);
+    glm::dvec3 delta = bodyB.center - nearest(bodyA, bodyB.center);
     return glm::dot(delta, delta) < bodyB.radius * bodyB.radius;
 }
 
-glm::vec3 Collision::nearest(const AABB& body, const glm::vec3& reference)
+glm::dvec3 Collision::nearest(const AABB& body, const glm::dvec3& reference)
 {
     return {
             std::clamp(reference.x, body.min.x, body.max.x),
@@ -96,9 +96,9 @@ glm::vec3 Collision::nearest(const AABB& body, const glm::vec3& reference)
     };
 }
 
-glm::vec3 Collision::farthest(const AABB& body, const glm::vec3& reference)
+glm::dvec3 Collision::farthest(const AABB& body, const glm::dvec3& reference)
 {
-    glm::vec3 center = 0.5f * (body.min + body.max);
+    glm::dvec3 center = 0.5 * (body.min + body.max);
 
     return {
             (center.x > reference.x ? body.max.x : body.min.x),
@@ -107,20 +107,20 @@ glm::vec3 Collision::farthest(const AABB& body, const glm::vec3& reference)
     };
 }
 
-bool Collision::encloses(const Sphere& body, const glm::vec3& vertex)
+bool Collision::encloses(const Sphere& body, const glm::dvec3& vertex)
 {
-    glm::vec3 delta = vertex - body.center;
+    glm::dvec3 delta = vertex - body.center;
     return glm::dot(delta, delta) - body.radius * body.radius < 1e-6;
 }
 
-bool Collision::encloses(const AABB& body, const glm::vec3& vertex)
+bool Collision::encloses(const AABB& body, const glm::dvec3& vertex)
 {
     return body.min.x < vertex.x && body.max.x > vertex.x
         && body.min.y < vertex.y && body.max.y > vertex.y
         && body.min.z < vertex.z && body.max.z > vertex.z;
 }
 
-bool Collision::encloses(const ConvexHull& body, const glm::vec3& vertex)
+bool Collision::encloses(const ConvexHull& body, const glm::dvec3& vertex)
 {
     for (uint32_t i = 0; i < body.facetCount(); i++) {
         const Plane& plane = body.facePlane(i);
@@ -132,7 +132,7 @@ bool Collision::encloses(const ConvexHull& body, const glm::vec3& vertex)
 
 bool Collision::encloses(const Sphere& bodyA, const Sphere& bodyB)
 {
-    glm::vec3 delta = bodyA.center - bodyB.center;
+    glm::dvec3 delta = bodyA.center - bodyB.center;
     return glm::dot(delta, delta) < pow(bodyA.radius - bodyB.radius, 2);
 }
 
@@ -147,13 +147,13 @@ bool Collision::encloses(const AABB& bodyA, const AABB& bodyB)
 // Test whether the sphere encloses the AABB
 bool Collision::encloses(const Sphere& bodyA, const AABB& bodyB)
 {
-    glm::vec3 delta = bodyA.center - farthest(bodyB, bodyA.center);
+    glm::dvec3 delta = bodyA.center - farthest(bodyB, bodyA.center);
     return glm::dot(delta, delta) < bodyA.radius * bodyA.radius;
 }
 // Test whether the AABB encloses the sphere
 bool Collision::encloses(const AABB& bodyA, const Sphere& bodyB)
 {
-    glm::vec3 delta = bodyB.center - bodyA.center();
+    glm::dvec3 delta = bodyB.center - bodyA.center();
     return std::abs(delta.x) < 0.5f * bodyA.xLength() - bodyB.radius
         && std::abs(delta.y) < 0.5f * bodyA.yLength() - bodyB.radius
         && std::abs(delta.z) < 0.5f * bodyA.zLength() - bodyB.radius;
@@ -190,17 +190,17 @@ bool Collision::encloses(const ConvexHull& bodyA, const AABB& bodyB)
         && encloses(bodyA, bodyB.vertex(6));
 }
 
-std::tuple<bool, float, glm::vec3> Collision::intersection(const AABB& body, const Ray& ray)
+std::tuple<bool, double, glm::dvec3> Collision::intersection(const AABB& body, const Ray& ray)
 {
-    float tMin = std::numeric_limits<float>::lowest(), tMax = std::numeric_limits<float>::max();
+    double tMin = std::numeric_limits<double>::lowest(), tMax = std::numeric_limits<double>::max();
 
     for (uint8_t i = 0; i < 3; i++) {
         if (ray.axis[i] * ray.axis[i] < 1e-6) { // Handle parallel ray case
             if (ray.origin[i] < body.min[i] || ray.origin[i] > body.max[i]) return { false, 0, {} };
         } else {
-            float ood = 1.0f / ray.axis[i];
-            float t1 = (body.min[i] - ray.origin[i]) * ood;
-            float t2 = (body.max[i] - ray.origin[i]) * ood;
+            double ood = 1.0f / ray.axis[i];
+            double t1 = (body.min[i] - ray.origin[i]) * ood;
+            double t2 = (body.max[i] - ray.origin[i]) * ood;
             if (t1 > t2) std::swap(t1, t2);
 
             tMin = std::max(tMin, t1);
@@ -215,7 +215,7 @@ std::tuple<bool, float, glm::vec3> Collision::intersection(const AABB& body, con
 }
 
 // TODO Improvement: Leverage walk to calculate intersection in-place
-std::vector<glm::vec3> Collision::intersection(const ConvexHull& hull, const Plane& plane)
+std::vector<glm::dvec3> Collision::intersection(const ConvexHull& hull, const Plane& plane)
 {
     if (hull.vertexCount() < 4) return {}; // Early exit when the hull is poorly formed
 
@@ -226,17 +226,17 @@ std::vector<glm::vec3> Collision::intersection(const ConvexHull& hull, const Pla
     return intersection(hull, plane, above);
 }
 
-std::vector<glm::vec3> Collision::intersection(const ConvexHull& hull, const Plane& plane, const std::vector<bool>& partition)
+std::vector<glm::dvec3> Collision::intersection(const ConvexHull& hull, const Plane& plane, const std::vector<bool>& partition)
 {
-    float d = plane.d();
+    double d = plane.d();
 
     // Find vertices on the cut plane
-    std::vector<glm::vec3> intersection;
+    std::vector<glm::dvec3> intersection;
     for (uint32_t i = 0; i < hull.vertexCount(); i++) {
         for (uint32_t j : hull.neighbors(i)) {
             if (i < j && partition[i] != partition[j]) { // Skip repeated edges, edges that do not cross the plane
-                glm::vec3 vertex = hull.vertices()[i], edge = hull.vertices()[j] - vertex;
-                float t = (d - glm::dot(plane.normal, vertex)) / glm::dot(plane.normal, edge);
+                glm::dvec3 vertex = hull.vertices()[i], edge = hull.vertices()[j] - vertex;
+                double t = (d - glm::dot(plane.normal, vertex)) / glm::dot(plane.normal, edge);
                 intersection.emplace_back(vertex + edge * t);
             }
         }
@@ -291,7 +291,7 @@ ConvexHull Collision::fragment(const ConvexHull& hull, const Plane& plane)
     }
 
     // Find vertex intersections of hull with plane
-    std::vector<glm::vec3> set = intersection(hull, plane, above);
+    std::vector<glm::dvec3> set = intersection(hull, plane, above);
 
     // Attach vertices on the positive side of the plane
     for (uint32_t i = 0; i < above.size(); i++) if (above[i]) set.push_back(hull.vertices()[i]);
@@ -311,10 +311,10 @@ std::pair<ConvexHull, ConvexHull> Collision::fragments(const ConvexHull& hull, c
         else return { {}, hull };
     }
 
-    std::vector<glm::vec3> setA = intersection(hull, plane, above);
+    std::vector<glm::dvec3> setA = intersection(hull, plane, above);
 
     // Duplicate intersection vertices in other set
-    std::vector<glm::vec3> setB = setA;
+    std::vector<glm::dvec3> setB = setA;
 
     // Attach original vertices to respective fragments
     for (uint32_t i = 0; i < above.size(); i++) {

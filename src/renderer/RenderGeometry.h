@@ -34,7 +34,7 @@ private:
     void initialize(const std::shared_ptr<Mesh>& mesh);
 
     void* vertexData(const std::shared_ptr<Mesh>& mesh);
-    std::vector<std::reference_wrapper<const std::vector<glm::vec3>>> attributes(const std::shared_ptr<Mesh>& mesh);
+    std::vector<std::reference_wrapper<const std::vector<glm::dvec3>>> attributes(const std::shared_ptr<Mesh>& mesh);
 
     QOpenGLBuffer m_arrayBuf;
     QOpenGLBuffer m_indexBuf;

@@ -8,16 +8,16 @@
 #include "geometry/collision/Collision.h"
 
 
-Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, float width, float height)
+Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, double width, double height)
     : CompositeBody(MeshBuilder::box())
     , m_width(width)
     , m_height(height)
     , m_rotation(0)
-    , m_scalar(1.0f)
+    , m_scalar(1.0)
     , m_preserveDebris(false)
     , m_step(0)
     , m_formStep(0)
-    , m_highlightColor(0.3f, 0.3f, 0.8f)
+    , m_highlightColor(0.3, 0.3, 0.8)
 {
 
     scaleToFit(model, m_width, m_height);
@@ -28,10 +28,10 @@ Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, float width, float heig
     std::cout << "Volume ratio: " << 100 * bulkUsageRatio() << "% material usage, " << 100 * remainderRatio() << "% Remaining\n";
 }
 
-void Sculpture::scaleToFit(const std::shared_ptr<Mesh>& model, float width, float maxHeight)
+void Sculpture::scaleToFit(const std::shared_ptr<Mesh>& model, double width, double maxHeight)
 {
     // Find the maximum dimensions of the mesh
-    float xNear, xFar, yNear, yFar, zNear, zFar;
+    double xNear, xFar, yNear, yFar, zNear, zFar;
     model->xExtents(xNear, xFar);
     model->yExtents(yNear, yFar);
     model->zExtents(zNear, zFar);
@@ -102,12 +102,12 @@ void Sculpture::moved()
     modelBody->setTransform(m_transform);
 }
 
-void Sculpture::queueSection(const glm::vec3& origin, const glm::vec3& normal)
+void Sculpture::queueSection(const glm::dvec3& origin, const glm::dvec3& normal)
 {
     m_operations.emplace_back(origin, normal);
 }
 
-void Sculpture::queueSection(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& normal, bool external)
+void Sculpture::queueSection(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& normal, bool external)
 {
     m_operations.emplace_back();
 
@@ -128,7 +128,7 @@ void Sculpture::queueSection(const glm::vec3& a, const glm::vec3& b, const glm::
 
 }
 
-//void Sculpture::queueSection(const std::vector<glm::vec3>& border, const glm::vec3& normal)
+//void Sculpture::queueSection(const std::vector<glm::dvec3>& border, const glm::dvec3& normal)
 //{
 //    if (border.size() < 3) return;
 //    else if (border.size() == 3) queueSection(border[0], border[1], border[2], normal);
@@ -288,44 +288,44 @@ const std::shared_ptr<RigidBody>& Sculpture::model()
 }
 
 
-float Sculpture::width() const
+double Sculpture::width() const
 {
     return m_width;
 }
-float Sculpture::height() const
+double Sculpture::height() const
 {
     return m_height;
 }
-float Sculpture::rotation() const
+double Sculpture::rotation() const
 {
     return m_rotation;
 }
 
-float Sculpture::scalar() const
+double Sculpture::scalar() const
 {
     return m_scalar;
 }
 
-float Sculpture::initialVolume() const
+double Sculpture::initialVolume() const
 {
     return m_width * m_width * m_height;
 }
-float Sculpture::currentVolume() const
+double Sculpture::currentVolume() const
 {
     return m_mesh->volume();
 }
-float Sculpture::finalVolume() const
+double Sculpture::finalVolume() const
 {
     return modelBody->volume();
 }
 
-float Sculpture::bulkUsageRatio() const
+double Sculpture::bulkUsageRatio() const
 {
     return finalVolume() / initialVolume();
 }
-float Sculpture::remainderRatio() const
+double Sculpture::remainderRatio() const
 {
-    float fVolume = finalVolume();
+    double fVolume = finalVolume();
 
     return (currentVolume() - fVolume) / (initialVolume() - fVolume);
 }

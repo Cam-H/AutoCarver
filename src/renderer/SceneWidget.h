@@ -113,14 +113,14 @@ private:
 
     Camera m_camera;
 
-    float m_minRadius;
-    float m_maxRadius;
+    double m_minRadius;
+    double m_maxRadius;
 
     // Camera sensitivity
-    float m_translationSensitivity;
-    float m_rotationSensitivity;
-    float m_zoomSensitivity;
-    float m_zoomExponential;
+    double m_translationSensitivity;
+    double m_rotationSensitivity;
+    double m_zoomSensitivity;
+    double m_zoomExponential;
 
     // Inputs
     QVector2D m_mouseLastPosition;

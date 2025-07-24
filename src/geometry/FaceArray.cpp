@@ -28,14 +28,20 @@ FaceArray::FaceArray(uint32_t faceCount, uint32_t indexCount)
 FaceArray::FaceArray(const uint32_t* indices, uint32_t triangleCount)
     : FaceArray(triangleCount, 3 * triangleCount)
 {
-    m_faces.assign(indices, indices + 3 * triangleCount);
+    std::copy(indices, indices + 3 * triangleCount, m_faces.begin());
     std::fill(m_faceSizes.begin(), m_faceSizes.end(), 3);
 }
 
 FaceArray::FaceArray(const std::vector<Triangle>& faces)
         : FaceArray(faces.size(), sizeof(Triangle) * faces.size())
 {
-    m_faces.assign((uint32_t*)faces.data(), (uint32_t*)faces.data() + sizeof(Triangle) * faces.size());
+    uint32_t idx = 0;
+    for (const Triangle& tri : faces) {
+        m_faces[idx++] = tri.I0;
+        m_faces[idx++] = tri.I1;
+        m_faces[idx++] = tri.I2;
+    }
+
     std::fill(m_faceSizes.begin(), m_faceSizes.end(), 3);
 }
 
@@ -45,7 +51,7 @@ FaceArray::FaceArray(const uint32_t* faces, const uint32_t* faceSizes, uint32_t 
         , m_indexCount(0)
         , m_normals(faceCount)
 {
-    m_faceSizes.assign(faceSizes, faceSizes + faceCount);
+    std::copy(faceSizes, faceSizes + faceCount, m_faceSizes.begin());
 
     for (uint32_t i = 0; i < m_faceCount; i++) m_indexCount += m_faceSizes[i];
     m_faces = std::vector<uint32_t>(faces, faces + m_indexCount);
@@ -96,24 +102,24 @@ FaceArray FaceArray::deserialize(std::ifstream& file)
     return faces;
 }
 
-void FaceArray::assignNormals(const std::vector<glm::vec3>& normals)
+void FaceArray::assignNormals(const std::vector<glm::dvec3>& normals)
 {
     m_normals = normals;
     m_normals.resize(m_faceCount);
 }
 
-glm::vec3 FaceArray::calculateNormal(const std::vector<glm::vec3>& boundary)
+glm::dvec3 FaceArray::calculateNormal(const std::vector<glm::dvec3>& boundary)
 {
     if (boundary.size() < 3) throw std::runtime_error("[FaceArray] Can not calculate the normal of boundary! Inadequate size");
 
     if (boundary.size() == 3) return Triangle::normal(boundary[0], boundary[1], boundary[2]);
 
-    glm::vec3 normal = {};
+    glm::dvec3 normal = {};
     for (uint32_t i = 0; i < boundary.size(); i++) {
-        const glm::vec3& current = boundary[i];
-        const glm::vec3& next = boundary[(i + 1) % boundary.size()];
+        const glm::dvec3& current = boundary[i];
+        const glm::dvec3& next = boundary[(i + 1) % boundary.size()];
 
-        normal += glm::vec3{
+        normal += glm::dvec3{
                 (current.y - next.y) * (current.z + next.z),
                 (current.z - next.z) * (current.x + next.x),
                 (current.x - next.x) * (current.y + next.y)
@@ -123,9 +129,9 @@ glm::vec3 FaceArray::calculateNormal(const std::vector<glm::vec3>& boundary)
     return glm::normalize(normal);
 }
 
-void FaceArray::calculateNormals(const std::vector<glm::vec3>& vertices)
+void FaceArray::calculateNormals(const std::vector<glm::dvec3>& vertices)
 {
-    m_normals = std::vector<glm::vec3>(m_faceCount);
+    m_normals = std::vector<glm::dvec3>(m_faceCount);
 
     uint32_t *idxPtr = &m_faces[0];
     for (uint32_t i = 0; i < m_faceCount; i++) {
@@ -134,10 +140,10 @@ void FaceArray::calculateNormals(const std::vector<glm::vec3>& vertices)
         } else { // Otherwise, evaluate the normal using Newell's method
             m_normals[i] = { 0, 0, 0 };
             for (uint32_t j = 0; j < m_faceSizes[i]; j++) {
-                const glm::vec3& current = vertices[*(idxPtr + j)];
-                const glm::vec3& next = vertices[*(idxPtr + (j + 1) % m_faceSizes[i])];
+                const glm::dvec3& current = vertices[*(idxPtr + j)];
+                const glm::dvec3& next = vertices[*(idxPtr + (j + 1) % m_faceSizes[i])];
 
-                m_normals[i] += glm::vec3{
+                m_normals[i] += glm::dvec3{
                         (current.y - next.y) * (current.z + next.z),
                         (current.z - next.z) * (current.x + next.x),
                         (current.x - next.x) * (current.y + next.y)
@@ -151,7 +157,7 @@ void FaceArray::calculateNormals(const std::vector<glm::vec3>& vertices)
     }
 }
 
-void FaceArray::triangulate(const std::vector<glm::vec3>& vertices)
+void FaceArray::triangulate(const std::vector<glm::dvec3>& vertices)
 {
 //    std::cout << "Triangulating... " << m_normals.size() << " " << m_faceCount << "\n"; TODO verify
 //    if (!m_normals.empty() && m_normals.size() != m_faceCount) throw std::runtime_error("[FaceArray] Mystery normal error");
@@ -169,7 +175,7 @@ void FaceArray::triangulate(const std::vector<glm::vec3>& vertices)
         } else if (m_faceSizes[i] > 3 && inRange(idxPtr, m_faceSizes[i], vertices.size())){
 
             // Prepare to project the face into 2D space
-            std::vector<glm::vec3> border(m_faceSizes[i]);
+            std::vector<glm::dvec3> border(m_faceSizes[i]);
             for (uint32_t j = 0; j < m_faceSizes[i]; j++) border[j] = vertices[*(idxPtr + j)];
 
             // Find the Delaunay triangulation of the projected 2D polygon
@@ -194,12 +200,12 @@ void FaceArray::triangulate(const std::vector<glm::vec3>& vertices)
     }
 }
 
-void FaceArray::setColor(const glm::vec3& color)
+void FaceArray::setColor(const glm::dvec3& color)
 {
-    m_colors = std::vector<glm::vec3>(m_faceCount, color);
+    m_colors = std::vector<glm::dvec3>(m_faceCount, color);
 }
 
-void FaceArray::setColor(uint32_t idx, const glm::vec3& color)
+void FaceArray::setColor(uint32_t idx, const glm::dvec3& color)
 {
     if (idx >= m_faceCount) throw std::runtime_error("[FaceArray] Out of bounds array access!");
     if (m_colors.empty()) setColor(color);
@@ -269,22 +275,22 @@ uint32_t* FaceArray::faceSizes()
     return &m_faceSizes[0];
 }
 
-const std::vector<glm::vec3>& FaceArray::normals() const
+const std::vector<glm::dvec3>& FaceArray::normals() const
 {
     return m_normals;
 }
 
-glm::vec3 FaceArray::normal(uint32_t idx) const
+glm::dvec3 FaceArray::normal(uint32_t idx) const
 {
     if (idx >= m_normals.size()) return {};
     return m_normals[idx];
 }
 
-const std::vector<glm::vec3>& FaceArray::colors() const
+const std::vector<glm::dvec3>& FaceArray::colors() const
 {
     return m_colors;
 }
-glm::vec3 FaceArray::color(uint32_t idx) const
+glm::dvec3 FaceArray::color(uint32_t idx) const
 {
     if (idx >= m_colors.size()) return {};
     return m_colors[idx];
@@ -307,11 +313,11 @@ std::tuple<uint32_t, uint32_t> FaceArray::triangleLookup(uint32_t faceIdx) const
     else return { m_triFaceLookup[faceIdx], m_triFaceLookup[faceIdx + 1] - m_triFaceLookup[faceIdx] };
 }
 
-std::vector<glm::vec3> FaceArray::faceBorder(uint32_t idx, const std::vector<glm::vec3>& vertices) const
+std::vector<glm::dvec3> FaceArray::faceBorder(uint32_t idx, const std::vector<glm::dvec3>& vertices) const
 {
     if (idx >= m_faceCount) throw std::runtime_error("[FaceArray] Invalid element access when generating border");
 
-    std::vector<glm::vec3> border;
+    std::vector<glm::dvec3> border;
 
     auto *ptr = idxPtr(idx);
     for (uint32_t i = 0; i < m_faceSizes[idx]; i++) {
@@ -322,9 +328,9 @@ std::vector<glm::vec3> FaceArray::faceBorder(uint32_t idx, const std::vector<glm
     return border;
 }
 
-float FaceArray::volume(const std::vector<glm::vec3>& vertices) const
+double FaceArray::volume(const std::vector<glm::dvec3>& vertices) const
 {
-    float sum = 0;
+    double sum = 0;
     for (const Triangle& tri : m_triangles) {
 
         // Add contribution of tetrahedron to volume
@@ -334,9 +340,9 @@ float FaceArray::volume(const std::vector<glm::vec3>& vertices) const
     return sum / 6.0f;
 }
 
-uint32_t FaceArray::matchFace(const glm::vec3& axis)
+uint32_t FaceArray::matchFace(const glm::dvec3& axis)
 {
-    auto match = std::max_element(m_normals.begin(), m_normals.end(), [axis](const glm::vec3& lhs, const glm::vec3& rhs){
+    auto match = std::max_element(m_normals.begin(), m_normals.end(), [axis](const glm::dvec3& lhs, const glm::dvec3& rhs){
         return glm::dot(lhs, axis) > glm::dot(rhs, axis);
     });
 

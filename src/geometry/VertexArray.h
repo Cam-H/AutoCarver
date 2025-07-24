@@ -18,11 +18,11 @@
 
 class VertexArray : public Serializable {
 public:
-    VertexArray(const float* vertices, uint32_t vertexCount);
+    VertexArray(const double* vertices, uint32_t vertexCount);
 
     explicit VertexArray(uint32_t vertexCount);
-    explicit VertexArray(const std::vector<glm::vec2>& vertices);
-    explicit VertexArray(const std::vector<glm::vec3>& vertices);
+    explicit VertexArray(const std::vector<glm::dvec2>& vertices);
+    explicit VertexArray(const std::vector<glm::dvec3>& vertices);
 
     explicit VertexArray(const std::string& filename);
     explicit VertexArray(std::ifstream& file);
@@ -36,26 +36,26 @@ public:
 
 //    static VertexArray deserialize(std::ifstream& file);
 
-//    float* operator[](uint32_t idx);
-    glm::vec3& operator[](uint32_t idx);
-    const glm::vec3& operator[](uint32_t idx) const;
+//    double* operator[](uint32_t idx);
+    glm::dvec3& operator[](uint32_t idx);
+    const glm::dvec3& operator[](uint32_t idx) const;
 
 
-    void scale(float scalar);
-    void scale(const glm::vec3& scale);
-    void translate(const glm::vec3& translation);
-    void rotate(const glm::vec3& axis, float theta);
-    static void rotate(std::vector<glm::vec3>& vertices, const glm::vec3& axis, float theta);
+    void scale(double scalar);
+    void scale(const glm::dvec3& scale);
+    void translate(const glm::dvec3& translation);
+    void rotate(const glm::dvec3& axis, double theta);
+    static void rotate(std::vector<glm::dvec3>& vertices, const glm::dvec3& axis, double theta);
 
-    void replace(uint32_t idx, const glm::vec3& replacement);
+    void replace(uint32_t idx, const glm::dvec3& replacement);
     void remove(uint32_t idx);
     void swap(uint32_t I0, uint32_t I1);
 
-    std::vector<glm::vec2> project(const glm::vec3& normal);
-    static std::vector<glm::vec2> project(const std::vector<glm::vec3>& vertices, const glm::vec3& normal);
-    static std::vector<glm::vec2> project(const std::vector<glm::vec3>& vertices, const glm::vec3& xAxis, const glm::vec3& yAxis);
+    std::vector<glm::dvec2> project(const glm::dvec3& normal);
+    static std::vector<glm::dvec2> project(const std::vector<glm::dvec3>& vertices, const glm::dvec3& normal);
+    static std::vector<glm::dvec2> project(const std::vector<glm::dvec3>& vertices, const glm::dvec3& xAxis, const glm::dvec3& yAxis);
 
-    [[nodiscard]] const std::vector<glm::vec3>& vertices() const;
+    [[nodiscard]] const std::vector<glm::dvec3>& vertices() const;
     [[nodiscard]] uint32_t vertexCount() const;
 
     [[nodiscard]] uint32_t length() const;
@@ -64,20 +64,20 @@ public:
 
     [[nodiscard]] static uint32_t stride() ;
 
-    bool extremes(const glm::vec3& axis, uint32_t &min, uint32_t &max) const; // Get furthest vertices (top & bottom) along axis
+    bool extremes(const glm::dvec3& axis, uint32_t &min, uint32_t &max) const; // Get furthest vertices (top & bottom) along axis
     bool extreme(uint32_t p1, uint32_t p2, uint32_t& max) const; // Get furthest vertex (perpendicular) from the provided axis
     bool extreme(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max) const; // Get furthest vertex from the plane formed by provided indices
 
-    static bool extremes(const std::vector<glm::vec3>& vertices, const glm::vec3& axis, uint32_t &min, uint32_t &max);
-    static bool extreme(const std::vector<glm::vec3>& vertices, uint32_t p1, uint32_t p2, uint32_t& max);
-    static bool extreme(const std::vector<glm::vec3>& vertices, uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max);
+    static bool extremes(const std::vector<glm::dvec3>& vertices, const glm::dvec3& axis, uint32_t &min, uint32_t &max);
+    static bool extreme(const std::vector<glm::dvec3>& vertices, uint32_t p1, uint32_t p2, uint32_t& max);
+    static bool extreme(const std::vector<glm::dvec3>& vertices, uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max);
 
 
-    void extents(const glm::vec3& axis, float &near, float &far) const;
-    static void extents(const std::vector<glm::vec3>& vertices, const glm::vec3& axis, float &near, float &far);
+    void extents(const glm::dvec3& axis, double &near, double &far) const;
+    static void extents(const std::vector<glm::dvec3>& vertices, const glm::dvec3& axis, double &near, double &far);
 
-    float span(const glm::vec3& axis) const;
-    static float span(const std::vector<glm::vec3>& vertices, const glm::vec3& axis);
+    double span(const glm::dvec3& axis) const;
+    static double span(const std::vector<glm::dvec3>& vertices, const glm::dvec3& axis);
 
     // Removes duplicate vertices
     void clean();
@@ -88,7 +88,7 @@ public:
         std::vector<T> cleaned;
         cleaned.reserve(vertices.size());
 
-        float tolerance = 1e-3, factor = 1 / tolerance; // TODO validate such high tolerance
+        double tolerance = 1e-3, factor = 1 / tolerance; // TODO validate such high tolerance
         std::unordered_map<size_t, uint32_t> vertexMap;
 
         // Only attach non-coincident vertices
@@ -109,7 +109,7 @@ public:
     template<class T>
     static std::vector<uint32_t> cleanIndex(const std::vector<T>& vertices)
     {
-        float tolerance = 1e-3, factor = 1 / tolerance; // TODO validate such high tolerance
+        double tolerance = 1e-3, factor = 1 / tolerance; // TODO validate such high tolerance
         std::unordered_map<size_t, uint32_t> vertexMap;
         std::vector<uint32_t> indices(vertices.size(), std::numeric_limits<uint32_t>::max());
 
@@ -130,13 +130,13 @@ public:
 
 private:
 
-    [[nodiscard]] static size_t hash(const glm::vec2& vec, float factor);
-    [[nodiscard]] static size_t hash(const glm::vec3& vec, float factor);
+    [[nodiscard]] static size_t hash(const glm::vec2& vec, double factor);
+    [[nodiscard]] static size_t hash(const glm::dvec3& vec, double factor);
     [[nodiscard]] static size_t hash(size_t a, size_t b, size_t c) ;
     [[nodiscard]] static size_t cantor(size_t a, size_t b) ;
 
 private:
-    std::vector<glm::vec3> m_vertices;
+    std::vector<glm::dvec3> m_vertices;
 
     const static uint8_t STRIDE = 3;
 };

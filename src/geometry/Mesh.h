@@ -18,7 +18,7 @@
 #include "VertexArray.h"
 #include "FaceArray.h"
 
-static glm::vec3 NULL_COLOR = { 1.0f, 0.0f, 1.0f };
+static glm::dvec3 NULL_COLOR = { 1.0f, 0.0f, 1.0f };
 
 
 class Mesh : public Serializable {
@@ -26,16 +26,16 @@ public:
 
     friend class MeshBuilder;
 
-    explicit Mesh(float vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t indexCount);
+    explicit Mesh(double vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t indexCount);
     explicit Mesh(const ConvexHull& hull, bool applyColorPattern = true);
 
-    explicit Mesh(const float *vertices, uint32_t vertexCount, const uint32_t *faceIndices, const uint32_t *faceSizes, uint32_t faceCount);
-    explicit Mesh(const std::vector<glm::vec3>& vertices, const std::vector<Triangle>& faces);
+    explicit Mesh(const double *vertices, uint32_t vertexCount, const uint32_t *faceIndices, const uint32_t *faceSizes, uint32_t faceCount);
+    explicit Mesh(const std::vector<glm::dvec3>& vertices, const std::vector<Triangle>& faces);
 
     explicit Mesh(const std::string& filename);
     explicit Mesh(std::ifstream& file);
 
-    explicit Mesh(const VertexArray& vertices, const FaceArray& faces);
+    explicit Mesh(VertexArray vertices, FaceArray faces);
 
     Mesh(uint32_t vertexCount, uint32_t faceCount, uint32_t indexCount);
 
@@ -45,34 +45,34 @@ public:
     bool deserialize(const std::string& filename) override;
     bool deserialize(std::ifstream& file) override;
 
-    void scale(float scalar);
-    void scale(const glm::vec3& scale);
-    void translate(const glm::vec3& translation);
-    void rotate(const glm::vec3& axis, float theta);
+    void scale(double scalar);
+    void scale(const glm::dvec3& scale);
+    void translate(const glm::dvec3& translation);
+    void rotate(const glm::dvec3& axis, double theta);
 
-    void normalize(float scalar = 1.0f);
+    void normalize(double scalar = 1.0f);
     void center();
     void zero();
 
     bool isInitialized() const;
 
-    void xExtents(float &near, float &far) const;
-    void yExtents(float &near, float &far) const;
-    void zExtents(float &near, float &far) const;
-    void extents(const glm::vec3& axis, float &near, float &far) const;
+    void xExtents(double &near, double &far) const;
+    void yExtents(double &near, double &far) const;
+    void zExtents(double &near, double &far) const;
+    void extents(const glm::dvec3& axis, double &near, double &far) const;
 
-    float xSpan() const;
-    float ySpan() const;
-    float zSpan() const;
+    double xSpan() const;
+    double ySpan() const;
+    double zSpan() const;
 
     void overrideColor(bool enable);
-    void setBaseColor(const glm::vec3& color);
+    void setBaseColor(const glm::dvec3& color);
 
-    void setVertexColor(const glm::vec3& color);
-    void setVertexColor(uint32_t vertexIdx, const glm::vec3& color);
+    void setVertexColor(const glm::dvec3& color);
+    void setVertexColor(uint32_t vertexIdx, const glm::dvec3& color);
 
-    void setFaceColor(const glm::vec3& color);
-    void setFaceColor(uint32_t faceIdx, const glm::vec3& color);
+    void setFaceColor(const glm::dvec3& color);
+    void setFaceColor(uint32_t faceIdx, const glm::dvec3& color);
 
     void calculateAdjacencies();
 
@@ -80,9 +80,9 @@ public:
     [[nodiscard]] const VertexArray& vertices() const;
 
     [[nodiscard]] const VertexArray& vertexNormals() const;
-    [[nodiscard]] const std::vector<glm::vec3>& vertexColors() const;
+    [[nodiscard]] const std::vector<glm::dvec3>& vertexColors() const;
 
-    [[nodiscard]] const glm::vec3& baseColor() const;
+    [[nodiscard]] const glm::dvec3& baseColor() const;
 
     [[nodiscard]] bool colorsAssigned() const;
     [[nodiscard]] bool faceColorsAssigned() const;
@@ -96,17 +96,17 @@ public:
     [[nodiscard]] uint32_t faceCount() const;
     [[nodiscard]] const FaceArray& faces() const;
 
-    [[nodiscard]] uint32_t matchFace(const glm::vec3& axis);
+    [[nodiscard]] uint32_t matchFace(const glm::dvec3& axis);
 
-    [[nodiscard]] std::vector<uint32_t> outline(const glm::vec3& axis);
+    [[nodiscard]] std::vector<uint32_t> outline(const glm::dvec3& axis);
 
-    [[nodiscard]] float surfaceArea() const;
+    [[nodiscard]] double surfaceArea() const;
 
-    [[nodiscard]] float volume() const;
-    [[nodiscard]] glm::vec3 centroid() const;
-    [[nodiscard]] glm::vec3 boundedOffset() const;
+    [[nodiscard]] double volume() const;
+    [[nodiscard]] glm::dvec3 centroid() const;
+    [[nodiscard]] glm::dvec3 boundedOffset() const;
 
-    [[nodiscard]] glm::mat3x3 inertiaTensor() const;
+    [[nodiscard]] glm::dmat3 inertiaTensor() const;
 
     std::vector<uint32_t> sharedFaces(const std::shared_ptr<Mesh>& reference) const;
 
@@ -118,13 +118,13 @@ private:
 
     void calculateVertexNormals();
 
-    std::vector<uint16_t> identifyHorizonFaces(const glm::vec3& axis, const std::vector<std::vector<uint32_t>>& adjacencies) const;
+    std::vector<uint16_t> identifyHorizonFaces(const glm::dvec3& axis, const std::vector<std::vector<uint32_t>>& adjacencies) const;
 
-    [[nodiscard]] float faceArea(uint32_t faceIdx) const;
-    [[nodiscard]] static float faceArea(const std::vector<glm::vec3>& vertices) ;
+    [[nodiscard]] double faceArea(uint32_t faceIdx) const;
+    [[nodiscard]] static double faceArea(const std::vector<glm::dvec3>& vertices) ;
 
-    static float tetrahedronVolume(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c);
-    static glm::mat3x3 tetrahedronInertiaTensor(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c);
+    static double tetrahedronVolume(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c);
+    static glm::mat3x3 tetrahedronInertiaTensor(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c);
 
 private:
 
@@ -136,13 +136,13 @@ private:
     VertexArray m_vertexNormals;
 
     bool m_colorOverride;
-    glm::vec3 m_baseColor;
-    std::vector<glm::vec3> m_vertexColors;
+    glm::dvec3 m_baseColor;
+    std::vector<glm::dvec3> m_vertexColors;
 
     bool m_adjacencyOK;
     std::vector<std::vector<uint32_t>> m_adjacencies;
 
-//    float *m_colors;
+//    double *m_colors;
 
 };
 

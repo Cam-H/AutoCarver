@@ -17,23 +17,23 @@ Axis3D::Axis3D()
 
 }
 
-Axis3D::Axis3D(const glm::vec3& axis)
+Axis3D::Axis3D(const glm::dvec3& axis)
     : zAxis(axis)
 {
-    xAxis = axis.x * axis.x > 0.99f ? glm::vec3(0, 0, 1) : glm::vec3(1, 0, 0);
+    xAxis = axis.x * axis.x > 0.99f ? glm::dvec3(0, 0, 1) : glm::dvec3(1, 0, 0);
     xAxis = glm::normalize(glm::cross(zAxis, xAxis));
 
     yAxis = glm::normalize(glm::cross(zAxis, xAxis));
 }
 
-Axis3D::Axis3D(const glm::vec3& xAxis, const glm::vec3& yAxis)
+Axis3D::Axis3D(const glm::dvec3& xAxis, const glm::dvec3& yAxis)
     : xAxis(xAxis)
     , yAxis(yAxis)
     , zAxis(glm::normalize(glm::cross(xAxis, yAxis)))
 {
 
 }
-Axis3D::Axis3D(const glm::vec3& xAxis, const glm::vec3& yAxis, const glm::vec3& zAxis)
+Axis3D::Axis3D(const glm::dvec3& xAxis, const glm::dvec3& yAxis, const glm::dvec3& zAxis)
     : xAxis(xAxis)
     , yAxis(yAxis)
     , zAxis(zAxis)
@@ -41,14 +41,14 @@ Axis3D::Axis3D(const glm::vec3& xAxis, const glm::vec3& yAxis, const glm::vec3& 
 
 }
 
-glm::mat3 Axis3D::toTransform() const
+glm::dmat3 Axis3D::toTransform() const
 {
     return {
         xAxis, yAxis, zAxis
     };
 }
 
-glm::quat Axis3D::toQuat() const
+glm::dquat Axis3D::toQuat() const
 {
     return glm::quat_cast(toTransform());
 }

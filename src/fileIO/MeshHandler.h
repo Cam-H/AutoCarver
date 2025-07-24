@@ -10,7 +10,7 @@
 class MeshHandler {
 public:
 
-    static std::shared_ptr<Mesh> loadAsMeshBody(const std::string& filepath, float scalar = 1.0f);
+    static std::shared_ptr<Mesh> loadAsMeshBody(const std::string& filepath, double scalar = 1.0f);
 
     static void exportMesh(const std::shared_ptr<Mesh>& mesh, const std::string& filepath);
 

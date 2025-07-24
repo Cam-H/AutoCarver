@@ -34,21 +34,21 @@ void Camera::setType(Type type)
     calculateViewProjectionMatrix();
 }
 
-void Camera::setFOV(float fov)
+void Camera::setFOV(double fov)
 {
     m_fov = fov;
 
     calculateViewProjectionMatrix();
 }
 
-void Camera::setAspectRatio(float aspect)
+void Camera::setAspectRatio(double aspect)
 {
     m_aspect = aspect;
 
     calculateViewProjectionMatrix();
 }
 
-void Camera::setRect(float left, float right, float bot, float top)
+void Camera::setRect(double left, double right, double bot, double top)
 {
     m_left = left;
     m_right = right;
@@ -84,18 +84,18 @@ void Camera::setOrientation(QVector3D axis)
     m_radius = axis.length();
     axis /= m_radius;
 
-    m_yaw = 180.0f / (float)M_PI * atan2f(axis.z(), -axis.x());
-    m_pitch = 180.0f / (float)M_PI * acosf(QVector3D::dotProduct(UP_VECTOR, axis)) - 90.0f;
+    m_yaw = 180.0f / (double)M_PI * atan2(axis.z(), -axis.x());
+    m_pitch = 180.0f / (double)M_PI * acos(QVector3D::dotProduct(UP_VECTOR, axis)) - 90.0f;
 }
 
-void Camera::setRadius(float radius)
+void Camera::setRadius(double radius)
 {
     m_radius = radius;
 
     calculateViewProjectionMatrix();
 }
 
-void Camera::setViewingAngle(float yaw, float pitch)
+void Camera::setViewingAngle(double yaw, double pitch)
 {
     m_yaw = yaw;
     m_pitch = pitch;
@@ -110,7 +110,7 @@ void Camera::offset(const QVector3D& offset)
     calculateViewProjectionMatrix();
 }
 
-void Camera::rotate(float theta)
+void Camera::rotate(double theta)
 {
     m_yaw += theta;
 
@@ -144,16 +144,16 @@ Camera::Type Camera::getType() const
     return m_type;
 }
 
-float Camera::getRadius() const
+double Camera::getRadius() const
 {
     return m_radius;
 }
 
-float Camera::getYaw() const
+double Camera::getYaw() const
 {
     return m_yaw;
 }
-float Camera::getPitch() const
+double Camera::getPitch() const
 {
     return m_pitch;
 }
