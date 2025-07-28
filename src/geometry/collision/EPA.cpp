@@ -143,7 +143,7 @@ void EPA::calculateHorizon(const glm::dvec3& apex, int64_t last, uint32_t curren
 
     double test = glm::dot(facets[current].normal, apex - vertices[facets[current].triangle.I0].val);
 
-    if(test > 1e-6){ // Check whether facet is visible to apex
+    if(test > 1e-12){ // Check whether facet is visible to apex
         facets[current].onHull = false;
 
         // Identify neighbors to visit

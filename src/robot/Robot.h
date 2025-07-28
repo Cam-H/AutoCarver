@@ -48,14 +48,22 @@ public:
     double getJointValue(uint32_t idx);
     double getJointValueDg(uint32_t idx);
 
-    Waypoint getWaypoint() const;
+    [[nodiscard]] Waypoint getWaypoint() const;
+    [[nodiscard]] std::vector<double> getDistanceTravelled() const;
+    [[nodiscard]] std::vector<double> getDistanceRemaining() const;
+    [[nodiscard]] std::vector<double> waypointDelta(const Waypoint& waypoint) const;
+
+    [[nodiscard]] std::vector<double> getJointVelocity() const;
+    [[nodiscard]] std::vector<double> getJointAcceleration() const;
+
+    [[nodiscard]] const std::shared_ptr<RigidBody>& getEOAT() const;
 
     [[nodiscard]] const glm::dmat4x4& getEOATTransform() const;
     [[nodiscard]] glm::dvec3 getEOATPosition() const;
     [[nodiscard]] Axis3D getEOATAxes() const;
     [[nodiscard]] glm::dvec3 getEOATEuler() const;
 
-    bool inTransit();
+    bool inTransit() const;
 
     [[nodiscard]] Waypoint inverse(const glm::dvec3& position, const Axis3D& axes) const;
 //    [[nodiscard]] Waypoint inverse(const glm::dvec3& position, const glm::dvec3& euler) const;
@@ -67,8 +75,7 @@ protected:
 
 private:
 
-    glm::dvec3 m_invPosition;
-    glm::dquat m_invRotation;
+    glm::dmat4 m_invTransform;
 
     std::shared_ptr<KinematicChain> m_kinematics;
 

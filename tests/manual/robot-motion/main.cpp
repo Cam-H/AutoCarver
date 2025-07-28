@@ -20,6 +20,11 @@
 #include "core/SculptProcess.h"
 #include "robot/ArticulatedWrist.h"
 #include "geometry/Axis3D.h"
+#include "core/Timer.h"
+
+#include "robot/planning/Interpolator.h"
+#include "robot/planning/SimpleTrajectory.h"
+#include "robot/planning/CompoundTrajectory.h"
 
 #endif
 
@@ -32,8 +37,32 @@ std::shared_ptr<Robot> robot = nullptr;
 std::vector<QSpinBox*> jointFields;
 std::vector<QDoubleSpinBox*> posFields;
 
+QTreeWidget* treeWidget = nullptr;
+QTreeWidgetItem* waypointWidget = nullptr;
+QTreeWidgetItem* trajectoryWidget = nullptr;
+
+QTreeWidgetItem *selected = nullptr;
+
+QPushButton *removeTrajectoryButton = nullptr, *addTrajectoryButton = nullptr;
+QRadioButton *linearButton = nullptr, *cubicButton = nullptr, *quinticButton = nullptr;
+QRadioButton *simpleButton = nullptr, *constrainedButton = nullptr, *compoundButton = nullptr;
+QPushButton *followButton = nullptr;
+
+QSpinBox *wpStartField = nullptr, *wpEndField = nullptr;
+
+LineChartWidget *plotWidget = nullptr;
+
+std::unique_ptr<std::thread> updateThread;
+
+bool localTranslation = false;
 Axis3D axes;
 double theta = M_PI / 64;
+
+std::vector<Waypoint> waypoints;
+std::vector<std::shared_ptr<Trajectory>> trajectories;
+
+Interpolator::SolverType solver = Interpolator::SolverType::QUINTIC;
+uint8_t trajType = 0;
 
 static QWidget *loadUiFile(QWidget *parent)
 {
@@ -63,6 +92,8 @@ void updatePositionFields()
     axes = robot->getEOATAxes();
 
     auto position = robot->getEOATPosition();
+    if (localTranslation) position = axes.localize(position);
+
     for (uint32_t j = 0; j < 3; j++) {
         posFields[j]->blockSignals(true);
         posFields[j]->setValue(position[j]);
@@ -75,7 +106,173 @@ void updateAxes()
     robot->moveTo(axes);
     sceneWidget->update();
 
+    if (localTranslation) updatePositionFields();
+
     updateJointFields();
+}
+
+std::shared_ptr<Trajectory> currentTrajectory()
+{
+    if (selected != nullptr) {
+        if (selected->parent() == trajectoryWidget) return trajectories[trajectoryWidget->indexOfChild(selected)];
+        else if (selected->parent() != nullptr && selected->parent()->parent() == trajectoryWidget)
+            return trajectories[trajectoryWidget->indexOfChild(selected->parent())];
+    }
+
+    return nullptr;
+}
+
+bool selectedTrajectoryWaypoint()
+{
+    return selected != nullptr && selected->parent() != nullptr && selected->parent()->parent() == trajectoryWidget;
+}
+
+bool selectedWaypoint()
+{
+    return selected != nullptr && (selected->parent() == waypointWidget || selectedTrajectoryWaypoint());
+}
+
+void saveWaypoint(const Waypoint& waypoint)
+{
+    std::string name = "WP" + std::to_string(waypoints.size());
+    waypoints.push_back(waypoint);
+
+    auto *item = new QTreeWidgetItem(waypointWidget);
+    item->setText(0, name.c_str());
+    item->setText(1, waypoints.back().toString().c_str());
+    item->setData(1, Qt::UserRole, waypoints.size() - 1);
+    waypointWidget->setExpanded(true);
+
+    wpStartField->setMaximum(waypoints.size() - 1);
+    wpEndField->setMaximum(waypoints.size() - 1);
+}
+
+void saveWaypoint()
+{
+    saveWaypoint(robot->getWaypoint().toDg());
+}
+
+void addWaypoint(uint32_t index)
+{
+    std::string name = "WP" + std::to_string(index);
+
+    auto *trajItem = selected;
+    if (selected == nullptr || selected->parent() != trajectoryWidget)
+        trajItem = trajectoryWidget->child(trajectoryWidget->childCount() - 1);
+
+    auto *item = new QTreeWidgetItem(trajItem);
+    item->setText(0, name.c_str());
+    item->setData(1, Qt::UserRole, index);
+    trajItem->setExpanded(true);
+}
+
+void applyWaypoint()
+{
+    robot->moveTo(waypoints[selected->data(1, Qt::UserRole).toUInt()]);
+
+    updateJointFields();
+    updatePositionFields();
+
+    scene->step(0.01);
+    sceneWidget->update();
+}
+
+void removeTrajectory()
+{
+    if (selected != nullptr && selected->parent() == trajectoryWidget) {
+        trajectories.erase(trajectories.begin() + trajectoryWidget->indexOfChild(selected));
+        trajectoryWidget->removeChild(selected);
+    }
+}
+
+void addTrajectory()
+{
+    if (wpStartField->value() == wpEndField->value()) return;
+
+    std::string name = "TRAJ" + std::to_string(trajectories.size());
+
+    const Waypoint& start = waypoints[wpStartField->value()], end = waypoints[wpEndField->value()];
+
+    switch (trajType) {
+        case 0:
+            trajectories.push_back(std::make_shared<SimpleTrajectory>(start, end, solver));
+            break;
+        case 1:
+            break;
+        case 2:
+            break;
+    }
+
+    trajectories.back()->setVelocityLimit(90);
+    trajectories.back()->setAccelerationLimit(200);
+
+    auto *item = new QTreeWidgetItem(trajectoryWidget);
+    item->setText(0, name.c_str());
+    item->setData(1, Qt::UserRole, trajectories.size() - 1);
+    trajectoryWidget->setExpanded(true);
+
+    item->setSelected(true);
+    selected = item;
+
+    addWaypoint(wpStartField->value());
+    addWaypoint(wpEndField->value());
+}
+
+void preparePlot(const std::shared_ptr<Trajectory>& traj)
+{
+    double delta = traj->maximumDelta();
+
+    plotWidget->clear();
+    plotWidget->zero();
+
+    plotWidget->setX(500, 0, std::ceil(traj->duration()));
+    plotWidget->ylim(-delta, delta);
+
+    for (uint32_t i = 0; i < 6; i++) {
+        std::string name = "j" + std::to_string(i);
+        plotWidget->create(500, (name + "Delta").c_str());
+    }
+
+//    for (uint32_t i = 0; i < 6; i++) {
+//        std::string name = "j" + std::to_string(i);
+//        plotWidget->create(500, (name + "Velocity").c_str());
+//    }
+
+    plotWidget->update();
+}
+
+void stream(uint32_t idx, double time)
+{
+    plotWidget->setX(idx, time);
+
+//    Waypoint pos = robot->getWaypoint().toDg();
+//    for (uint32_t i = 0; i < 6; i++) plotWidget->stream(i, pos.values[i]);
+
+    auto del = robot->getDistanceTravelled();
+    for (uint32_t i = 0; i < 6; i++) {
+        plotWidget->stream(i, del[i]);
+//        std::cout << i << " " << del[i] << "\n";
+    }
+//    auto vel = robot->getJointVelocity(), acc = robot->getJointAcceleration();
+//    for (uint32_t i = 0; i < 6; i++) plotWidget->stream(6 + i, vel[i]);
+//    for (uint8_t i = 0; i < 6; i++) {
+//        plotWidget->stream(i, robot->getJointValueDg(i));
+//    }
+
+    plotWidget->update();
+}
+
+void enableInputs(bool enable = true)
+{
+    for (auto *field : jointFields) field->setEnabled(enable);
+    for (auto *field : posFields) field->setEnabled(enable);
+}
+
+void doTrajectoryControlEnable()
+{
+    removeTrajectoryButton->setEnabled(selected != nullptr && selected->parent() == trajectoryWidget);
+    addTrajectoryButton->setEnabled(wpStartField->value() != wpEndField->value());
+    followButton->setEnabled(currentTrajectory() != nullptr);
 }
 
 int main(int argc, char *argv[])
@@ -101,6 +298,7 @@ int main(int argc, char *argv[])
     scene = std::make_shared<SculptProcess>(model);
     robot = scene->createRobot(std::make_shared<ArticulatedWrist>(0.8, 2, 2, 1));
     robot->translate({ -2, 0, 0 });
+    robot->rotate({ 0, 1, 0 }, M_PI);
 
     sceneWidget = window->findChild<SceneWidget*>("sceneWidget");
     sceneWidget->setScene(scene);
@@ -150,21 +348,26 @@ int main(int argc, char *argv[])
         auto position = robot->getEOATPosition();
         field->setValue(position[i]);
 
-        QObject::connect(field, &QDoubleSpinBox::valueChanged, [field, i](double value) {
+        QObject::connect(field, &QDoubleSpinBox::valueChanged, [i](double value) {
             glm::dvec3 position = robot->getEOATPosition();
+            if (localTranslation) position = axes.localize(position);
             position[i] = value;
+
+            if (localTranslation) position = axes.delocalize(position);
 
             robot->moveTo(position);
             sceneWidget->update();
 
-            field->blockSignals(true);
-            field->setValue(robot->getEOATPosition()[i]);
-            field->blockSignals(false);
-
-            // Update joint fields to match
+            updatePositionFields();
             updateJointFields();
         });
     }
+
+    auto localSettingButton = window->findChild<QCheckBox*>("localSettingButton");
+    QObject::connect(localSettingButton, &QCheckBox::clicked, [&](bool checked) {
+        localTranslation = checked;
+        updatePositionFields();
+    });
 
     auto decXButton = window->findChild<QPushButton*>("decXButton");
     QObject::connect(decXButton, &QPushButton::clicked, [&]() {
@@ -221,9 +424,153 @@ int main(int argc, char *argv[])
         else sceneWidget->hideAll(Scene::Model::BOUNDING_SPHERE);
     });
 
+    treeWidget = window->findChild<QTreeWidget*>("treeWidget");
+    treeWidget->setHeaderLabels({ "Name", "Data" });
 
+    waypointWidget = new QTreeWidgetItem(treeWidget);
+    waypointWidget->setText(0, "Waypoints");
+
+    trajectoryWidget = new QTreeWidgetItem(treeWidget);
+    trajectoryWidget->setText(0, "Trajectories");
+
+    QObject::connect(treeWidget, &QTreeWidget::currentItemChanged, [&](QTreeWidgetItem* current, QTreeWidgetItem* previous) {
+        selected = current;
+
+        if (selectedWaypoint()) {
+            applyWaypoint();
+        }
+
+        selected = current;
+        doTrajectoryControlEnable();
+    });
+
+    auto saveWaypointButton = window->findChild<QPushButton*>("saveWaypointButton");
+    QObject::connect(saveWaypointButton, &QPushButton::clicked, [&]() {
+        saveWaypoint();
+    });
+
+
+    removeTrajectoryButton = window->findChild<QPushButton*>("removeTrajectoryButton");
+    QObject::connect(removeTrajectoryButton, &QPushButton::clicked, [&]() {
+        removeTrajectory();
+        doTrajectoryControlEnable();
+    });
+
+    addTrajectoryButton = window->findChild<QPushButton*>("addTrajectoryButton");
+    QObject::connect(addTrajectoryButton, &QPushButton::clicked, [&]() {
+        addTrajectory();
+        doTrajectoryControlEnable();
+    });
+
+    linearButton = window->findChild<QRadioButton*>("linearButton");
+    QObject::connect(linearButton, &QRadioButton::clicked, [&]() {
+        solver = Interpolator::SolverType::LINEAR;
+    });
+
+    cubicButton = window->findChild<QRadioButton*>("cubicButton");
+    QObject::connect(cubicButton, &QRadioButton::clicked, [&]() {
+        solver = Interpolator::SolverType::CUBIC;
+    });
+
+    quinticButton = window->findChild<QRadioButton*>("quinticButton");
+    QObject::connect(quinticButton, &QRadioButton::clicked, [&]() {
+        solver = Interpolator::SolverType::QUINTIC;
+    });
+
+    simpleButton = window->findChild<QRadioButton*>("simpleButton");
+    QObject::connect(simpleButton, &QRadioButton::clicked, [&]() {
+        trajType = 1;
+    });
+
+    constrainedButton = window->findChild<QRadioButton*>("constrainedButton");
+    QObject::connect(constrainedButton, &QRadioButton::clicked, [&]() {
+        trajType = 1;
+    });
+
+    compoundButton = window->findChild<QRadioButton*>("compoundButton");
+    QObject::connect(compoundButton, &QRadioButton::clicked, [&]() {
+        trajType = 2;
+    });
+
+    wpStartField = window->findChild<QSpinBox*>("wpStartField");
+    QObject::connect(wpStartField, &QSpinBox::valueChanged, [&](int value) {
+        doTrajectoryControlEnable();
+//        if (selectedTrajectoryWaypoint()) {
+//            std::string name = "WP" + std::to_string(value);
+//            selected->setText(0, name.c_str());
+//            selected->setData(1, Qt::UserRole, value);
+//
+//            auto traj = currentTrajectory();
+//            if (traj != nullptr) traj->replaceWaypoint(selected->parent()->indexOfChild(selected), waypoints[value]);
+//
+//            applyWaypoint();
+//        }
+    });
+
+    wpEndField = window->findChild<QSpinBox*>("wpEndField");
+    QObject::connect(wpEndField, &QSpinBox::valueChanged, [&](int value) {
+        doTrajectoryControlEnable();
+    });
+
+    followButton = window->findChild<QPushButton*>("followButton");
+    QObject::connect(followButton, &QPushButton::clicked, [&]() {
+        auto traj = currentTrajectory();
+        if (traj != nullptr) {
+            traj->restart();
+            preparePlot(traj);
+            robot->traverse(traj);
+        }
+    });
+
+    saveWaypoint(Waypoint({   0, 135, -45,  0,   0, 0 }, true));
+    saveWaypoint(Waypoint({ -10, 150, -35, 25, -15, 0 }, true));
+
+    wpEndField->setValue(1);
+    addTrajectory();
+
+    doTrajectoryControlEnable();
+
+
+    plotWidget = window->findChild<LineChartWidget*>("chartWidget");
+    plotWidget->ylim(-180, 180);
 
     window->show();
+
+    updateThread = std::make_unique<std::thread>([](){
+        Timer rateTimer;
+        uint32_t xIdx = 0;
+        double time = 0;
+        bool inProcess = false;
+
+        while (true) {
+            double delta = rateTimer.getElapsedSeconds();
+            scene->step(delta);
+            rateTimer.reset();
+
+            if (robot->inTransit()) {
+                sceneWidget->update();
+
+                stream(++xIdx, time += delta);
+
+                updateJointFields();
+                updatePositionFields();
+
+                if (!inProcess) enableInputs(false);
+                inProcess = true;
+
+            } else if (inProcess) {
+                robot->step();
+                enableInputs();
+                inProcess = false;
+
+                xIdx = 0;
+                time = 0;
+            }
+
+
+            std::this_thread::sleep_for(std::chrono::nanoseconds(20000000));
+        }
+    });
 
     return app.exec();
 }

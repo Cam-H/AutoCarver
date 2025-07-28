@@ -11,6 +11,7 @@
 #include "Joint.h"
 
 class Axis3D;
+class Waypoint;
 
 static Joint NULL_JOINT = Joint(Joint::Type::NONE, {0, 0, 0, 0});
 
@@ -24,10 +25,13 @@ public:
 
     bool moveTo(const glm::dvec3& position, const Axis3D& axes);
     bool moveTo(const glm::dvec3& position, const glm::dvec3& euler);
+    bool moveTo(const Waypoint& waypoint);
 
     std::vector<double> invkin(const glm::dmat4& transform);
     std::vector<double> invkin(const glm::dvec3& position, const Axis3D& axes);
     std::vector<double> invkin(const glm::dvec3& position, const glm::dvec3& euler);
+
+    [[nodiscard]] Waypoint getWaypoint() const;
 
     uint32_t jointCount();
     Joint& getJoint(uint32_t idx);

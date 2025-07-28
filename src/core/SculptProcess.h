@@ -15,6 +15,9 @@
 
 class Profile;
 
+const static glm::dvec3 UP = { 0, 1, 0};
+
+
 class SculptProcess : public Scene {
 public:
 
@@ -62,15 +65,18 @@ private:
     };
 
     void planConvexTrim();
+    ConvexHull planConvexTrim(const ConvexHull& hull, const Plane& plane);
+
     void planOutlineRefinement(double stepDg);
     void planOutlineRefinement(Profile& profile);
 
     void planFeatureRefinement();
 
-    void planTurntableAlignment(const glm::dvec3& axis);
     void planTurntableAlignment(double theta);
 
-    void planPlanarSection(const Plane& plane, const std::vector<glm::dvec3>& border);
+    void planRoboticSection(const std::shared_ptr<Trajectory>& trajectory);
+
+    std::shared_ptr<Trajectory> preparePlanarTrajectory(const Plane& plane, const std::vector<glm::dvec3>& border);
     void planRoboticSection(const std::vector<glm::dvec3>& border);
 
     void nextAction();

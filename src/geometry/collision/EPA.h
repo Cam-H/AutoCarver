@@ -15,6 +15,8 @@ class ConvexHull;
 #include "geometry/primitives/Triangle.h"
 #include "Simplex.h"
 
+static const double TOLERANCE = 1e-12;
+
 class EPA {
 public:
 

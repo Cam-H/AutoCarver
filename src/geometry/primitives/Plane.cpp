@@ -22,9 +22,31 @@ void Plane::rotate(const glm::dvec3& axis, double theta)
     normal = normal * glm::angleAxis(theta, axis);
 }
 
+void Plane::invert()
+{
+    normal = -normal;
+}
+
 bool Plane::isValid() const
 {
-    return glm::dot(normal, normal) > 1e-6;
+    return glm::dot(normal, normal) > 1e-12;
+}
+
+// Calculate the rotation of the plane normal about the specified axis
+double Plane::axialRotation(const glm::dvec3& axis) const
+{
+    glm::dvec3 proj = normal - axis * glm::dot(normal, axis);
+    return atan2(proj.x, -proj.z);
+}
+
+Plane Plane::rotated(const glm::dvec3& axis, double theta) const
+{
+    return { origin, normal * glm::angleAxis(theta, axis) };
+}
+
+Plane Plane::inverted() const
+{
+    return { origin, -normal };
 }
 
 glm::dvec3 Plane::project(const glm::dvec3& vertex) const

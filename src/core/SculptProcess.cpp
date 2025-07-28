@@ -167,7 +167,6 @@ bool SculptProcess::simulationActive() const
 
 void SculptProcess::planConvexTrim()
 {
-
     std::vector<Plane> steps;
 
     ConvexHull hull = ConvexHull(model);
@@ -176,7 +175,7 @@ void SculptProcess::planConvexTrim()
 
     // Plan initial cuts, beginning from the top and moving towards the base
     std::sort(steps.begin(), steps.end(), [](const Plane& a, const Plane& b){
-        return glm::dot(a.normal, {0, 1, 0}) > glm::dot(b.normal, {0, 1, 0});
+        return glm::dot(a.normal, UP) > glm::dot(b.normal, UP);
     });
 
     glm::dvec3 p = m_sculpture->position();
@@ -187,37 +186,55 @@ void SculptProcess::planConvexTrim()
     std::cout << "PCT " << steps.size() << "\n";
 
     // Process all the cuts preemptively
+    hull = m_sculpture->hull();
     for (Plane& step : steps) {
-        step.normal = -step.normal; // Invert direction so normals point into the body (Fragment method takes above plane)
+        std::cout << "Step [" << (&step - &steps[0]) << "]:\n";
+        hull = planConvexTrim(hull, step);
+        if (m_actions.size() > 10) break;
+//        break;
+    }
+}
 
-        auto border = Collision::intersection(hull, step);
-        std::cout << "Step: " << (&step - &steps[0]) << " " << border.size() << "\n";
-        if (border.size() < 3) continue;
+ConvexHull SculptProcess::planConvexTrim(const ConvexHull& hull, const Plane& plane)
+{
+    //    static std::array<double, 7> attemptOffsets = { 0, -M_PI / 32, M_PI / 32, -M_PI / 16, M_PI / 16, -M_PI / 8, M_PI / 8 };
+    static std::array<double, 1> attemptOffsets = { 0 };
+
+    auto border = Collision::intersection(hull, plane);
+    if (border.size() < 3) return hull;
 //        if (border.size() < 3) throw std::runtime_error("[SculptProcess] Failed to find intersection for section");
 
 //        glm::ddvec3 normal = Triangle::normal(border[0], border[1], border[2]);
 
+    std::shared_ptr<Trajectory> trajectory;
+    double baseRotation = plane.axialRotation(UP), rotation;
 
-        // Generate trajectory for robotic carving
-        planTurntableAlignment(step.normal);
+    // Try developing a trajectory that will allow the robot to complete the planar section
+    for (double offset : attemptOffsets) {
+        rotation = baseRotation + offset;
 
-        auto normal = step.normal;
-        VertexArray::rotate(border, { 0, 1, 0 }, -m_lastestTableCommand.values[0]);
-        step.rotate({ 0, 1, 0 }, -m_lastestTableCommand.values[0]);
-
-//        planPlanarSection(step, border);
-
-//        std::cout << "qs\n";
-        // Record mesh manipulation operation for later application during carving process
-        m_sculpture->queueSection(step.origin, -normal);
-
-//        std::cout << "hf\n";
-
-        // Prepare for next step
-//        hull = Collision::fragment(hull, step);
-//        std::cout << "rd\n";
-//        if (m_actions.size() > 4) break;
+        trajectory = preparePlanarTrajectory(plane.rotated(UP, -rotation), VertexArray::rotated(border, UP, -rotation));
+        if (trajectory != nullptr) break;
     }
+
+    if (trajectory == nullptr) {
+        std::cout << "Failed to develop an appropriate trajectory\n";
+        return hull;
+    }
+
+    // If a trajectory was found queue it
+    planTurntableAlignment(rotation);
+    planRoboticSection(trajectory);
+
+    // Record mesh manipulation operation for later application during carving process
+    m_sculpture->queueSection(plane.origin, -plane.normal);
+
+    std::cout << "hf\n";
+
+    // Prepare for next step
+    std::cout << "rd\n";
+//    return Collision::fragment(hull, plane);
+    return hull;
 }
 
 void SculptProcess::planOutlineRefinement(double stepDg)
@@ -318,25 +335,27 @@ void SculptProcess::planFeatureRefinement()
     // Decompose model into patches and handle separately?
 }
 
-void SculptProcess::planTurntableAlignment(const glm::dvec3& axis)
-{
-    glm::dvec3 up = { 0, 1, 0 }, proj = axis - up * glm::dot(axis, up);
-    double theta = atan2f(proj.x, -proj.z);
-    planTurntableAlignment(theta);
-}
 void SculptProcess::planTurntableAlignment(double theta)
 {
-    std::vector<Waypoint> waypoints = {
-            m_lastestTableCommand,
-            { std::vector<double>{ theta }, 1, false}
-    };
+//    std::vector<Waypoint> waypoints = {
+//            m_lastestTableCommand,
+//            { std::vector<double>{ theta }, 1, false}
+//    };
+//
+//    m_lastestTableCommand = waypoints.back();
+//
+//    auto trajectory = std::make_shared<Trajectory>(waypoints, Interpolator::SolverType::CUBIC);
+//    trajectory->setMaxVelocity(M_PI / 2);
+//
+//    m_actions.emplace_back(trajectory, m_turntable);
+}
 
-    m_lastestTableCommand = waypoints.back();
+void SculptProcess::planRoboticSection(const std::shared_ptr<Trajectory>& trajectory)
+{
 
-    auto trajectory = std::make_shared<Trajectory>(waypoints, TrajectorySolverType::CUBIC);
-    trajectory->setMaxVelocity(M_PI / 2);
+    m_lastestRobotCommand = trajectory->end();
 
-    m_actions.emplace_back(trajectory, m_turntable);
+    m_actions.emplace_back(trajectory, m_robot);
     m_actions[m_actions.size() - 1].trigger = true;
 }
 
@@ -359,17 +378,20 @@ void SculptProcess::planTurntableAlignment(double theta)
 //}
 
 // Sectioning step wherein the robot moves to remove all material above the specified plane
-void SculptProcess::planPlanarSection(const Plane& plane, const std::vector<glm::dvec3>& border)
+std::shared_ptr<Trajectory> SculptProcess::preparePlanarTrajectory(const Plane& plane, const std::vector<glm::dvec3>& border)
 {
+    // Create a co-ordinate system, x->cut direction, y->normal to cut plane, z->in fwd direction
     Axis3D axes(m_fwd, plane.normal);
+    axes.rotateY();
+
     uint32_t minIndex, maxIndex;
     VertexArray::extremes(border, plane.normal, minIndex, maxIndex);
     auto low = border[minIndex], high = border[maxIndex];
 
     // Bring the endpoints in plane with the normal m_fwd
     double lowOff = glm::dot(m_fwd, low), highOff = glm::dot(m_fwd, high);
-//    if (lowOff < highOff) high += (lowOff - highOff) * m_fwd;
-//    else                  low  -= (lowOff - highOff) * m_fwd;
+    if (lowOff < highOff) high += (lowOff - highOff) * m_fwd;
+    else                  low  -= (lowOff - highOff) * m_fwd;
 
 
     plane.print();
@@ -377,30 +399,27 @@ void SculptProcess::planPlanarSection(const Plane& plane, const std::vector<glm:
     std::cout << "Split: " << low.x << " " << low.y << " " << low.z << "\n";
     std::cout << "Split: " << high.x << " " << high.y << " " << high.z << "\n";
 
-    glm::dvec3 startPos = { 0, 0, 0 };
+//    glm::dvec3 startPos = { 0, 1, 0 };
+//    low = startPos, high = low + axes.xAxis;
 
     std::cout << "M: " << glm::to_string(axes.toTransform()) << "\n================\n";
     const Waypoint& start = m_robot->inverse(low, axes);
     const Waypoint& end = m_robot->inverse(high, axes);
 
-    if (start.values.empty() || end.values.empty()) {
-        std::cout << "[SculptProcess] Can not perform cut. The robot does not reach\n";
-        return;
-    }
+    // Skip if parts of this section are unreachable
+    if (start.values.empty() || end.values.empty()) return nullptr;
 
-    std::vector<Waypoint> waypoints = {
-            m_lastestRobotCommand,
-            start,
-            end
-    };
-
-    m_lastestRobotCommand = start;//todo end
-
-    auto trajectory = std::make_shared<Trajectory>(waypoints, TrajectorySolverType::CUBIC);
-    trajectory->setMaxVelocity(M_PI / 2);
-
-    m_actions.emplace_back(trajectory, m_robot);
-    m_actions[m_actions.size() - 1].trigger = true;
+//    std::vector<Waypoint> waypoints = {
+//            m_lastestRobotCommand,
+//            start,
+//            end
+//    };
+//
+//    auto trajectory = std::make_shared<Trajectory>(waypoints, TrajectorySolverType::CUBIC);
+//    trajectory->setMaxVelocity(M_PI / 2);
+//
+//    return trajectory;
+    return nullptr;
 }
 
 void SculptProcess::planRoboticSection(const std::vector<glm::dvec3>& border)
@@ -412,11 +431,11 @@ void SculptProcess::planRoboticSection(const std::vector<glm::dvec3>& border)
 
 //    m_lastestCommandWaypoint = LAST POSITION
 
-    auto trajectory = std::make_shared<Trajectory>(waypoints, TrajectorySolverType::CUBIC);
-    trajectory->setMaxVelocity(M_PI / 2);
-
-    m_actions.emplace_back(trajectory, m_robot);
-    m_actions[m_actions.size() - 1].trigger = true;
+//    auto trajectory = std::make_shared<Trajectory>(waypoints, TrajectorySolverType::CUBIC);
+//    trajectory->setMaxVelocity(M_PI / 2);
+//
+//    m_actions.emplace_back(trajectory, m_robot);
+//    m_actions[m_actions.size() - 1].trigger = true;
 }
 
 void SculptProcess::nextAction()

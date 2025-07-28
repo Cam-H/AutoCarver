@@ -117,6 +117,22 @@ glm::dquat Axis3D::toQuat() const
     return glm::quat_cast(toTransform());
 }
 
+// Expresses the provided vertex in terms of the coordinate system
+glm::dvec3 Axis3D::localize(const glm::dvec3& vertex) const
+{
+    return {
+        glm::dot(vertex, xAxis),
+        glm::dot(vertex, yAxis),
+        glm::dot(vertex, zAxis)
+    };
+}
+
+// Provided a vertex in this coordinate system, recovers coordinates in the world (I) system
+glm::dvec3 Axis3D::delocalize(const glm::dvec3& vertex) const
+{
+    return xAxis * vertex.x + yAxis * vertex.y + zAxis * vertex.z;
+}
+
 void Axis3D::print() const
 {
     std::cout << "[Axis3D] x-axis: (" << xAxis.x << ", " << xAxis.y << ", " << xAxis.z

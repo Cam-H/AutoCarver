@@ -11,6 +11,7 @@
 #include <gtc/epsilon.hpp>
 
 #include "geometry/Axis3D.h"
+#include "planning/Waypoint.h"
 
 KinematicChain::KinematicChain()
     : m_axisTransform3(1, 0, 0,
@@ -55,6 +56,14 @@ bool KinematicChain::moveTo(const glm::dvec3& position, const glm::dvec3& euler)
     return !values.empty();
 }
 
+bool KinematicChain::moveTo(const Waypoint& waypoint)
+{
+    if (waypoint.inDg) setJointValues(waypoint.toRad().values);
+    else setJointValues(waypoint.values);
+
+    return !waypoint.values.empty();
+}
+
 // Calculates required joint angles such that the final link's transform is as specified
 // Parameters must be expressed in the local coordinate system
 std::vector<double> KinematicChain::invkin(const glm::dmat4& transform)
@@ -90,6 +99,13 @@ std::vector<double> KinematicChain::invkin(const glm::dvec3& position, const glm
 {
     std::cout << "\033[31mUnable to move to desired position. The generic kinematic chain solver has not been implemented\033[0m\n";
     return {};
+}
+
+Waypoint KinematicChain::getWaypoint() const
+{
+    std::vector<double> values(m_joints.size());
+    for (uint32_t i = 0; i < m_joints.size(); i++) values[i] = m_joints[i].getValue();
+    return Waypoint(values, false);
 }
 
 uint32_t KinematicChain::jointCount()

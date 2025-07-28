@@ -104,7 +104,7 @@ void ConvexHull::prepareFaces()
 
             // Attach unique in-plane vertex indices to the face from other facets
             for (uint32_t j = &facet - &facets[0] + 1; j < facets.size(); j++) {
-                if (facets[j].onHull && glm::dot(facets[j].normal, facet.normal) > 1 - 1e-6) {
+                if (facets[j].onHull && glm::dot(facets[j].normal, facet.normal) > 1 - 1e-12) {
                     for (uint8_t k = 0; k < 3; k++) {
                         if (std::find(faces[faceIdx].begin(), faces[faceIdx].end(), facets[j].triangle[k]) == faces[faceIdx].end()) {
                             faces[faceIdx].emplace_back(facets[j].triangle[k]);
@@ -244,7 +244,7 @@ uint32_t ConvexHull::walk(const glm::dvec3& axis, uint32_t index) const
     uint32_t i = 0;
     while (i == 0) { // Only true when arriving at a fresh vertex
         for (; i < m_walks[index].size(); i++) { // Iterate through adjacent vertices
-            if (glm::dot(axis, m_vertices[m_walks[index][i]] - m_vertices[index]) > 1e-6) { // Move to the first adjacent vertex along the axis
+            if (glm::dot(axis, m_vertices[m_walks[index][i]] - m_vertices[index]) > 1e-12) { // Move to the first adjacent vertex along the axis
                 index = m_walks[index][i];
                 i = 0;
                 break;
@@ -350,7 +350,7 @@ std::vector<uint32_t> ConvexHull::horizon(const glm::dvec3& axis, const glm::dve
     }
 
     // Remove duplicate vertex (First and last are the same). Chooses initial vertex to begin from top-left position
-    if (glm::dot(support, m_vertices[boundary[1]] - m_vertices[boundary[0]]) > -1e-6)
+    if (glm::dot(support, m_vertices[boundary[1]] - m_vertices[boundary[0]]) > -1e-12)
         boundary.erase(boundary.begin());
     else boundary.pop_back();
 
@@ -461,7 +461,7 @@ void ConvexHull::sortCloud(std::vector<uint32_t>& free, Facet& facet){
 
     for (uint32_t i = 0; i < free.size(); i++) { // Iterate through unsorted cloud
         double test = glm::dot(facet.normal, m_cloud[free[i]] - m_vertices[facet.triangle.I0]);
-        if (test > 1e-6) {//std::numeric_limits<double>::epsilon()
+        if (test > 1e-12) {//std::numeric_limits<double>::epsilon()
             if (test > value) {
                 value = test;
                 peak = (int64_t)facet.outside.size();
@@ -487,7 +487,7 @@ void ConvexHull::calculateHorizon(const glm::dvec3& apex, int64_t last, uint32_t
 
     double test = glm::dot(facets[current].normal, apex - m_vertices[facets[current].triangle.I0]);
 
-    if (test > 1e-6) { // Check whether facet is visible to apex
+    if (test > 1e-12) { // Check whether facet is visible to apex
         set.insert(set.end(), facets[current].outside.begin(), facets[current].outside.end());
         facets[current].outside.clear();
         facets[current].onHull = false;
@@ -552,12 +552,12 @@ std::tuple<bool, ConvexHull> ConvexHull::tryMerge(const ConvexHull& hullA, const
     glm::dvec3 delta = collision.colliding() ? collision.overlap() : collision.offset();
 
 //    std::cout << collision.colliding() << " " << glm::length(collision.offset()) << " " << glm::length(collision.overlap()) << "}{{}\n";
-    if (glm::dot(delta, delta) < 1e-6) {
+    if (glm::dot(delta, delta) < 1e-12) {
         auto hull = unite(hullA, hullB);
         hull.evaluate();
 
 //        std::cout << "Volumes: " << hull.volume() << " " << hullA.volume() << " " << hullB.volume() << " = " << (hullA.volume() + hullB.volume()) << "\n";
-        if (std::abs(hull.volume() - hullA.volume() - hullB.volume()) < 1e-6) return { true, hull };
+        if (std::abs(hull.volume() - hullA.volume() - hullB.volume()) < 1e-12) return { true, hull };
     }
     return { false, {} };
 }

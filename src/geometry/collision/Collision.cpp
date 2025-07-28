@@ -16,9 +16,9 @@
 bool Collision::test(const Plane& bodyA, const Plane& bodyB)
 {
     auto cross = glm::cross(bodyA.normal, bodyB.normal);
-    if (glm::dot(cross, cross) > 1e-6) return true; // Non-parallel plane case
+    if (glm::dot(cross, cross) > 1e-12) return true; // Non-parallel plane case
 
-    return glm::dot(bodyA.normal, bodyB.origin - bodyA.origin) < 1e-6; // Coplanar case
+    return glm::dot(bodyA.normal, bodyB.origin - bodyA.origin) < 1e-12; // Coplanar case
 }
 
 bool Collision::test(const Sphere& bodyA, const Sphere& bodyB)
@@ -69,9 +69,9 @@ bool Collision::test(const ConvexHull& bodyA, const Plane& bodyB)
     if (bodyA.empty()) return false;
 
     // Determine whether vertices exist on both sides of the plane
-    bool ref = glm::dot(bodyB.normal, bodyA.vertices()[0] - bodyB.origin) > -1e-6;
+    bool ref = glm::dot(bodyB.normal, bodyA.vertices()[0] - bodyB.origin) > -1e-12;
     for (uint32_t i = 1; i < bodyA.vertexCount(); i++) {
-        if ((glm::dot(bodyB.normal, bodyA.vertices()[i] - bodyB.origin) > -1e-6) != ref) return true;
+        if ((glm::dot(bodyB.normal, bodyA.vertices()[i] - bodyB.origin) > -1e-12) != ref) return true;
     }
 
     return false;
@@ -110,7 +110,7 @@ glm::dvec3 Collision::farthest(const AABB& body, const glm::dvec3& reference)
 bool Collision::encloses(const Sphere& body, const glm::dvec3& vertex)
 {
     glm::dvec3 delta = vertex - body.center;
-    return glm::dot(delta, delta) - body.radius * body.radius < 1e-6;
+    return glm::dot(delta, delta) - body.radius * body.radius < 1e-12;
 }
 
 bool Collision::encloses(const AABB& body, const glm::dvec3& vertex)
@@ -195,7 +195,7 @@ std::tuple<bool, double, glm::dvec3> Collision::intersection(const AABB& body, c
     double tMin = std::numeric_limits<double>::lowest(), tMax = std::numeric_limits<double>::max();
 
     for (uint8_t i = 0; i < 3; i++) {
-        if (ray.axis[i] * ray.axis[i] < 1e-6) { // Handle parallel ray case
+        if (ray.axis[i] * ray.axis[i] < 1e-12) { // Handle parallel ray case
             if (ray.origin[i] < body.min[i] || ray.origin[i] > body.max[i]) return { false, 0, {} };
         } else {
             double ood = 1.0f / ray.axis[i];
@@ -268,9 +268,14 @@ std::tuple<std::vector<bool>, bool> Collision::partition(const ConvexHull& hull,
     // Determine which vertices are above the cut plane
     const auto& vertices = hull.vertices();
     for (uint32_t i = 0; i < vertices.size(); i++) {
-        above[i] = glm::dot(plane.normal, vertices[i] - plane.origin) > -1e-6;
+        std::cout << glm::dot(plane.normal, vertices[i] - plane.origin) << "~\n";
+        above[i] = glm::dot(plane.normal, vertices[i] - plane.origin) > -1e-12;
         sum += above[i];
     }
+
+    std::cout << "Partition " << sum << ":\n";
+    for (auto i : above) std::cout << i << " ";
+    std::cout << "\n";
 
     // Indicate spread of the vertices
     std::get<1>(out) = sum != 0 && sum != above.size();

@@ -5,8 +5,8 @@
 #include "Octree.h"
 
 #include <iostream>
-#include <sstream>
-#include <iomanip>
+
+#include "core/Functions.h"
 
 #include "geometry/primitives/Sphere.h"
 #include "geometry/primitives/AABB.h"
@@ -173,7 +173,7 @@ std::string Octree::memoryFootprint() const
 //    std::cout << "ST: " << sizeof(Octant::Status) << "\n";
     return "Octants: " + std::to_string(m_octants.size()) + " / " + std::to_string(m_octants.capacity())
         + " ( " + std::to_string(sizeof(Octant)) + " ) "
-        + " [ " + toString(activeMem, 1) + activeUnit + " / " + toString(totalMem, 1) + totalUnit + " ]";
+        + " [ " + Functions::toString(activeMem, 1) + activeUnit + " / " + Functions::toString(totalMem, 1) + totalUnit + " ]";
 }
 
 std::string Octree::unit(double& value)
@@ -193,13 +193,6 @@ std::string Octree::unit(double& value)
     }
 
     return "B";
-}
-
-std::string Octree::toString(double value, int precision)
-{
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(precision) << value;
-    return oss.str();
 }
 
 Octree::Iterator Octree::begin(uint32_t startIndex)

@@ -7,7 +7,7 @@
 
 template<class T1, class T2>
 EPA::EPA(const T1& a, const T2& b, Simplex simplex)
-    : EPA(a, b, simplex, glm::dmat4(1.0f))
+    : EPA(a, b, simplex, glm::dmat4(1.0))
 {
     // TODO implement without transformations to optimize
 }
@@ -38,7 +38,7 @@ EPA::EPA(const T1& a, const T2& b, Simplex simplex, const glm::dmat4& relative)
 
         // Find next vertex to expand to, based on current shortest overlap. Verify it protrudes from the reference facet
         Simplex::Vertex vertex(gjkSupport(a, b, facet.normal, relative, vertices[facet.triangle.I0].idx));
-        if (glm::dot(facet.normal, vertex.val - vertices[facet.triangle.I0].val) <= 1e-6) break;
+        if (glm::dot(facet.normal, vertex.val - vertices[facet.triangle.I0].val) <= TOLERANCE) break;
 
         vertices.push_back(vertex);
 
@@ -85,19 +85,19 @@ void EPA::expandSimplex(const T1& a, const T2& b, const glm::dmat4& relative, Si
             static const glm::dvec3 searchDirections[6] = {
 //                                axis,
 //                                -axis,
-                    {  1.0f,  0.0f,  0.0f },
-                    { -1.0f,  0.0f,  0.0f },
-                    {  0.0f,  1.0f,  0.0f },
-                    {  0.0f, -1.0f,  0.0f },
-                    {  0.0f,  0.0f,  1.0f },
-                    {  0.0f,  0.0f, -1.0f }
+                    {  1.0,  0.0,  0.0 },
+                    { -1.0,  0.0,  0.0 },
+                    {  0.0,  1.0,  0.0 },
+                    {  0.0, -1.0,  0.0 },
+                    {  0.0,  0.0,  1.0 },
+                    {  0.0,  0.0, -1.0 }
             };
 
             for (const glm::dvec3& direction : searchDirections) {
                 Simplex::Vertex vertex(gjkSupport(a, b, direction, relative, simplex[0].idx));
 
                 glm::dvec3 delta = vertex.val - simplex[0].val;
-                if (glm::dot(delta, delta) >= 1e-6) {
+                if (glm::dot(delta, delta) >= TOLERANCE) {
                     simplex.add(vertex);
                     break;
                 }
@@ -112,13 +112,13 @@ void EPA::expandSimplex(const T1& a, const T2& b, const glm::dmat4& relative, Si
             Axis3D system(line);
             glm::dvec3 axis = system.xAxis;
 
-            glm::dquat rotation = glm::angleAxis(2.0f / 3.0f  * (double)M_PI, line);
+            glm::dquat rotation = glm::angleAxis(2.0 / 3.0  * M_PI, line);
 
             // Find a vertex off the line to expand to
             for (uint32_t i = 0; i < 3; i++) {
                 Simplex::Vertex vertex(gjkSupport(a, b, axis, relative, simplex[0].idx));
 
-                if (std::abs(glm::dot(axis, vertex.val - simplex[0].val)) >= 1e-6) {
+                if (std::abs(glm::dot(axis, vertex.val - simplex[0].val)) >= TOLERANCE) {
                     simplex.add(vertex);
                     break;
                 }
@@ -136,13 +136,13 @@ void EPA::expandSimplex(const T1& a, const T2& b, const glm::dmat4& relative, Si
             double delta = std::abs(glm::dot(axis, vertex.val - simplex[0].val));
 
             // Try the opposite direction of the plane in case the triangle is extreme
-            if (delta <= 1e-6) {
+            if (delta <= TOLERANCE) {
                 vertex = Simplex::Vertex(gjkSupport(a, b, -axis, relative, simplex[0].idx));
                 delta = std::abs(glm::dot(axis, vertex.val - simplex[0].val));
             }
 
             // Confirm selected vertex is off the plane
-            if (delta >= 1e-6) {
+            if (delta >= TOLERANCE) {
                 simplex.add(vertex);
             }
         }
@@ -166,6 +166,6 @@ std::tuple<uint32_t, uint32_t, glm::dvec3> EPA::gjkSupport(const T1& bodyA, cons
     auto [aIdx, aVertex] = bodyA.extreme(axis, idx.first);
     auto [bIdx, bVertex] = bodyB.extreme(-axis * glm::mat3(transform), idx.second);
 
-    glm::vec4 vec = transform * glm::vec4(bVertex.x, bVertex.y, bVertex.z, 1.0f);
+    glm::dvec4 vec = transform * glm::dvec4(bVertex.x, bVertex.y, bVertex.z, 1.0);
     return { aIdx, bIdx, aVertex - glm::dvec3{ vec.x, vec.y, vec.z }};
 }

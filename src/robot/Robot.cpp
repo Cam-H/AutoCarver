@@ -18,8 +18,7 @@ Robot::Robot(const std::shared_ptr<KinematicChain>& kinematics, const std::share
     , m_eoat(eoat)
     , m_eoatRelativeTransform()
     , Transformable()
-    , m_invPosition()
-    , m_invRotation()
+    , m_invTransform(1.0)
 {
 
 }
@@ -62,14 +61,13 @@ void Robot::prepareLinks()
     }
 
 
-
     auto eoatMesh = MeshBuilder::axes(Axis3D());
     m_links.push_back(std::make_shared<RigidBody>(eoatMesh));
 
     // Block collisions of last joint with EOAT
     m_links[m_links.size() - 2]->setLayer(0b0100);
-    m_links[m_links.size() - 1]->setLayer(0b0010);
-    m_links[m_links.size() - 1]->setMask(0b0011);
+    m_links.back()->setLayer(0b0010);
+    m_links.back()->setMask(0b0011);
 
     updateTransforms();
 }
@@ -77,8 +75,7 @@ void Robot::prepareLinks()
 // Only calculate inverse when updated to save time
 void Robot::moved()
 {
-    m_invRotation = glm::quat_cast(glm::inverse(getRotation()));
-    m_invPosition = -position();
+    m_invTransform = glm::inverse(m_transform);
 }
 
 void Robot::step()
@@ -131,7 +128,8 @@ void Robot::moveTo(const Axis3D& axes)
 
 void Robot::moveTo(const glm::dvec3& position, const Axis3D& axes)
 {
-    m_kinematics->moveTo(position + m_invPosition, axes * m_invRotation);
+    glm::dvec4 transformed = m_invTransform * glm::dvec4(position.x, position.y, position.z, 1);
+    m_kinematics->moveTo({ transformed.x, transformed.y, transformed.z }, axes * m_invTransform);
     update();
 }
 
@@ -143,14 +141,13 @@ void Robot::moveTo(const glm::dvec3& position, const Axis3D& axes)
 
 void Robot::moveTo(const Waypoint& waypoint)
 {
-    uint32_t end = std::min(m_kinematics->jointCount(), (uint32_t)waypoint.values.size());
-    for (uint32_t i = 0; i < end; i++) m_kinematics->getJoint(i).setValue(waypoint.toRad * waypoint.values[i]);
-
+    m_kinematics->moveTo(waypoint);
     update();
 }
 
 void Robot::traverse(const std::shared_ptr<Trajectory>& trajectory)
 {
+    if (m_kinematics == nullptr) throw std::runtime_error("[Robot] Can not traverse. The kinematic chain is undefined");
     m_currentTrajectory = trajectory;
 }
 
@@ -182,29 +179,64 @@ double Robot::getJointValueDg(uint32_t idx)
 
 Waypoint Robot::getWaypoint() const
 {
-    if (m_kinematics == nullptr) return {};
+    if (m_kinematics == nullptr) return Waypoint();
+    else return m_kinematics->getWaypoint();
+}
 
-    std::vector<double> values;
-    values.reserve(m_kinematics->jointCount());
-    for (uint32_t i = 0; i < m_kinematics->jointCount(); i++) values.emplace_back(m_kinematics->getJoint(i).getValue());
-    return {
-        values,
-        1.0f,
-        false
-    };
+std::vector<double> Robot::getDistanceTravelled() const
+{
+    std::vector<double> delta(m_kinematics->jointCount(), 0.0);
+    if (!inTransit()) return std::vector<double>(m_kinematics->jointCount(), 0.0);
+    return waypointDelta(m_currentTrajectory->start());
+}
+std::vector<double> Robot::getDistanceRemaining() const
+{
+    std::vector<double> delta(m_kinematics->jointCount(), 0.0);
+    if (!inTransit()) return std::vector<double>(m_kinematics->jointCount(), 0.0);
+    return waypointDelta(m_currentTrajectory->end());
+}
+
+std::vector<double> Robot::waypointDelta(const Waypoint& waypoint) const
+{
+    if (m_kinematics == nullptr || waypoint.values.size() != m_kinematics->jointCount()) throw std::runtime_error("[Robot] Invalid data. Can not calculate delta");
+
+    Waypoint current = getWaypoint();
+    if (waypoint.inDg) current = current.toDg();
+
+    std::vector<double> delta(waypoint.values.size());
+    for (uint32_t i = 0; i < m_kinematics->jointCount(); i++) delta[i] = current.values[i] - waypoint.values[i];
+
+    return delta;
+}
+
+std::vector<double> Robot::getJointVelocity() const
+{
+    if (!inTransit()) return std::vector<double>(m_kinematics->jointCount(), 0.0);
+    return m_currentTrajectory->velocity();
+}
+std::vector<double> Robot::getJointAcceleration() const
+{
+    if (!inTransit()) return std::vector<double>(m_kinematics->jointCount(), 0.0);
+    return m_currentTrajectory->acceleration();
+}
+
+const std::shared_ptr<RigidBody>& Robot::getEOAT() const
+{
+    if (m_links.empty()) throw std::runtime_error("[Robot] The robot does not have an EOAT");
+    return m_links.back();
 }
 
 const glm::dmat4x4& Robot::getEOATTransform() const
 {
     if (m_links.empty()) throw std::runtime_error("[Robot] No Links!");
-    return m_links[m_links.size() - 1]->getTransform();
+    return m_links.back()->getTransform();
 }
 
 glm::dvec3 Robot::getEOATPosition() const
 {
     if (m_links.empty()) return {};
 
-    const glm::dmat4& transform = m_links[m_links.size() - 1]->getTransform();
+    const glm::dmat4& transform = m_links.back()->getTransform();
     return { transform[3][0], transform[3][1], transform[3][2] };
 }
 
@@ -212,29 +244,27 @@ Axis3D Robot::getEOATAxes() const
 {
     if (m_links.empty()) return {};
 
-    return { m_links[m_links.size() - 1]->getRotation() };
+    return { m_links.back()->getRotation() };
 }
 
 glm::dvec3 Robot::getEOATEuler() const
 {
     if (m_links.empty()) return {};
 
-    const glm::dmat4& transform = m_links[m_links.size() - 1]->getTransform();
+    const glm::dmat4& transform = m_links.back()->getTransform();
     return glm::eulerAngles(glm::quat_cast(transform));
 }
 
-bool Robot::inTransit()
+bool Robot::inTransit() const
 {
     return m_currentTrajectory != nullptr && !m_currentTrajectory->complete();
 }
 
 Waypoint Robot::inverse(const glm::dvec3& position, const Axis3D& axes) const
 {
-    return {
-            m_kinematics->invkin(position + m_invPosition, axes * m_invRotation),
-            1.0f,
-            false
-    };
+    glm::dvec4 transformed = m_invTransform * glm::dvec4(position.x, position.y, position.z, 1);
+
+    return Waypoint(m_kinematics->invkin({ transformed.x, transformed.y, transformed.z }, axes * m_invTransform), false);
 }
 
 //Waypoint Robot::inverse(const glm::dvec3& position, const glm::dvec3& euler) const

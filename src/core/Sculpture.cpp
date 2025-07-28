@@ -182,7 +182,7 @@ bool Sculpture::planarSection(const Plane& plane)
     std::cout << "PS4\n";
 
     // Highlight cut faces
-//    m_mesh->setFaceColor(m_mesh->matchFace(plane.normal), m_highlightColor);
+    m_mesh->setFaceColor(m_mesh->matchFace(plane.normal), m_highlightColor);
     std::cout << "PS5\n";
 
     return true;

@@ -150,7 +150,6 @@ private:
     bool tryExpansion(Octant& parent);
 
     static std::string unit(double& value);
-    static std::string toString(double value, int precision);
 
 public:
 

@@ -51,7 +51,7 @@ private:
 
     bool m_colliding;
 
-    const double TOLERANCE = 1e-6;
+    const double TOLERANCE = 1e-12;
 };
 
 

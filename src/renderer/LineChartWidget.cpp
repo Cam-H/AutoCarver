@@ -15,7 +15,7 @@ LineChartWidget::LineChartWidget(QWidget* parent)
         , m_penIdx(0)
         , m_t(1.0f)
         , m_xMin(-1.0f)
-        , m_xMax(-1.0f)
+        , m_xMax(1.0f)
         , m_xMag(1.0f)
         , m_yMin(-1.0f)
         , m_yMax(-1.0f)
@@ -29,7 +29,8 @@ LineChartWidget::LineChartWidget(QWidget* parent)
 {
 
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-
+    xlim();
+    ylim();
 }
 
 LineChartWidget::~LineChartWidget()
@@ -41,11 +42,6 @@ LineChartWidget::~LineChartWidget()
 void LineChartWidget::clear()
 {
     m_penIdx = 0;
-
-    for (Series& series : m_series) {
-        delete[] series.x;
-        delete[] series.y;
-    }
     m_series.clear();
 }
 
@@ -85,14 +81,12 @@ void LineChartWidget::mouseMoveEvent(QMouseEvent *e)
 
 void LineChartWidget::plot(const std::vector<double>& y)
 {
-    plot(y, s_pens[m_penIdx]);
-    if (++m_penIdx >= s_pens.size()) m_penIdx = 0;
+    plot(y, nextPen());
 }
 
 void LineChartWidget::plot(const std::vector<double>& y, const QString& name)
 {
-    plot(y, name, s_pens[m_penIdx]);
-    if (++m_penIdx >= s_pens.size()) m_penIdx = 0;
+    plot(y, name, nextPen());
 }
 
 void LineChartWidget::plot(const std::vector<double>& y, QPen pen)
@@ -105,16 +99,8 @@ void LineChartWidget::plot(const std::vector<double>& y, QPen pen)
 
 void LineChartWidget::plot(const std::vector<double>& y, const QString& name, QPen pen)
 {
-    auto *points = new double[y.size()];
-    std::copy(y.begin(), y.end(), points);
 
-    m_series.push_back(Series{
-            name,
-            nullptr,
-            points,
-            (uint32_t)y.size(),
-            pen
-    });
+    m_series.emplace_back(name, y, pen);
 
     if (m_xMin == -1 && m_xMax == -1) xlim();
     if (m_yMin == -1 && m_yMax == -1) ylim();
@@ -122,9 +108,36 @@ void LineChartWidget::plot(const std::vector<double>& y, const QString& name, QP
     update();
 }
 
+void LineChartWidget::create(uint32_t size, const QString& name)
+{
+    create(size, name, nextPen());
+}
+void LineChartWidget::create(uint32_t size, const QString& name, QPen pen)
+{
+    m_series.emplace_back(name, size, pen);
+}
+
+void LineChartWidget::stream(uint32_t plotIndex, double y)
+{
+    if (plotIndex < m_series.size()) m_series[plotIndex].stream(y);
+}
+
+void LineChartWidget::stream(uint32_t plotIndex, double x, double y)
+{
+    if (plotIndex < m_series.size()) m_series[plotIndex].stream(x, y);
+}
+
 void LineChartWidget::showLegend(bool visible)
 {
     m_legendEnable = visible;
+}
+
+QPen LineChartWidget::nextPen()
+{
+    QPen pen = s_pens[m_penIdx++];
+    if (m_penIdx >= s_pens.size()) m_penIdx = 0;
+
+    return pen;
 }
 
 void LineChartWidget::setX(const std::vector<double>& x)
@@ -132,6 +145,18 @@ void LineChartWidget::setX(const std::vector<double>& x)
     m_x = x;
 
     xlim(x[0], x[x.size() - 1]);
+}
+
+void LineChartWidget::setX(uint32_t size, double minimum, double maximum)
+{
+    m_x = std::vector<double>(size, 0);
+    xlim(minimum, maximum);
+}
+
+void LineChartWidget::setX(uint32_t index, double x)
+{
+    if (index >= m_x.size()) throw std::runtime_error("[LineChartWidget] Invalid index access on setX");
+    m_x[index] = x;
 }
 
 void LineChartWidget::setT(double t)
@@ -152,10 +177,10 @@ void LineChartWidget::xlim()
     double max = std::numeric_limits<double>::max();
 
     for (const Series& series : m_series) {
-        if (series.x == nullptr) continue;
+        if (series.x.empty()) continue;
 
         if (min > series.x[0]) min = series.x[0];
-        if (max < series.x[series.count - 1]) max = series.x[series.count - 1];
+        if (max < series.x.back()) max = series.x.back();
 
         limited = true;
     }
@@ -170,9 +195,9 @@ void LineChartWidget::ylim()
     double min = m_series[0].y[0], max = m_series[0].y[0];
 
     for (const Series& series : m_series) {
-        for (uint32_t i = 0; i < series.count; i++) {
-            if (min > series.y[i]) min = (double)series.y[i];
-            else if (max < series.y[i]) max = (double)series.y[i];
+        for (uint32_t i = 0; i < series.y.size(); i++) {
+            if (min > series.y[i]) min = series.y[i];
+            else if (max < series.y[i]) max = series.y[i];
         }
     }
 
@@ -247,15 +272,17 @@ void LineChartWidget::paintEvent(QPaintEvent *)
     for (const Series& series : m_series) {
         painter.setPen(series.pen);
 
-        double tStep = m_t / (double)series.count;
+        double tStep = m_t / series.y.size();
         int x, y, lx, ly;
 
-        if (series.x != nullptr) { // Use series-specific x-coordinates
+        if (!series.x.empty()) { // Use series-specific x-coordinates
 
-        } else if (m_x.size() == series.count) { // Use a special x-coordinate set for plotting (for non-linear)
+        } else if (!m_x.empty()) { // Use a special x-coordinate set for plotting (for non-linear)
             lx = xTransform(m_x[0]);
             ly = yTransform(series.y[0]);
-            for (int i = 1; i < series.count; i++) {
+
+            uint32_t last = std::min((uint32_t)m_x.size(), series.lastIndex());
+            for (int i = 1; i < last; i++) {
                 x = xTransform(m_x[i]);
                 y = yTransform(series.y[i]);
 
@@ -267,7 +294,7 @@ void LineChartWidget::paintEvent(QPaintEvent *)
         } else { // Use the base t as the plotted x-coordinate
             lx = xTransform(0.0f);
             ly = yTransform(series.y[0]);
-            for (int i = 1; i < series.count; i++) {
+            for (int i = 1; i < series.y.size(); i++) {
                 x = xTransform(i * tStep);
                 y = yTransform(series.y[i]);
 

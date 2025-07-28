@@ -14,8 +14,14 @@ public:
     Plane(const glm::dvec3& origin, const glm::dvec3& normal);
 
     void rotate(const glm::dvec3& axis, double theta);
+    void invert();
 
     [[nodiscard]] bool isValid() const;
+
+    [[nodiscard]] double axialRotation(const glm::dvec3& axis) const;
+
+    [[nodiscard]] Plane rotated(const glm::dvec3& axis, double theta) const;
+    [[nodiscard]] Plane inverted() const;
 
     [[nodiscard]] glm::dvec3 project(const glm::dvec3& vertex) const;
     inline static glm::dvec3 project(const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& vertex);

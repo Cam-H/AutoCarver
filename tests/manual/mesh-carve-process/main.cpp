@@ -69,7 +69,13 @@ int main(int argc, char *argv[])
 //    scene->setContinuous(true);
 
     robot = scene->createRobot(std::make_shared<ArticulatedWrist>(0.2, 1.2, 1.2, 1));
-    robot->translate({1, 0, 0});
+    robot->setJointValueDg(1, 110);
+    robot->setJointValueDg(2, 20);
+    robot->setJointValueDg(4, -130);
+    robot->getEOAT()->setMask(0);
+
+    robot->translate({2, 0, 0});
+    robot->rotate({ 0, 1, 0 }, M_PI);
     robot->update();
 
     scene->setSculptingRobot(robot);//
@@ -121,14 +127,15 @@ int main(int argc, char *argv[])
     // Handle updating robot
     updateThread = std::make_unique<std::thread>([](){
         Timer rateTimer;
-        bool idle = false;
+        bool idle = false, complete = false;
 
         while (true) {
             scene->step((double)rateTimer.getElapsedSeconds());
             rateTimer.reset();
 
-            if (scene->simulationActive() || (!idle && scene->simulationIdle())) {
+            if (scene->simulationActive() || (!idle && scene->simulationIdle()) || (!complete && scene->simulationComplete())) {
                 sceneWidget->update();
+                complete = scene->simulationComplete();
             } else {
                 stepButton->setEnabled(true);
                 skipButton->setEnabled(true);

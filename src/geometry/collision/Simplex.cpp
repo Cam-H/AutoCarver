@@ -37,7 +37,7 @@ void Simplex::purgeDuplicates()
     for (uint32_t i = 0; i < m_size; i++) {
         for (uint32_t j = i + 1; j < m_size; j++) {
             glm::dvec3 delta = vertices[j].val - vertices[i].val;
-            if (glm::dot(delta, delta) < 1e-6) {
+            if (glm::dot(delta, delta) < TOLERANCE) {
                 std::swap(vertices[j], vertices[m_size]);
                 m_size--;
                 j--;
@@ -55,7 +55,7 @@ void Simplex::correctWinding()
     glm::dvec3 v31 = vertices[1].val - vertices[3].val;
     glm::dvec3 v32 = vertices[2].val - vertices[3].val;
 
-    if (glm::dot(v30, glm::cross(v31, v32)) < 0.0f) std::swap(vertices[0], vertices[1]);
+    if (glm::dot(v30, glm::cross(v31, v32)) < 0) std::swap(vertices[0], vertices[1]);
 }
 
 Simplex::Vertex Simplex::operator[](uint32_t idx) const

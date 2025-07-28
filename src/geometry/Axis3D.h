@@ -33,6 +33,9 @@ public:
     [[nodiscard]] glm::dmat3 toTransform() const;
     [[nodiscard]] glm::dquat toQuat() const;
 
+    [[nodiscard]] glm::dvec3 localize(const glm::dvec3& vertex) const;
+    [[nodiscard]] glm::dvec3 delocalize(const glm::dvec3& vertex) const;
+
     void print() const;
 
 public:

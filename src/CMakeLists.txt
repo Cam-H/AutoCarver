@@ -112,7 +112,7 @@ qt_add_library(AutoCarverLib
 
         geometry/Axis3D.cpp
         geometry/Axis3D.h
-        )
+        robot/planning/Interpolator.cpp robot/planning/Interpolator.h robot/planning/CompoundTrajectory.cpp robot/planning/CompoundTrajectory.h robot/planning/SimpleTrajectory.cpp robot/planning/SimpleTrajectory.h robot/planning/Waypoint.cpp robot/planning/Waypoint.h)
 
 target_link_libraries(AutoCarverLib PRIVATE
         Qt::Core

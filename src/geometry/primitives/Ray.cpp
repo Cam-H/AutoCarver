@@ -13,5 +13,5 @@ Ray::Ray(const glm::dvec3& origin, const glm::dvec3& axis)
 
 bool Ray::isValid() const
 {
-    return glm::dot(axis, axis) > 1e-6;
+    return glm::dot(axis, axis) > 1e-12;
 }

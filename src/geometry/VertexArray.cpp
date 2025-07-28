@@ -123,6 +123,20 @@ void VertexArray::rotate(std::vector<glm::dvec3>& vertices, const glm::dvec3& ax
     }
 }
 
+std::vector<glm::dvec3> VertexArray::rotated(const std::vector<glm::dvec3>& vertices, const glm::dvec3& axis, double theta)
+{
+    glm::dquat rotation = glm::angleAxis(theta, axis);
+
+    std::vector<glm::dvec3> rotatedVertices;
+    rotatedVertices.reserve(vertices.size());
+
+    for (const glm::dvec3& vertex : vertices) {
+        rotatedVertices.emplace_back(vertex * rotation);
+    }
+
+    return rotatedVertices;
+}
+
 void VertexArray::replace(uint32_t idx, const glm::dvec3& replacement)
 {
     if (idx < m_vertices.size()) {

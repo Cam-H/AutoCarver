@@ -23,7 +23,10 @@
 #include "renderer/LineChartWidget.h"
 
 #include "renderer/UiLoader.h"
-#include "robot/planning/Trajectory.h"
+#include "robot/planning/SimpleTrajectory.h"
+#include "robot/planning/CompoundTrajectory.h"
+#include "robot/planning/Interpolator.h"
+
 #include "core/Timer.h"
 
 #endif
@@ -37,8 +40,10 @@ QListWidget* qlw;
 std::vector<QSpinBox*> jointFields;
 
 std::vector<Waypoint> m_waypoints = {
-        { std::vector<double>{ 0, 0, 0, 0, 0, 0 }, M_PI / 180, false },
-        { std::vector<double>{ 180, 55, -25, 0, -50, 0 }, M_PI / 180, false }
+        Waypoint(std::vector<double>{ 0, 0, 0, 0, 0, 0 }, true),
+        Waypoint(std::vector<double>{ 180, 55, -25, 0, -50, 0 }, true),
+        Waypoint(std::vector<double>{ 270, 100, 60, 0, 30, 50 }, true)
+
 };
 std::pair<int, int> m_selection = { 0, 0 };
 std::shared_ptr<Trajectory> m_trajectory = nullptr;
@@ -100,7 +105,7 @@ int main(int argc, char *argv[])
 
 
     scene = std::make_shared<SculptProcess>(model);
-    robot = scene->createRobot(new ArticulatedWrist(0.8, 2, 2, 1));
+    robot = scene->createRobot(std::make_shared<ArticulatedWrist>(0.8, 2, 2, 1));
     robot->translate({1, 0, 0});
     robot->update();
 
@@ -201,29 +206,37 @@ int main(int argc, char *argv[])
     QObject::connect(trajectoryButton, &QPushButton::clicked, [&]() {
         if (m_inputEnable && m_waypoints.size() > 1) {
 
-            m_trajectory = std::make_shared<Trajectory>(m_waypoints, TrajectorySolverType::CUBIC);
-            m_trajectory->setMaxVelocity(90.0f);
+//            auto traj = std::make_shared<SimpleTrajectory>(m_waypoints[0], m_waypoints[1], Interpolator::SolverType::QUINTIC);
+            auto traj = std::make_shared<CompoundTrajectory>(m_waypoints);
+            traj->limitVelocity(90.0);
+            traj->limitAcceleration(60.0);
+            traj->smooth();
+
+            m_trajectory = traj;
             robot->traverse(m_trajectory);
             robot->step();
-
-            m_x = m_trajectory->jointTrajectory(0).t();
-
-            plotWidget->setX(m_x);
 
             plotWidget->clear();
             plotWidget->zero();
 
-            for (uint32_t i = 0; i < m_trajectory->dimensions(); i++) {
+            plotWidget->setX(500, 0, std::ceil(m_trajectory->duration()));
+            plotWidget->ylim(-360, 360);
+
+            for (uint32_t i = 0; i < 6; i++) {
                 std::string name = "j" + std::to_string(i);
-                plotWidget->plot(m_trajectory->jointTrajectory(i).pTrajectory(0.05f), (name + "Position").c_str());
-                plotWidget->plot(m_trajectory->jointTrajectory(i).vTrajectory(0.05f), (name + "Velocity").c_str());
+                plotWidget->create(500, (name + "Position").c_str());
+            }
+
+            for (uint32_t i = 0; i < 6; i++) {
+                std::string name = "j" + std::to_string(i);
+                plotWidget->create(500, (name + "Velocity").c_str());
+//                plotWidget->create(500, (name + "Acceleration").c_str());
             }
 
             m_inputEnable = false;
 
             qlw->setCurrentRow(m_waypoints.size() - 1);
 
-            plotWidget->ylim();
 
             plotWidget->update();
         }
@@ -232,12 +245,25 @@ int main(int argc, char *argv[])
     // Handle updating robot
     updateThread = std::make_unique<std::thread>([](){
         Timer rateTimer;
+        uint32_t xIdx = 0;
+        double time = 0;
 
         while (true) {
-            scene->step(rateTimer.getElapsedSeconds());
+            double delta = rateTimer.getElapsedSeconds();
+            scene->step(delta);
             rateTimer.reset();
 
             if (robot->inTransit()) {
+
+                plotWidget->setX(++xIdx, time += delta);
+                Waypoint pos = robot->getWaypoint().toDg();
+                for (uint32_t i = 0; i < 6; i++) plotWidget->stream(i, pos.values[i]);
+                auto vel = robot->getJointVelocity(), acc = robot->getJointAcceleration();
+                for (uint32_t i = 0; i < 6; i++) plotWidget->stream(6 + i, vel[i]);
+//                for (uint32_t i = 0; i < 6; i++) plotWidget->stream(6 + i, acc[i]);
+
+                plotWidget->update();
+
                 sceneWidget->update();
 
                 for (uint32_t i = 0; i < jointFields.size(); i++) {
@@ -249,9 +275,12 @@ int main(int argc, char *argv[])
                     jointFields[i]->setValue((int)robot->getJointValueDg(i));
                 }
                 m_inputEnable = true;
+
+                xIdx = 0;
+                time = 0;
             }
 
-            std::this_thread::sleep_for(std::chrono::nanoseconds(80000000));
+            std::this_thread::sleep_for(std::chrono::nanoseconds(20000000));
         }
     });
 

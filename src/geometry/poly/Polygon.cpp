@@ -300,14 +300,14 @@ std::vector<glm::dvec2> Polygon::clean(const std::vector<glm::dvec2>& vertices)
     glm::dvec2 delta;
     for (uint32_t i = 1; i < vertices.size(); i++) {
         delta = vertices[i] - vertices[i - 1];
-        if (glm::dot(delta, delta) > 1e-6) { // Non-duplicate vertex = sufficiently far from previous vertex
+        if (glm::dot(delta, delta) > 1e-12) { // Non-duplicate vertex = sufficiently far from previous vertex
             cleaned.push_back(vertices[i]);
         }
     }
 
     // Consider endpoints
     delta = cleaned[cleaned.size() - 1] - cleaned[0];
-    if (glm::dot(delta, delta) < 1e-6) cleaned.pop_back();
+    if (glm::dot(delta, delta) < 1e-12) cleaned.pop_back();
 
     return cleaned;
 }

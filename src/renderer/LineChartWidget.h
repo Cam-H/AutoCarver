@@ -16,11 +16,44 @@
 #include <QResizeEvent>
 
 struct Series {
+public:
+
+    Series(const QString& name, uint32_t size, const QPen& pen)
+        : name(name)
+        , x({})
+        , y(size, 0)
+        , offset(0)
+        , pen(pen) {}
+
+    Series(const QString& name, const std::vector<double>& y, const QPen& pen) : Series(name, x, y, pen) {}
+    Series(const QString& name, const std::vector<double>& x, const std::vector<double>& y, const QPen& pen)
+        : name(name)
+        , x(x)
+        , y(y)
+        , offset(0)
+        , pen(pen) {}
+
+    void stream(double ny)
+    {
+        y[offset] = ny;
+        next();
+    }
+
+    void stream(double nx, double ny)
+    {
+        if (!x.empty()) x[offset] = nx;
+        y[offset] = ny;
+        next();
+    }
+
+    void next() { if (++offset >= y.size()) offset = 0; }
+    uint32_t lastIndex() const { return std::min((uint32_t)y.size(), offset); }
+
     QString name;
 
-    double* x;
-    double* y;
-    uint32_t count;
+    std::vector<double> x;
+    std::vector<double> y;
+    uint32_t offset;
 
     QPen pen;
 
@@ -41,6 +74,9 @@ public:
     void reset();
 
     void setX(const std::vector<double>& x);
+    void setX(uint32_t size, double minimum, double maximum);
+    void setX(uint32_t index, double x);
+
     void setT(double t);
 
     void plot(const std::vector<double>& y);
@@ -48,6 +84,12 @@ public:
 
     void plot(const std::vector<double>& y, QPen pen);
     void plot(const std::vector<double>& y, const QString& name, QPen pen);
+
+    void create(uint32_t size, const QString& name);
+    void create(uint32_t size, const QString& name, QPen pen);
+
+    void stream(uint32_t plotIndex, double y);
+    void stream(uint32_t plotIndex, double x, double y);
 
     void showLegend(bool visible);
 
@@ -66,6 +108,8 @@ protected:
     void resizeEvent(QResizeEvent *event) override;
     void paintEvent(QPaintEvent *event) override;
 private:
+
+    QPen nextPen();
 
     void drawXMinor(QPainter& painter);
     void drawYMinor(QPainter& painter);

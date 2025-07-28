@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>973</width>
-    <height>800</height>
+    <width>1094</width>
+    <height>912</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -34,364 +34,653 @@
        </widget>
       </item>
       <item>
-       <widget class="QWidget" name="controlWidget" native="true">
-        <layout class="QVBoxLayout" name="verticalLayout">
-         <item>
-          <widget class="QWidget" name="jointAngleControlWidget" native="true">
-           <layout class="QVBoxLayout" name="verticalLayout_3">
-            <item>
-             <widget class="QLabel" name="label_9">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>12</pointsize>
-                <bold>true</bold>
-               </font>
-              </property>
-              <property name="text">
-               <string>Joint Angle Controls (in dg)</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QWidget" name="widget_4" native="true">
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-                <italic>true</italic>
-               </font>
-              </property>
-              <layout class="QGridLayout" name="gridLayout">
-               <item row="0" column="0">
-                <widget class="QLabel" name="label_7">
-                 <property name="text">
-                  <string>J0 Angle</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="1">
-                <widget class="QSpinBox" name="j0Field">
-                 <property name="minimum">
-                  <number>-720</number>
-                 </property>
-                 <property name="maximum">
-                  <number>720</number>
-                 </property>
-                 <property name="singleStep">
-                  <number>5</number>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="0">
-                <widget class="QLabel" name="label_8">
-                 <property name="text">
-                  <string>J1 Angle</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="1">
-                <widget class="QSpinBox" name="j1Field">
-                 <property name="minimum">
-                  <number>-720</number>
-                 </property>
-                 <property name="maximum">
-                  <number>720</number>
-                 </property>
-                 <property name="singleStep">
-                  <number>5</number>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="0">
-                <widget class="QLabel" name="label_5">
-                 <property name="text">
-                  <string>J2 Angle</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="1">
-                <widget class="QSpinBox" name="j2Field">
-                 <property name="minimum">
-                  <number>-720</number>
-                 </property>
-                 <property name="maximum">
-                  <number>720</number>
-                 </property>
-                 <property name="singleStep">
-                  <number>5</number>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="0">
-                <widget class="QLabel" name="label_6">
-                 <property name="text">
-                  <string>J3 Angle</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="6" column="0">
-                <widget class="QLabel" name="label_4">
-                 <property name="text">
-                  <string>J5 Angle</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="4" column="0">
-                <widget class="QLabel" name="label_3">
-                 <property name="text">
-                  <string>J4 Angle</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="1">
-                <widget class="QSpinBox" name="j3Field">
-                 <property name="minimum">
-                  <number>-720</number>
-                 </property>
-                 <property name="maximum">
-                  <number>720</number>
-                 </property>
-                 <property name="singleStep">
-                  <number>5</number>
-                 </property>
-                </widget>
-               </item>
-               <item row="4" column="1">
-                <widget class="QSpinBox" name="j4Field">
-                 <property name="minimum">
-                  <number>-720</number>
-                 </property>
-                 <property name="maximum">
-                  <number>720</number>
-                 </property>
-                 <property name="singleStep">
-                  <number>5</number>
-                 </property>
-                </widget>
-               </item>
-               <item row="6" column="1">
-                <widget class="QSpinBox" name="j5Field">
-                 <property name="minimum">
-                  <number>-720</number>
-                 </property>
-                 <property name="maximum">
-                  <number>720</number>
-                 </property>
-                 <property name="singleStep">
-                  <number>5</number>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-         </item>
-         <item>
-          <widget class="QWidget" name="jointPositionControlWidget" native="true">
-           <layout class="QVBoxLayout" name="verticalLayout_4">
-            <item>
-             <widget class="QLabel" name="label_10">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>12</pointsize>
-                <bold>true</bold>
-               </font>
-              </property>
-              <property name="text">
-               <string>Joint Position Controls</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QWidget" name="widget_5" native="true">
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-                <italic>true</italic>
-               </font>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_2">
-               <item row="4" column="1">
-                <widget class="QDoubleSpinBox" name="zField">
-                 <property name="minimum">
-                  <double>-5.000000000000000</double>
-                 </property>
-                 <property name="maximum">
-                  <double>5.000000000000000</double>
-                 </property>
-                 <property name="singleStep">
-                  <double>0.100000000000000</double>
-                 </property>
-                </widget>
-               </item>
-               <item row="6" column="0">
-                <widget class="QPushButton" name="decYButton">
-                 <property name="text">
-                  <string>Rotate Y-</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="5" column="1">
-                <widget class="QPushButton" name="incXButton">
-                 <property name="text">
-                  <string>Rotate X+</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="1">
-                <widget class="QDoubleSpinBox" name="yField">
-                 <property name="minimum">
-                  <double>-5.000000000000000</double>
-                 </property>
-                 <property name="maximum">
-                  <double>5.000000000000000</double>
-                 </property>
-                 <property name="singleStep">
-                  <double>0.100000000000000</double>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="0">
-                <widget class="QLabel" name="xLabel">
-                 <property name="text">
-                  <string>X</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="4" column="0">
-                <widget class="QLabel" name="label_13">
-                 <property name="text">
-                  <string>Z</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="0">
-                <widget class="QLabel" name="label_12">
-                 <property name="text">
-                  <string>Y</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="5" column="0">
-                <widget class="QPushButton" name="decXButton">
-                 <property name="text">
-                  <string>Rotate X-</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="1">
-                <widget class="QDoubleSpinBox" name="xField">
-                 <property name="minimum">
-                  <double>-5.000000000000000</double>
-                 </property>
-                 <property name="maximum">
-                  <double>5.000000000000000</double>
-                 </property>
-                 <property name="singleStep">
-                  <double>0.100000000000000</double>
-                 </property>
-                </widget>
-               </item>
-               <item row="6" column="1">
-                <widget class="QPushButton" name="incYButton">
-                 <property name="text">
-                  <string>Rotate &amp;+</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="7" column="1">
-                <widget class="QPushButton" name="incZButton">
-                 <property name="text">
-                  <string>Rotate Z+</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="7" column="0">
-                <widget class="QPushButton" name="decZButton">
-                 <property name="text">
-                  <string>Rotate Z-</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-         </item>
-         <item>
-          <spacer name="verticalSpacer">
-           <property name="orientation">
-            <enum>Qt::Orientation::Vertical</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>20</width>
-             <height>40</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-        </layout>
+       <widget class="QScrollArea" name="scrollArea">
+        <property name="horizontalScrollBarPolicy">
+         <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+        </property>
+        <property name="widgetResizable">
+         <bool>true</bool>
+        </property>
+        <widget class="QWidget" name="scrollAreaWidgetContents">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>-639</y>
+           <width>445</width>
+           <height>1267</height>
+          </rect>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_6">
+          <item>
+           <widget class="QWidget" name="widget_2" native="true">
+            <layout class="QHBoxLayout" name="horizontalLayout">
+             <property name="leftMargin">
+              <number>2</number>
+             </property>
+             <item>
+              <widget class="QWidget" name="controlWidget" native="true">
+               <layout class="QVBoxLayout" name="verticalLayout">
+                <item>
+                 <widget class="QWidget" name="jointAngleControlWidget" native="true">
+                  <layout class="QVBoxLayout" name="verticalLayout_3">
+                   <item>
+                    <widget class="QWidget" name="settingsWidget" native="true">
+                     <layout class="QVBoxLayout" name="verticalLayout_5">
+                      <item>
+                       <widget class="QCheckBox" name="showMeshButton">
+                        <property name="text">
+                         <string>Show Mesh</string>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QCheckBox" name="showSphereButton">
+                        <property name="text">
+                         <string>Show Bounding Sphere</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QCheckBox" name="showHullButton">
+                        <property name="text">
+                         <string>Show Bounding Hull</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label_9">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>12</pointsize>
+                       <bold>true</bold>
+                      </font>
+                     </property>
+                     <property name="text">
+                      <string>Joint Angle Controls (in dg)</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QWidget" name="widget_4" native="true">
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                       <italic>false</italic>
+                      </font>
+                     </property>
+                     <layout class="QGridLayout" name="gridLayout">
+                      <item row="0" column="0">
+                       <widget class="QLabel" name="label_7">
+                        <property name="text">
+                         <string>J0 Angle</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QSpinBox" name="j0Field">
+                        <property name="minimum">
+                         <number>-720</number>
+                        </property>
+                        <property name="maximum">
+                         <number>720</number>
+                        </property>
+                        <property name="singleStep">
+                         <number>5</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QLabel" name="label_8">
+                        <property name="text">
+                         <string>J1 Angle</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QSpinBox" name="j1Field">
+                        <property name="minimum">
+                         <number>-720</number>
+                        </property>
+                        <property name="maximum">
+                         <number>720</number>
+                        </property>
+                        <property name="singleStep">
+                         <number>5</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QLabel" name="label_5">
+                        <property name="text">
+                         <string>J2 Angle</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QSpinBox" name="j2Field">
+                        <property name="minimum">
+                         <number>-720</number>
+                        </property>
+                        <property name="maximum">
+                         <number>720</number>
+                        </property>
+                        <property name="singleStep">
+                         <number>5</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QLabel" name="label_6">
+                        <property name="text">
+                         <string>J3 Angle</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="0">
+                       <widget class="QLabel" name="label_4">
+                        <property name="text">
+                         <string>J5 Angle</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="0">
+                       <widget class="QLabel" name="label_3">
+                        <property name="text">
+                         <string>J4 Angle</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QSpinBox" name="j3Field">
+                        <property name="minimum">
+                         <number>-720</number>
+                        </property>
+                        <property name="maximum">
+                         <number>720</number>
+                        </property>
+                        <property name="singleStep">
+                         <number>5</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QSpinBox" name="j4Field">
+                        <property name="minimum">
+                         <number>-720</number>
+                        </property>
+                        <property name="maximum">
+                         <number>720</number>
+                        </property>
+                        <property name="singleStep">
+                         <number>5</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="1">
+                       <widget class="QSpinBox" name="j5Field">
+                        <property name="minimum">
+                         <number>-720</number>
+                        </property>
+                        <property name="maximum">
+                         <number>720</number>
+                        </property>
+                        <property name="singleStep">
+                         <number>5</number>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="saveWaypointButton">
+                     <property name="text">
+                      <string>Save Waypoint</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QWidget" name="jointPositionControlWidget" native="true">
+                  <layout class="QVBoxLayout" name="verticalLayout_4">
+                   <item>
+                    <widget class="QLabel" name="label_10">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>12</pointsize>
+                       <bold>true</bold>
+                      </font>
+                     </property>
+                     <property name="text">
+                      <string>Joint Position Controls</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QWidget" name="widget_5" native="true">
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                       <italic>false</italic>
+                      </font>
+                     </property>
+                     <layout class="QGridLayout" name="gridLayout_2">
+                      <item row="4" column="1">
+                       <widget class="QDoubleSpinBox" name="zField">
+                        <property name="minimum">
+                         <double>-5.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>5.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.100000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="0">
+                       <widget class="QPushButton" name="decYButton">
+                        <property name="text">
+                         <string>Rotate Y-</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="1">
+                       <widget class="QPushButton" name="incXButton">
+                        <property name="text">
+                         <string>Rotate X+</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QDoubleSpinBox" name="yField">
+                        <property name="minimum">
+                         <double>-5.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>5.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.100000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QLabel" name="xLabel">
+                        <property name="text">
+                         <string>X</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="8" column="0">
+                       <widget class="QPushButton" name="decZButton">
+                        <property name="text">
+                         <string>Rotate Z-</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="0">
+                       <widget class="QLabel" name="label_13">
+                        <property name="text">
+                         <string>Z</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QLabel" name="label_12">
+                        <property name="text">
+                         <string>Y</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="8" column="1">
+                       <widget class="QPushButton" name="incZButton">
+                        <property name="text">
+                         <string>Rotate Z+</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="0">
+                       <widget class="QPushButton" name="decXButton">
+                        <property name="text">
+                         <string>Rotate X-</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QDoubleSpinBox" name="xField">
+                        <property name="minimum">
+                         <double>-5.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>5.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.100000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="1">
+                       <widget class="QPushButton" name="incYButton">
+                        <property name="text">
+                         <string>Rotate Y+</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QCheckBox" name="localSettingButton">
+                        <property name="text">
+                         <string>Local Translation</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QWidget" name="widget_3" native="true">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <layout class="QVBoxLayout" name="verticalLayout_8">
+                      <property name="bottomMargin">
+                       <number>9</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="label">
+                        <property name="font">
+                         <font>
+                          <pointsize>12</pointsize>
+                          <bold>true</bold>
+                         </font>
+                        </property>
+                        <property name="text">
+                         <string>Trajectory Controls</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QTreeWidget" name="treeWidget">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>0</width>
+                          <height>300</height>
+                         </size>
+                        </property>
+                        <property name="selectionMode">
+                         <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+                        </property>
+                        <property name="columnCount">
+                         <number>2</number>
+                        </property>
+                        <attribute name="headerVisible">
+                         <bool>true</bool>
+                        </attribute>
+                        <column>
+                         <property name="text">
+                          <string notr="true">1</string>
+                         </property>
+                        </column>
+                        <column>
+                         <property name="text">
+                          <string notr="true">2</string>
+                         </property>
+                        </column>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QWidget" name="widget" native="true">
+                        <property name="enabled">
+                         <bool>true</bool>
+                        </property>
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <layout class="QGridLayout" name="gridLayout_4">
+                         <item row="1" column="0">
+                          <widget class="QLabel" name="label_2">
+                           <property name="font">
+                            <font>
+                             <pointsize>10</pointsize>
+                             <bold>true</bold>
+                            </font>
+                           </property>
+                           <property name="text">
+                            <string>Waypoint Indices (WP#):</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QLabel" name="label_16">
+                           <property name="font">
+                            <font>
+                             <pointsize>10</pointsize>
+                            </font>
+                           </property>
+                           <property name="text">
+                            <string>Start</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="0">
+                          <widget class="QPushButton" name="removeTrajectoryButton">
+                           <property name="text">
+                            <string>Remove Trajectory</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="2">
+                          <widget class="QPushButton" name="addTrajectoryButton">
+                           <property name="text">
+                            <string>Add Trajectory</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="0">
+                          <widget class="QLabel" name="label_17">
+                           <property name="font">
+                            <font>
+                             <pointsize>10</pointsize>
+                            </font>
+                           </property>
+                           <property name="text">
+                            <string>End</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="2">
+                          <widget class="QSpinBox" name="wpStartField">
+                           <property name="maximum">
+                            <number>1</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="2">
+                          <widget class="QSpinBox" name="wpEndField">
+                           <property name="maximum">
+                            <number>1</number>
+                           </property>
+                           <property name="value">
+                            <number>1</number>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QWidget" name="widget_9" native="true">
+                        <layout class="QGridLayout" name="gridLayout_5">
+                         <item row="1" column="1">
+                          <widget class="QWidget" name="widget_7" native="true">
+                           <layout class="QHBoxLayout" name="horizontalLayout_3">
+                            <property name="topMargin">
+                             <number>2</number>
+                            </property>
+                            <property name="bottomMargin">
+                             <number>2</number>
+                            </property>
+                            <item>
+                             <widget class="QRadioButton" name="linearButton">
+                              <property name="text">
+                               <string>Linear</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <widget class="QRadioButton" name="cubicButton">
+                              <property name="text">
+                               <string>Cubic</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <widget class="QRadioButton" name="quinticButton">
+                              <property name="text">
+                               <string>Quintic</string>
+                              </property>
+                              <property name="checked">
+                               <bool>true</bool>
+                              </property>
+                             </widget>
+                            </item>
+                           </layout>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QWidget" name="widget_8" native="true">
+                           <layout class="QHBoxLayout" name="horizontalLayout_4">
+                            <property name="topMargin">
+                             <number>2</number>
+                            </property>
+                            <property name="bottomMargin">
+                             <number>2</number>
+                            </property>
+                            <item>
+                             <widget class="QRadioButton" name="simpleButton">
+                              <property name="text">
+                               <string>Simple</string>
+                              </property>
+                              <property name="checked">
+                               <bool>true</bool>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <widget class="QRadioButton" name="constrainedButton">
+                              <property name="text">
+                               <string>Constrained</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <widget class="QRadioButton" name="compoundButton">
+                              <property name="enabled">
+                               <bool>false</bool>
+                              </property>
+                              <property name="text">
+                               <string>Compound</string>
+                              </property>
+                             </widget>
+                            </item>
+                           </layout>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QLabel" name="label_18">
+                           <property name="font">
+                            <font>
+                             <pointsize>9</pointsize>
+                             <italic>false</italic>
+                            </font>
+                           </property>
+                           <property name="text">
+                            <string>Solver Order</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QLabel" name="label_19">
+                           <property name="text">
+                            <string>Trajectory Type</string>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="followButton">
+                        <property name="text">
+                         <string>Follow Trajectory</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
        </widget>
       </item>
      </layout>
     </widget>
    </item>
    <item>
-    <widget class="QWidget" name="settingsWidget" native="true">
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
-       <widget class="QCheckBox" name="showMeshButton">
-        <property name="text">
-         <string>Show Mesh</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="showHullButton">
-        <property name="text">
-         <string>Show Bounding Hull</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="showSphereButton">
-        <property name="text">
-         <string>Show Bounding Sphere</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <spacer name="horizontalSpacer">
-        <property name="orientation">
-         <enum>Qt::Orientation::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-     </layout>
+    <widget class="LineChartWidget" name="chartWidget" native="true">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>240</height>
+      </size>
+     </property>
     </widget>
    </item>
   </layout>
@@ -401,6 +690,12 @@
    <class>SceneWidget</class>
    <extends>QOpenGLWidget</extends>
    <header>scenewidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>LineChartWidget</class>
+   <extends>QWidget</extends>
+   <header>linechartwidget.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>

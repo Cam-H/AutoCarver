@@ -46,6 +46,7 @@ public:
     void translate(const glm::dvec3& translation);
     void rotate(const glm::dvec3& axis, double theta);
     static void rotate(std::vector<glm::dvec3>& vertices, const glm::dvec3& axis, double theta);
+    static std::vector<glm::dvec3> rotated(const std::vector<glm::dvec3>& vertices, const glm::dvec3& axis, double theta);
 
     void replace(uint32_t idx, const glm::dvec3& replacement);
     void remove(uint32_t idx);
