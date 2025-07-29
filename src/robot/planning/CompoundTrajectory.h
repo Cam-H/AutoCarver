@@ -10,25 +10,14 @@
 #include <vector>
 #include <memory>
 
-#include "Interpolator.h"
-
 class Waypoint;
 
 class CompoundTrajectory : public Trajectory {
 public:
 
-    CompoundTrajectory();
-    CompoundTrajectory(const std::vector<Waypoint>& waypoints);
+    explicit CompoundTrajectory(const std::vector<Waypoint>& waypoints, double velocityLimit, double accelerationLimit);
 
-    void smooth(uint8_t iterations = 8);
-
-    void enableJumps(bool enable);
-
-    void addWaypoint(const Waypoint& waypoint);
-    void insertWaypoint(uint32_t index, const Waypoint& waypoint);
-    void replaceWaypoint(uint32_t index, const Waypoint& waypoint);
-
-    void removeWaypoint(uint32_t index);
+    void updateDuration() override;
 
     [[nodiscard]] Waypoint start() const override;
     [[nodiscard]] Waypoint end() const override;
@@ -42,28 +31,48 @@ public:
 
 protected:
 
-    void calculateMaximums();
-    void calculateDuration() override;
+    void updateMaximums() override;
 
 private:
 
-    std::shared_ptr<Trajectory> createTrajectory(const Waypoint& start, const Waypoint& end);
+    class Step {
+    public:
 
-    void addContribution(const std::shared_ptr<Trajectory>& trajectory);
+        Step(const Waypoint& waypoint, uint32_t order);
 
-    void resolveDiscontinuities();
-    void resolveDiscontinuities(uint32_t index);
+        void synchronize();
+        void print() const;
 
-    std::tuple<uint32_t, double> transform(double t) const;
+        [[nodiscard]] std::vector<double> velocity(double t) const;
+        [[nodiscard]] std::vector<double> acceleration(double t) const;
+
+        [[nodiscard]] Waypoint evaluate(double t) const;
+
+        [[nodiscard]] double maximumVelocity() const;
+        [[nodiscard]] double maximumAcceleration() const;
+
+        const Waypoint& waypoint;
+
+        double duration;
+        std::vector<double> vo, dv, dt;
+    };
+
+    void topp();
+
+    [[nodiscard]] std::vector<double> jointDelta(const std::vector<Waypoint>& waypoints, uint32_t idx) const;
+    [[nodiscard]] std::vector<double> idealVelocityProfile(const std::vector<double>& deltas) const;
+    [[nodiscard]] double feasibleMaxVelocity(double prevVelocity, double delta) const;
+
+    [[nodiscard]] std::tuple<uint32_t, double> stepKey(double t) const;
 
 private:
 
-    std::vector<std::shared_ptr<Trajectory>> m_trajectories;
-    std::vector<Waypoint> m_freeWaypoints;
+    std::vector<Waypoint> m_waypoints;
 
-    bool m_allowDiscontinuities;
+    uint32_t m_order;
+    double m_delta;
 
-    Interpolator::SolverType m_solver;
+    std::vector<Step> m_steps;
 
 };
 

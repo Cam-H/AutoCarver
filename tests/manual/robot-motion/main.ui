@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Octree Testing</string>
+   <string>Robot Motion Testing</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
@@ -45,7 +45,7 @@
          <property name="geometry">
           <rect>
            <x>0</x>
-           <y>-639</y>
+           <y>0</y>
            <width>445</width>
            <height>1267</height>
           </rect>

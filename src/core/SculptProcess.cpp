@@ -15,6 +15,7 @@
 #include "renderer/EdgeDetect.h"
 #include "renderer/RenderCapture.h"
 
+#include "robot/Pose.h"
 #include "robot/planning/Trajectory.h"
 #include "geometry/MeshBuilder.h"
 #include "geometry/collision/Collision.h"
@@ -403,8 +404,8 @@ std::shared_ptr<Trajectory> SculptProcess::preparePlanarTrajectory(const Plane& 
 //    low = startPos, high = low + axes.xAxis;
 
     std::cout << "M: " << glm::to_string(axes.toTransform()) << "\n================\n";
-    const Waypoint& start = m_robot->inverse(low, axes);
-    const Waypoint& end = m_robot->inverse(high, axes);
+    const Waypoint& start = m_robot->inverse(Pose(low, axes));
+    const Waypoint& end = m_robot->inverse(Pose(high, axes));
 
     // Skip if parts of this section are unreachable
     if (start.values.empty() || end.values.empty()) return nullptr;

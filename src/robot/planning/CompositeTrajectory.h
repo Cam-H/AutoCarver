@@ -1,19 +1,18 @@
 //
-// Created by cjhat on 2025-07-26.
+// Created by cjhat on 2025-07-29.
 //
 
-#ifndef AUTOCARVER_SIMPLETRAJECTORY_H
-#define AUTOCARVER_SIMPLETRAJECTORY_H
+#ifndef AUTOCARVER_COMPOSITETRAJECTORY_H
+#define AUTOCARVER_COMPOSITETRAJECTORY_H
 
 #include "Trajectory.h"
 
-#include "Interpolator.h"
-#include "Waypoint.h"
+#include <memory>
 
-class SimpleTrajectory : public Trajectory {
+class CompositeTrajectory : public Trajectory {
 public:
 
-    SimpleTrajectory(const Waypoint& start, const Waypoint& end, Interpolator::SolverType solverType);
+    CompositeTrajectory();
 
     void updateDuration() override;
 
@@ -27,15 +26,20 @@ public:
 
     [[nodiscard]] Waypoint evaluate(double t) const override;
 
+    friend class TrajectoryBuilder;
+
 protected:
 
     void updateMaximums() override;
 
 private:
 
-    std::vector<Interpolator> m_jointTrajectories;
+    [[nodiscard]] std::tuple<uint32_t, double> transform(double t) const;
 
+private:
+
+    std::vector<std::shared_ptr<Trajectory>> m_trajectories;
 };
 
 
-#endif //AUTOCARVER_SIMPLETRAJECTORY_H
+#endif //AUTOCARVER_COMPOSITETRAJECTORY_H

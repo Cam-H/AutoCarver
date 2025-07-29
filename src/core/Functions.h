@@ -4,6 +4,8 @@
 #include <iomanip>
 #include <cmath>
 
+#include <glm.hpp>
+
 namespace Functions {
     inline static std::string toString(double value, int precision)
     {

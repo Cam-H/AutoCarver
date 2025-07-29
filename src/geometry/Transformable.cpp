@@ -98,11 +98,7 @@ const glm::dmat4& Transformable::getTransform()
 
 glm::dmat3 Transformable::getRotation()
 {
-    return {
-        m_transform[0][0], m_transform[0][1], m_transform[0][2],
-        m_transform[1][0], m_transform[1][1], m_transform[1][2],
-        m_transform[2][0], m_transform[2][1], m_transform[2][2]
-    };
+    return rotation(m_transform);
 }
 
 void Transformable::moved()
@@ -112,7 +108,7 @@ void Transformable::moved()
 
 glm::dvec3 Transformable::position() const
 {
-    return { m_transform[3][0], m_transform[3][1], m_transform[3][2] };
+    return position(m_transform);
 }
 
 glm::dvec3 Transformable::up() const

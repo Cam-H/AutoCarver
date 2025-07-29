@@ -22,9 +22,11 @@
 #include "geometry/Axis3D.h"
 #include "core/Timer.h"
 
+#include "robot/Pose.h"
 #include "robot/planning/Interpolator.h"
 #include "robot/planning/SimpleTrajectory.h"
 #include "robot/planning/CompoundTrajectory.h"
+#include "robot/planning/TrajectoryBuilder.h"
 
 #endif
 
@@ -192,35 +194,65 @@ void addTrajectory()
     std::string name = "TRAJ" + std::to_string(trajectories.size());
 
     const Waypoint& start = waypoints[wpStartField->value()], end = waypoints[wpEndField->value()];
+    TrajectoryBuilder tb(robot);
+    tb.setSolver(solver);
 
+    std::shared_ptr<Trajectory> traj = nullptr;
+    trajType = 1;
     switch (trajType) {
         case 0:
-            trajectories.push_back(std::make_shared<SimpleTrajectory>(start, end, solver));
+            tb.addWaypoint(start);
+            tb.addWaypoint(end);
             break;
         case 1:
+        {
+            std::vector<Waypoint> waypoints = { robot->getWaypoint().toDg() };
+            for (uint32_t i = 0; i < 10; i++) {
+                Waypoint wp = waypoints.back();
+                wp.values[0] += 10;
+                waypoints.push_back(wp);
+            }
+
+            traj = std::make_shared<CompoundTrajectory>(waypoints, 60, 100);
+//            auto startPose = robot->getPose(start);
+//
+//            tb.addWaypoint(start);
+//            tb.moveConstrained(startPose.axes.localize({ 3, 0, 0 }));
+        }
+
             break;
         case 2:
             break;
     }
 
-    trajectories.back()->setVelocityLimit(90);
-    trajectories.back()->setAccelerationLimit(200);
+//    tb.setVelocityLimit(90);
+//    tb.setAccelerationLimit(200);
+//    tb.generate();
+//    tb.isValid()
 
-    auto *item = new QTreeWidgetItem(trajectoryWidget);
-    item->setText(0, name.c_str());
-    item->setData(1, Qt::UserRole, trajectories.size() - 1);
-    trajectoryWidget->setExpanded(true);
+    if (traj != nullptr) {
 
-    item->setSelected(true);
-    selected = item;
+        trajectories.push_back(traj);
 
-    addWaypoint(wpStartField->value());
-    addWaypoint(wpEndField->value());
+        auto *item = new QTreeWidgetItem(trajectoryWidget);
+        item->setText(0, name.c_str());
+        item->setData(1, Qt::UserRole, trajectories.size() - 1);
+        trajectoryWidget->setExpanded(true);
+
+        item->setSelected(true);
+        selected = item;
+
+        addWaypoint(wpStartField->value());
+        addWaypoint(wpEndField->value());
+    }
 }
 
 void preparePlot(const std::shared_ptr<Trajectory>& traj)
 {
     double delta = traj->maximumDelta();
+    delta = traj->maximumVelocity();
+
+    std::cout << "Trajectory: " << traj->duration() << " " << traj->maximumVelocity() << " " << traj->maximumAcceleration() << "\n";
 
     plotWidget->clear();
     plotWidget->zero();
@@ -237,6 +269,11 @@ void preparePlot(const std::shared_ptr<Trajectory>& traj)
 //        std::string name = "j" + std::to_string(i);
 //        plotWidget->create(500, (name + "Velocity").c_str());
 //    }
+//
+//    for (uint32_t i = 0; i < 6; i++) {
+//        std::string name = "j" + std::to_string(i);
+//        plotWidget->create(500, (name + "Acceleration").c_str());
+//    }
 
     plotWidget->update();
 }
@@ -249,15 +286,13 @@ void stream(uint32_t idx, double time)
 //    for (uint32_t i = 0; i < 6; i++) plotWidget->stream(i, pos.values[i]);
 
     auto del = robot->getDistanceTravelled();
-    for (uint32_t i = 0; i < 6; i++) {
-        plotWidget->stream(i, del[i]);
-//        std::cout << i << " " << del[i] << "\n";
-    }
-//    auto vel = robot->getJointVelocity(), acc = robot->getJointAcceleration();
-//    for (uint32_t i = 0; i < 6; i++) plotWidget->stream(6 + i, vel[i]);
-//    for (uint8_t i = 0; i < 6; i++) {
-//        plotWidget->stream(i, robot->getJointValueDg(i));
-//    }
+    for (uint32_t i = 0; i < 6; i++) plotWidget->stream(i, del[i]);
+
+//    auto vel = robot->getJointVelocity();
+//    for (uint32_t i = 0; i < 6; i++) plotWidget->stream(i, vel[i]);
+//
+//    auto acc = robot->getJointAcceleration();
+//    for (uint32_t i = 0; i < 6; i++) plotWidget->stream(6 + i, acc[i]);
 
     plotWidget->update();
 }
@@ -568,7 +603,7 @@ int main(int argc, char *argv[])
             }
 
 
-            std::this_thread::sleep_for(std::chrono::nanoseconds(20000000));
+            std::this_thread::sleep_for(std::chrono::nanoseconds(4000000));
         }
     });
 

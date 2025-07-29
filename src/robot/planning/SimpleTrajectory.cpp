@@ -17,10 +17,11 @@ SimpleTrajectory::SimpleTrajectory(const Waypoint& start, const Waypoint& end, I
         m_jointTrajectories.emplace_back(start.values[i], end.values[i], solverType);
     }
 
-    calculateMaximums();
+    SimpleTrajectory::updateDuration();
 }
 
-void SimpleTrajectory::calculateMaximums()
+// Calculates the maximum velocity/acceleration assuming a window t = [0, 1]
+void SimpleTrajectory::updateMaximums()
 {
     m_maxVelocity = 0, m_maxAcceleration = 0;
     for (const Interpolator& jt : m_jointTrajectories) {
@@ -29,8 +30,10 @@ void SimpleTrajectory::calculateMaximums()
     }
 }
 
-void SimpleTrajectory::calculateDuration()
+void SimpleTrajectory::updateDuration()
 {
+    updateMaximums();
+
     m_minDuration = 0;
 
     // Increase time limit to ensure the velocity/acceleration limits are not exceeded
@@ -38,6 +41,10 @@ void SimpleTrajectory::calculateDuration()
     m_minDuration = std::max(m_minDuration, m_maxAcceleration / m_accelerationLimit);
 
     if (m_duration < m_minDuration) m_duration = m_minDuration;
+
+    // Convert to window t = [0, duration]
+    m_maxVelocity /= m_duration;
+    m_maxAcceleration /= m_duration;
 }
 
 Waypoint SimpleTrajectory::start() const
@@ -56,21 +63,23 @@ Waypoint SimpleTrajectory::end() const
 
 std::vector<double> SimpleTrajectory::velocity(double t) const
 {
+    double step = 1 / m_duration;
     std::vector<double> values(m_jointTrajectories.size());
-    for (uint32_t i = 0; i < m_jointTrajectories.size(); i++) values[i] = m_jointTrajectories[i].velocity(t);
+    for (uint32_t i = 0; i < m_jointTrajectories.size(); i++) values[i] = step * m_jointTrajectories[i].velocity(t);
     return values;
 }
 std::vector<double> SimpleTrajectory::acceleration(double t) const
 {
+    double step = 1 / m_duration;
     std::vector<double> values(m_jointTrajectories.size());
-    for (uint32_t i = 0; i < m_jointTrajectories.size(); i++) values[i] = m_jointTrajectories[i].acceleration(t);
+    for (uint32_t i = 0; i < m_jointTrajectories.size(); i++) values[i] = step * m_jointTrajectories[i].acceleration(t);
     return values;
 }
 
 double SimpleTrajectory::maximumDelta() const
 {
     double max = 0;
-    for (const Interpolator& jt : m_jointTrajectories) max = std::max(max, jt.delta());
+    for (const Interpolator& jt : m_jointTrajectories) max = std::max(max, std::abs(jt.delta()));
     return max;
 }
 

@@ -13,7 +13,7 @@
 #include "geometry/Transformable.h"
 #include "planning/Trajectory.h"
 
-class Axis3D;
+class Pose;
 
 class Robot : public Transformable { // TODO make serializable
 public:
@@ -37,11 +37,12 @@ public:
     void moveTo(const glm::dvec3& position);
     void moveTo(const Axis3D& axes);
 
-    void moveTo(const glm::dvec3& position, const Axis3D& axes);
-//    void moveTo(const glm::dvec3& position, const glm::dvec3& euler);
+    void moveTo(const Pose& pose);
     void moveTo(const Waypoint& waypoint);
 
     void traverse(const std::shared_ptr<Trajectory>& trajectory);
+
+    [[nodiscard]] bool isValid() const;
 
     const std::vector<std::shared_ptr<RigidBody>>& links();
 
@@ -63,10 +64,13 @@ public:
     [[nodiscard]] Axis3D getEOATAxes() const;
     [[nodiscard]] glm::dvec3 getEOATEuler() const;
 
+    [[nodiscard]] Pose getPose() const;
+    [[nodiscard]] Pose getPose(const Waypoint& waypoint) const;
+
+    [[nodiscard]] Waypoint inverse(const Pose& pose) const;
+
     bool inTransit() const;
 
-    [[nodiscard]] Waypoint inverse(const glm::dvec3& position, const Axis3D& axes) const;
-//    [[nodiscard]] Waypoint inverse(const glm::dvec3& position, const glm::dvec3& euler) const;
 
 
 protected:
@@ -83,7 +87,7 @@ private:
     std::vector<std::shared_ptr<RigidBody>> m_links;
 
     std::shared_ptr<RigidBody> m_eoat;
-    glm::dmat4x4 m_eoatRelativeTransform;
+    glm::dmat4 m_eoatRelativeTransform;
 
     //
     std::shared_ptr<Trajectory> m_currentTrajectory;

@@ -10,7 +10,7 @@
 
 #include "Joint.h"
 
-class Axis3D;
+class Pose;
 class Waypoint;
 
 static Joint NULL_JOINT = Joint(Joint::Type::NONE, {0, 0, 0, 0});
@@ -23,12 +23,12 @@ public:
     void addJoint(Joint joint);
     void setJointValues(const std::vector<double>& values);
 
-    bool moveTo(const glm::dvec3& position, const Axis3D& axes);
+    bool moveTo(const Pose& pose);
     bool moveTo(const glm::dvec3& position, const glm::dvec3& euler);
     bool moveTo(const Waypoint& waypoint);
 
     std::vector<double> invkin(const glm::dmat4& transform);
-    std::vector<double> invkin(const glm::dvec3& position, const Axis3D& axes);
+    std::vector<double> invkin(const Pose& pose);
     std::vector<double> invkin(const glm::dvec3& position, const glm::dvec3& euler);
 
     [[nodiscard]] Waypoint getWaypoint() const;
@@ -37,13 +37,16 @@ public:
     Joint& getJoint(uint32_t idx);
     const std::vector<Joint>& getJoints();
 
-    std::vector<glm::dmat4> jointTransforms();
+    [[nodiscard]] Pose getPose() const;
+    [[nodiscard]] Pose getPose(const Waypoint& waypoint) const;
+
+    [[nodiscard]] std::vector<glm::dmat4> jointTransforms() const;
 
 protected:
 
     virtual std::vector<double> invkin(const glm::dvec3& position, const glm::dquat& rotation);
 
-    std::vector<glm::dmat4> jointHTMs();
+    std::vector<glm::dmat4> jointHTMs() const;
 
     std::vector<glm::dmat3> jointHRMs(const std::vector<double>& values);
     std::vector<glm::dmat4> jointHTMs(const std::vector<double>& values);

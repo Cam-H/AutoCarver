@@ -10,8 +10,9 @@
 #include <gtx/matrix_decompose.hpp>
 #include <gtc/epsilon.hpp>
 
-#include "geometry/Axis3D.h"
+#include "Pose.h"
 #include "planning/Waypoint.h"
+#include "geometry/Transformable.h"
 
 KinematicChain::KinematicChain()
     : m_axisTransform3(1, 0, 0,
@@ -40,9 +41,9 @@ void KinematicChain::setJointValues(const std::vector<double>& values)
     }
 }
 
-bool KinematicChain::moveTo(const glm::dvec3& position, const Axis3D& axes)
+bool KinematicChain::moveTo(const Pose& pose)
 {
-    const std::vector<double>& values = invkin(position, axes);
+    const std::vector<double>& values = invkin(pose);
     setJointValues(values);
 
     return !values.empty();
@@ -82,9 +83,9 @@ std::vector<double> KinematicChain::invkin(const glm::dmat4& transform)
 
 // Calculates required joint angles to reach the specified position and orientation
 // Parameters must be expressed in the local coordinate system
-std::vector<double> KinematicChain::invkin(const glm::dvec3& position, const Axis3D& axes)
+std::vector<double> KinematicChain::invkin(const Pose& pose)
 {
-    return invkin(m_axisTransform3 * position, glm::quat_cast(m_axisTransform3 * axes.toTransform()));
+    return invkin(m_axisTransform3 * pose.position, glm::quat_cast(m_axisTransform3 * pose.axes.toTransform()));
 }
 
 // Calculates required joint angles to reach the specified position and orientation
@@ -123,7 +124,22 @@ const std::vector<Joint>& KinematicChain::getJoints()
     return m_joints;
 }
 
-std::vector<glm::dmat4> KinematicChain::jointHTMs()
+Pose KinematicChain::getPose() const
+{
+    const auto& transforms = jointTransforms();
+    return {
+        Transformable::position(transforms.back()),
+        Transformable::rotation(transforms.back())
+    };
+}
+Pose KinematicChain::getPose(const Waypoint& waypoint) const
+{
+    KinematicChain clone = *this;
+    clone.moveTo(waypoint);
+    return clone.getPose();
+}
+
+std::vector<glm::dmat4> KinematicChain::jointHTMs() const
 {
     std::vector<glm::dmat4> transforms { glm::dmat4(1.0f) };
 
@@ -209,7 +225,7 @@ bool KinematicChain::ikValidation(const std::vector<double>& values, const glm::
     return true;
 }
 
-std::vector<glm::dmat4> KinematicChain::jointTransforms()
+std::vector<glm::dmat4> KinematicChain::jointTransforms() const
 {
     std::vector<glm::dmat4> transforms = jointHTMs();
     for (glm::dmat4& transform : transforms) {

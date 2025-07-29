@@ -32,6 +32,11 @@ void Trajectory::setDuration(double duration)
         return;
     }
 
+    // Adjust velocity / acceleration for the new interval
+    double scalar = duration / m_duration;
+    m_maxVelocity *= scalar;
+    m_maxAcceleration *= scalar;
+
     m_duration = duration;
 }
 
@@ -40,7 +45,7 @@ void Trajectory::setVelocityLimit(double velocity)
 {
     m_velocityLimit = std::abs(velocity);
     if (m_velocityLimit < 1e-12) throw std::runtime_error("[Trajectory] Velocity limit is unreasonable");
-    calculateDuration();
+    updateDuration();
 }
 
 // Assign acceleration limit to the trajectory
@@ -48,7 +53,7 @@ void Trajectory::setAccelerationLimit(double acceleration)
 {
     m_accelerationLimit = std::abs(acceleration);
     if (m_accelerationLimit < 1e-12) throw std::runtime_error("[Trajectory] Acceleration limit is unreasonable");
-    calculateDuration();
+    updateDuration();
 }
 
 // Apply new velocity limit to the trajectory if it is stricter than the current limit
@@ -79,11 +84,11 @@ double Trajectory::accelerationLimit() const
 
 double Trajectory::maximumVelocity() const
 {
-    return m_maxVelocity / m_duration;
+    return m_maxVelocity;
 }
 double Trajectory::maximumAcceleration() const
 {
-    return m_maxAcceleration / m_duration;
+    return m_maxAcceleration;
 }
 
 double Trajectory::duration() const

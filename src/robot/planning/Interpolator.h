@@ -6,6 +6,7 @@
 #define AUTOCARVER_INTERPOLATOR_H
 
 #include <array>
+#include <string>
 #include <functional>
 
 class Interpolator {
@@ -27,6 +28,14 @@ public:
     void setPositionEndpoints(double qo, double qf);
     void setVelocityEndpoints(double vo, double vf);
     void setAccelerationEndpoints(double ao, double af);
+
+    void setInitialPosition(double qo);
+    void setInitialVelocity(double vo);
+    void setInitialAcceleration(double ao);
+
+    void setFinalPosition(double qf);
+    void setFinalVelocity(double vf);
+    void setFinalAcceleration(double af);
 
     [[nodiscard]] double position(double t) const;
     [[nodiscard]] double velocity(double t) const;
@@ -50,6 +59,10 @@ public:
     [[nodiscard]] double finalAcceleration() const;
 
     [[nodiscard]] static std::vector<double> t(double tStep = 0.05);
+
+    [[nodiscard]] std::string solverType() const;
+
+    void print() const;
 
 private:
 

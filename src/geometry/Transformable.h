@@ -33,6 +33,20 @@ public:
     [[nodiscard]] glm::dvec3 position() const;
     [[nodiscard]] glm::dvec3 up() const;
 
+    inline static glm::dvec3 position(const glm::dmat4& transform)
+    {
+        return { transform[3][0], transform[3][1], transform[3][2] };
+    }
+
+    inline static glm::dmat3 rotation(const glm::dmat4& transform)
+    {
+        return {
+                transform[0][0], transform[0][1], transform[0][2],
+                transform[1][0], transform[1][1], transform[1][2],
+                transform[2][0], transform[2][1], transform[2][2]
+        };
+    }
+
 protected:
 
     glm::dmat4 m_transform;

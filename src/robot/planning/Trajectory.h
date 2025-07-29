@@ -14,6 +14,8 @@ public:
 
     void restart();
 
+    virtual void updateDuration() = 0;
+
     void setDuration(double duration);
 
     void setVelocityLimit(double velocity);
@@ -56,7 +58,7 @@ public:
 
 protected:
 
-    virtual void calculateDuration() = 0;
+    virtual void updateMaximums() = 0;
 
 protected:
 
@@ -69,7 +71,6 @@ protected:
     // Limits to be compared against maximums in the interval to calculate required duration
     double m_velocityLimit, m_accelerationLimit;
 
-    // Stored maximum is based on interval [0,1] so it does not need to be recalculated if duration changes
     double m_maxVelocity, m_maxAcceleration;
 
     bool m_inDg;

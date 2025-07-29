@@ -6,6 +6,8 @@
 
 #include "core/Functions.h"
 
+#include <iostream>
+
 Interpolator::Interpolator(double start, double end, SolverType solver)
         : m_constraints({ start, 0, 0, end, 0, 0 })
         , m_coeffs({ 0, 0, 0, 0 })
@@ -41,11 +43,49 @@ void Interpolator::setVelocityEndpoints(double vo, double vf)
     m_constraints[1] = vo;
     m_constraints[4] = vf;
     updateCoefficients();
+
+    print();
 }
 void Interpolator::setAccelerationEndpoints(double ao, double af)
 {
     if (m_solver != SolverType::QUINTIC) throw std::runtime_error("[Interpolator] Acceleration is only controllable with quintic solvers");
     m_constraints[2] = ao;
+    m_constraints[5] = af;
+    updateCoefficients();
+}
+
+void Interpolator::setInitialPosition(double qo)
+{
+    m_constraints[0] = qo;
+    updateCoefficients();
+}
+void Interpolator::setInitialVelocity(double vo)
+{
+    if (m_solver == SolverType::LINEAR) throw std::runtime_error("[Interpolator] Velocity is not controllable with linear solvers");
+    m_constraints[1] = vo;
+    updateCoefficients();
+}
+void Interpolator::setInitialAcceleration(double ao)
+{
+    if (m_solver != SolverType::QUINTIC) throw std::runtime_error("[Interpolator] Acceleration is only controllable with quintic solvers");
+    m_constraints[2] = ao;
+    updateCoefficients();
+}
+
+void Interpolator::setFinalPosition(double qf)
+{
+    m_constraints[3] = qf;
+    updateCoefficients();
+}
+void Interpolator::setFinalVelocity(double vf)
+{
+    if (m_solver == SolverType::LINEAR) throw std::runtime_error("[Interpolator] Velocity is not controllable with linear solvers");
+    m_constraints[4] = vf;
+    updateCoefficients();
+}
+void Interpolator::setFinalAcceleration(double af)
+{
+    if (m_solver != SolverType::QUINTIC) throw std::runtime_error("[Interpolator] Acceleration is only controllable with quintic solvers");
     m_constraints[5] = af;
     updateCoefficients();
 }
@@ -175,7 +215,7 @@ double Interpolator::acceleration(double t) const
 
 double Interpolator::delta() const
 {
-    return std::abs(m_constraints[3] - m_constraints[0]);
+    return m_constraints[3] - m_constraints[0];
 }
 
 double Interpolator::maxVelocity() const
@@ -283,4 +323,39 @@ std::vector<double> Interpolator::t(double tStep)
     }
 
     return values;
+}
+
+std::string Interpolator::solverType() const
+{
+    switch (m_solver) {
+        case SolverType::LINEAR:  return "Linear";
+        case SolverType::CUBIC:   return "Cubic";
+        case SolverType::QUINTIC: return "Quintic";
+    }
+
+    return "";
+}
+
+void Interpolator::print() const
+{
+    std::cout << "Interpolator [" << solverType() << "]\nConstraints:\nposition: ["
+        << Functions::toString(m_constraints[0], 2) << ", " << Functions::toString(m_constraints[3], 2) << "]\nvelocity: ["
+        << Functions::toString(m_constraints[1], 2) << ", " << Functions::toString(m_constraints[4], 2) << "]\n";
+
+    if (m_solver == SolverType::QUINTIC)
+        std::cout <<"acceleration: [" << Functions::toString(m_constraints[2], 2) << ", " << Functions::toString(m_constraints[5], 2) << "]\n";
+
+    std::cout << "Coefficients: [";
+
+    switch (m_solver) {
+        case SolverType::LINEAR:
+            std::cout << m_coeffs[0] << ", " << m_coeffs[1] << "]\n";
+            break;
+        case SolverType::QUINTIC:
+            std::cout << m_constraints[0] << ", " << m_constraints[1] << ", ";
+        case SolverType::CUBIC:
+            std::cout << m_coeffs[0] << ", " << m_coeffs[1] << " " << m_coeffs[2] << " " << m_coeffs[3] << "]\n";
+            break;
+
+    }
 }

@@ -7,201 +7,260 @@
 #include "Waypoint.h"
 #include "SimpleTrajectory.h"
 
-CompoundTrajectory::CompoundTrajectory()
+CompoundTrajectory::CompoundTrajectory(const std::vector<Waypoint>& waypoints, double velocityLimit, double accelerationLimit)
     : Trajectory()
-    , m_allowDiscontinuities(false)
-    , m_solver(Interpolator::SolverType::QUINTIC)
+    , m_waypoints(waypoints)
+    , m_order(0)
+    , m_delta(0)
 {
+    if (m_waypoints.empty()) return;
 
-}
+    m_velocityLimit = velocityLimit;
+    m_accelerationLimit = accelerationLimit;
 
-CompoundTrajectory::CompoundTrajectory(const std::vector<Waypoint>& waypoints)
-    : CompoundTrajectory()
-{
-    for (const Waypoint& waypoint : waypoints) addWaypoint(waypoint);
-}
+    // Ensure all waypoints are in the same units, and are of the same size
+    m_inDg = waypoints[0].inDg;
+    m_order = waypoints[0].values.size();
 
-void CompoundTrajectory::calculateMaximums()
-{
-    m_maxVelocity = 0, m_maxAcceleration = 0;
-    for (const std::shared_ptr<Trajectory>& traj : m_trajectories) {
-        m_maxVelocity = std::max(m_maxVelocity, traj->maximumVelocity());
-        m_maxAcceleration = std::max(m_maxAcceleration, traj->maximumVelocity());
-    }
-}
+    for (Waypoint& waypoint : m_waypoints) {
+        if (m_order != waypoint.values.size()) throw std::runtime_error("[CompoundTrajectory] Invalid waypoints. Sizes do not match");
 
-void CompoundTrajectory::calculateDuration()
-{
-    m_minDuration = 0, m_duration = 0;
-    for (const std::shared_ptr<Trajectory>& traj : m_trajectories) {
-        if (m_velocityLimit != std::numeric_limits<double>::max()) traj->limitVelocity(m_velocityLimit);
-        if (m_accelerationLimit != std::numeric_limits<double>::max()) traj->limitAcceleration(m_accelerationLimit);
-
-        m_minDuration += traj->minimumDuration();
-        m_duration += traj->duration();
-    }
-}
-
-// Add contribution of new trajectories to  duration & update maximums if needed
-void CompoundTrajectory::addContribution(const std::shared_ptr<Trajectory>& trajectory)
-{
-    trajectory->limitVelocity(m_velocityLimit);
-    trajectory->limitAcceleration(m_accelerationLimit);
-    m_maxVelocity = std::max(m_maxVelocity, trajectory->maximumVelocity());
-    m_maxAcceleration = std::max(m_maxAcceleration, trajectory->maximumVelocity());
-    m_minDuration += trajectory->minimumDuration();
-    m_duration += trajectory->duration();
-}
-
-// TODO
-// Calculates appropriate velocity/acceleration constraints to reduce stops between steps
-// Repetitively solves the system to converge towards the best constraints for speed
-void CompoundTrajectory::smooth(uint8_t iterations)
-{
-
-}
-
-void CompoundTrajectory::enableJumps(bool enable)
-{
-    if (m_allowDiscontinuities != enable) {
-        m_allowDiscontinuities = enable;
-
-        if (!m_allowDiscontinuities) resolveDiscontinuities();
-    }
-}
-
-void CompoundTrajectory::resolveDiscontinuities()
-{
-    for (uint32_t i = 1; i < m_trajectories.size(); i++) resolveDiscontinuities(i);
-}
-void CompoundTrajectory::resolveDiscontinuities(uint32_t index)
-{
-    if (index > 0) {
-        auto start = m_trajectories[index - 1]->end();
-        auto end = m_trajectories[index]->start();
-
-        if (start != end) {
-            auto traj = createTrajectory(start, end);
-            m_trajectories.insert(m_trajectories.begin() + index + 1, traj);
+        if (m_inDg != waypoint.inDg) {
+            if (m_inDg) waypoint = waypoint.toDg();
+            else waypoint = waypoint.toRad();
         }
     }
+
+    CompoundTrajectory::updateDuration();
 }
 
-std::shared_ptr<Trajectory> CompoundTrajectory::createTrajectory(const Waypoint& start, const Waypoint& end){
-    if (m_inDg) {
-        auto traj = std::make_shared<SimpleTrajectory>(
-                start.inDg ? start : start.toDg(),
-                end.inDg ? end : end.toDg(),
-                m_solver
-        );
-
-        addContribution(traj);
-        return traj;
-    } else {
-        auto traj = std::make_shared<SimpleTrajectory>(
-                start.inDg ? start.toRad() : start,
-                end.inDg ? end.toRad() : end,
-                m_solver
-        );
-
-        addContribution(traj);
-        return traj;
-    }
-}
-
-
-void CompoundTrajectory::addWaypoint(const Waypoint& waypoint)
+CompoundTrajectory::Step::Step(const Waypoint& waypoint, uint32_t order)
+    : waypoint(waypoint)
+    , duration(0)
+    , vo(order)
+    , dv(order)
+    , dt(order)
 {
-    if (m_trajectories.empty()) {
-        if (m_freeWaypoints.empty()) {
-            m_freeWaypoints.emplace_back(waypoint);
-            m_inDg = waypoint.inDg;
-        } else {
-            m_trajectories.emplace_back(createTrajectory(m_freeWaypoints[0], waypoint));
-            m_freeWaypoints.clear();
+
+}
+
+void CompoundTrajectory::Step::synchronize()
+{
+    for (double t : dt) duration = std::max(duration, t);
+
+    for (double& t : dt) t /= duration;
+}
+
+void CompoundTrajectory::Step::print() const
+{
+    std::cout << "Step (duration: " << duration << "s)\n" << waypoint.toString();
+
+    std::cout << "\nInitial Joint Velocities: ";
+    for (double val : vo) std::cout << val << " ";
+
+    std::cout << "\nJoint Velocity Change: ";
+    for (double val : dv) std::cout << val << " ";
+
+    std::cout << "\nDuration: ";
+    for (double val : dt) std::cout << val << " ";
+    std::cout << "\n";
+
+    std::cout << "End point: " << evaluate(1.0).toString() << "\n";
+
+    std::cout << "=======================\n";
+}
+
+
+void CompoundTrajectory::topp()
+{
+    m_steps.clear();
+
+    std::vector<std::vector<double>> deltas; // Differences between adjacent waypoints
+    std::vector<std::vector<double>> profiles; // Maximum feasible velocity profile as evaluated with TOPP
+
+    for (uint32_t i = 0; i < m_order; i++) {
+        deltas.emplace_back(jointDelta(m_waypoints, i));
+        profiles.emplace_back(idealVelocityProfile(deltas[i]));
+    }
+
+    for (uint32_t i = 0; i < m_waypoints.size() - 1; i++) {
+        m_steps.emplace_back(m_waypoints[i], m_order);
+
+        for (uint32_t j = 0; j < m_order; j++) {
+            m_steps.back().vo[j] = profiles[j][i];
+            m_steps.back().dv[j] = profiles[j][i + 1] - m_steps.back().vo[j];
+
+            double vt = m_steps.back().vo[j] + profiles[j][i + 1];
+            m_steps.back().dt[j] = vt == 0 ? 0 : 2 * deltas[j][i] / vt;
         }
-    } else {
-        m_trajectories.emplace_back(createTrajectory(m_trajectories.back()->end(), waypoint));
+
+        m_steps.back().synchronize();
+    }
+
+//    for (const Step& step : m_steps) step.print();
+
+    // Record greatest delta for reference while convenient
+    m_delta = 0;
+    for (const auto& set : deltas)
+        for (double val : set) m_delta = std::max(m_delta, std::abs(val));
+}
+
+std::vector<double> CompoundTrajectory::jointDelta(const std::vector<Waypoint>& waypoints, uint32_t idx) const
+{
+    std::vector<double> deltas(waypoints.size() - 1);
+    for (uint32_t i = 0; i < waypoints.size() - 1; i++) {
+        deltas[i] = waypoints[i + 1].values[idx] - waypoints[i].values[idx];
+    }
+
+    return deltas;
+}
+
+std::vector<double> CompoundTrajectory::idealVelocityProfile(const std::vector<double>& deltas) const
+{
+    std::vector<double> fwdMax(deltas.size() + 1), revMax(deltas.size() + 1);
+
+    fwdMax[0] = 0;
+    revMax.back() = 0;
+
+    for (uint32_t i = 0; i < deltas.size(); i++) {
+        fwdMax[i + 1] = feasibleMaxVelocity(fwdMax[i], deltas[i]);
+
+        uint32_t idx = deltas.size() - i - 1;
+        revMax[idx] = feasibleMaxVelocity(revMax[idx + 1], -deltas[idx]);
+    }
+
+    for (uint32_t i = 0; i < fwdMax.size(); i++) {
+        if (std::abs(fwdMax[i]) > std::abs(revMax[i])) fwdMax[i] = revMax[i];
+    }
+
+    return fwdMax;
+}
+
+double CompoundTrajectory::feasibleMaxVelocity(double prevVelocity, double delta) const
+{
+    double accel = (1 - 2 * (delta < 0)) * m_accelerationLimit; // TODO functionalize acceleration to address discontinuities
+    double val = prevVelocity * prevVelocity + 2 * delta * accel;
+    if (val < 0) return std::clamp(-sqrt(-val), -m_velocityLimit, m_velocityLimit);
+    else         return std::clamp( sqrt( val), -m_velocityLimit, m_velocityLimit);
+}
+
+double CompoundTrajectory::Step::maximumVelocity() const
+{
+    double max = 0;
+    for (uint32_t i = 0; i < dt.size(); i++) {
+        double val = dt[i] * (vo[i] + dv[i]);
+        max = std::max(max, std::abs(val));
+    }
+
+    return max;
+}
+double CompoundTrajectory::Step::maximumAcceleration() const
+{
+    double max = 0;
+    for (uint32_t i = 0; i < dt.size(); i++) {
+        double val = dt[i] * (dv[i] / duration);
+        max = std::max(max, std::abs(val));
+    }
+
+    return max;
+}
+
+void CompoundTrajectory::updateMaximums()
+{
+    topp();
+
+    m_maxVelocity = m_maxAcceleration = 0;
+    for (const Step& step : m_steps) {
+        m_maxVelocity = std::max(m_maxVelocity, step.maximumVelocity());
+        m_maxAcceleration = std::max(m_maxAcceleration, step.maximumAcceleration());
     }
 }
 
-void CompoundTrajectory::insertWaypoint(uint32_t index, const Waypoint& waypoint)
+void CompoundTrajectory::updateDuration()
 {
+    updateMaximums();
 
-//    idx = (idx >= m_waypoints.size() ? m_waypoints.size() - 1 : idx); // Safe because m_waypoints minimum size is 1
-//    m_waypoints.insert(m_waypoints.begin() + idx, waypoint);
-//
-//    m_jointTrajectories.clear();
-//    initialize();
-}
+    m_minDuration = 0;
+    for (const Step& step : m_steps) {
+        m_minDuration += step.duration;
+    }
 
-void CompoundTrajectory::replaceWaypoint(uint32_t index, const Waypoint& waypoint)
-{
-//    if (idx < m_waypoints.size()) {
-//        m_waypoints[idx] = waypoint;
-//        m_jointTrajectories.clear();
-//        initialize();
-//    } else throw std::runtime_error("[Trajectory] Index out of bounds. Can not replace waypoint");
-}
-
-void CompoundTrajectory::removeWaypoint(uint32_t index)
-{
-//    if (idx < m_waypoints.size()) {
-//        m_waypoints.erase(m_waypoints.begin() + idx);
-//        m_jointTrajectories.clear();
-//        initialize();
-//    } else throw std::runtime_error("[Trajectory] Index out of bounds. Can not remove waypoint");
+    if (m_duration < m_minDuration) m_duration = m_minDuration;
 }
 
 Waypoint CompoundTrajectory::start() const
 {
-    if (m_trajectories.empty()) throw std::runtime_error("[CompoundTrajectory] There are no trajectories. Can not return start point");
-    return m_trajectories[0]->start();
+    if (m_waypoints.empty()) throw std::runtime_error("[CompoundTrajectory] There are no waypoints. Can not return start point");
+    return m_waypoints[0];
 }
 Waypoint CompoundTrajectory::end() const
 {
-    if (m_trajectories.empty()) throw std::runtime_error("[CompoundTrajectory] There are no trajectories. Can not return end point");
-    return m_trajectories.back()->end();
+    if (m_waypoints.empty()) throw std::runtime_error("[CompoundTrajectory] There are no waypoints. Can not return end point");
+    return m_waypoints.back();
 }
 
 std::vector<double> CompoundTrajectory::velocity(double t) const
 {
-    auto [index, subT] = transform(t);
-    return m_trajectories[index]->velocity(subT);
+    auto [index, subT] = stepKey(t);
+    return m_steps[index].velocity(subT);
 }
+
+std::vector<double> CompoundTrajectory::Step::velocity(double t) const
+{
+    std::vector<double> velocities(vo.size());
+    for (uint32_t i = 0; i < velocities.size(); i++) velocities[i] = vo[i] + dv[i] * t;
+    return velocities;
+}
+
 std::vector<double> CompoundTrajectory::acceleration(double t) const
 {
-    auto [index, subT] = transform(t);
-    return m_trajectories[index]->acceleration(subT);
+    auto [index, subT] = stepKey(t);
+    return m_steps[index].acceleration(subT);
+}
+
+std::vector<double> CompoundTrajectory::Step::acceleration(double t) const
+{
+    std::vector<double> accelerations(dv.size());
+    for (uint32_t i = 0; i < accelerations.size(); i++) accelerations[i] = dv[i] / duration;
+    return accelerations;
 }
 
 double CompoundTrajectory::maximumDelta() const
 {
-    double max = 0;
-    for (const std::shared_ptr<Trajectory>& traj : m_trajectories) max = std::max(max, traj->maximumDelta());
-    return max;
+    return m_delta;
 }
 
 Waypoint CompoundTrajectory::evaluate(double t) const
 {
-    auto [index, subT] = transform(t);
-    return m_trajectories[index]->evaluate(subT);
+    auto [index, subT] = stepKey(t);
+    return m_steps[index].evaluate(subT);
+}
+
+Waypoint CompoundTrajectory::Step::evaluate(double t) const
+{
+    Waypoint wp = waypoint;
+    for (uint32_t i = 0; i < wp.values.size(); i++) {
+        double rt = t * dt[i];
+        wp.values[i] += (vo[i] + 0.5 * dv[i] * rt) * rt * duration;
+    }
+
+    return wp;
 }
 
 // Identify the appropriate section based on t, and transform to match
-std::tuple<uint32_t, double> CompoundTrajectory::transform(double t) const
+std::tuple<uint32_t, double> CompoundTrajectory::stepKey(double t) const
 {
-    if (t >= 1 || m_duration == 0) return { m_trajectories.size() - 1, 1.0 };
+    if (m_steps.empty()) throw std::runtime_error("[CompoundTrajectory] Can not evaluate empty trajectory");
+    else if (t >= 1 || m_duration == 0) return { m_steps.size() - 1, 1.0 };
     else if (t < 0) return { 0, 0.0 };
 
     double sum = 0, temp;
-    for (const std::shared_ptr<Trajectory>& traj : m_trajectories) {
-        temp = traj->duration() / m_duration;
+    for (const Step& step : m_steps) {
+        temp = step.duration / m_duration;
 
-//        std::cout << sum << " " << temp << " " << traj->duration() << " " << m_duration << " " << t << " | " << m_trajectories.size() << "\n";
         if (sum + temp < t) sum += temp;
-        else return { &traj - &m_trajectories[0], (t - sum) / temp };
+        else return { &step - &m_steps[0], (t - sum) / temp };
     }
 
-    return { m_trajectories.size() - 1, 1.0 };
+    return { m_waypoints.size() - 1, 1.0 };
 }

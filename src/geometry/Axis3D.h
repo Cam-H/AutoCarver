@@ -16,7 +16,11 @@ public:
     Axis3D(const glm::dvec3& xAxis, const glm::dvec3& yAxis, const glm::dvec3& zAxis);
     Axis3D(const glm::dmat3& matrix);
 
-    Axis3D operator*(const glm::dquat& rotation) const;
+    friend bool operator==(const Axis3D& lhs, const Axis3D& rhs);
+    friend bool operator!=(const Axis3D& lhs, const Axis3D& rhs);
+
+    friend Axis3D operator*(const Axis3D& axes, const glm::dmat3& rotation);
+    friend Axis3D operator*(const Axis3D& axes, const glm::dquat& rotation);
 
 
     void rotateY();
@@ -29,6 +33,7 @@ public:
     void rotate(const glm::dquat& rotation);
 
     [[nodiscard]] bool isValid() const;
+    static bool compare(const Axis3D& lhs, const Axis3D& rhs, double tolerance);
 
     [[nodiscard]] glm::dmat3 toTransform() const;
     [[nodiscard]] glm::dquat toQuat() const;
@@ -37,6 +42,14 @@ public:
     [[nodiscard]] glm::dvec3 delocalize(const glm::dvec3& vertex) const;
 
     void print() const;
+
+private:
+
+    static inline bool checkAxis(const glm::dvec3& axis, const glm::dvec3& ref, double tolerance)
+    {
+        double val = glm::dot(axis, ref);
+        return 1 - tolerance < val && val < 1 + tolerance;
+    }
 
 public:
     glm::dvec3 xAxis;

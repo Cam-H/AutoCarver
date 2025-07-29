@@ -49,12 +49,27 @@ Axis3D::Axis3D(const glm::dmat3& matrix)
 
 }
 
-Axis3D Axis3D::operator*(const glm::dquat& rotation) const
+bool operator==(const Axis3D& lhs, const Axis3D& rhs)
 {
-    Axis3D axes = *this;
-    axes.rotate(rotation);
-    return axes;
+    return Axis3D::compare(lhs, rhs, 1e-12);
 }
+bool operator!=(const Axis3D& lhs, const Axis3D& rhs)
+{
+    return !(lhs == rhs);
+}
+
+Axis3D operator*(const Axis3D& axes, const glm::dmat3& rotation)
+{
+    return axes * glm::quat_cast(rotation);
+}
+
+Axis3D operator*(const Axis3D& axes, const glm::dquat& rotation)
+{
+    Axis3D system = axes;
+    system.rotate(rotation);
+    return system;
+}
+
 
 // Rotates the system about the Y-axis by -90dg
 void Axis3D::rotateY()
@@ -103,6 +118,13 @@ bool Axis3D::isValid() const
         && 1 - 1e-12 < len.y && len.y < 1 + 1e-12
         && 1 - 1e-12 < len.z && len.z < 1 + 1e-12
         && 1 - 1e-12 < cLen  && cLen  < 1 + 1e-12;
+}
+
+bool Axis3D::compare(const Axis3D& lhs, const Axis3D& rhs, double tolerance)
+{
+    return Axis3D::checkAxis(lhs.xAxis, rhs.xAxis, tolerance)
+        && Axis3D::checkAxis(lhs.yAxis, rhs.yAxis, tolerance)
+        && Axis3D::checkAxis(lhs.zAxis, rhs.zAxis, tolerance);
 }
 
 glm::dmat3 Axis3D::toTransform() const
