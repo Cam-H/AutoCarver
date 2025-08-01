@@ -106,25 +106,17 @@ void Axis3D::rotate(const glm::dquat& rotation)
 
 bool Axis3D::isValid() const
 {
-    glm::dvec3 cross = glm::cross(xAxis, yAxis), len = {
-            glm::dot(xAxis, xAxis),
-            glm::dot(yAxis, yAxis),
-            glm::dot(zAxis, zAxis)
-    };
-
-    double cLen = glm::dot(cross, zAxis);
-
-    return 1 - 1e-12 < len.x && len.x < 1 + 1e-12
-        && 1 - 1e-12 < len.y && len.y < 1 + 1e-12
-        && 1 - 1e-12 < len.z && len.z < 1 + 1e-12
-        && 1 - 1e-12 < cLen  && cLen  < 1 + 1e-12;
+    return checkAxis(xAxis, xAxis, 1e-12)
+        && checkAxis(yAxis, yAxis, 1e-12)
+        && checkAxis(zAxis, zAxis, 1e-12)
+        && checkAxis(glm::cross(xAxis, yAxis), zAxis, 1e-12);
 }
 
 bool Axis3D::compare(const Axis3D& lhs, const Axis3D& rhs, double tolerance)
 {
-    return Axis3D::checkAxis(lhs.xAxis, rhs.xAxis, tolerance)
-        && Axis3D::checkAxis(lhs.yAxis, rhs.yAxis, tolerance)
-        && Axis3D::checkAxis(lhs.zAxis, rhs.zAxis, tolerance);
+    return checkAxis(lhs.xAxis, rhs.xAxis, tolerance)
+        && checkAxis(lhs.yAxis, rhs.yAxis, tolerance)
+        && checkAxis(lhs.zAxis, rhs.zAxis, tolerance);
 }
 
 glm::dmat3 Axis3D::toTransform() const

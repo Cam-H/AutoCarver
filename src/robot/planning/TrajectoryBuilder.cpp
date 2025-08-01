@@ -6,13 +6,15 @@
 
 #include "robot/Robot.h"
 
-#include "robot/Pose.h"
 #include "Waypoint.h"
 #include "SimpleTrajectory.h"
-#include "CompoundTrajectory.h"
+#include "TOPPTrajectory.h"
+
+#include "geometry/primitives/Ray.h"
 
 TrajectoryBuilder::TrajectoryBuilder(const std::shared_ptr<Robot>& robot)
     : robot(robot)
+    , m_pose(robot != nullptr ? robot->getPose() : Pose(glm::dvec3(), Axis3D()))
     , m_solver(Interpolator::SolverType::QUINTIC)
     , m_velocityLimit(std::numeric_limits<double>::max())
     , m_accelerationLimit(std::numeric_limits<double>::max())
@@ -60,37 +62,85 @@ void TrajectoryBuilder::clear()
 //    } else throw std::runtime_error("[TrajectoryBuilder] Index out of bounds. Can not Remove waypoint");
 //}
 
-void TrajectoryBuilder::moveConstrained(const glm::dvec3& delta)
+std::shared_ptr<TOPPTrajectory> TrajectoryBuilder::cartesianMotion(const glm::dvec3& delta)
 {
-    if (m_waypoints.empty()) throw std::runtime_error("[TrajectoryBuilder] Start point for constrained motion undefined");
+
+    std::cout << "CM " << delta.x << " " << delta.y << " " << delta.z << "\n";
 
 
-    Pose start = robot->getPose(m_waypoints.back());
-    Waypoint finalWP = robot->inverse(start.translated(delta));
+    std::vector<Waypoint> waypoints = { robot->inverse(m_pose).toDg() };
+    std::cout << "Original: " << robot->getWaypoint().toDg() << "\nTO: " << waypoints[0].toDg() << "\n";
+    // Identify the final waypoint, and verify that it is reachable
+    std::vector<Pose> poses = { m_pose };
+    poses.back().localTranslate(delta);
 
-    if (!finalWP.isValid()) { // Verify that end position is reachable
-        m_valid = false;
-        return;
+    std::vector<Waypoint> remainder = { robot->inverse(poses.back()).toDg() };
+
+    m_pose.print();
+    poses.back().print();
+
+    if (waypoints[0].isValid() && remainder[0].isValid()) {
+
+        double distance = glm::length(delta), step = 0.5 * distance;
+        Ray ray(m_pose.position, delta / distance);
+
+        int limit = 0;
+
+        std::cout << "START: " << waypoints[0].toDg() << "\nEND: " << remainder[0].toDg() << "\n";
+
+//        auto traj = std::make_shared<SimpleTrajectory>(waypoints[0], remainder[0], Interpolator::SolverType::QUINTIC);
+//        traj->setVelocityLimit(m_velocityLimit);
+//        traj->setAccelerationLimit(m_accelerationLimit);
+//        return traj;
+
+//        for (uint32_t i = 0; i < 10; i++) {
+//            m_pose.localTranslate(ray.axis * (distance / 10));
+//            waypoints.emplace_back(robot->inverse(m_pose).toDg());
+//            if (!waypoints.back().isValid()) waypoints.pop_back();
+//        }
+
+        waypoints.emplace_back(remainder[0]);
+        std::cout << "============= SIZE: " << waypoints.size() << "\n";
+
+//        return std::make_shared<TOPPTrajectory>(std::vector<Waypoint>{ waypoints[0].toDg(), remainder[0].toDg() }, m_velocityLimit, m_accelerationLimit);
+        return std::make_shared<TOPPTrajectory>(std::vector<Waypoint>{waypoints }, m_velocityLimit, m_accelerationLimit);
+
+        while (!remainder.empty()) {
+            Waypoint wp = Waypoint::midpoint(waypoints.back(), remainder.back());
+            Pose pose = robot->getPose(wp);
+
+            std::cout << "===> " << waypoints.size() << " " << remainder.size() << " | "<< ray.squareDistance(pose.position) << " " << glm::dot(ray.axis, pose.position - m_pose.position)
+                      << " [" << glm::dot(pose.axes.xAxis, m_pose.axes.xAxis) << " " << glm::dot(pose.axes.yAxis, m_pose.axes.yAxis) << " " << glm::dot(pose.axes.zAxis, m_pose.axes.zAxis) << "]\n";
+
+            std::cout << "CUR: " << wp << "\n";
+
+            if (ray.squareDistance(pose.position) < 1e-3 && m_pose.oriented(pose, 1e-2)) {
+                std::cout << "X\n";
+                waypoints.emplace_back(remainder.back());
+                poses.pop_back();
+                remainder.pop_back();
+                step *= 2.0;
+            } else {
+                poses.emplace_back(poses.back());
+                poses.back().globalTranslate(-ray.axis * step);
+                std::cout << "O " << step << " " << glm::dot(ray.axis, poses.back().position - m_pose.position) << "\n";
+                remainder.emplace_back(robot->inverse(poses.back()));
+                step *= 0.5;
+            }
+
+            if (limit++ > 100) break;
+        }
+
     }
 
-    uint32_t last = m_waypoints.size() - 1;
 
-    double distance = glm::length(delta);
-    glm::dvec3 axis = delta / distance;
+    if (remainder.empty()) return std::make_shared<TOPPTrajectory>(waypoints, m_velocityLimit, m_accelerationLimit);
+    else return nullptr;
+}
 
-    distance /= 10;
-    for (uint32_t i = 1; i < 10; i++) {
-        Waypoint wp = robot->inverse(start.translated(i * distance * axis));
-        if (wp.isValid()) m_waypoints.push_back(m_inDg ? wp.toDg() : wp);
-        else std::cout << "F " << i << "\n";
-    }
-
-//    std::vector<Waypoint> remainder = { robot->inverse(start.translated(delta)) };
-//
-//    while (!remainder.empty()) {
-//
-//    }
-
+void TrajectoryBuilder::setPose(const Pose& pose)
+{
+    m_pose = pose;
 }
 
 // Determines what type of solver will be used to resolve trajectories. Only applies to features added after this call
@@ -102,78 +152,8 @@ void TrajectoryBuilder::setSolver(Interpolator::SolverType solver)
 void TrajectoryBuilder::setVelocityLimit(double velocity)
 {
     m_velocityLimit = std::abs(velocity);
-    if (m_target != nullptr) m_target->setVelocityLimit(m_velocityLimit);
 }
 void TrajectoryBuilder::setAccelerationLimit(double acceleration)
 {
     m_accelerationLimit = std::abs(acceleration);
-    if (m_target != nullptr) m_target->setAccelerationLimit(m_accelerationLimit);
 }
-
-// Applies the prepared waypoints to create the trajectory
-void TrajectoryBuilder::generate()
-{
-    if (m_waypoints.empty()) throw std::runtime_error("[TrajectoryBuilder] Can not generate trajectory. No waypoints");
-//    m_target = std::make_shared<CompoundTrajectory>(m_waypoints, m_solver);
-//    m_target->setVelocityLimit(m_velocityLimit);
-//    m_target->setAccelerationLimit(m_accelerationLimit);
-}
-
-// TODO
-// Calculates appropriate velocity/acceleration constraints to reduce stops between steps
-// Repetitively solves the system to converge towards the best constraints for speed
-//void TrajectoryBuilder::smooth(uint8_t iterations)
-//{
-//    if (m_target == nullptr || m_target->m_trajectories.empty()) return;
-//
-//    for (uint32_t i = 0; i < iterations; i++) {
-//        std::cout << "Iteration: " << i << "~~~~~~~~~~~~~~~~~~~\n";
-//        std::cout << "Initial: " << m_target->m_duration << " " << m_target->m_maxVelocity << " " << m_target->m_maxAcceleration << "\n";
-//        iterateSmoothing();
-//    }
-//
-//
-//}
-//
-//void TrajectoryBuilder::iterateSmoothing()
-//{
-//    for (uint32_t i = 0; i < m_target->m_trajectories.size() - 1; i++) {
-//        SimpleTrajectory& left = m_target->m_trajectories[i];
-//        SimpleTrajectory& right = m_target->m_trajectories[i + 1];
-//
-//        // Get duration ratios - Shorter durations are prioritized
-//        double dt = left.m_duration + right.m_duration, dr = left.m_duration / dt, dl = right.m_duration / dt;
-//
-//        std::cout << i << ": " << dt << " " << dl << " " << dr << " ===========================\n";
-//        for (uint32_t j = 0; j < left.m_jointTrajectories.size(); j++) {
-////            double velocity = lvr * left.m_jointTrajectories[j].delta()
-//            double lv = m_velocityLimit * (1 - 2 * (left.m_jointTrajectories[j].delta() < 0)) * left.m_maxVelocity / left.m_jointTrajectories[j].maxVelocity() ;
-//            double rv = m_velocityLimit * (1 - 2 * (right.m_jointTrajectories[j].delta() < 0)) * right.m_maxVelocity / right.m_jointTrajectories[j].maxVelocity();
-//
-//            double v = lv * dl + rv * dr;
-//
-//            std::cout << left.m_jointTrajectories[j].delta() << " " << right.m_jointTrajectories[j].delta() << " --> " << lv << " " << rv << " " << v << " | " << left.m_jointTrajectories[j].maxVelocity() << " " << right.m_jointTrajectories[j].maxVelocity() << "\n";
-//
-////            v += left.m_jointTrajectories[j].finalVelocity();
-//            left.m_jointTrajectories[j].setFinalVelocity(v);
-//            right.m_jointTrajectories[j].setInitialVelocity(v);
-//
-//            break;
-//        }
-//    }
-//
-//    m_target->updateDuration();
-//}
-
-bool TrajectoryBuilder::isValid() const
-{
-    return m_valid && m_target != nullptr;
-}
-
-const std::shared_ptr<CompoundTrajectory>& TrajectoryBuilder::finalize()
-{
-    if (m_target == nullptr) throw std::runtime_error("[TrajectoryBuilder] ");
-    m_target->updateDuration();
-    return m_target;
-}
-

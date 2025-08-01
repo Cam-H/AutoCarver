@@ -5,12 +5,22 @@
 #include "Pose.h"
 
 #include "geometry/Transformable.h"
+#include <iostream>
 
 Pose::Pose(const glm::dvec3& position, const Axis3D& axes)
     : position(position)
     , axes(axes)
 {
 
+}
+
+void Pose::localTranslate(const glm::dvec3& translation)
+{
+    position += axes.delocalize(translation);
+}
+void Pose::globalTranslate(const glm::dvec3& translation)
+{
+    position += translation;
 }
 
 bool operator==(const Pose& lhs, const Pose& rhs)
@@ -44,7 +54,8 @@ bool Pose::oriented(const Axis3D& system, double tolerance) const
     return Axis3D::compare(axes, system, tolerance);
 }
 
-Pose Pose::translated(const glm::dvec3& translation) const
+void Pose::print() const
 {
-    return { position + translation, axes };
+    std::cout << "[Pose] pos: (" << position.x << ", " << position.y << ", " << position.z << ")\n\t";
+    axes.print();
 }

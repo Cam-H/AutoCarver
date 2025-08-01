@@ -24,7 +24,7 @@
 
 #include "renderer/UiLoader.h"
 #include "robot/planning/SimpleTrajectory.h"
-#include "robot/planning/CompoundTrajectory.h"
+#include "robot/planning/TOPPTrajectory.h"
 #include "robot/planning/Interpolator.h"
 
 #include "core/Timer.h"
@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
         if (m_inputEnable && m_waypoints.size() > 1) {
 
 //            auto traj = std::make_shared<SimpleTrajectory>(m_waypoints[0], m_waypoints[1], Interpolator::SolverType::QUINTIC);
-            auto traj = std::make_shared<CompoundTrajectory>(m_waypoints);
+            auto traj = std::make_shared<TOPPTrajectory>(m_waypoints);
             traj->limitVelocity(90.0);
             traj->limitAcceleration(60.0);
             traj->smooth();

@@ -11,8 +11,6 @@ Trajectory::Trajectory()
     , m_tStep(0.05)
     , m_duration(0.0)
     , m_minDuration(0.0)
-    , m_velocityLimit(std::numeric_limits<double>::max())
-    , m_accelerationLimit(std::numeric_limits<double>::max())
     , m_maxVelocity(0.0)
     , m_maxAcceleration(0.0)
     , m_inDg(false)
@@ -40,32 +38,45 @@ void Trajectory::setDuration(double duration)
     m_duration = duration;
 }
 
-// Assign velocity limit to the trajectory
-void Trajectory::setVelocityLimit(double velocity)
+void Trajectory::setVelocityLimits(const std::vector<double>& vLims)
 {
-    m_velocityLimit = std::abs(velocity);
-    if (m_velocityLimit < 1e-12) throw std::runtime_error("[Trajectory] Velocity limit is unreasonable");
-    updateDuration();
+    m_velocityLimits = vLims;
+    for (double& lim : m_velocityLimits) lim = std::abs(lim);
+    update();
 }
-
-// Assign acceleration limit to the trajectory
-void Trajectory::setAccelerationLimit(double acceleration)
+void Trajectory::setAccelerationLimits(const std::vector<double>& aLims)
 {
-    m_accelerationLimit = std::abs(acceleration);
-    if (m_accelerationLimit < 1e-12) throw std::runtime_error("[Trajectory] Acceleration limit is unreasonable");
-    updateDuration();
+    m_accelerationLimits = aLims;
+    for (double& lim : m_accelerationLimits) lim = std::abs(lim);
+    update();
 }
 
 // Apply new velocity limit to the trajectory if it is stricter than the current limit
 void Trajectory::limitVelocity(double velocity)
 {
-    if (std::abs(velocity) < m_velocityLimit) setVelocityLimit(velocity);
+    bool modified = false;
+    for (double& lim : m_velocityLimits) {
+        if (std::abs(velocity) < lim) {
+            lim = std::abs(velocity);
+            modified = true;
+        }
+    }
+
+    if (modified) update();
 }
 
 // Apply new acceleration limit to the trajectory if it is stricter than the current limit
 void Trajectory::limitAcceleration(double acceleration)
 {
-    if (std::abs(acceleration) < m_accelerationLimit) setAccelerationLimit(acceleration);
+    bool modified = false;
+    for (double& lim : m_accelerationLimits) {
+        if (std::abs(acceleration) < lim) {
+            lim = std::abs(acceleration);
+            modified = true;
+        }
+    }
+
+    if (modified) update();
 }
 
 void Trajectory::setStep(double tStep)
@@ -73,13 +84,13 @@ void Trajectory::setStep(double tStep)
     m_tStep = tStep;
 }
 
-double Trajectory::velocityLimit() const
+std::vector<double> Trajectory::velocityLimits() const
 {
-    return m_velocityLimit;
+    return m_velocityLimits;
 }
-double Trajectory::accelerationLimit() const
+std::vector<double> Trajectory::accelerationLimits() const
 {
-    return m_accelerationLimit;
+    return m_accelerationLimits;
 }
 
 double Trajectory::maximumVelocity() const

@@ -25,7 +25,7 @@
 #include "robot/Pose.h"
 #include "robot/planning/Interpolator.h"
 #include "robot/planning/SimpleTrajectory.h"
-#include "robot/planning/CompoundTrajectory.h"
+#include "robot/planning/TOPPTrajectory.h"
 #include "robot/planning/TrajectoryBuilder.h"
 
 #endif
@@ -41,16 +41,19 @@ std::vector<QDoubleSpinBox*> posFields;
 
 QTreeWidget* treeWidget = nullptr;
 QTreeWidgetItem* waypointWidget = nullptr;
-QTreeWidgetItem* trajectoryWidget = nullptr;
 
 QTreeWidgetItem *selected = nullptr;
 
-QPushButton *removeTrajectoryButton = nullptr, *addTrajectoryButton = nullptr;
+QDoubleSpinBox *velField = nullptr, *accField = nullptr;
+
 QRadioButton *linearButton = nullptr, *cubicButton = nullptr, *quinticButton = nullptr;
-QRadioButton *simpleButton = nullptr, *constrainedButton = nullptr, *compoundButton = nullptr;
-QPushButton *followButton = nullptr;
+QPushButton *simpleTestButton = nullptr, *constrainedTestButton = nullptr, *compositeTestButton = nullptr;
 
 QSpinBox *wpStartField = nullptr, *wpEndField = nullptr;
+QDoubleSpinBox *dxField = nullptr, *dyField = nullptr, *dzField = nullptr;
+
+std::vector<QCheckBox*> jPlotButtons;
+QCheckBox* posPlotButton = nullptr, *delPlotButton = nullptr, *remPlotButton = nullptr, *velPlotButton = nullptr, *accPlotButton = nullptr, *devPlotButton = nullptr;
 
 LineChartWidget *plotWidget = nullptr;
 
@@ -61,10 +64,8 @@ Axis3D axes;
 double theta = M_PI / 64;
 
 std::vector<Waypoint> waypoints;
-std::vector<std::shared_ptr<Trajectory>> trajectories;
 
 Interpolator::SolverType solver = Interpolator::SolverType::QUINTIC;
-uint8_t trajType = 0;
 
 static QWidget *loadUiFile(QWidget *parent)
 {
@@ -113,25 +114,9 @@ void updateAxes()
     updateJointFields();
 }
 
-std::shared_ptr<Trajectory> currentTrajectory()
-{
-    if (selected != nullptr) {
-        if (selected->parent() == trajectoryWidget) return trajectories[trajectoryWidget->indexOfChild(selected)];
-        else if (selected->parent() != nullptr && selected->parent()->parent() == trajectoryWidget)
-            return trajectories[trajectoryWidget->indexOfChild(selected->parent())];
-    }
-
-    return nullptr;
-}
-
-bool selectedTrajectoryWaypoint()
-{
-    return selected != nullptr && selected->parent() != nullptr && selected->parent()->parent() == trajectoryWidget;
-}
-
 bool selectedWaypoint()
 {
-    return selected != nullptr && (selected->parent() == waypointWidget || selectedTrajectoryWaypoint());
+    return selected != nullptr && selected->parent() == waypointWidget;
 }
 
 void saveWaypoint(const Waypoint& waypoint)
@@ -158,14 +143,10 @@ void addWaypoint(uint32_t index)
 {
     std::string name = "WP" + std::to_string(index);
 
-    auto *trajItem = selected;
-    if (selected == nullptr || selected->parent() != trajectoryWidget)
-        trajItem = trajectoryWidget->child(trajectoryWidget->childCount() - 1);
-
-    auto *item = new QTreeWidgetItem(trajItem);
+    auto *item = new QTreeWidgetItem(waypointWidget);
     item->setText(0, name.c_str());
     item->setData(1, Qt::UserRole, index);
-    trajItem->setExpanded(true);
+    waypointWidget->setExpanded(true);
 }
 
 void applyWaypoint()
@@ -179,122 +160,69 @@ void applyWaypoint()
     sceneWidget->update();
 }
 
-void removeTrajectory()
+void createValuePlots(const std::string& title)
 {
-    if (selected != nullptr && selected->parent() == trajectoryWidget) {
-        trajectories.erase(trajectories.begin() + trajectoryWidget->indexOfChild(selected));
-        trajectoryWidget->removeChild(selected);
-    }
-}
-
-void addTrajectory()
-{
-    if (wpStartField->value() == wpEndField->value()) return;
-
-    std::string name = "TRAJ" + std::to_string(trajectories.size());
-
-    const Waypoint& start = waypoints[wpStartField->value()], end = waypoints[wpEndField->value()];
-    TrajectoryBuilder tb(robot);
-    tb.setSolver(solver);
-
-    std::shared_ptr<Trajectory> traj = nullptr;
-    trajType = 1;
-    switch (trajType) {
-        case 0:
-            tb.addWaypoint(start);
-            tb.addWaypoint(end);
-            break;
-        case 1:
-        {
-            std::vector<Waypoint> waypoints = { robot->getWaypoint().toDg() };
-            for (uint32_t i = 0; i < 10; i++) {
-                Waypoint wp = waypoints.back();
-                wp.values[0] += 10;
-                waypoints.push_back(wp);
-            }
-
-            traj = std::make_shared<CompoundTrajectory>(waypoints, 60, 100);
-//            auto startPose = robot->getPose(start);
-//
-//            tb.addWaypoint(start);
-//            tb.moveConstrained(startPose.axes.localize({ 3, 0, 0 }));
+    for (uint32_t i = 0; i < 6; i++) {
+        if (jPlotButtons[i]->isChecked()) {
+            std::string name = "j" + std::to_string(i) + title;
+            plotWidget->create(2000, name.c_str());
         }
-
-            break;
-        case 2:
-            break;
-    }
-
-//    tb.setVelocityLimit(90);
-//    tb.setAccelerationLimit(200);
-//    tb.generate();
-//    tb.isValid()
-
-    if (traj != nullptr) {
-
-        trajectories.push_back(traj);
-
-        auto *item = new QTreeWidgetItem(trajectoryWidget);
-        item->setText(0, name.c_str());
-        item->setData(1, Qt::UserRole, trajectories.size() - 1);
-        trajectoryWidget->setExpanded(true);
-
-        item->setSelected(true);
-        selected = item;
-
-        addWaypoint(wpStartField->value());
-        addWaypoint(wpEndField->value());
     }
 }
 
 void preparePlot(const std::shared_ptr<Trajectory>& traj)
 {
-    double delta = traj->maximumDelta();
-    delta = traj->maximumVelocity();
-
-    std::cout << "Trajectory: " << traj->duration() << " " << traj->maximumVelocity() << " " << traj->maximumAcceleration() << "\n";
 
     plotWidget->clear();
     plotWidget->zero();
 
-    plotWidget->setX(500, 0, std::ceil(traj->duration()));
-    plotWidget->ylim(-delta, delta);
+    plotWidget->setX(2000, 0, std::ceil(traj->duration()));
 
-    for (uint32_t i = 0; i < 6; i++) {
-        std::string name = "j" + std::to_string(i);
-        plotWidget->create(500, (name + "Delta").c_str());
-    }
+    // Determine reasonable limits
+    double lim = 0;
+    if (posPlotButton->isChecked()) lim = 360;
+    if (delPlotButton->isChecked() || remPlotButton->isChecked()) lim = std::max(lim, traj->maximumDelta());
+    if (velPlotButton->isChecked()) lim = std::max(lim, traj->maximumVelocity());
+    if (accPlotButton->isChecked()) lim = std::max(lim, traj->maximumAcceleration());
 
-//    for (uint32_t i = 0; i < 6; i++) {
-//        std::string name = "j" + std::to_string(i);
-//        plotWidget->create(500, (name + "Velocity").c_str());
-//    }
-//
-//    for (uint32_t i = 0; i < 6; i++) {
-//        std::string name = "j" + std::to_string(i);
-//        plotWidget->create(500, (name + "Acceleration").c_str());
-//    }
+    plotWidget->ylim(-lim, lim);
+
+    if (posPlotButton->isChecked()) createValuePlots(" Position");
+    if (delPlotButton->isChecked()) createValuePlots(" Distance Travelled");
+    if (remPlotButton->isChecked()) createValuePlots(" Distance Remaining");
+    if (velPlotButton->isChecked()) createValuePlots(" Velocity");
+    if (accPlotButton->isChecked()) createValuePlots(" Acceleration");
 
     plotWidget->update();
+}
+
+void plotValues(uint32_t& idx, const std::vector<double>& values)
+{
+    for (uint32_t i = 0; i < 6; i++) {
+        if (jPlotButtons[i]->isChecked()) {
+            plotWidget->stream(idx++, values[i]);
+        }
+    }
 }
 
 void stream(uint32_t idx, double time)
 {
     plotWidget->setX(idx, time);
 
-//    Waypoint pos = robot->getWaypoint().toDg();
-//    for (uint32_t i = 0; i < 6; i++) plotWidget->stream(i, pos.values[i]);
-
-    auto del = robot->getDistanceTravelled();
-    for (uint32_t i = 0; i < 6; i++) plotWidget->stream(i, del[i]);
-
-//    auto vel = robot->getJointVelocity();
-//    for (uint32_t i = 0; i < 6; i++) plotWidget->stream(i, vel[i]);
-//
-//    auto acc = robot->getJointAcceleration();
-//    for (uint32_t i = 0; i < 6; i++) plotWidget->stream(6 + i, acc[i]);
+    uint32_t offset = 0;
+    if (posPlotButton->isChecked()) plotValues(offset, robot->getWaypoint().toDg().values);
+    if (delPlotButton->isChecked()) plotValues(offset, robot->getDistanceTravelled());
+    if (remPlotButton->isChecked()) plotValues(offset, robot->getDistanceRemaining());
+    if (velPlotButton->isChecked()) plotValues(offset, robot->getJointVelocity());
+    if (accPlotButton->isChecked()) plotValues(offset, robot->getJointAcceleration());
 
     plotWidget->update();
+}
+
+void test(const std::shared_ptr<Trajectory>& traj)
+{
+    preparePlot(traj);
+    robot->traverse(traj);
 }
 
 void enableInputs(bool enable = true)
@@ -303,11 +231,9 @@ void enableInputs(bool enable = true)
     for (auto *field : posFields) field->setEnabled(enable);
 }
 
-void doTrajectoryControlEnable()
+void doControlEnable()
 {
-    removeTrajectoryButton->setEnabled(selected != nullptr && selected->parent() == trajectoryWidget);
-    addTrajectoryButton->setEnabled(wpStartField->value() != wpEndField->value());
-    followButton->setEnabled(currentTrajectory() != nullptr);
+    simpleTestButton->setEnabled(wpStartField->value() != wpEndField->value());
 }
 
 int main(int argc, char *argv[])
@@ -465,9 +391,6 @@ int main(int argc, char *argv[])
     waypointWidget = new QTreeWidgetItem(treeWidget);
     waypointWidget->setText(0, "Waypoints");
 
-    trajectoryWidget = new QTreeWidgetItem(treeWidget);
-    trajectoryWidget->setText(0, "Trajectories");
-
     QObject::connect(treeWidget, &QTreeWidget::currentItemChanged, [&](QTreeWidgetItem* current, QTreeWidgetItem* previous) {
         selected = current;
 
@@ -476,25 +399,26 @@ int main(int argc, char *argv[])
         }
 
         selected = current;
-        doTrajectoryControlEnable();
+        doControlEnable();
     });
+
+    velField = window->findChild<QDoubleSpinBox*>("velField");
+    accField = window->findChild<QDoubleSpinBox*>("accField");
+
 
     auto saveWaypointButton = window->findChild<QPushButton*>("saveWaypointButton");
     QObject::connect(saveWaypointButton, &QPushButton::clicked, [&]() {
         saveWaypoint();
     });
 
-
-    removeTrajectoryButton = window->findChild<QPushButton*>("removeTrajectoryButton");
-    QObject::connect(removeTrajectoryButton, &QPushButton::clicked, [&]() {
-        removeTrajectory();
-        doTrajectoryControlEnable();
+    wpStartField = window->findChild<QSpinBox*>("wpStartField");
+    QObject::connect(wpStartField, &QSpinBox::valueChanged, [&](int value) {
+        doControlEnable();
     });
 
-    addTrajectoryButton = window->findChild<QPushButton*>("addTrajectoryButton");
-    QObject::connect(addTrajectoryButton, &QPushButton::clicked, [&]() {
-        addTrajectory();
-        doTrajectoryControlEnable();
+    wpEndField = window->findChild<QSpinBox*>("wpEndField");
+    QObject::connect(wpEndField, &QSpinBox::valueChanged, [&](int value) {
+        doControlEnable();
     });
 
     linearButton = window->findChild<QRadioButton*>("linearButton");
@@ -512,58 +436,59 @@ int main(int argc, char *argv[])
         solver = Interpolator::SolverType::QUINTIC;
     });
 
-    simpleButton = window->findChild<QRadioButton*>("simpleButton");
-    QObject::connect(simpleButton, &QRadioButton::clicked, [&]() {
-        trajType = 1;
+    simpleTestButton = window->findChild<QPushButton*>("simpleTestButton");
+    QObject::connect(simpleTestButton, &QRadioButton::clicked, [&]() {
+        const Waypoint& start = waypoints[wpStartField->value()], end = waypoints[wpEndField->value()];
+        auto traj = std::make_shared<SimpleTrajectory>(start, end, solver);
+        traj->setVelocityLimit(velField->value());
+        traj->setAccelerationLimit(accField->value());
+
+        test(traj);
     });
 
-    constrainedButton = window->findChild<QRadioButton*>("constrainedButton");
-    QObject::connect(constrainedButton, &QRadioButton::clicked, [&]() {
-        trajType = 1;
+
+    dxField = window->findChild<QDoubleSpinBox*>("dxField");
+    dyField = window->findChild<QDoubleSpinBox*>("dyField");
+    dzField = window->findChild<QDoubleSpinBox*>("dzField");
+
+    constrainedTestButton = window->findChild<QPushButton*>("constrainedTestButton");
+    QObject::connect(constrainedTestButton, &QRadioButton::clicked, [&]() {
+        TrajectoryBuilder tb(robot);
+        tb.setVelocityLimit(velField->value());
+        tb.setAccelerationLimit(accField->value());
+
+        auto traj = tb.cartesianMotion({ dxField->value(), dyField->value(), dzField->value() });
+        if (traj != nullptr) test(traj);
     });
 
-    compoundButton = window->findChild<QRadioButton*>("compoundButton");
-    QObject::connect(compoundButton, &QRadioButton::clicked, [&]() {
-        trajType = 2;
+
+    compositeTestButton = window->findChild<QPushButton*>("compositeTestButton");
+    QObject::connect(compositeTestButton, &QRadioButton::clicked, [&]() {
+
     });
 
-    wpStartField = window->findChild<QSpinBox*>("wpStartField");
-    QObject::connect(wpStartField, &QSpinBox::valueChanged, [&](int value) {
-        doTrajectoryControlEnable();
-//        if (selectedTrajectoryWaypoint()) {
-//            std::string name = "WP" + std::to_string(value);
-//            selected->setText(0, name.c_str());
-//            selected->setData(1, Qt::UserRole, value);
-//
-//            auto traj = currentTrajectory();
-//            if (traj != nullptr) traj->replaceWaypoint(selected->parent()->indexOfChild(selected), waypoints[value]);
-//
-//            applyWaypoint();
-//        }
-    });
+    jPlotButtons = {
+            window->findChild<QCheckBox*>("j0PlotButton"),
+            window->findChild<QCheckBox*>("j1PlotButton"),
+            window->findChild<QCheckBox*>("j2PlotButton"),
+            window->findChild<QCheckBox*>("j3PlotButton"),
+            window->findChild<QCheckBox*>("j4PlotButton"),
+            window->findChild<QCheckBox*>("j5PlotButton")
+    };
 
-    wpEndField = window->findChild<QSpinBox*>("wpEndField");
-    QObject::connect(wpEndField, &QSpinBox::valueChanged, [&](int value) {
-        doTrajectoryControlEnable();
-    });
-
-    followButton = window->findChild<QPushButton*>("followButton");
-    QObject::connect(followButton, &QPushButton::clicked, [&]() {
-        auto traj = currentTrajectory();
-        if (traj != nullptr) {
-            traj->restart();
-            preparePlot(traj);
-            robot->traverse(traj);
-        }
-    });
+    posPlotButton = window->findChild<QCheckBox*>("posPlotButton");
+    delPlotButton = window->findChild<QCheckBox*>("delPlotButton");
+    remPlotButton = window->findChild<QCheckBox*>("remPlotButton");
+    velPlotButton = window->findChild<QCheckBox*>("velPlotButton");
+    accPlotButton = window->findChild<QCheckBox*>("accPlotButton");
+    devPlotButton = window->findChild<QCheckBox*>("devPlotButton");
 
     saveWaypoint(Waypoint({   0, 135, -45,  0,   0, 0 }, true));
     saveWaypoint(Waypoint({ -10, 150, -35, 25, -15, 0 }, true));
 
     wpEndField->setValue(1);
-    addTrajectory();
 
-    doTrajectoryControlEnable();
+    doControlEnable();
 
 
     plotWidget = window->findChild<LineChartWidget*>("chartWidget");

@@ -11,34 +11,31 @@ SimpleTrajectory::SimpleTrajectory(const Waypoint& start, const Waypoint& end, I
     else if (start.inDg != end.inDg) throw std::runtime_error("[SimpleTrajectory] Invalid waypoints. Must be in the same units");
 
     m_inDg = start.inDg;
+    m_velocityLimits = std::vector<double>(start.values.size(), std::numeric_limits<double>::max());
+    m_accelerationLimits = m_velocityLimits;
 
     m_jointTrajectories.reserve(start.values.size());
     for (uint32_t i = 0; i < start.values.size(); i++) {
         m_jointTrajectories.emplace_back(start.values[i], end.values[i], solverType);
     }
 
-    SimpleTrajectory::updateDuration();
+    SimpleTrajectory::update();
 }
 
-// Calculates the maximum velocity/acceleration assuming a window t = [0, 1]
-void SimpleTrajectory::updateMaximums()
+void SimpleTrajectory::update()
 {
-    m_maxVelocity = 0, m_maxAcceleration = 0;
-    for (const Interpolator& jt : m_jointTrajectories) {
-        m_maxVelocity = std::max(m_maxVelocity, jt.maxVelocity());
-        m_maxAcceleration = std::max(m_maxAcceleration, jt.maxAcceleration());
-    }
-}
-
-void SimpleTrajectory::updateDuration()
-{
-    updateMaximums();
-
     m_minDuration = 0;
 
-    // Increase time limit to ensure the velocity/acceleration limits are not exceeded
-    m_minDuration = std::max(m_minDuration, m_maxVelocity / m_velocityLimit);
-    m_minDuration = std::max(m_minDuration, m_maxAcceleration / m_accelerationLimit);
+    m_maxVelocity = 0, m_maxAcceleration = 0;
+    for (uint32_t i = 0; i < m_jointTrajectories.size(); i++) {
+        double vMax = m_jointTrajectories[i].maxVelocity(), aMax = m_jointTrajectories[i].maxAcceleration();
+
+        m_minDuration = std::max(m_minDuration, vMax / m_velocityLimits[i]);
+        m_minDuration = std::max(m_minDuration, aMax / m_accelerationLimits[i]);
+
+        m_maxVelocity = std::max(m_maxVelocity, std::min(vMax, m_velocityLimits[i]));
+        m_maxAcceleration = std::max(m_maxAcceleration, std::min(aMax, m_accelerationLimits[i]));
+    }
 
     if (m_duration < m_minDuration) m_duration = m_minDuration;
 

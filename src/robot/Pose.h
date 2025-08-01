@@ -15,6 +15,9 @@ public:
 
     Pose(const glm::dvec3& position, const Axis3D& axes);
 
+    void localTranslate(const glm::dvec3& translation);
+    void globalTranslate(const glm::dvec3& translation);
+
     friend bool operator==(const Pose& lhs, const Pose& rhs);
     friend bool operator!=(const Pose& lhs, const Pose& rhs);
 
@@ -25,7 +28,7 @@ public:
     [[nodiscard]] bool oriented(const Pose& pose, double tolerance = 1e-12) const;
     [[nodiscard]] bool oriented(const Axis3D& system, double tolerance = 1e-12) const;
 
-    [[nodiscard]] Pose translated(const glm::dvec3& translation) const;
+    void print() const;
 
 public:
     glm::dvec3 position;

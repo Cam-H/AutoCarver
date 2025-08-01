@@ -84,6 +84,19 @@ Waypoint Waypoint::toRad() const
     return wp;
 }
 
+Waypoint Waypoint::midpoint(const Waypoint& lhs, const Waypoint& rhs)
+{
+    if (lhs.values.size() != rhs.values.size()) throw std::runtime_error("[Waypoint] Can not calculate midpoint. Unequal sizes");
+
+    Waypoint wp = lhs.inDg == rhs.inDg ? rhs : (lhs.inDg ? rhs.toDg() : rhs.toRad());
+
+    for (uint32_t i = 0; i < wp.values.size(); i++) {
+        wp.values[i] = 0.5 * (lhs.values[i] + wp.values[i]);
+    }
+
+    return wp;
+}
+
 Waypoint Waypoint::scalarApplied(double scalar) const
 {
     Waypoint wp = *this;

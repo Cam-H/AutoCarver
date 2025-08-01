@@ -9,22 +9,24 @@
 #include <memory>
 
 #include "Interpolator.h"
+#include "robot/Pose.h"
+
 
 class Robot;
 
 class Axis3D;
-class Pose;
 class Waypoint;
 
 class SimpleTrajectory;
-class CompoundTrajectory;
+class TOPPTrajectory;
 
-// Builder class to facilitate more in-depth control of CompoundTrajectory initialization
+// Builder class to generate more complicated trajectories
 class TrajectoryBuilder {
 public:
 
     TrajectoryBuilder(const std::shared_ptr<Robot>& robot);
 
+    void setPose(const Pose& pose);
     void setSolver(Interpolator::SolverType solver);
 
     void setVelocityLimit(double velocity);
@@ -42,11 +44,12 @@ public:
     // Involved trajectories
 
     // Move the specified delta (local to the initial pose) from the current waypoint, maintaining the same orientation the entire way
-    std::shared_ptr<CompoundTrajectory> constrainedMotion(const glm::dvec3& delta);
+    std::shared_ptr<TOPPTrajectory> cartesianMotion(const glm::dvec3& delta);
 
 private:
 
     std::shared_ptr<Robot> robot;
+    Pose m_pose;
 
     Interpolator::SolverType m_solver;
 

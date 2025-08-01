@@ -30,6 +30,8 @@ public:
     [[nodiscard]] Waypoint toDg() const;
     [[nodiscard]] Waypoint toRad() const;
 
+    static Waypoint midpoint(const Waypoint& lhs, const Waypoint& rhs);
+
 private:
 
     [[nodiscard]] Waypoint scalarApplied(double scalar) const;

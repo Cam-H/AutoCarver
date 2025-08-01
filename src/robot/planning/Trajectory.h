@@ -5,7 +5,10 @@
 #ifndef AUTOCARVER_TRAJECTORY_H
 #define AUTOCARVER_TRAJECTORY_H
 
+#include <vector>
+
 #include "Waypoint.h"
+
 
 class Trajectory {
 public:
@@ -14,20 +17,23 @@ public:
 
     void restart();
 
-    virtual void updateDuration() = 0;
+    virtual void update() = 0;
 
     void setDuration(double duration);
 
-    void setVelocityLimit(double velocity);
-    void setAccelerationLimit(double acceleration);
+    void setVelocityLimits(const std::vector<double>& vLims);
+    void setAccelerationLimits(const std::vector<double>& aLims);
+
+    inline void setVelocityLimit(double velocity) { setVelocityLimits(std::vector<double>(m_velocityLimits.size(), velocity)); }
+    inline void setAccelerationLimit(double acceleration) { setAccelerationLimits(std::vector<double>(m_accelerationLimits.size(), acceleration)); }
 
     void limitVelocity(double velocity);
     void limitAcceleration(double acceleration);
 
     void setStep(double tStep);
 
-    [[nodiscard]] double velocityLimit() const;
-    [[nodiscard]] double accelerationLimit() const;
+    [[nodiscard]] std::vector<double> velocityLimits() const;
+    [[nodiscard]] std::vector<double> accelerationLimits() const;
 
     [[nodiscard]] double maximumVelocity() const;
     [[nodiscard]] double maximumAcceleration() const;
@@ -58,10 +64,6 @@ public:
 
 protected:
 
-    virtual void updateMaximums() = 0;
-
-protected:
-
     double m_t;
     double m_tStep;
 
@@ -69,7 +71,7 @@ protected:
     double m_minDuration;
 
     // Limits to be compared against maximums in the interval to calculate required duration
-    double m_velocityLimit, m_accelerationLimit;
+    std::vector<double> m_velocityLimits, m_accelerationLimits;
 
     double m_maxVelocity, m_maxAcceleration;
 

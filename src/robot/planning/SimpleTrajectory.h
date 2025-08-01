@@ -15,7 +15,7 @@ public:
 
     SimpleTrajectory(const Waypoint& start, const Waypoint& end, Interpolator::SolverType solverType);
 
-    void updateDuration() override;
+    void update() override;
 
     [[nodiscard]] Waypoint start() const override;
     [[nodiscard]] Waypoint end() const override;
@@ -26,10 +26,6 @@ public:
     [[nodiscard]] double maximumDelta() const override;
 
     [[nodiscard]] Waypoint evaluate(double t) const override;
-
-protected:
-
-    void updateMaximums() override;
 
 private:
 

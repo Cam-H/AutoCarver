@@ -14,6 +14,8 @@ public:
 
     [[nodiscard]] bool isValid() const;
 
+    [[nodiscard]] double squareDistance(const glm::dvec3& vertex) const;
+
 public:
     glm::dvec3 origin;
     glm::dvec3 axis;
