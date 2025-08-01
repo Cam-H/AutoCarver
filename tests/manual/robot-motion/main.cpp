@@ -26,6 +26,7 @@
 #include "robot/planning/Interpolator.h"
 #include "robot/planning/SimpleTrajectory.h"
 #include "robot/planning/TOPPTrajectory.h"
+#include "robot/planning/CompositeTrajectory.h"
 #include "robot/planning/TrajectoryBuilder.h"
 
 #endif
@@ -56,6 +57,7 @@ std::vector<QCheckBox*> jPlotButtons;
 QCheckBox* posPlotButton = nullptr, *delPlotButton = nullptr, *remPlotButton = nullptr, *velPlotButton = nullptr, *accPlotButton = nullptr, *devPlotButton = nullptr;
 
 LineChartWidget *plotWidget = nullptr;
+uint32_t xIdx = 0;
 
 std::unique_ptr<std::thread> updateThread;
 
@@ -160,6 +162,14 @@ void applyWaypoint()
     sceneWidget->update();
 }
 
+std::tuple<std::vector<double>, std::vector<double>> getLimits()
+{
+    auto vLims = std::vector<double>(6, velField->value());
+    auto aLims = std::vector<double>(6, accField->value());
+
+    return { vLims, aLims };
+}
+
 void createValuePlots(const std::string& title)
 {
     for (uint32_t i = 0; i < 6; i++) {
@@ -173,6 +183,7 @@ void createValuePlots(const std::string& title)
 void preparePlot(const std::shared_ptr<Trajectory>& traj)
 {
 
+    xIdx = 0;
     plotWidget->clear();
     plotWidget->zero();
 
@@ -439,9 +450,10 @@ int main(int argc, char *argv[])
     simpleTestButton = window->findChild<QPushButton*>("simpleTestButton");
     QObject::connect(simpleTestButton, &QRadioButton::clicked, [&]() {
         const Waypoint& start = waypoints[wpStartField->value()], end = waypoints[wpEndField->value()];
+        auto [vLims, aLims] = getLimits();
+
         auto traj = std::make_shared<SimpleTrajectory>(start, end, solver);
-        traj->setVelocityLimit(velField->value());
-        traj->setAccelerationLimit(accField->value());
+        traj->limit(vLims, aLims);
 
         test(traj);
     });
@@ -453,18 +465,29 @@ int main(int argc, char *argv[])
 
     constrainedTestButton = window->findChild<QPushButton*>("constrainedTestButton");
     QObject::connect(constrainedTestButton, &QRadioButton::clicked, [&]() {
-        TrajectoryBuilder tb(robot);
-        tb.setVelocityLimit(velField->value());
-        tb.setAccelerationLimit(accField->value());
+        auto startPose = robot->getPose();
+        glm::dvec3 translation = { dxField->value(), dyField->value(), dzField->value() };
 
-        auto traj = tb.cartesianMotion({ dxField->value(), dyField->value(), dzField->value() });
+        auto [vLims, aLims] = getLimits();
+
+        auto traj = TrajectoryBuilder::cartesianMotion(robot, startPose, translation, vLims, aLims);
         if (traj != nullptr) test(traj);
     });
 
 
     compositeTestButton = window->findChild<QPushButton*>("compositeTestButton");
     QObject::connect(compositeTestButton, &QRadioButton::clicked, [&]() {
+        const Waypoint& start = waypoints[wpStartField->value()], mid = waypoints[wpEndField->value()];
+        auto midPose = robot->getPose(mid);
+        glm::dvec3 translation = { dxField->value(), dyField->value(), dzField->value() };
 
+        auto [vLims, aLims] = getLimits();
+        auto traj = std::make_shared<CompositeTrajectory>(6);
+        traj->setLimits(vLims, aLims);
+        traj->addTrajectory(std::make_shared<SimpleTrajectory>(start, mid, solver));
+        traj->addTrajectory(TrajectoryBuilder::cartesianMotion(robot, midPose, translation));
+        traj->update();
+        test(traj);
     });
 
     jPlotButtons = {
@@ -498,7 +521,6 @@ int main(int argc, char *argv[])
 
     updateThread = std::make_unique<std::thread>([](){
         Timer rateTimer;
-        uint32_t xIdx = 0;
         double time = 0;
         bool inProcess = false;
 

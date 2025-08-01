@@ -16,7 +16,7 @@
 class TOPPTrajectory : public Trajectory {
 public:
 
-    TOPPTrajectory(const std::vector<Waypoint>& waypoints, double velocityLimit, double accelerationLimit);
+    TOPPTrajectory(const std::vector<Waypoint>& waypoints);
     TOPPTrajectory(const std::vector<Waypoint>& waypoints, const std::vector<double>& vLims, const std::vector<double>& aLims);
 
     void update() override;

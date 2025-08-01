@@ -4,23 +4,31 @@
 
 #include "Trajectory.h"
 
-#include <limits>
+#include <cassert>
 
-Trajectory::Trajectory()
-    : m_t(0.0)
+Trajectory::Trajectory(uint32_t dof)
+    : m_dof(dof)
+    , m_t(0.0)
     , m_tStep(0.05)
     , m_duration(0.0)
     , m_minDuration(0.0)
+    , m_velocityLimits(dof, std::numeric_limits<double>::max())
+    , m_accelerationLimits(dof, std::numeric_limits<double>::max())
     , m_maxVelocity(0.0)
     , m_maxAcceleration(0.0)
     , m_inDg(false)
 {
-
+    assert(m_dof > 0);
 }
 
 void Trajectory::restart()
 {
     m_t = 0;
+}
+
+void Trajectory::finish()
+{
+    m_t = 1;
 }
 
 void Trajectory::setDuration(double duration)
@@ -38,45 +46,71 @@ void Trajectory::setDuration(double duration)
     m_duration = duration;
 }
 
+// Set velocity limits
 void Trajectory::setVelocityLimits(const std::vector<double>& vLims)
 {
-    m_velocityLimits = vLims;
-    for (double& lim : m_velocityLimits) lim = std::abs(lim);
+    assignLimits(m_velocityLimits, vLims);
     update();
 }
+
+// Set acceleration limit
 void Trajectory::setAccelerationLimits(const std::vector<double>& aLims)
 {
-    m_accelerationLimits = aLims;
-    for (double& lim : m_accelerationLimits) lim = std::abs(lim);
+    assignLimits(m_accelerationLimits, aLims);
     update();
 }
 
-// Apply new velocity limit to the trajectory if it is stricter than the current limit
-void Trajectory::limitVelocity(double velocity)
+// Set velocity and acceleration limits
+void Trajectory::setLimits(const std::vector<double>& vLims, const std::vector<double>& aLims)
 {
-    bool modified = false;
-    for (double& lim : m_velocityLimits) {
-        if (std::abs(velocity) < lim) {
-            lim = std::abs(velocity);
-            modified = true;
-        }
-    }
+    assignLimits(m_velocityLimits, vLims);
+    assignLimits(m_accelerationLimits, aLims);
+    update();
+}
 
+// Apply joint velocity limits, if they more strict
+void Trajectory::limitVelocity(const std::vector<double>& vLims)
+{
+    bool modified = applyLimits(m_velocityLimits, vLims);
     if (modified) update();
 }
 
-// Apply new acceleration limit to the trajectory if it is stricter than the current limit
-void Trajectory::limitAcceleration(double acceleration)
+// Apply joint acceleration limits, if they more strict
+void Trajectory::limitAcceleration(const std::vector<double>& vLims)
 {
+    bool modified = applyLimits(m_accelerationLimits, vLims);
+    if (modified) update();
+}
+
+// Apply joint velocity and acceleration limits, if they more strict
+void Trajectory::limit(const std::vector<double>& vLims, const std::vector<double>& aLims)
+{
+    bool modified = applyLimits(m_velocityLimits, vLims);
+    modified = applyLimits(m_accelerationLimits, aLims) || modified;
+    if (modified) update();
+}
+
+void Trajectory::assignLimits(std::vector<double>& limits, const std::vector<double>& newLimits)
+{
+    assert(limits.size() == newLimits.size());
+    limits = newLimits;
+
+    // Ensure that all limits are positive
+    for (double& lim : limits) lim = std::abs(lim);
+}
+bool Trajectory::applyLimits(std::vector<double>& limits, const std::vector<double>& additionalLimits)
+{
+    assert(limits.size() == additionalLimits.size());
+
     bool modified = false;
-    for (double& lim : m_accelerationLimits) {
-        if (std::abs(acceleration) < lim) {
-            lim = std::abs(acceleration);
+    for (uint32_t i = 0; i < limits.size(); i++) {
+        if (std::abs(additionalLimits[i]) < limits[i]) {
+            limits[i] = std::abs(additionalLimits[i]);
             modified = true;
         }
     }
 
-    if (modified) update();
+    return modified;
 }
 
 void Trajectory::setStep(double tStep)

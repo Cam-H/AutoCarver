@@ -13,22 +13,23 @@
 class Trajectory {
 public:
 
-    Trajectory();
+    Trajectory(uint32_t dof);
 
     void restart();
+    void finish();
 
     virtual void update() = 0;
 
     void setDuration(double duration);
 
+
     void setVelocityLimits(const std::vector<double>& vLims);
     void setAccelerationLimits(const std::vector<double>& aLims);
+    void setLimits(const std::vector<double>& vLims, const std::vector<double>& aLims);
 
-    inline void setVelocityLimit(double velocity) { setVelocityLimits(std::vector<double>(m_velocityLimits.size(), velocity)); }
-    inline void setAccelerationLimit(double acceleration) { setAccelerationLimits(std::vector<double>(m_accelerationLimits.size(), acceleration)); }
-
-    void limitVelocity(double velocity);
-    void limitAcceleration(double acceleration);
+    void limitVelocity(const std::vector<double>& vLims);
+    void limitAcceleration(const std::vector<double>& vLims);
+    void limit(const std::vector<double>& vLims, const std::vector<double>& aLims);
 
     void setStep(double tStep);
 
@@ -61,8 +62,14 @@ public:
     [[nodiscard]] Waypoint timestep(double delta);
     [[nodiscard]] virtual Waypoint evaluate(double t) const = 0;
 
+private:
+
+    static void assignLimits(std::vector<double>& limits, const std::vector<double>& newLimits);
+    static bool applyLimits(std::vector<double>& limits, const std::vector<double>& additionalLimits);
 
 protected:
+
+    uint32_t m_dof;
 
     double m_t;
     double m_tStep;

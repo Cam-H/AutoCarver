@@ -5,17 +5,15 @@
 #include "SimpleTrajectory.h"
 
 SimpleTrajectory::SimpleTrajectory(const Waypoint& start, const Waypoint& end, Interpolator::SolverType solverType)
-        : Trajectory()
+        : Trajectory(start.values.size())
 {
-    if (start.values.size() != end.values.size()) throw std::runtime_error("[SimpleTrajectory] Invalid waypoints. Dimensions do not match");
+    if (m_dof != end.values.size())  throw std::runtime_error("[SimpleTrajectory] Invalid waypoints. Dimensions do not match");
     else if (start.inDg != end.inDg) throw std::runtime_error("[SimpleTrajectory] Invalid waypoints. Must be in the same units");
 
     m_inDg = start.inDg;
-    m_velocityLimits = std::vector<double>(start.values.size(), std::numeric_limits<double>::max());
-    m_accelerationLimits = m_velocityLimits;
 
-    m_jointTrajectories.reserve(start.values.size());
-    for (uint32_t i = 0; i < start.values.size(); i++) {
+    m_jointTrajectories.reserve(m_dof);
+    for (uint32_t i = 0; i < m_dof; i++) {
         m_jointTrajectories.emplace_back(start.values[i], end.values[i], solverType);
     }
 
@@ -27,7 +25,7 @@ void SimpleTrajectory::update()
     m_minDuration = 0;
 
     m_maxVelocity = 0, m_maxAcceleration = 0;
-    for (uint32_t i = 0; i < m_jointTrajectories.size(); i++) {
+    for (uint32_t i = 0; i < m_dof; i++) {
         double vMax = m_jointTrajectories[i].maxVelocity(), aMax = m_jointTrajectories[i].maxAcceleration();
 
         m_minDuration = std::max(m_minDuration, vMax / m_velocityLimits[i]);
@@ -37,7 +35,7 @@ void SimpleTrajectory::update()
         m_maxAcceleration = std::max(m_maxAcceleration, std::min(aMax, m_accelerationLimits[i]));
     }
 
-    if (m_duration < m_minDuration) m_duration = m_minDuration;
+    m_duration = std::max(m_duration, m_minDuration);
 
     // Convert to window t = [0, duration]
     m_maxVelocity /= m_duration;
@@ -46,30 +44,30 @@ void SimpleTrajectory::update()
 
 Waypoint SimpleTrajectory::start() const
 {
-    std::vector<double> values(m_jointTrajectories.size());
-    for (uint32_t i = 0; i < m_jointTrajectories.size(); i++) values[i] = m_jointTrajectories[i].initialPosition();
+    std::vector<double> values(m_dof);
+    for (uint32_t i = 0; i < m_dof; i++) values[i] = m_jointTrajectories[i].initialPosition();
     return Waypoint(values, m_inDg);
 }
 
 Waypoint SimpleTrajectory::end() const
 {
-    std::vector<double> values(m_jointTrajectories.size());
-    for (uint32_t i = 0; i < m_jointTrajectories.size(); i++) values[i] = m_jointTrajectories[i].finalPosition();
+    std::vector<double> values(m_dof);
+    for (uint32_t i = 0; i < m_dof; i++) values[i] = m_jointTrajectories[i].finalPosition();
     return Waypoint(values, m_inDg);
 }
 
 std::vector<double> SimpleTrajectory::velocity(double t) const
 {
     double step = 1 / m_duration;
-    std::vector<double> values(m_jointTrajectories.size());
-    for (uint32_t i = 0; i < m_jointTrajectories.size(); i++) values[i] = step * m_jointTrajectories[i].velocity(t);
+    std::vector<double> values(m_dof);
+    for (uint32_t i = 0; i < m_dof; i++) values[i] = step * m_jointTrajectories[i].velocity(t);
     return values;
 }
 std::vector<double> SimpleTrajectory::acceleration(double t) const
 {
     double step = 1 / m_duration;
-    std::vector<double> values(m_jointTrajectories.size());
-    for (uint32_t i = 0; i < m_jointTrajectories.size(); i++) values[i] = step * m_jointTrajectories[i].acceleration(t);
+    std::vector<double> values(m_dof);
+    for (uint32_t i = 0; i < m_dof; i++) values[i] = step * m_jointTrajectories[i].acceleration(t);
     return values;
 }
 
@@ -86,7 +84,7 @@ Waypoint SimpleTrajectory::evaluate(double t) const
     else if (t < 0) return start();
 
     std::vector<double> values;
-    values.reserve(m_jointTrajectories.size());
+    values.reserve(m_dof);
 
     for (const Interpolator& jt : m_jointTrajectories) values.emplace_back(jt.position(t));
 

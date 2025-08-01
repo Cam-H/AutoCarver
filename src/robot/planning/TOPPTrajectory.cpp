@@ -7,22 +7,21 @@
 #include "core/Functions.h"
 #include "TOPP.h"
 
-TOPPTrajectory::TOPPTrajectory(const std::vector<Waypoint>& waypoints, double velocityLimit, double accelerationLimit)
-    : TOPPTrajectory(waypoints,
-                     std::vector<double>(waypoints.empty() ? 0 : waypoints[0].values.size(), velocityLimit),
-                     std::vector<double>(waypoints.empty() ? 0 : waypoints[0].values.size(), accelerationLimit))
-{
 
+TOPPTrajectory::TOPPTrajectory(const std::vector<Waypoint>& waypoints)
+    : Trajectory(!waypoints.empty() ? waypoints[0].values.size() : 0)
+    , m_path(waypoints)
+    , m_ds(m_path.sEnd())
+{
+    m_inDg = waypoints[0].inDg;
 }
 
 TOPPTrajectory::TOPPTrajectory(const std::vector<Waypoint>& waypoints, const std::vector<double>& vLims, const std::vector<double>& aLims)
-    : Trajectory()
-    , m_path(waypoints)
+    : TOPPTrajectory(waypoints)
 {
     assert(m_path.order() == vLims.size());
     assert(m_path.order() == aLims.size());
 
-    m_inDg = waypoints[0].inDg;
     m_velocityLimits = vLims;
     m_accelerationLimits = aLims;
 
@@ -31,14 +30,14 @@ TOPPTrajectory::TOPPTrajectory(const std::vector<Waypoint>& waypoints, const std
 
 void TOPPTrajectory::update()
 {
-    m_ds = m_path.sEnd() / (100 - 1);
-    TOPP solver(m_path, 100);
+    m_ds = m_path.sEnd() / (500 - 1);
+    TOPP solver(m_path, 500);
     solver.compute(m_velocityLimits, m_accelerationLimits);
 
     m_t = solver.timestep();
 
     m_minDuration = m_t.back();
-    if (m_duration < m_minDuration) m_duration = m_minDuration;
+    m_duration = std::max(m_duration, m_minDuration);
 
     double inv = 1 / m_duration;
     for (double& t : m_t) t *= inv;
