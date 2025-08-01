@@ -7,7 +7,7 @@
 
 #include "Trajectory.h"
 
-#include "Interpolator.h"
+#include "geometry/curves/Interpolator.h"
 #include "Waypoint.h"
 
 class SimpleTrajectory : public Trajectory {

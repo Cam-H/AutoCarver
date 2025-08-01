@@ -12,7 +12,7 @@
 class Robot;
 class Scene;
 
-#include "Trajectory.h"
+#include "robot/trajectory/Trajectory.h"
 
 class PathPlanner {
 public:

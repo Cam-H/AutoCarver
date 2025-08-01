@@ -5,7 +5,7 @@
 #ifndef MATHTEST_TOPP_H
 #define MATHTEST_TOPP_H
 
-#include "PiecewisePolyPath.h"
+#include "geometry/curves/PiecewisePolyPath.h"
 
 class TOPP {
 public:

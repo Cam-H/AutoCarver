@@ -11,9 +11,9 @@
 #include "physics/RigidBody.h"
 
 #include "geometry/Transformable.h"
-#include "planning/Trajectory.h"
 
 class Pose;
+class Trajectory;
 
 class Robot : public Transformable { // TODO make serializable
 public:
@@ -43,6 +43,7 @@ public:
     void traverse(const std::shared_ptr<Trajectory>& trajectory);
 
     [[nodiscard]] bool isValid() const;
+    [[nodiscard]] uint32_t dof() const;
 
     const std::vector<std::shared_ptr<RigidBody>>& links();
 

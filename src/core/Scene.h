@@ -35,6 +35,8 @@ public:
     virtual void step(double delta);
     void stop();
 
+    void setTimeScaling(double scalar);
+
     void connect(void(*function)());
 
     void clear(uint8_t level = 0);
@@ -67,6 +69,8 @@ protected:
     std::unique_ptr<std::thread> m_updateThread;
     bool m_running;
     bool m_paused;
+
+    double m_timeScalar;
 
     std::vector<void(*)()> callbacks;
 

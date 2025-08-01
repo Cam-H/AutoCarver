@@ -24,7 +24,7 @@
 #include "renderer/LineChartWidget.h"
 
 #include "renderer/UiLoader.h"
-#include "robot/planning/Trajectory.h"
+#include "robot/trajectory/Trajectory.h"
 #include "geometry/collision/Collision.h"
 #include "geometry/primitives/Plane.h"
 

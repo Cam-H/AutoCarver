@@ -7,8 +7,8 @@
 
 #include <vector>
 
-#include "Waypoint.h"
-#include "CubicSpline.h"
+#include "robot/trajectory/Waypoint.h"
+#include "geometry/curves/CubicSpline.h"
 
 class PiecewisePolyPath {
 public:

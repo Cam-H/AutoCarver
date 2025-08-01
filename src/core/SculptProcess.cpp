@@ -16,7 +16,11 @@
 #include "renderer/RenderCapture.h"
 
 #include "robot/Pose.h"
-#include "robot/planning/Trajectory.h"
+#include "robot/trajectory/SimpleTrajectory.h"
+#include "robot/trajectory/TOPPTrajectory.h"
+#include "robot/trajectory/CartesianTrajectory.h"
+#include "robot/trajectory/CompositeTrajectory.h"
+
 #include "geometry/MeshBuilder.h"
 #include "geometry/collision/Collision.h"
 
@@ -30,7 +34,8 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     , m_processCutEnable(true)
     , m_continuous(false)
     , m_fwd(1, 0, 0)
-    , m_lastestRobotCommand()
+    , m_latestRobotCommand()
+    , m_solver(Interpolator::SolverType::QUINTIC)
 {
     model->center();
     model->normalize();
@@ -47,7 +52,7 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     m_turntable = createRobot(chain);
     m_turntable->setEOAT(m_sculpture);
 
-    m_lastestTableCommand = m_turntable->getWaypoint();
+    m_latestTableCommand = m_turntable->getWaypoint();
 }
 
 SculptProcess::~SculptProcess()
@@ -142,7 +147,19 @@ void SculptProcess::setSculptingRobot(const std::shared_ptr<Robot>& robot){
 
     if (m_robot != nullptr) {
         m_fwd = glm::normalize(m_turntable->position() - m_robot->position());
-        m_lastestRobotCommand = m_robot->getWaypoint();
+        m_latestRobotCommand = m_robot->getWaypoint();
+        m_baseVelocityLimits = std::vector<double>(m_robot->dof(), M_PI / 2);
+        m_baseAccelerationLimits = std::vector<double>(m_robot->dof(), M_PI);
+        m_slowVelocityLimits = std::vector<double>(m_robot->dof(), M_PI);//TODO slowdown after testing
+
+        m_robotHome = m_robot->getWaypoint();
+
+        auto neutral = 1.3 * m_sculpture->height() * UP;
+        auto neutralPose = Pose(neutral, Axis3D(m_fwd));
+        neutralPose.localTranslate({ 0, 0.8 * m_sculpture->width(), 0 });
+        m_robotNeutral = m_robot->inverse(neutralPose);
+
+        assert(m_robotNeutral.values.size() == m_robot->dof());
     }
 }
 
@@ -191,14 +208,14 @@ void SculptProcess::planConvexTrim()
     for (Plane& step : steps) {
         std::cout << "Step [" << (&step - &steps[0]) << "]:\n";
         hull = planConvexTrim(hull, step);
-        if (m_actions.size() > 10) break;
+        if (m_actions.size() > 20) break;
 //        break;
     }
 }
 
 ConvexHull SculptProcess::planConvexTrim(const ConvexHull& hull, const Plane& plane)
 {
-    //    static std::array<double, 7> attemptOffsets = { 0, -M_PI / 32, M_PI / 32, -M_PI / 16, M_PI / 16, -M_PI / 8, M_PI / 8 };
+//    static std::array<double, 7> attemptOffsets = { 0, -M_PI / 4, M_PI / 4, -M_PI / 8, M_PI / 8, -M_PI / 16, M_PI / 16 };
     static std::array<double, 1> attemptOffsets = { 0 };
 
     auto border = Collision::intersection(hull, plane);
@@ -338,45 +355,20 @@ void SculptProcess::planFeatureRefinement()
 
 void SculptProcess::planTurntableAlignment(double theta)
 {
-//    std::vector<Waypoint> waypoints = {
-//            m_lastestTableCommand,
-//            { std::vector<double>{ theta }, 1, false}
-//    };
-//
-//    m_lastestTableCommand = waypoints.back();
-//
-//    auto trajectory = std::make_shared<Trajectory>(waypoints, Interpolator::SolverType::CUBIC);
-//    trajectory->setMaxVelocity(M_PI / 2);
-//
-//    m_actions.emplace_back(trajectory, m_turntable);
+    auto trajectory = std::make_shared<SimpleTrajectory>(m_latestTableCommand, Waypoint({ theta}, false), m_solver);
+    trajectory->setLimits({ M_PI / 2}, { M_PI });
+    m_latestTableCommand = trajectory->end();
+
+    m_actions.emplace_back(trajectory, m_turntable);
 }
 
 void SculptProcess::planRoboticSection(const std::shared_ptr<Trajectory>& trajectory)
 {
-
-    m_lastestRobotCommand = trajectory->end();
+    m_latestRobotCommand = trajectory->end();
 
     m_actions.emplace_back(trajectory, m_robot);
     m_actions[m_actions.size() - 1].trigger = true;
 }
-
-//void SculptProcess::planRoboticSection(const glm::dvec3& a, const glm::dvec3& b)
-//{
-//    glm::dvec3 delta = m_sculpture->position() - m_robot->position(), uDel = glm::normalize(delta);
-//    std::cout << "DEL: " << delta.x << " " << delta.y << " " << delta.z <<"\n";
-//    glm::dvec3 origin = border[0] - uDel * glm::dot(uDel, border[0]);
-//
-//    glm::vec4 calc = glm::vec4{ origin.x, origin.y, origin.z, 1 } * m_robot->getTransform();
-//    std::vector<Waypoint> waypoints = {
-//            m_robot->inverse({ calc.x, calc.y, calc.z }, { 0, -M_PI / 2, 0 })
-//    };
-//
-//    auto trajectory = std::make_shared<Trajectory>(waypoints, TrajectorySolverType::CUBIC);
-//    trajectory->setMaxVelocity(M_PI / 2);
-//
-//    m_actions.emplace_back(trajectory, m_robot);
-//    m_actions[m_actions.size() - 1].trigger = true;
-//}
 
 // Sectioning step wherein the robot moves to remove all material above the specified plane
 std::shared_ptr<Trajectory> SculptProcess::preparePlanarTrajectory(const Plane& plane, const std::vector<glm::dvec3>& border)
@@ -386,7 +378,7 @@ std::shared_ptr<Trajectory> SculptProcess::preparePlanarTrajectory(const Plane& 
     axes.rotateY();
 
     uint32_t minIndex, maxIndex;
-    VertexArray::extremes(border, plane.normal, minIndex, maxIndex);
+    VertexArray::extremes(border, axes.xAxis, minIndex, maxIndex);
     auto low = border[minIndex], high = border[maxIndex];
 
     // Bring the endpoints in plane with the normal m_fwd
@@ -395,38 +387,59 @@ std::shared_ptr<Trajectory> SculptProcess::preparePlanarTrajectory(const Plane& 
     else                  low  -= (lowOff - highOff) * m_fwd;
 
 
-    plane.print();
-    axes.print();
-    std::cout << "Split: " << low.x << " " << low.y << " " << low.z << "\n";
-    std::cout << "Split: " << high.x << " " << high.y << " " << high.z << "\n";
+//    plane.print();
+//    axes.print();
+//    std::cout << "Split: " << low.x << " " << low.y << " " << low.z << "\n";
+//    std::cout << "Split: " << high.x << " " << high.y << " " << high.z << "\n";
 
 //    glm::dvec3 startPos = { 0, 1, 0 };
 //    low = startPos, high = low + axes.xAxis;
 
     std::cout << "M: " << glm::to_string(axes.toTransform()) << "\n================\n";
-    const Waypoint& start = m_robot->inverse(Pose(low, axes));
-    const Waypoint& end = m_robot->inverse(Pose(high, axes));
 
-    // Skip if parts of this section are unreachable
-    if (start.values.empty() || end.values.empty()) return nullptr;
+    double runup = 0.05;
 
-//    std::vector<Waypoint> waypoints = {
-//            m_lastestRobotCommand,
-//            start,
-//            end
-//    };
-//
-//    auto trajectory = std::make_shared<Trajectory>(waypoints, TrajectorySolverType::CUBIC);
-//    trajectory->setMaxVelocity(M_PI / 2);
-//
-//    return trajectory;
+
+    // Try to generate a cartesian trajectory between the two points
+    auto startPose = Pose(low, axes);
+    startPose.localTranslate({ -runup, 0, 0 });
+    glm::dvec3 cutTranslation =  { (glm::dot(high - low, axes.xAxis) + 2 * runup), 0, 0 };
+    std::cout << cutTranslation.x << " " << cutTranslation.y << " " << cutTranslation.z << " LOCALIZED\n";
+    auto cutTrajectory = std::make_shared<CartesianTrajectory>(m_robot, startPose, cutTranslation);
+
+    if (cutTrajectory != nullptr) {
+
+        auto trajectory = std::make_shared<CompositeTrajectory>(m_robot->dof());
+        trajectory->setLimits(m_baseVelocityLimits, m_baseAccelerationLimits);
+
+        // Move to initial cut position
+        trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(m_latestRobotCommand, cutTrajectory->start(), m_solver));
+
+        // Pass through the cut
+        cutTrajectory->setLimits(m_slowVelocityLimits, m_baseAccelerationLimits);
+        trajectory->addTrajectory(cutTrajectory);
+
+        // Move off the piece
+        auto offPose = startPose;
+        offPose.localTranslate(cutTranslation);
+        offPose.localTranslate({ 0, 0.4, 0 });
+        trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(cutTrajectory->end(), m_robot->inverse(offPose), m_solver));
+
+        // Move to the neutral position
+        trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(trajectory->end(), m_robotNeutral, m_solver));
+
+        trajectory->update();
+
+        if (trajectory->validate(m_robot, 0.01)) return trajectory;
+    }
+
     return nullptr;
 }
 
 void SculptProcess::planRoboticSection(const std::vector<glm::dvec3>& border)
 {
     std::vector<Waypoint> waypoints = {
-            m_lastestRobotCommand,
+            m_latestRobotCommand,
             m_robot->getWaypoint()
     };
 

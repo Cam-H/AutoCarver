@@ -23,11 +23,11 @@
 #include "core/Timer.h"
 
 #include "robot/Pose.h"
-#include "robot/planning/Interpolator.h"
-#include "robot/planning/SimpleTrajectory.h"
-#include "robot/planning/TOPPTrajectory.h"
-#include "robot/planning/CompositeTrajectory.h"
-#include "robot/planning/TrajectoryBuilder.h"
+#include "geometry/curves/Interpolator.h"
+#include "robot/trajectory/SimpleTrajectory.h"
+#include "robot/trajectory/TOPPTrajectory.h"
+#include "robot/trajectory/CartesianTrajectory.h"
+#include "robot/trajectory/CompositeTrajectory.h"
 
 #endif
 
@@ -162,10 +162,10 @@ void applyWaypoint()
     sceneWidget->update();
 }
 
-std::tuple<std::vector<double>, std::vector<double>> getLimits()
+std::tuple<std::vector<double>, std::vector<double>> getLimits(double scalar)
 {
-    auto vLims = std::vector<double>(6, velField->value());
-    auto aLims = std::vector<double>(6, accField->value());
+    auto vLims = std::vector<double>(6, velField->value() * scalar);
+    auto aLims = std::vector<double>(6, accField->value() * scalar);
 
     return { vLims, aLims };
 }
@@ -449,8 +449,8 @@ int main(int argc, char *argv[])
 
     simpleTestButton = window->findChild<QPushButton*>("simpleTestButton");
     QObject::connect(simpleTestButton, &QRadioButton::clicked, [&]() {
-        const Waypoint& start = waypoints[wpStartField->value()], end = waypoints[wpEndField->value()];
-        auto [vLims, aLims] = getLimits();
+        const Waypoint& start = waypoints[wpStartField->value()].toRad(), end = waypoints[wpEndField->value()].toRad();
+        auto [vLims, aLims] = getLimits(M_PI / 180);
 
         auto traj = std::make_shared<SimpleTrajectory>(start, end, solver);
         traj->limit(vLims, aLims);
@@ -468,24 +468,27 @@ int main(int argc, char *argv[])
         auto startPose = robot->getPose();
         glm::dvec3 translation = { dxField->value(), dyField->value(), dzField->value() };
 
-        auto [vLims, aLims] = getLimits();
+        auto [vLims, aLims] = getLimits(M_PI / 180);
 
-        auto traj = TrajectoryBuilder::cartesianMotion(robot, startPose, translation, vLims, aLims);
-        if (traj != nullptr) test(traj);
+        auto traj = std::make_shared<CartesianTrajectory>(robot, startPose, translation);
+        traj->setLimits(vLims, aLims);
+
+        if (traj->validate(robot, 0.01)) test(traj);
+        else std::cout << "Validation failed!\n";
     });
 
 
     compositeTestButton = window->findChild<QPushButton*>("compositeTestButton");
     QObject::connect(compositeTestButton, &QRadioButton::clicked, [&]() {
-        const Waypoint& start = waypoints[wpStartField->value()], mid = waypoints[wpEndField->value()];
+        const Waypoint& start = waypoints[wpStartField->value()].toRad(), mid = waypoints[wpEndField->value()].toRad();
         auto midPose = robot->getPose(mid);
         glm::dvec3 translation = { dxField->value(), dyField->value(), dzField->value() };
 
-        auto [vLims, aLims] = getLimits();
+        auto [vLims, aLims] = getLimits(M_PI / 180);
         auto traj = std::make_shared<CompositeTrajectory>(6);
         traj->setLimits(vLims, aLims);
         traj->addTrajectory(std::make_shared<SimpleTrajectory>(start, mid, solver));
-        traj->addTrajectory(TrajectoryBuilder::cartesianMotion(robot, midPose, translation));
+        traj->addTrajectory(std::make_shared<CartesianTrajectory>(robot, midPose, translation));
         traj->update();
         test(traj);
     });

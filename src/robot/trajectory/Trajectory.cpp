@@ -183,3 +183,15 @@ Waypoint Trajectory::timestep(double delta)
     else return evaluate(m_t += delta / m_duration);
 }
 
+bool Trajectory::validate(const std::shared_ptr<Robot>& robot, double dt) const
+{
+    if (dt <= 1e-6) throw std::runtime_error("[Trajectory] Can not validate. Invalid dt provided");
+
+//    double t = dt;
+//    while (t < 1) {
+//        // TODO joint limits
+//        t += dt;
+//    }
+
+    return true;
+}

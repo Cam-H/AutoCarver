@@ -44,6 +44,10 @@ Pose operator*(const glm::dmat4& lhs, const Pose& rhs)
 //
 //}
 
+glm::dvec3 Pose::localize(const glm::dvec3& vertex) const
+{
+    return axes.localize(vertex - position);
+}
 
 bool Pose::oriented(const Pose& pose, double tolerance) const
 {

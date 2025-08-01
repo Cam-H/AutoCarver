@@ -10,6 +10,7 @@
 class Ray {
 public:
 
+    Ray();
     Ray(const glm::dvec3& origin, const glm::dvec3& axis);
 
     [[nodiscard]] bool isValid() const;

@@ -5,9 +5,9 @@
 #include <sstream>
 #include <iomanip>
 
-#include "robot/planning/Waypoint.h"
-#include "robot/planning/PiecewisePolyPath.h"
-#include "robot/planning/TOPP.h"
+#include "robot/trajectory/Waypoint.h"
+#include "geometry/curves/PiecewisePolyPath.h"
+#include "robot/trajectory/TOPP.h"
 
 inline static std::string toString(double value, int precision)
 {

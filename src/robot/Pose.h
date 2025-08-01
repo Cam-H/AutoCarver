@@ -24,6 +24,9 @@ public:
     friend Pose operator*(const glm::dmat4& lhs, const Pose& rhs);
 //    friend Pose operator*(const Pose& lhs, const glm::dmat4& rhs);
 
+    // Returns the position of the vertex local to this pose
+    [[nodiscard]] glm::dvec3 localize(const glm::dvec3& vertex) const;
+
     // Returns true if the pose is oriented in the same direction
     [[nodiscard]] bool oriented(const Pose& pose, double tolerance = 1e-12) const;
     [[nodiscard]] bool oriented(const Axis3D& system, double tolerance = 1e-12) const;

@@ -4,6 +4,13 @@
 
 #include "Ray.h"
 
+Ray::Ray()
+    : origin({})
+    , axis({ 0, 1, 0 })
+{
+
+}
+
 Ray::Ray(const glm::dvec3& origin, const glm::dvec3& axis)
     : origin(origin)
     , axis(axis)

@@ -13,6 +13,7 @@
 
 #include "geometry/MeshBuilder.h"
 #include "Pose.h"
+#include "trajectory/Trajectory.h"
 #include "core/Functions.h"
 
 Robot::Robot(const std::shared_ptr<KinematicChain>& kinematics, const std::shared_ptr<RigidBody>& eoat)
@@ -170,6 +171,12 @@ void Robot::updateTransforms()
 bool Robot::isValid() const
 {
     return m_kinematics != nullptr && m_kinematics->jointCount() > 0;
+}
+
+uint32_t Robot::dof() const
+{
+    if (m_kinematics == nullptr) return 0;
+    return m_kinematics->jointCount();
 }
 
 const std::vector<std::shared_ptr<RigidBody>>& Robot::links()

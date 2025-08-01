@@ -3,6 +3,7 @@
 #include <QSurfaceFormat>
 #include <QMainWindow>
 #include <QPushButton>
+#include <QDoubleSpinBox>
 #include <QVBoxLayout>
 #include <QCheckBox>
 
@@ -29,6 +30,8 @@ std::shared_ptr<Robot> robot = nullptr;
 std::shared_ptr<SculptProcess> scene = nullptr;
 SceneWidget* sceneWidget = nullptr;
 
+QCheckBox *contButton = nullptr;
+QDoubleSpinBox *timeField = nullptr;
 QPushButton *stepButton = nullptr, *skipButton = nullptr;
 
 static QWidget *loadUiFile(QWidget *parent)
@@ -97,6 +100,16 @@ int main(int argc, char *argv[])
         if (checked) sceneWidget->show(0, Scene::Model::HULL);
         else sceneWidget->hide(0, Scene::Model::HULL);
         sceneWidget->update();
+    });
+
+    contButton = window->findChild<QCheckBox*>("contButton");
+    QObject::connect(contButton, &QCheckBox::clicked, [&](bool checked) {
+        scene->setContinuous(checked);
+    });
+
+    timeField = window->findChild<QDoubleSpinBox*>("timeField");
+    QObject::connect(timeField, &QDoubleSpinBox::valueChanged, [&](double value) {
+        scene->setTimeScaling(value);
     });
 
     stepButton = window->findChild<QPushButton*>("stepButton");

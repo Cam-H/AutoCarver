@@ -11,12 +11,12 @@
 #include <memory>
 
 #include "Waypoint.h"
-#include "PiecewisePolyPath.h"
+#include "geometry/curves/PiecewisePolyPath.h"
 
 class TOPPTrajectory : public Trajectory {
 public:
 
-    TOPPTrajectory(const std::vector<Waypoint>& waypoints);
+    explicit TOPPTrajectory(const std::vector<Waypoint>& waypoints);
     TOPPTrajectory(const std::vector<Waypoint>& waypoints, const std::vector<double>& vLims, const std::vector<double>& aLims);
 
     void update() override;
@@ -31,11 +31,13 @@ public:
 
     [[nodiscard]] Waypoint evaluate(double t) const override;
 
-private:
+    [[nodiscard]] bool validate(const std::shared_ptr<Robot>& robot, double dt) const override;
+
+protected:
 
     [[nodiscard]] std::tuple<double, double> tToS(double t) const;
 
-private:
+protected:
 
     PiecewisePolyPath m_path;
 

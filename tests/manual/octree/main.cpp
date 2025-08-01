@@ -23,7 +23,7 @@
 #include "renderer/LineChartWidget.h"
 
 #include "renderer/UiLoader.h"
-#include "robot/planning/Trajectory.h"
+#include "robot/trajectory/Trajectory.h"
 
 #endif
 

@@ -8,6 +8,7 @@
 
 CompositeTrajectory::CompositeTrajectory(uint32_t dof)
         : Trajectory(dof)
+        , m_valid(true)
 {
 
 }
@@ -17,11 +18,11 @@ void CompositeTrajectory::addTrajectory(const std::shared_ptr<Trajectory>& traje
     if (trajectory != nullptr) {
         m_trajectories.push_back(trajectory);
 
-        std::cout << m_velocityLimits.size() << " " << m_accelerationLimits.size() << " " << trajectory->velocityLimits().size() << " " << trajectory->accelerationLimits().size() << "sdai\n";
-
         // TODO ensure all same units [dg or rad]
+    } else {
+        std::cout << "Failed to add trajectory. The trajectory provided is invalid\n";
+        m_valid = false;
     }
-    else std::cout << "Failed to add trajectory. The trajectory provided is invalid\n";
 }
 
 void CompositeTrajectory::update()
@@ -81,6 +82,19 @@ Waypoint CompositeTrajectory::evaluate(double t) const
 {
     auto [index, subT] = transform(t);
     return m_trajectories[index]->evaluate(subT);
+}
+
+bool CompositeTrajectory::validate(const std::shared_ptr<Robot>& robot, double dt) const
+{
+    if (m_valid && Trajectory::validate(robot, dt)) {
+        for (const std::shared_ptr<Trajectory>& traj : m_trajectories) {
+            if (!traj->validate(robot, dt)) return false;
+        }
+
+        return true;
+    }
+
+    return false;
 }
 
 // Identify the appropriate section based on t, and transform to match

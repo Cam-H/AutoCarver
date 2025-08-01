@@ -30,6 +30,8 @@ TOPPTrajectory::TOPPTrajectory(const std::vector<Waypoint>& waypoints, const std
 
 void TOPPTrajectory::update()
 {
+    if (m_path.empty()) return;
+
     m_ds = m_path.sEnd() / (500 - 1);
     TOPP solver(m_path, 500);
     solver.compute(m_velocityLimits, m_accelerationLimits);
@@ -81,6 +83,11 @@ Waypoint TOPPTrajectory::evaluate(double t) const
 {
     auto [s, dt] = tToS(t);
     return Waypoint(m_path.evaluate(s), m_inDg);
+}
+
+bool TOPPTrajectory::validate(const std::shared_ptr<Robot>& robot, double dt) const
+{
+    return !m_path.empty() && Trajectory::validate(robot, dt);
 }
 
 // Identifies the region based on t, returning s and dt, the time interval for the segment

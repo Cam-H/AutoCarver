@@ -13,6 +13,7 @@ Scene::Scene()
     : m_updateThread(nullptr)
     , m_running(false)
     , m_paused(false)
+    , m_timeScalar(1.0)
 {
 
 }
@@ -76,6 +77,8 @@ void Scene::pause()
 
 void Scene::step(double delta)
 {
+    delta *= m_timeScalar;
+
     // Update robots
 //    for (const std::shared_ptr<Robot>& robot : m_robots) robot->step();
     for (const std::shared_ptr<Robot>& robot : m_robots) robot->step(delta);
@@ -135,6 +138,11 @@ void Scene::step(double delta)
 void Scene::stop()
 {
     m_running = false;
+}
+
+void Scene::setTimeScaling(double scalar)
+{
+    m_timeScalar = scalar;
 }
 
 void Scene::connect(void(*function)())

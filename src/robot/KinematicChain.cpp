@@ -11,7 +11,7 @@
 #include <gtc/epsilon.hpp>
 
 #include "Pose.h"
-#include "planning/Waypoint.h"
+#include "robot/trajectory/Waypoint.h"
 #include "geometry/Transformable.h"
 
 KinematicChain::KinematicChain()

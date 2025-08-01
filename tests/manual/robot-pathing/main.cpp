@@ -23,9 +23,9 @@
 #include "renderer/LineChartWidget.h"
 
 #include "renderer/UiLoader.h"
-#include "robot/planning/SimpleTrajectory.h"
-#include "robot/planning/TOPPTrajectory.h"
-#include "robot/planning/Interpolator.h"
+#include "robot/trajectory/SimpleTrajectory.h"
+#include "robot/trajectory/TOPPTrajectory.h"
+#include "geometry/curves/Interpolator.h"
 
 #include "core/Timer.h"
 

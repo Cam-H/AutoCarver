@@ -9,7 +9,7 @@
 
 PiecewisePolyPath::PiecewisePolyPath(const std::vector<Waypoint>& waypoints)
 {
-    if (waypoints.size() < 2) throw std::runtime_error("[PiecewisePolyPath] Can not generate path. Insufficient waypoints");
+    if (waypoints.size() < 2) return; // No initialization with insufficient waypoints
 
     uint32_t order = waypoints[0].values.size();
     for (uint32_t i = 1; i < waypoints.size(); i++) {
@@ -57,7 +57,7 @@ uint32_t PiecewisePolyPath::order() const
 
 double PiecewisePolyPath::sEnd() const
 {
-    return m_breakpoints.back();
+    return !m_breakpoints.empty() * m_breakpoints.back();
 }
 
 bool PiecewisePolyPath::empty() const

@@ -12,7 +12,7 @@
 class CompositeTrajectory : public Trajectory {
 public:
 
-    CompositeTrajectory(uint32_t dof);
+    explicit CompositeTrajectory(uint32_t dof);
 
     void update() override;
 
@@ -28,6 +28,8 @@ public:
 
     [[nodiscard]] Waypoint evaluate(double t) const override;
 
+    [[nodiscard]] bool validate(const std::shared_ptr<Robot>& robot, double dt) const override;
+
 private:
 
     [[nodiscard]] std::tuple<uint32_t, double> transform(double t) const;
@@ -35,6 +37,7 @@ private:
 private:
 
     std::vector<std::shared_ptr<Trajectory>> m_trajectories;
+    bool m_valid;
 };
 
 

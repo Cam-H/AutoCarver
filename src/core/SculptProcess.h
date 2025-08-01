@@ -13,10 +13,12 @@
 #include "geometry/Mesh.h"
 #include "core/Sculpture.h"
 
+#include "geometry/curves/Interpolator.h"
+#include "robot/trajectory/Waypoint.h"
+
 class Profile;
 
 const static glm::dvec3 UP = { 0, 1, 0};
-
 
 class SculptProcess : public Scene {
 public:
@@ -94,8 +96,16 @@ private:
     std::shared_ptr<Robot> m_robot;
     glm::dvec3 m_fwd;
 
-    Waypoint m_lastestTableCommand;
-    Waypoint m_lastestRobotCommand;
+    std::vector<double> m_baseVelocityLimits, m_baseAccelerationLimits;
+    std::vector<double> m_slowVelocityLimits; // TODO use cartesian speed limit (Needs further trajectory development)
+
+    Waypoint m_robotHome;
+    Waypoint m_robotNeutral;
+
+    Waypoint m_latestTableCommand;
+    Waypoint m_latestRobotCommand;
+
+    Interpolator::SolverType m_solver;
 
     std::vector<Action> m_actions;
 

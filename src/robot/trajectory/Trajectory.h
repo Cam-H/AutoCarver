@@ -6,14 +6,16 @@
 #define AUTOCARVER_TRAJECTORY_H
 
 #include <vector>
+#include <memory>
 
 #include "Waypoint.h"
 
+#include "robot/Robot.h"
 
 class Trajectory {
 public:
 
-    Trajectory(uint32_t dof);
+    explicit Trajectory(uint32_t dof);
 
     void restart();
     void finish();
@@ -61,6 +63,9 @@ public:
     [[nodiscard]] Waypoint next();
     [[nodiscard]] Waypoint timestep(double delta);
     [[nodiscard]] virtual Waypoint evaluate(double t) const = 0;
+
+    // Verify that every position of the trajectory is reachable by the specified robot. Tests 1/dt equally spaced positions
+    [[nodiscard]] virtual bool validate(const std::shared_ptr<Robot>& robot, double dt) const; // TODO Also: scene collisions
 
 private:
 
