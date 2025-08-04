@@ -48,6 +48,10 @@ public:
     bool simulationIdle() const;
     bool simulationActive() const;
 
+    const std::shared_ptr<Robot>& getSculptor() const;
+    const std::shared_ptr<Robot>& getTurntable() const;
+
+
 //    std::shared_ptr<Mesh> sculpture();
 
 private:
@@ -78,7 +82,7 @@ private:
 
     void planRoboticSection(const std::shared_ptr<Trajectory>& trajectory);
 
-    std::shared_ptr<Trajectory> preparePlanarTrajectory(const Plane& plane, const std::vector<glm::dvec3>& border);
+    std::shared_ptr<Trajectory> preparePlanarTrajectory(const Axis3D& axes, const std::vector<glm::dvec3>& border);
     void planRoboticSection(const std::vector<glm::dvec3>& border);
 
     void nextAction();

@@ -42,6 +42,9 @@ public:
 
     [[nodiscard]] std::vector<glm::dmat4> jointTransforms() const;
 
+    [[nodiscard]] const glm::dmat3& axisInversion() const;
+    [[nodiscard]] const glm::dmat4& inversion() const;
+
 protected:
 
     virtual std::vector<double> invkin(const glm::dvec3& position, const glm::dquat& rotation);

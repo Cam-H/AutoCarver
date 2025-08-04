@@ -18,7 +18,7 @@ Trajectory::Trajectory(uint32_t dof)
     , m_maxAcceleration(0.0)
     , m_inDg(false)
 {
-    assert(m_dof > 0);
+
 }
 
 void Trajectory::restart()
@@ -193,5 +193,5 @@ bool Trajectory::validate(const std::shared_ptr<Robot>& robot, double dt) const
 //        t += dt;
 //    }
 
-    return true;
+    return m_dof > 0;
 }

@@ -14,11 +14,11 @@
 #include <cmath>
 #include <utility>
 
-VertexArray::VertexArray(const double* vertices, uint32_t vertexCount)
-    : m_vertices(vertexCount)
-{
-    memcpy(m_vertices.data(), vertices, vertexCount * STRIDE * sizeof(double));
-}
+//VertexArray::VertexArray(const double* vertices, uint32_t vertexCount)
+//    : m_vertices(vertexCount)
+//{
+//    memcpy(m_vertices.data(), vertices, vertexCount * STRIDE * sizeof(double));
+//}
 
 VertexArray::VertexArray(uint32_t vertexCount)
         : m_vertices(vertexCount)
@@ -111,13 +111,21 @@ void VertexArray::translate(const glm::dvec3& translation)
 
 void VertexArray::rotate(const glm::dvec3& axis, double theta)
 {
-    rotate(m_vertices, axis, theta);
+    rotate(m_vertices, glm::angleAxis(theta, axis));
+}
+
+void VertexArray::rotate(const glm::dquat& rotation)
+{
+    rotate(m_vertices, rotation);
 }
 
 void VertexArray::rotate(std::vector<glm::dvec3>& vertices, const glm::dvec3& axis, double theta)
 {
-    glm::dquat rotation = glm::angleAxis(theta, axis);
+    rotate(vertices, glm::angleAxis(theta, axis));
+}
 
+void VertexArray::rotate(std::vector<glm::dvec3>& vertices, const glm::dquat& rotation)
+{
     for (glm::dvec3& vertex : vertices) {
         vertex = vertex * rotation;
     }
@@ -125,8 +133,11 @@ void VertexArray::rotate(std::vector<glm::dvec3>& vertices, const glm::dvec3& ax
 
 std::vector<glm::dvec3> VertexArray::rotated(const std::vector<glm::dvec3>& vertices, const glm::dvec3& axis, double theta)
 {
-    glm::dquat rotation = glm::angleAxis(theta, axis);
+    return rotated(vertices, glm::angleAxis(theta, axis));
+}
 
+std::vector<glm::dvec3> VertexArray::rotated(const std::vector<glm::dvec3>& vertices, const glm::dquat& rotation)
+{
     std::vector<glm::dvec3> rotatedVertices;
     rotatedVertices.reserve(vertices.size());
 

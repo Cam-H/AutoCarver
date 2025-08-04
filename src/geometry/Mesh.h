@@ -13,6 +13,7 @@
 #include "fileIO/Serializable.h"
 
 #include "MeshBuilder.h"
+#include "fileIO/MeshHandler.h"
 #include "geometry/primitives/ConvexHull.h"
 
 #include "VertexArray.h"
@@ -25,17 +26,14 @@ class Mesh : public Serializable {
 public:
 
     friend class MeshBuilder;
+    friend class MeshHandler;
 
-    explicit Mesh(double vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t indexCount);
     explicit Mesh(const ConvexHull& hull, bool applyColorPattern = true);
 
-    explicit Mesh(const double *vertices, uint32_t vertexCount, const uint32_t *faceIndices, const uint32_t *faceSizes, uint32_t faceCount);
     explicit Mesh(const std::vector<glm::dvec3>& vertices, const std::vector<Triangle>& faces);
 
     explicit Mesh(const std::string& filename);
     explicit Mesh(std::ifstream& file);
-
-    explicit Mesh(VertexArray vertices, FaceArray faces);
 
     Mesh(uint32_t vertexCount, uint32_t faceCount, uint32_t indexCount);
 
@@ -49,6 +47,7 @@ public:
     void scale(const glm::dvec3& scale);
     void translate(const glm::dvec3& translation);
     void rotate(const glm::dvec3& axis, double theta);
+    void rotate(const glm::dquat& rotation);
 
     void normalize(double scalar = 1.0f);
     void center();
@@ -113,6 +112,8 @@ public:
     void print() const;
 
 private:
+
+    Mesh();
 
     void initialize();
 

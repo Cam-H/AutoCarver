@@ -5,7 +5,9 @@
 #ifndef AUTOCARVER_MESHHANDLER_H
 #define AUTOCARVER_MESHHANDLER_H
 
-#include "../geometry/Mesh.h"
+#include <memory>
+
+class Mesh;
 
 class MeshHandler {
 public:

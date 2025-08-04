@@ -27,6 +27,8 @@ SceneWidget::SceneWidget(const std::shared_ptr<Scene>& scene, QWidget* parent)
     , m_rotationSensitivity(0.4f)
     , m_zoomSensitivity(0.0005f)
     , m_zoomExponential(0.2f)
+    , m_axes(MeshBuilder::axes(Axis3D()))
+    , m_showAxes(true)
     , QOpenGLWidget(parent)
 {
 }
@@ -248,6 +250,11 @@ std::vector<std::shared_ptr<Mesh>> SceneWidget::selectAll(Scene::Model target)
     return selection;
 }
 
+void SceneWidget::enableAxes(bool enable)
+{
+    m_showAxes = enable;
+}
+
 void SceneWidget::start()
 {
     if (m_timer == nullptr) {
@@ -347,6 +354,9 @@ void SceneWidget::paintGL()
             render(body->mesh(), transform, true);
             render(body->hullMesh(), transform, false);
             render(body->bSphereMesh(), transform, false);
+            if (m_showAxes && m_axes != nullptr && body->isAxisEnabled()) {
+                render(m_axes, transform, true);
+            }
         }
     }
 }

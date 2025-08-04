@@ -14,6 +14,7 @@
 #include <iostream>
 
 #include "core/Timer.h"
+#include "../geometry/Mesh.h"
 
 std::shared_ptr<Mesh> MeshHandler::loadAsMeshBody(const std::string& filepath, double scalar)
 {
@@ -31,6 +32,7 @@ std::shared_ptr<Mesh> MeshHandler::loadAsMeshBody(const std::string& filepath, d
         return nullptr;
     }
 
+    // Capture number of features
     uint32_t vertexCount = 0, faceCount = 0, indexCount = 0;
     for (uint32_t i = 0; i < scene->mNumMeshes; i++) {
         vertexCount += scene->mMeshes[i]->mNumVertices;
@@ -40,32 +42,50 @@ std::shared_ptr<Mesh> MeshHandler::loadAsMeshBody(const std::string& filepath, d
         }
     }
 
-    double *vertices = new double[3 * vertexCount], *vPtr = vertices;
-    uint32_t *faces = new uint32_t[3 * indexCount], *faceSizes = new uint32_t[faceCount], *fPtr = faces, *fsPtr = faceSizes, offset = 0;
+    // Capture materials
+    std::vector<glm::dvec3> diffuseColors;
+    for (uint32_t i = 0; i < scene->mNumMaterials; i++) {
+        aiColor4D diffuse;
+        aiGetMaterialColor(scene->mMaterials[i], AI_MATKEY_COLOR_DIFFUSE, &diffuse);
+        diffuseColors.emplace_back(diffuse.r, diffuse.g, diffuse.b);
+    }
+
+    auto mesh = std::make_shared<Mesh>(vertexCount, faceCount, indexCount);
+
+    uint32_t vIdx = 0;
+    uint32_t *idxPtr = mesh->m_faces[0], *sizePtr = mesh->m_faces.faceSizes(), vOffset = 0, idxOffset = 0;
 
     // Convert file content to a usable format
     for (uint32_t i = 0; i < scene->mNumMeshes; i++) {
+
+        // Capture vertex positions
         for (uint32_t j = 0; j < scene->mMeshes[i]->mNumVertices; j++) {
-            *vPtr++ = scene->mMeshes[i]->mVertices[j].x * scalar;
-            *vPtr++ = scene->mMeshes[i]->mVertices[j].y * scalar;
-            *vPtr++ = scene->mMeshes[i]->mVertices[j].z * scalar;
+            mesh->m_vertices[vIdx++] = scalar * glm::dvec3(
+                    scene->mMeshes[i]->mVertices[j].x,
+                    scene->mMeshes[i]->mVertices[j].y,
+                    scene->mMeshes[i]->mVertices[j].z
+            );
         }
 
+//        std::cout << i << "| " << scene->mMeshes[i]->mNumVertices << " " << scene->mMeshes[i]->mNumFaces << "\n";
+
+        // Capture faces
         for (uint32_t j = 0; j < scene->mMeshes[i]->mNumFaces; j++) {
-            *fsPtr++ = scene->mMeshes[i]->mFaces[j].mNumIndices;
+            *sizePtr++ = scene->mMeshes[i]->mFaces[j].mNumIndices;
             for (uint32_t k = 0; k < scene->mMeshes[i]->mFaces[j].mNumIndices; k++) {
-                *fPtr++ = scene->mMeshes[i]->mFaces[j].mIndices[k] + offset;
+                *idxPtr++ = scene->mMeshes[i]->mFaces[j].mIndices[k] + vOffset;
             }
+
+//            std::cout << j << "J " << scene->mMeshes[i]->mFaces[j].mNumIndices << "\n";
+            mesh->m_faces.setColor(j + idxOffset, diffuseColors[scene->mMeshes[i]->mMaterialIndex]);
         }
 
-        offset += scene->mMeshes[i]->mNumVertices;
+        vOffset += scene->mMeshes[i]->mNumVertices;
+        idxOffset += scene->mMeshes[i]->mNumFaces;
     }
 
-    auto mesh = std::make_shared<Mesh>(vertices, vertexCount, faces, faceSizes, faceCount);
 
-    delete[] vertices;
-    delete[] faces;
-    delete[] faceSizes;
+    mesh->initialize();
 
     return mesh;
 }

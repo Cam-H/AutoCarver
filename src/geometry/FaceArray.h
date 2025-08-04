@@ -16,10 +16,7 @@ class FaceArray {
 public:
     FaceArray(uint32_t faceCount, uint32_t indexCount);
 
-    FaceArray(const uint32_t* indices, uint32_t triangleCount);
     explicit FaceArray(const std::vector<Triangle>& faces);
-
-    FaceArray(const uint32_t* faces, const uint32_t* faceSizes, uint32_t faceCount);
 
     explicit FaceArray(const std::vector<std::vector<uint32_t>>& indices);
 
@@ -76,6 +73,8 @@ public:
 
     [[nodiscard]] uint32_t size() const; // Get the size of the array in bytes
     [[nodiscard]] bool empty() const;
+
+    [[nodiscard]] bool isValid() const;
 
     void print() const;
 

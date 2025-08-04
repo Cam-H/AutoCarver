@@ -462,20 +462,20 @@ std::shared_ptr<Mesh> MeshBuilder::composite(const std::vector<ConvexHull>& hull
     return mesh;
 }
 
-std::shared_ptr<Mesh> MeshBuilder::eliminateCoincidentVertices(const std::shared_ptr<Mesh>& mesh)
-{
-
-    // Convert vertex data to a more convenient format
-    std::vector<glm::dvec3> v(mesh->vertexCount());
-    for (uint32_t i = 0; i < v.size(); i++) v[i] = mesh->vertices()[i];
-
-    std::vector<std::vector<uint32_t>> f;
-    f.reserve(mesh->faceCount());
-
-    eliminateCoincidentVertices(mesh->faces(), v, f);
-
-    return std::make_shared<Mesh>(VertexArray(v), FaceArray(f));
-}
+//std::shared_ptr<Mesh> MeshBuilder::eliminateCoincidentVertices(const std::shared_ptr<Mesh>& mesh)
+//{
+//
+//    // Convert vertex data to a more convenient format
+//    std::vector<glm::dvec3> v(mesh->vertexCount());
+//    for (uint32_t i = 0; i < v.size(); i++) v[i] = mesh->vertices()[i];
+//
+//    std::vector<std::vector<uint32_t>> f;
+//    f.reserve(mesh->faceCount());
+//
+//    eliminateCoincidentVertices(mesh->faces(), v, f);
+//
+//    return std::make_shared<Mesh>(VertexArray(v), FaceArray(f));
+//}
 
 void MeshBuilder::eliminateCoincidentVertices(const FaceArray& srcFaces, std::vector<glm::dvec3>& vertices, std::vector<std::vector<uint32_t>>& faces)
 {
@@ -518,32 +518,32 @@ void MeshBuilder::eliminateCoincidentVertices(const FaceArray& srcFaces, std::ve
     }
 }
 
-std::shared_ptr<Mesh> MeshBuilder::cleaned(const std::shared_ptr<Mesh>& mesh)
-{
-    return cleaned(mesh->vertices(), mesh->faces());
-}
-
-std::shared_ptr<Mesh> MeshBuilder::cleaned(const VertexArray& vertices, const FaceArray& faces)
-{
-
-    // Convert vertex data to a more convenient format
-    std::vector<glm::dvec3> v(vertices.length());
-    for (uint32_t i = 0; i < v.size(); i++) v[i] = vertices[i];
-
-    std::vector<std::vector<uint32_t>> f;
-    f.reserve(faces.faceCount());
-
-    eliminateCoincidentVertices(faces, v, f);
-
-    // Calculate face normals
-    std::vector<glm::dvec3> normals;
-    normals.reserve(f.size());
-    for (std::vector<uint32_t>& face : f) {
-        normals.push_back(glm::normalize(glm::cross(v[face[1]] - v[face[0]], v[face[2]] - v[face[0]])));
-    }
-
-    return cleaned(v, normals, FaceArray(f));
-}
+//std::shared_ptr<Mesh> MeshBuilder::cleaned(const std::shared_ptr<Mesh>& mesh)
+//{
+//    return cleaned(mesh->vertices(), mesh->faces());
+//}
+//
+//std::shared_ptr<Mesh> MeshBuilder::cleaned(const VertexArray& vertices, const FaceArray& faces)
+//{
+//
+//    // Convert vertex data to a more convenient format
+//    std::vector<glm::dvec3> v(vertices.length());
+//    for (uint32_t i = 0; i < v.size(); i++) v[i] = vertices[i];
+//
+//    std::vector<std::vector<uint32_t>> f;
+//    f.reserve(faces.faceCount());
+//
+//    eliminateCoincidentVertices(faces, v, f);
+//
+//    // Calculate face normals
+//    std::vector<glm::dvec3> normals;
+//    normals.reserve(f.size());
+//    for (std::vector<uint32_t>& face : f) {
+//        normals.push_back(glm::normalize(glm::cross(v[face[1]] - v[face[0]], v[face[2]] - v[face[0]])));
+//    }
+//
+//    return cleaned(v, normals, FaceArray(f));
+//}
 
 size_t MeshBuilder::hash(const glm::dvec3& vec, double factor)
 {
@@ -561,180 +561,180 @@ size_t MeshBuilder::cantor(size_t a, size_t b)
     return (a + b + 1) * (a + b) / 2 + b;
 }
 
-std::shared_ptr<Mesh> MeshBuilder::cleaned(std::vector<glm::dvec3>& vertices, const std::vector<glm::dvec3>& normals, const FaceArray& faces)
-{
-
-//    std::cout << "\033[31mMesh Input is: " << isManifold(faces) << "\033[0m\n";
-
-
-
-    // Generate linked list of faces and their neighbors
-    std::vector<std::vector<uint32_t>> neighbors = faces.adjacencies();
-    std::vector<std::vector<uint32_t>> indices;
-
-    std::cout << "XXXXXXXXXXXXXXXXXXXX\n";
-//    for (const glm::dvec3& vertex : vertices) std::cout << vertex << "\n";
-    faces.print();
-
-    std::cout << "~~~~~~~~~~~~~~" << neighbors.size() << " " << faces.faceCount() << "~~~~~~~~~~~~~~\n";
-
-    faces.print();
-
-    // Identify faces to merge based on direction of the face normals
-    auto state = std::vector<uint8_t>(faces.faceCount());
-
-    // TODO handle more than just triangle primitives
-    for (uint32_t i = 0; i < faces.faceCount(); i++) {
-        if (state[i]) continue; // Skip faces that have already been considered
-        state[i] = 2;
-
-        std::vector<uint32_t> &face = indices.emplace_back();
-        auto ptr = faces[i];
-        for (uint32_t j = 0; j < faces.faceSizes()[i]; j++) face.emplace_back(ptr[j]);
-
-//        std::cout << "F" << i << ": " << normals[i] << "\n|" << i << "| ";
-
-        for (unsigned int k : face) std::cout << k << " ";
-        std::cout << "| ";
-        for (uint32_t ni : neighbors[i]) std::cout << ni << " ";
-        std::cout << "<<<\n";
-
-        for (uint32_t j = 0; j < neighbors[i].size(); j++) {
-//            std::cout << i << " " << j << " N" << neighbors[i][j] << "/" << (neighbors[i][j] == std::numeric_limits<uint32_t>::max() ? 0 : state[neighbors[i][j]]) << "\n";
-            if (neighbors[i][j] == std::numeric_limits<uint32_t>::max() || state[neighbors[i][j]]) continue;
-
-            uint32_t idx = neighbors[i][j], count = faces.faceSizes()[idx], reduc = 0;
-            if (count != 3) std::cout << "WARNING! Neighbors have more than 3 edges. Faces may not be cleaned properly\n";
-
-//            std::cout << "DOT: " << normals[i].dot(normals[idx]) << "\n";
-            // std::numeric_limits<double>::epsilon() TODO identify reasonable tolerance
-            if (glm::dot(normals[i], normals[idx]) > 1 - 1e-12) { // If coplanar neighbors
-                ptr = faces[idx];
-
-                std::cout << "(" << i << " " << j << " " << idx << " " << 99 << ") ";
-                for (unsigned int k : face) std::cout << k << " ";
-                std::cout << "\n";
-
-                for (uint32_t k = 0; k < count; k++) std::cout << ptr[k] << " ";
-                std::cout << "\n";
-
-                uint32_t k = 0;
-                for (; k < count; k++) if (ptr[k] == face[j]) break;
-                std::cout << "-> " << k << "\n";
-
-//                uint32_t vf = ptr[(k + 1) % count], vl = ptr[(k + count - 1) % count];
-////                std::cout << face[j + 1] << " " << face[(j + 2) % face.size()] << " " << v1 << " " << v2 << "||\n";
+//std::shared_ptr<Mesh> MeshBuilder::cleaned(std::vector<glm::dvec3>& vertices, const std::vector<glm::dvec3>& normals, const FaceArray& faces)
+//{
 //
-
-                // Eliminate extras due to bridging
-                std::cout << "C" << face[(j + 2) % face.size()] << " " << ((-6) % 5) << "\n";
-                while (face[(j + 2) % face.size()] == ptr[(k + count - 2) % faces.faceSizes()[idx]]) {
-                    std::cout << "BRIDGING " << i << " " << j << " " << k << " " << face.size() << "\n";
-
-                    face.erase(face.begin() + j + 1);
-                    neighbors[i].erase(neighbors[i].begin() + j + 1);
-
-                    count--;
-                }
-
-                // Handle regular additions
-                for (uint32_t m = 1; m < count - 1; m++) {
-                    face.insert(face.begin() + j + m, ptr[(k + m) % faces.faceSizes()[idx]]);
-                }
-                // Insert neighbor contents to current face
-                neighbors[i][j] = neighbors[idx][k];
-                for (uint32_t m = 1; m < count - 1; m++) {
-                    neighbors[i].insert(neighbors[i].begin() + j + m, neighbors[idx][(k + m) % faces.faceSizes()[idx]]);
-                }
-
-                state[idx] = 1; // Prevent revisiting this face
-                j--; // Step back to avoid skipping new face link
-            }
-        }
-
-        // Temporary - Only resolve boundary edge == Ignores holes
-        auto ret = std::distance(std::find(face.rbegin(), face.rend(), face[0]), face.rend());
-        std::cout << "~~~~ " << std::distance(std::find(face.rbegin(), face.rend(), face[0]), face.rend()) << " " << std::distance(std::find(face.rbegin(), face.rend(), face[0]), face.rbegin()) << "\n";
-        if (ret != 1) {
-            face.erase(face.begin() + ret - 1, face.end());
-        }
-
-        // TODO Handle holes - Would need to split face into multiple separate faces to handle
-
-    }
-
-
-    std::cout << "Vertex Indices:\n";
-    for (const auto& loop : indices) {
-        for (auto l : loop) std::cout << l << " ";
-        std::cout << "\n";
-    }
-
-    // TODO re-include collinear culling
-//    for (std::vector<uint32_t>& face: indices) {
-//        for (uint32_t i = 0; i < face.size(); i++) {
-//            uint32_t idx = (i + 1) % face.size();
-//            if (dvec3::collinear(vertices[face[i]], vertices[face[idx]], vertices[face[(i + 2) % face.size()]])) {
-//                face.erase(face.begin() + idx);
-//                i--;
+////    std::cout << "\033[31mMesh Input is: " << isManifold(faces) << "\033[0m\n";
+//
+//
+//
+//    // Generate linked list of faces and their neighbors
+//    std::vector<std::vector<uint32_t>> neighbors = faces.adjacencies();
+//    std::vector<std::vector<uint32_t>> indices;
+//
+//    std::cout << "XXXXXXXXXXXXXXXXXXXX\n";
+////    for (const glm::dvec3& vertex : vertices) std::cout << vertex << "\n";
+//    faces.print();
+//
+//    std::cout << "~~~~~~~~~~~~~~" << neighbors.size() << " " << faces.faceCount() << "~~~~~~~~~~~~~~\n";
+//
+//    faces.print();
+//
+//    // Identify faces to merge based on direction of the face normals
+//    auto state = std::vector<uint8_t>(faces.faceCount());
+//
+//    // TODO handle more than just triangle primitives
+//    for (uint32_t i = 0; i < faces.faceCount(); i++) {
+//        if (state[i]) continue; // Skip faces that have already been considered
+//        state[i] = 2;
+//
+//        std::vector<uint32_t> &face = indices.emplace_back();
+//        auto ptr = faces[i];
+//        for (uint32_t j = 0; j < faces.faceSizes()[i]; j++) face.emplace_back(ptr[j]);
+//
+////        std::cout << "F" << i << ": " << normals[i] << "\n|" << i << "| ";
+//
+//        for (unsigned int k : face) std::cout << k << " ";
+//        std::cout << "| ";
+//        for (uint32_t ni : neighbors[i]) std::cout << ni << " ";
+//        std::cout << "<<<\n";
+//
+//        for (uint32_t j = 0; j < neighbors[i].size(); j++) {
+////            std::cout << i << " " << j << " N" << neighbors[i][j] << "/" << (neighbors[i][j] == std::numeric_limits<uint32_t>::max() ? 0 : state[neighbors[i][j]]) << "\n";
+//            if (neighbors[i][j] == std::numeric_limits<uint32_t>::max() || state[neighbors[i][j]]) continue;
+//
+//            uint32_t idx = neighbors[i][j], count = faces.faceSizes()[idx], reduc = 0;
+//            if (count != 3) std::cout << "WARNING! Neighbors have more than 3 edges. Faces may not be cleaned properly\n";
+//
+////            std::cout << "DOT: " << normals[i].dot(normals[idx]) << "\n";
+//            // std::numeric_limits<double>::epsilon() TODO identify reasonable tolerance
+//            if (glm::dot(normals[i], normals[idx]) > 1 - 1e-12) { // If coplanar neighbors
+//                ptr = faces[idx];
+//
+//                std::cout << "(" << i << " " << j << " " << idx << " " << 99 << ") ";
+//                for (unsigned int k : face) std::cout << k << " ";
+//                std::cout << "\n";
+//
+//                for (uint32_t k = 0; k < count; k++) std::cout << ptr[k] << " ";
+//                std::cout << "\n";
+//
+//                uint32_t k = 0;
+//                for (; k < count; k++) if (ptr[k] == face[j]) break;
+//                std::cout << "-> " << k << "\n";
+//
+////                uint32_t vf = ptr[(k + 1) % count], vl = ptr[(k + count - 1) % count];
+//////                std::cout << face[j + 1] << " " << face[(j + 2) % face.size()] << " " << v1 << " " << v2 << "||\n";
+////
+//
+//                // Eliminate extras due to bridging
+//                std::cout << "C" << face[(j + 2) % face.size()] << " " << ((-6) % 5) << "\n";
+//                while (face[(j + 2) % face.size()] == ptr[(k + count - 2) % faces.faceSizes()[idx]]) {
+//                    std::cout << "BRIDGING " << i << " " << j << " " << k << " " << face.size() << "\n";
+//
+//                    face.erase(face.begin() + j + 1);
+//                    neighbors[i].erase(neighbors[i].begin() + j + 1);
+//
+//                    count--;
+//                }
+//
+//                // Handle regular additions
+//                for (uint32_t m = 1; m < count - 1; m++) {
+//                    face.insert(face.begin() + j + m, ptr[(k + m) % faces.faceSizes()[idx]]);
+//                }
+//                // Insert neighbor contents to current face
+//                neighbors[i][j] = neighbors[idx][k];
+//                for (uint32_t m = 1; m < count - 1; m++) {
+//                    neighbors[i].insert(neighbors[i].begin() + j + m, neighbors[idx][(k + m) % faces.faceSizes()[idx]]);
+//                }
+//
+//                state[idx] = 1; // Prevent revisiting this face
+//                j--; // Step back to avoid skipping new face link
 //            }
 //        }
+//
+//        // Temporary - Only resolve boundary edge == Ignores holes
+//        auto ret = std::distance(std::find(face.rbegin(), face.rend(), face[0]), face.rend());
+//        std::cout << "~~~~ " << std::distance(std::find(face.rbegin(), face.rend(), face[0]), face.rend()) << " " << std::distance(std::find(face.rbegin(), face.rend(), face[0]), face.rbegin()) << "\n";
+//        if (ret != 1) {
+//            face.erase(face.begin() + ret - 1, face.end());
+//        }
+//
+//        // TODO Handle holes - Would need to split face into multiple separate faces to handle
+//
 //    }
-
-    // Remove any strays
-    for (uint32_t i = 0; i < indices.size(); i++) {
-        if (indices[i].size() < 3) {
-            std::cout << "ERASING FACE" << i << "\n";
-            indices.erase(indices.begin() + i);
-        }
-    }
-
-    // Count instances of every vertex
-    std::vector<uint32_t> instances(vertices.size(), 0);
-    for (const std::vector<uint32_t>& face : indices) {
-        for (uint32_t vertex : face) instances[vertex]++;
-    }
-
-    // Determine appropriate vertex indexing with orphans removed
-    uint32_t idx = 0;
-    for (uint32_t& vertex : instances) vertex = vertex > 0 ? idx++ : std::numeric_limits<uint32_t>::max();
-
-    for (uint32_t& vertex : instances) std::cout << vertex << " ";
-    std::cout << "\nVV|" << vertices.size() << "|\n";
-
-    // Reorganize vertex list before removing orphans
-    for (uint32_t i = 0; i < instances.size(); i++) {
-        if (instances[i] != std::numeric_limits<uint32_t>::max()) vertices[instances[i]] = vertices[i];
-    }
-    vertices.erase(vertices.begin() + idx, vertices.end());
-
-    std::cout << "NV|" << vertices.size() << "|\n";
-
-//     Correct vertex indexing of the faces
-    for (uint32_t i = 0; i < indices.size(); i++) {
-        for (uint32_t& vertex : indices[i]) {
-            std::cout << "|" << vertex << " " << instances[vertex] << "| ";
-            vertex = instances[vertex];
-        }
-
-        if (indices[i].size() < 3) {
-            indices.erase(indices.begin() + i);
-            i--;
-        }
-    }
-    std::cout << "\n";
-
-    std::cout << "!!!!!!!Vertex Indices:\n";
-    for (const auto& loop : indices) {
-        for (auto l : loop) std::cout << l << " ";
-        std::cout << "\n";
-    }
-
-//    std::cout << "\033[31mMesh Output is: " << isManifold(FaceArray(indices)) << "\033[0m\n";
-
-
-    return std::make_shared<Mesh>(VertexArray(vertices), FaceArray(indices));
-}
+//
+//
+//    std::cout << "Vertex Indices:\n";
+//    for (const auto& loop : indices) {
+//        for (auto l : loop) std::cout << l << " ";
+//        std::cout << "\n";
+//    }
+//
+//    // TODO re-include collinear culling
+////    for (std::vector<uint32_t>& face: indices) {
+////        for (uint32_t i = 0; i < face.size(); i++) {
+////            uint32_t idx = (i + 1) % face.size();
+////            if (dvec3::collinear(vertices[face[i]], vertices[face[idx]], vertices[face[(i + 2) % face.size()]])) {
+////                face.erase(face.begin() + idx);
+////                i--;
+////            }
+////        }
+////    }
+//
+//    // Remove any strays
+//    for (uint32_t i = 0; i < indices.size(); i++) {
+//        if (indices[i].size() < 3) {
+//            std::cout << "ERASING FACE" << i << "\n";
+//            indices.erase(indices.begin() + i);
+//        }
+//    }
+//
+//    // Count instances of every vertex
+//    std::vector<uint32_t> instances(vertices.size(), 0);
+//    for (const std::vector<uint32_t>& face : indices) {
+//        for (uint32_t vertex : face) instances[vertex]++;
+//    }
+//
+//    // Determine appropriate vertex indexing with orphans removed
+//    uint32_t idx = 0;
+//    for (uint32_t& vertex : instances) vertex = vertex > 0 ? idx++ : std::numeric_limits<uint32_t>::max();
+//
+//    for (uint32_t& vertex : instances) std::cout << vertex << " ";
+//    std::cout << "\nVV|" << vertices.size() << "|\n";
+//
+//    // Reorganize vertex list before removing orphans
+//    for (uint32_t i = 0; i < instances.size(); i++) {
+//        if (instances[i] != std::numeric_limits<uint32_t>::max()) vertices[instances[i]] = vertices[i];
+//    }
+//    vertices.erase(vertices.begin() + idx, vertices.end());
+//
+//    std::cout << "NV|" << vertices.size() << "|\n";
+//
+////     Correct vertex indexing of the faces
+//    for (uint32_t i = 0; i < indices.size(); i++) {
+//        for (uint32_t& vertex : indices[i]) {
+//            std::cout << "|" << vertex << " " << instances[vertex] << "| ";
+//            vertex = instances[vertex];
+//        }
+//
+//        if (indices[i].size() < 3) {
+//            indices.erase(indices.begin() + i);
+//            i--;
+//        }
+//    }
+//    std::cout << "\n";
+//
+//    std::cout << "!!!!!!!Vertex Indices:\n";
+//    for (const auto& loop : indices) {
+//        for (auto l : loop) std::cout << l << " ";
+//        std::cout << "\n";
+//    }
+//
+////    std::cout << "\033[31mMesh Output is: " << isManifold(FaceArray(indices)) << "\033[0m\n";
+//
+//
+//    return std::make_shared<Mesh>(VertexArray(vertices), FaceArray(indices));
+//}
 
 bool MeshBuilder::isManifold(const std::shared_ptr<Mesh>& mesh)
 {

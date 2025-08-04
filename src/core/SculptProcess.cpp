@@ -23,6 +23,7 @@
 
 #include "geometry/MeshBuilder.h"
 #include "geometry/collision/Collision.h"
+#include "fileIO/MeshHandler.h"
 
 SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     : Scene()
@@ -46,11 +47,34 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     prepareBody(m_sculpture, 1);
     prepareBody(m_sculpture->model(), 1);
 
+
+    auto ttTableMesh = MeshHandler::loadAsMeshBody("../res/meshes/TurntableTable.obj");
+    createBody(ttTableMesh);
+    std::cout << m_sculpture->width() << " " << m_sculpture->height() << " " << ttTableMesh->ySpan() << "W\n";
+
     auto chain = std::make_shared<KinematicChain>();
-    chain->addJoint(Joint(Joint::Type::REVOLUTE, { 0.5f, 0.0f, 0.0f, 0.0f }, 0));
+    chain->addJoint(Joint(Joint::Type::REVOLUTE, { 0.0f, 0.0f, 0.0f, 0.0f }, 0));
 
     m_turntable = createRobot(chain);
-    m_turntable->setEOAT(m_sculpture);
+    m_turntable->translate(UP * ttTableMesh->ySpan());
+
+    auto ttBaseMesh = MeshHandler::loadAsMeshBody("../res/meshes/TurntableBase.obj");
+    m_turntable->setLinkMesh(0, ttBaseMesh);
+
+    auto ttj0Mesh = MeshHandler::loadAsMeshBody("../res/meshes/TurntableJ0.obj");
+    m_turntable->setLinkMesh(1, ttj0Mesh);
+
+
+    m_turntable->setEOAT(m_sculpture, false);
+    m_turntable->links()[0]->print();
+    m_turntable->links()[1]->print();
+
+    auto c = ttj0Mesh->boundedOffset();
+    std::cout << "CC " << c.x << " " << c.y << " " << c.z << "\n";
+    c = ttBaseMesh->boundedOffset();
+    std::cout << "CC2 " << c.x << " " << c.y << " " << c.z << "\n";
+
+//    ttBaseMesh->normalize();
 
     m_latestTableCommand = m_turntable->getWaypoint();
 }
@@ -183,6 +207,15 @@ bool SculptProcess::simulationActive() const
     return !simulationComplete() && (m_actions[m_step].target->inTransit() || m_continuous);
 }
 
+const std::shared_ptr<Robot>& SculptProcess::getSculptor() const
+{
+    return m_robot;
+}
+const std::shared_ptr<Robot>& SculptProcess::getTurntable() const
+{
+    return m_turntable;
+}
+
 void SculptProcess::planConvexTrim()
 {
     std::vector<Plane> steps;
@@ -231,7 +264,12 @@ ConvexHull SculptProcess::planConvexTrim(const ConvexHull& hull, const Plane& pl
     for (double offset : attemptOffsets) {
         rotation = baseRotation + offset;
 
-        trajectory = preparePlanarTrajectory(plane.rotated(UP, -rotation), VertexArray::rotated(border, UP, -rotation));
+        // Create a co-ordinate system, x->cut direction, y->normal to cut plane, z->in fwd direction
+        Axis3D axes(m_fwd, plane.rotated(UP, -rotation).normal);
+        axes.rotate(UP, offset);
+        axes.rotateY();
+
+        trajectory = preparePlanarTrajectory(axes, VertexArray::rotated(border, UP, -rotation));
         if (trajectory != nullptr) break;
     }
 
@@ -371,11 +409,8 @@ void SculptProcess::planRoboticSection(const std::shared_ptr<Trajectory>& trajec
 }
 
 // Sectioning step wherein the robot moves to remove all material above the specified plane
-std::shared_ptr<Trajectory> SculptProcess::preparePlanarTrajectory(const Plane& plane, const std::vector<glm::dvec3>& border)
+std::shared_ptr<Trajectory> SculptProcess::preparePlanarTrajectory(const Axis3D& axes, const std::vector<glm::dvec3>& border)
 {
-    // Create a co-ordinate system, x->cut direction, y->normal to cut plane, z->in fwd direction
-    Axis3D axes(m_fwd, plane.normal);
-    axes.rotateY();
 
     uint32_t minIndex, maxIndex;
     VertexArray::extremes(border, axes.xAxis, minIndex, maxIndex);
@@ -386,19 +421,7 @@ std::shared_ptr<Trajectory> SculptProcess::preparePlanarTrajectory(const Plane& 
     if (lowOff < highOff) high += (lowOff - highOff) * m_fwd;
     else                  low  -= (lowOff - highOff) * m_fwd;
 
-
-//    plane.print();
-//    axes.print();
-//    std::cout << "Split: " << low.x << " " << low.y << " " << low.z << "\n";
-//    std::cout << "Split: " << high.x << " " << high.y << " " << high.z << "\n";
-
-//    glm::dvec3 startPos = { 0, 1, 0 };
-//    low = startPos, high = low + axes.xAxis;
-
-    std::cout << "M: " << glm::to_string(axes.toTransform()) << "\n================\n";
-
     double runup = 0.05;
-
 
     // Try to generate a cartesian trajectory between the two points
     auto startPose = Pose(low, axes);
@@ -406,32 +429,30 @@ std::shared_ptr<Trajectory> SculptProcess::preparePlanarTrajectory(const Plane& 
     glm::dvec3 cutTranslation =  { (glm::dot(high - low, axes.xAxis) + 2 * runup), 0, 0 };
     std::cout << cutTranslation.x << " " << cutTranslation.y << " " << cutTranslation.z << " LOCALIZED\n";
     auto cutTrajectory = std::make_shared<CartesianTrajectory>(m_robot, startPose, cutTranslation);
+    cutTrajectory->setLimits(m_slowVelocityLimits, m_baseAccelerationLimits);
+    if (!cutTrajectory->validate(m_robot, 0.01)) return nullptr;
 
-    if (cutTrajectory != nullptr) {
+    auto trajectory = std::make_shared<CompositeTrajectory>(m_robot->dof());
+    trajectory->setLimits(m_baseVelocityLimits, m_baseAccelerationLimits);
 
-        auto trajectory = std::make_shared<CompositeTrajectory>(m_robot->dof());
-        trajectory->setLimits(m_baseVelocityLimits, m_baseAccelerationLimits);
+    // Move to initial cut position
+    trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(m_latestRobotCommand, cutTrajectory->start(), m_solver));
 
-        // Move to initial cut position
-        trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(m_latestRobotCommand, cutTrajectory->start(), m_solver));
+    // Attach Pass through the cut
+    trajectory->addTrajectory(cutTrajectory);
 
-        // Pass through the cut
-        cutTrajectory->setLimits(m_slowVelocityLimits, m_baseAccelerationLimits);
-        trajectory->addTrajectory(cutTrajectory);
+    // Move off the piece
+    auto offPose = startPose;
+    offPose.localTranslate(cutTranslation);
+    offPose.localTranslate({ 0, 0.4, 0 });
+    trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(cutTrajectory->end(), m_robot->inverse(offPose), m_solver));
 
-        // Move off the piece
-        auto offPose = startPose;
-        offPose.localTranslate(cutTranslation);
-        offPose.localTranslate({ 0, 0.4, 0 });
-        trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(cutTrajectory->end(), m_robot->inverse(offPose), m_solver));
+    // Move to the neutral position
+    trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(trajectory->end(), m_robotNeutral, m_solver));
 
-        // Move to the neutral position
-        trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(trajectory->end(), m_robotNeutral, m_solver));
+    trajectory->update();
 
-        trajectory->update();
-
-        if (trajectory->validate(m_robot, 0.01)) return trajectory;
-    }
+    if (trajectory->validate(m_robot, 0.01)) return trajectory;
 
     return nullptr;
 }

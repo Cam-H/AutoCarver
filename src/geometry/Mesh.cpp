@@ -16,14 +16,19 @@
 
 #include "core/Timer.h"
 
-Mesh::Mesh(double vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t indexCount)
-    : Mesh(VertexArray(vertices, vertexCount), FaceArray(indices, indexCount))
+Mesh::Mesh()
+    : Mesh(0, 0, 0)
 {
+
 }
 
 Mesh::Mesh(const ConvexHull& hull, bool applyColorPattern)
-    : Mesh(VertexArray(hull.vertices()), hull.faces())
+    : Mesh()
 {
+    if (!hull.isValid()) throw std::runtime_error("[Mesh] Invalid hull provided. Can not generate mesh");
+
+    m_vertices = VertexArray(hull.vertices());
+    m_faces = FaceArray(hull.faces());
 
     // Convex hull renders default to alternating yellow-orange color pattern
     if (applyColorPattern) {
@@ -33,49 +38,40 @@ Mesh::Mesh(const ConvexHull& hull, bool applyColorPattern)
             setFaceColor(i, {0.8f, 0.6f, 0.1f});
         }
     }
-}
 
-Mesh::Mesh(const double *vertices, uint32_t vertexCount, const uint32_t *faceIndices, const uint32_t *faceSizes, uint32_t faceCount)
-    : Mesh(VertexArray(vertices, vertexCount), FaceArray(faceIndices, faceSizes, faceCount))
-{
+    initialize();
 }
 
 Mesh::Mesh(const std::vector<glm::dvec3>& vertices, const std::vector<Triangle>& faces)
-    : Mesh(VertexArray(vertices), FaceArray(faces))
+    : Mesh()
+
 {
+    if (vertices.size() < 3 || faces.empty()) throw std::runtime_error("[Mesh] Insufficient geometry. Can not generate mesh");
+
+    m_vertices = VertexArray(vertices);
+    m_faces = FaceArray(faces);
+    initialize();
 }
 
 Mesh::Mesh(const std::string& filename)
-    : Mesh(VertexArray(nullptr, 0), FaceArray(nullptr, nullptr, 0))
+    : Mesh()
 {
     Serializable::deserialize(filename);
     initialize();
 }
 
 Mesh::Mesh(std::ifstream& file)
-    : Mesh(VertexArray(nullptr, 0), FaceArray(nullptr, nullptr, 0))
+    : Mesh()
 {
     if (Mesh::deserialize(file)) initialize();
     else std::cerr << "Failed to deserialize mesh properly!\n";
-}
-
-Mesh::Mesh(VertexArray vertices, FaceArray faces)
-    : m_initialized(false)
-    , m_vertices(std::move(vertices))
-    , m_faces(std::move(faces))
-    , m_vertexNormals(nullptr, 0)
-    , m_colorOverride(false)
-    , m_baseColor(1.0f, 1.0f, 1.0f)
-    , m_adjacencyOK(false)
-{
-    initialize();
 }
 
 Mesh::Mesh(uint32_t vertexCount, uint32_t faceCount, uint32_t indexCount)
     : m_initialized(false)
     , m_vertices(vertexCount)
     , m_faces(faceCount, indexCount)
-    , m_vertexNormals(nullptr, 0)
+    , m_vertexNormals(0)
     , m_colorOverride(false)
     , m_baseColor(1.0f, 1.0f, 1.0f)
     , m_adjacencyOK(false)
@@ -86,6 +82,11 @@ Mesh::Mesh(uint32_t vertexCount, uint32_t faceCount, uint32_t indexCount)
 void Mesh::initialize()
 {
     if (!m_initialized) {
+        if (!m_faces.isValid()) {
+            m_faces.print();
+            throw std::runtime_error("[Mesh] Can not initialize when faces are invalid");
+        }
+
         m_faces.calculateNormals(m_vertices.vertices());
         m_faces.triangulate(m_vertices.vertices());
         calculateVertexNormals();
@@ -139,7 +140,7 @@ bool Mesh::deserialize(std::ifstream& file)
 
 void Mesh::calculateVertexNormals()
 {
-    std::vector<glm::dvec3> normals(m_vertices.size(), glm::dvec3{});
+    std::vector<glm::dvec3> normals(m_vertices.size(), glm::dvec3());
 
     for (uint32_t i = 0; i < m_faces.faceCount(); i++) {
         auto [start, count] = m_faces.triangleLookup(i);
@@ -150,6 +151,7 @@ void Mesh::calculateVertexNormals()
             normals[triangle.I0] += faceNormal;
             normals[triangle.I1] += faceNormal;
             normals[triangle.I2] += faceNormal;
+
         }
     }
 
@@ -193,6 +195,11 @@ void Mesh::translate(const glm::dvec3& translation)
 void Mesh::rotate(const glm::dvec3& axis, double theta)
 {
     m_vertices.rotate(axis, theta);
+}
+
+void Mesh::rotate(const glm::dquat& rotation)
+{
+    m_vertices.rotate(rotation);
 }
 
 void Mesh::normalize(double scalar)

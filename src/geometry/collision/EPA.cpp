@@ -4,8 +4,8 @@
 
 #include "EPA.h"
 
+#include "geometry/Mesh.h"
 #include "geometry/primitives/ConvexHull.h"
-#include "Simplex.h"
 #include "fileIO/MeshHandler.h"
 
 EPA::EPA()
@@ -40,21 +40,13 @@ glm::dvec3 EPA::fromBarycentric(const std::vector<glm::dvec3>& va, const Triangl
 
 void EPA::exportState(const std::string& path)
 {
-    double *vx = new double[3 * vertices.size()], *vPtr = vx;
-    for (const Simplex::Vertex& vertex : vertices) {
-        *vPtr++ = vertex.val.x;
-        *vPtr++ = vertex.val.y;
-        *vPtr++ = vertex.val.z;
-    }
+    std::vector<glm::dvec3> outVertices;
+    for (const Simplex::Vertex& vertex : vertices) outVertices.emplace_back(vertex.val);
 
-    uint32_t *fx = new uint32_t[3 * facets.size()], *fPtr = fx;
-    for (const Facet& facet : facets) {
-        *fPtr++ = facet.triangle.I0;
-        *fPtr++ = facet.triangle.I1;
-        *fPtr++ = facet.triangle.I2;
-    }
+    std::vector<Triangle> triangles;
+    for (const Facet& facet : facets) triangles.emplace_back(facet.triangle);
 
-    MeshHandler::exportMesh(std::make_shared<Mesh>(vx, vertices.size(), fx, facets.size()), path);
+    MeshHandler::exportMesh(std::make_shared<Mesh>(outVertices, triangles), path);
 }
 
 glm::dvec3 EPA::normal(uint32_t a, uint32_t b, uint32_t c)

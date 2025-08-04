@@ -40,6 +40,8 @@ std::shared_ptr<Robot> robot = nullptr;
 std::vector<QSpinBox*> jointFields;
 std::vector<QDoubleSpinBox*> posFields;
 
+QSpinBox *ttAngleField = nullptr;
+
 QTreeWidget* treeWidget = nullptr;
 QTreeWidgetItem* waypointWidget = nullptr;
 
@@ -268,7 +270,7 @@ int main(int argc, char *argv[])
 
 
     scene = std::make_shared<SculptProcess>(model);
-    robot = scene->createRobot(std::make_shared<ArticulatedWrist>(0.8, 2, 2, 1));
+    robot = scene->createRobot(std::make_shared<ArticulatedWrist>(0.2, 1.2, 1.2, 0.2));
     robot->translate({ -2, 0, 0 });
     robot->rotate({ 0, 1, 0 }, M_PI);
 
@@ -278,6 +280,13 @@ int main(int argc, char *argv[])
     robot->setJointValueDg(1, 135);
     robot->setJointValueDg(2, -45);
     axes = robot->getEOATAxes();
+
+    auto eoatMesh = MeshHandler::loadAsMeshBody("../res/meshes/Blade.obj");
+    auto eoat = scene->createBody(eoatMesh);
+    robot->setEOAT(eoat, false);
+//    robot->links().back()->setMesh(eoatMesh);
+
+//    scene->createBody(eoatMesh);
 
     robot->update();
     sceneWidget->update();
@@ -335,6 +344,13 @@ int main(int argc, char *argv[])
         });
     }
 
+    ttAngleField = window->findChild<QSpinBox*>("ttAngleField");
+    QObject::connect(ttAngleField, &QSpinBox::valueChanged, [&](int value) {
+        scene->getTurntable()->setJointValueDg(0, value);
+        scene->getTurntable()->update();
+        sceneWidget->update();
+    });
+
     auto localSettingButton = window->findChild<QCheckBox*>("localSettingButton");
     QObject::connect(localSettingButton, &QCheckBox::clicked, [&](bool checked) {
         localTranslation = checked;
@@ -380,8 +396,8 @@ int main(int argc, char *argv[])
 
     auto showMeshButton = window->findChild<QCheckBox*>("showMeshButton");
     QObject::connect(showMeshButton, &QCheckBox::clicked, [&](bool checked) {
-        if (checked) sceneWidget->showAll(Scene::Model::MESH);
-        else sceneWidget->hideAll(Scene::Model::MESH);
+        if (checked) sceneWidget->show(0, Scene::Model::MESH);
+        else sceneWidget->hide(0, Scene::Model::MESH);
     });
 
     auto showHullButton = window->findChild<QCheckBox*>("showHullButton");
@@ -394,6 +410,11 @@ int main(int argc, char *argv[])
     QObject::connect(showSphereButton, &QCheckBox::clicked, [&](bool checked) {
         if (checked) sceneWidget->showAll(Scene::Model::BOUNDING_SPHERE);
         else sceneWidget->hideAll(Scene::Model::BOUNDING_SPHERE);
+    });
+
+    auto showAxesButton = window->findChild<QCheckBox*>("showAxesButton");
+    QObject::connect(showAxesButton, &QCheckBox::clicked, [&](bool checked) {
+        sceneWidget->enableAxes(checked);
     });
 
     treeWidget = window->findChild<QTreeWidget*>("treeWidget");

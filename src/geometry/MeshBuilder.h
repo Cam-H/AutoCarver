@@ -45,10 +45,10 @@ public:
 
     static std::shared_ptr<Mesh> composite(const std::vector<ConvexHull>& hulls);
 
-    static std::shared_ptr<Mesh> eliminateCoincidentVertices(const std::shared_ptr<Mesh>& mesh);
+//    static std::shared_ptr<Mesh> eliminateCoincidentVertices(const std::shared_ptr<Mesh>& mesh);
 
-    static std::shared_ptr<Mesh> cleaned(const std::shared_ptr<Mesh>& mesh);
-    static std::shared_ptr<Mesh> cleaned(const VertexArray& vertices, const FaceArray& faces);
+//    static std::shared_ptr<Mesh> cleaned(const std::shared_ptr<Mesh>& mesh);
+//    static std::shared_ptr<Mesh> cleaned(const VertexArray& vertices, const FaceArray& faces);
 
 
     static bool isManifold(const std::shared_ptr<Mesh>& mesh);

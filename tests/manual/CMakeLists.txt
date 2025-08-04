@@ -7,6 +7,7 @@ add_subdirectory(ortho)
 add_subdirectory(polygon)
 add_subdirectory(robot-motion)
 add_subdirectory(robot-pathing)
+add_subdirectory(sandbox)
 add_subdirectory(topp)
 
 #add_subdirectory(polygon-boolean)

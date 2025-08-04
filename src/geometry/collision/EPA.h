@@ -8,7 +8,7 @@
 
 #include <string>
 #include <vector>
-#include "glm.hpp"
+#include <glm.hpp>
 
 class ConvexHull;
 

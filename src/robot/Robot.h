@@ -42,6 +42,8 @@ public:
 
     void traverse(const std::shared_ptr<Trajectory>& trajectory);
 
+    void setLinkMesh(uint32_t index, const std::shared_ptr<Mesh>& mesh);
+
     [[nodiscard]] bool isValid() const;
     [[nodiscard]] uint32_t dof() const;
 

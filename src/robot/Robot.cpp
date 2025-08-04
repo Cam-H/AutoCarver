@@ -30,6 +30,10 @@ Robot::Robot(const std::shared_ptr<KinematicChain>& kinematics, const std::share
 void Robot::prepareLinks()
 {
     double height = 0.3f;
+
+    auto baseMesh = MeshBuilder::box(1.0);
+    m_links.push_back(std::make_shared<RigidBody>(baseMesh));
+
     for (const Joint& joint : m_kinematics->getJoints()) {
 //        auto mesh = MeshBuilder::cylinder(0.25f, height, 8);
 
@@ -63,21 +67,13 @@ void Robot::prepareLinks()
         m_links.push_back(link);
     }
 
-
-    auto eoatMesh = MeshBuilder::axes(Axis3D());
-    m_links.push_back(std::make_shared<RigidBody>(eoatMesh));
-
-    // Block collisions of last joint with EOAT
-    m_links[m_links.size() - 2]->setLayer(0b0100);
-    m_links.back()->setLayer(0b0010);
-    m_links.back()->setMask(0b0011);
-
     updateTransforms();
 }
 
 // Only calculate inverse when updated to save time
 void Robot::moved()
 {
+    updateTransforms();
     m_invTransform = glm::inverse(m_transform);
 }
 
@@ -98,11 +94,25 @@ void Robot::update()
 
 void Robot::setEOAT(const std::shared_ptr<RigidBody>& eoat, bool preserveTransform)
 {
+    if (m_eoat != nullptr) { // Cleanup old EOAT
+        m_eoat->setAxisEnabled(false);
+    }
+
     m_eoat = eoat;
 
-    if (m_eoat != nullptr && preserveTransform) {
-        m_eoatRelativeTransform = glm::inverse(getEOATTransform()) * m_eoat->getTransform();
-    } else m_eoatRelativeTransform = glm::dmat4x4(1.0f);
+    if (m_eoat == nullptr || m_links.empty()) return;
+
+    m_eoat->setAxisEnabled(true);
+//    m_eoat->mesh()->rotate(glm::quat_cast(glm::inverse(m_kinematics->axisTransform())));
+
+    m_eoatRelativeTransform = glm::inverse(m_kinematics->inversion());
+
+    if (preserveTransform) {
+        m_eoatRelativeTransform = glm::inverse(getEOATTransform()) * m_eoat->getTransform() * m_eoatRelativeTransform;//TODO test
+    }
+
+
+    updateTransforms();
 }
 
 void Robot::setJointValue(uint32_t idx, double value)
@@ -131,18 +141,9 @@ void Robot::moveTo(const Axis3D& axes)
 
 void Robot::moveTo(const Pose& pose)
 {
-//    glm::dvec4 transformed = m_invTransform * glm::dvec4(position.x, position.y, position.z, 1);
-//    m_kinematics->moveTo({ transformed.x, transformed.y, transformed.z }, axes * m_invTransform);
-
     m_kinematics->moveTo(m_invTransform * pose);
     update();
 }
-
-//void Robot::moveTo(const glm::dvec3& position, const glm::dvec3& euler)
-//{
-//    m_kinematics->moveTo(position, euler);
-//    update();
-//}
 
 void Robot::moveTo(const Waypoint& waypoint)
 {
@@ -156,15 +157,29 @@ void Robot::traverse(const std::shared_ptr<Trajectory>& trajectory)
     m_currentTrajectory = trajectory;
 }
 
+void Robot::setLinkMesh(uint32_t index, const std::shared_ptr<Mesh>& mesh)
+{
+    if (index >= m_links.size()) throw std::runtime_error("[Robot] Index out of bounds. Can not update link mesh");
+
+    // The base link is not affected by the kinematic chains axis inversion
+    if (index != 0 && index < m_links.size()) {
+        mesh->rotate(glm::quat_cast(glm::inverse(m_kinematics->axisInversion())));
+    }
+
+    m_links[index]->setMesh(mesh);
+}
+
 void Robot::updateTransforms()
 {
+    m_links[0]->setTransform(m_transform); // Robot base
+
     const std::vector<glm::dmat4> transforms = m_kinematics->jointTransforms();
-    for (uint32_t i = 0; i < transforms.size(); i++) { // -1 if no EOAT
-        m_links[i]->setTransform(m_transform * transforms[i]);
+    for (uint32_t i = 0; i < transforms.size() - 1; i++) {
+        m_links[i + 1]->setTransform(m_transform * transforms[i]);
     }
 
     if (m_eoat != nullptr) {
-        m_eoat->setTransform(getEOATTransform() * m_eoatRelativeTransform);
+        m_eoat->setTransform(m_transform * transforms.back() * m_eoatRelativeTransform);
     }
 }
 

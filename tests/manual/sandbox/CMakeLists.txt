@@ -4,12 +4,12 @@
 cmake_minimum_required(VERSION 3.16)
 project(sandbox LANGUAGES CXX)
 
-find_package(Qt6 REQUIRED COMPONENTS Core 3DCore 3DRender Test)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui OpenGL OpenGLWidgets Widgets Test)
 
 qt_standard_project_setup()
 
 qt_add_executable(sandbox
-        sandbox.cpp
+        main.cpp
         )
 
 set_target_properties(sandbox PROPERTIES
@@ -20,8 +20,12 @@ set_target_properties(sandbox PROPERTIES
 target_link_libraries(sandbox PRIVATE
         Qt::Core
         Qt::Gui
+        Qt::UiTools
+        Qt::OpenGL
+        Qt::OpenGLWidgets
         Qt::Widgets
         Qt::Test
+        libassimp-6d
         AutoCarverLib
         )
 

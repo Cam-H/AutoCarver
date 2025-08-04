@@ -45,6 +45,7 @@ public:
     void showAll(Scene::Model target = Scene::Model::ALL);
     void hideAll(Scene::Model target = Scene::Model::ALL);
 
+    void enableAxes(bool enable);
 
     void start();
     void pause();
@@ -108,6 +109,8 @@ private:
 
     std::vector<RenderGeometry*> m_geometries;
 
+    std::shared_ptr<Mesh> m_axes;
+    bool m_showAxes;
 
     /* ******* CAMERA CONTROLS ******** */
 

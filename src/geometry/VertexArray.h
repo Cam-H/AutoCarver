@@ -18,7 +18,7 @@
 
 class VertexArray : public Serializable {
 public:
-    VertexArray(const double* vertices, uint32_t vertexCount);
+//    VertexArray(const double* vertices, uint32_t vertexCount);
 
     explicit VertexArray(uint32_t vertexCount);
     explicit VertexArray(const std::vector<glm::dvec2>& vertices);
@@ -45,8 +45,12 @@ public:
     void scale(const glm::dvec3& scale);
     void translate(const glm::dvec3& translation);
     void rotate(const glm::dvec3& axis, double theta);
+    void rotate(const glm::dquat& rotation);
     static void rotate(std::vector<glm::dvec3>& vertices, const glm::dvec3& axis, double theta);
+    static void rotate(std::vector<glm::dvec3>& vertices, const glm::dquat& rotation);
+
     static std::vector<glm::dvec3> rotated(const std::vector<glm::dvec3>& vertices, const glm::dvec3& axis, double theta);
+    static std::vector<glm::dvec3> rotated(const std::vector<glm::dvec3>& vertices, const glm::dquat& rotation);
 
     void replace(uint32_t idx, const glm::dvec3& replacement);
     void remove(uint32_t idx);

@@ -234,3 +234,13 @@ std::vector<glm::dmat4> KinematicChain::jointTransforms() const
 
     return transforms;
 }
+
+const glm::dmat3& KinematicChain::axisInversion() const
+{
+    return m_axisTransform3;
+}
+
+const glm::dmat4& KinematicChain::inversion() const
+{
+    return m_axisTransform4;
+}

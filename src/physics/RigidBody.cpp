@@ -44,6 +44,7 @@ RigidBody::RigidBody(const std::shared_ptr<Mesh>& mesh)
     , m_massOK(false)
     , m_inertiaTensorOK(false)
     , m_colliderVisualsEnable(false)
+    , m_axisEnable(false)
     , Transformable()
 {
 
@@ -93,6 +94,11 @@ void RigidBody::setType(Type type)
 {
     if (m_type != type) m_massOK = m_inertiaTensorOK = false;
     m_type = type;
+}
+
+void RigidBody::setAxisEnabled(bool enable)
+{
+    m_axisEnable = enable;
 }
 
 void RigidBody::setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate) {
@@ -257,6 +263,11 @@ void RigidBody::prepareSphereVisual()
 RigidBody::Type RigidBody::getType() const
 {
     return m_type;
+}
+
+bool RigidBody::isAxisEnabled() const
+{
+    return m_axisEnable;
 }
 
 bool RigidBody::isManifold()

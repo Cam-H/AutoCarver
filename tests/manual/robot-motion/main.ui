@@ -45,9 +45,9 @@
          <property name="geometry">
           <rect>
            <x>0</x>
-           <y>-986</y>
+           <y>0</y>
            <width>433</width>
-           <height>1769</height>
+           <height>1868</height>
           </rect>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_6">
@@ -65,8 +65,22 @@
                   <layout class="QVBoxLayout" name="verticalLayout_3">
                    <item>
                     <widget class="QWidget" name="settingsWidget" native="true">
-                     <layout class="QVBoxLayout" name="verticalLayout_5">
-                      <item>
+                     <layout class="QGridLayout" name="gridLayout_8">
+                      <item row="2" column="0">
+                       <widget class="QCheckBox" name="showHullButton">
+                        <property name="text">
+                         <string>Show Bounding Hull</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QCheckBox" name="showSphereButton">
+                        <property name="text">
+                         <string>Show Bounding Sphere</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="0">
                        <widget class="QCheckBox" name="showMeshButton">
                         <property name="text">
                          <string>Show Mesh</string>
@@ -76,17 +90,20 @@
                         </property>
                        </widget>
                       </item>
-                      <item>
-                       <widget class="QCheckBox" name="showSphereButton">
+                      <item row="0" column="1">
+                       <widget class="QCheckBox" name="showAxesButton">
                         <property name="text">
-                         <string>Show Bounding Sphere</string>
+                         <string>Show Axes</string>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
                         </property>
                        </widget>
                       </item>
-                      <item>
-                       <widget class="QCheckBox" name="showHullButton">
+                      <item row="2" column="1">
+                       <widget class="QCheckBox" name="lockButton">
                         <property name="text">
-                         <string>Show Bounding Hull</string>
+                         <string>Lock in plane</string>
                         </property>
                        </widget>
                       </item>
@@ -121,34 +138,7 @@
                       </font>
                      </property>
                      <layout class="QGridLayout" name="gridLayout">
-                      <item row="0" column="0">
-                       <widget class="QLabel" name="label_7">
-                        <property name="text">
-                         <string>J0 Angle</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="1">
-                       <widget class="QSpinBox" name="j0Field">
-                        <property name="minimum">
-                         <number>-720</number>
-                        </property>
-                        <property name="maximum">
-                         <number>720</number>
-                        </property>
-                        <property name="singleStep">
-                         <number>5</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="0">
-                       <widget class="QLabel" name="label_8">
-                        <property name="text">
-                         <string>J1 Angle</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
+                      <item row="2" column="1">
                        <widget class="QSpinBox" name="j1Field">
                         <property name="minimum">
                          <number>-720</number>
@@ -161,74 +151,7 @@
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="0">
-                       <widget class="QLabel" name="label_5">
-                        <property name="text">
-                         <string>J2 Angle</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="1">
-                       <widget class="QSpinBox" name="j2Field">
-                        <property name="minimum">
-                         <number>-720</number>
-                        </property>
-                        <property name="maximum">
-                         <number>720</number>
-                        </property>
-                        <property name="singleStep">
-                         <number>5</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="0">
-                       <widget class="QLabel" name="label_6">
-                        <property name="text">
-                         <string>J3 Angle</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="6" column="0">
-                       <widget class="QLabel" name="label_4">
-                        <property name="text">
-                         <string>J5 Angle</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="0">
-                       <widget class="QLabel" name="label_3">
-                        <property name="text">
-                         <string>J4 Angle</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="1">
-                       <widget class="QSpinBox" name="j3Field">
-                        <property name="minimum">
-                         <number>-720</number>
-                        </property>
-                        <property name="maximum">
-                         <number>720</number>
-                        </property>
-                        <property name="singleStep">
-                         <number>5</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="1">
-                       <widget class="QSpinBox" name="j4Field">
-                        <property name="minimum">
-                         <number>-720</number>
-                        </property>
-                        <property name="maximum">
-                         <number>720</number>
-                        </property>
-                        <property name="singleStep">
-                         <number>5</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="6" column="1">
+                      <item row="7" column="1">
                        <widget class="QSpinBox" name="j5Field">
                         <property name="minimum">
                          <number>-720</number>
@@ -241,6 +164,113 @@
                         </property>
                        </widget>
                       </item>
+                      <item row="1" column="0">
+                       <widget class="QLabel" name="label_7">
+                        <property name="text">
+                         <string>J0 Angle</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QLabel" name="label_5">
+                        <property name="text">
+                         <string>J2 Angle</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QSpinBox" name="j2Field">
+                        <property name="minimum">
+                         <number>-720</number>
+                        </property>
+                        <property name="maximum">
+                         <number>720</number>
+                        </property>
+                        <property name="singleStep">
+                         <number>5</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="1">
+                       <widget class="QSpinBox" name="j4Field">
+                        <property name="minimum">
+                         <number>-720</number>
+                        </property>
+                        <property name="maximum">
+                         <number>720</number>
+                        </property>
+                        <property name="singleStep">
+                         <number>5</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="0">
+                       <widget class="QLabel" name="label_4">
+                        <property name="text">
+                         <string>J5 Angle</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QSpinBox" name="j0Field">
+                        <property name="minimum">
+                         <number>-720</number>
+                        </property>
+                        <property name="maximum">
+                         <number>720</number>
+                        </property>
+                        <property name="singleStep">
+                         <number>5</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QLabel" name="label_3">
+                        <property name="text">
+                         <string>J4 Angle</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QSpinBox" name="j3Field">
+                        <property name="minimum">
+                         <number>-720</number>
+                        </property>
+                        <property name="maximum">
+                         <number>720</number>
+                        </property>
+                        <property name="singleStep">
+                         <number>5</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="0">
+                       <widget class="QLabel" name="label_6">
+                        <property name="text">
+                         <string>J3 Angle</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QLabel" name="label_8">
+                        <property name="text">
+                         <string>J1 Angle</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="0">
+                       <widget class="QLabel" name="label_26">
+                        <property name="font">
+                         <font>
+                          <pointsize>11</pointsize>
+                          <italic>false</italic>
+                         </font>
+                        </property>
+                        <property name="text">
+                         <string>Articulated Robot</string>
+                        </property>
+                       </widget>
+                      </item>
                      </layout>
                     </widget>
                    </item>
@@ -249,6 +279,54 @@
                      <property name="text">
                       <string>Save Waypoint</string>
                      </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QWidget" name="widget_13" native="true">
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                      </font>
+                     </property>
+                     <layout class="QGridLayout" name="gridLayout_7">
+                      <item row="1" column="1">
+                       <widget class="QSpinBox" name="ttAngleField">
+                        <property name="font">
+                         <font>
+                          <pointsize>10</pointsize>
+                         </font>
+                        </property>
+                        <property name="minimum">
+                         <number>-720</number>
+                        </property>
+                        <property name="maximum">
+                         <number>720</number>
+                        </property>
+                        <property name="singleStep">
+                         <number>5</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QLabel" name="label_28">
+                        <property name="text">
+                         <string>J0 Angle</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="0">
+                       <widget class="QLabel" name="label_27">
+                        <property name="font">
+                         <font>
+                          <pointsize>11</pointsize>
+                         </font>
+                        </property>
+                        <property name="text">
+                         <string>Turntable</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
                     </widget>
                    </item>
                   </layout>

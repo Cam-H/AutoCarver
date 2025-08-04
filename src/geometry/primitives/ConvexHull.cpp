@@ -41,7 +41,7 @@ ConvexHull::ConvexHull(const std::shared_ptr<Mesh>& mesh)
 ConvexHull::ConvexHull(const std::vector<glm::dvec3>& cloud)
         : m_center()
         , m_cloud(cloud)
-        , m_faces(nullptr, nullptr, 0)
+        , m_faces(0, 0)
         , m_volume(-1.0f)
         , m_walkStart(0)
 

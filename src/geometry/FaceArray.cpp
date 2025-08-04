@@ -25,12 +25,12 @@ FaceArray::FaceArray(uint32_t faceCount, uint32_t indexCount)
 {
 }
 
-FaceArray::FaceArray(const uint32_t* indices, uint32_t triangleCount)
-    : FaceArray(triangleCount, 3 * triangleCount)
-{
-    std::copy(indices, indices + 3 * triangleCount, m_faces.begin());
-    std::fill(m_faceSizes.begin(), m_faceSizes.end(), 3);
-}
+//FaceArray::FaceArray(const uint32_t* indices, uint32_t triangleCount)
+//    : FaceArray(triangleCount, 3 * triangleCount)
+//{
+//    std::copy(indices, indices + 3 * triangleCount, m_faces.begin());
+//    std::fill(m_faceSizes.begin(), m_faceSizes.end(), 3);
+//}
 
 FaceArray::FaceArray(const std::vector<Triangle>& faces)
         : FaceArray(faces.size(), sizeof(Triangle) * faces.size())
@@ -45,18 +45,21 @@ FaceArray::FaceArray(const std::vector<Triangle>& faces)
     std::fill(m_faceSizes.begin(), m_faceSizes.end(), 3);
 }
 
-FaceArray::FaceArray(const uint32_t* faces, const uint32_t* faceSizes, uint32_t faceCount)
-        : m_faceSizes(faceCount)
-        , m_faceCount(faceCount)
-        , m_indexCount(0)
-        , m_normals(faceCount)
-{
-    std::copy(faceSizes, faceSizes + faceCount, m_faceSizes.begin());
-
-    for (uint32_t i = 0; i < m_faceCount; i++) m_indexCount += m_faceSizes[i];
-    m_faces = std::vector<uint32_t>(faces, faces + m_indexCount);
-
-}
+//FaceArray::FaceArray(const uint32_t* faces, const uint32_t* faceSizes, uint32_t faceCount)
+//        : m_faceSizes(faceCount)
+//        , m_faceCount(faceCount)
+//        , m_indexCount(0)
+//        , m_normals(faceCount)
+//{
+//    std::cout << "FA " << faceCount << " " << faces << " " << faceSizes << "\n";
+//
+//
+//    std::copy(faceSizes, faceSizes + faceCount, m_faceSizes.begin());
+//
+//    for (uint32_t i = 0; i < m_faceCount; i++) m_indexCount += m_faceSizes[i];
+//    m_faces = std::vector<uint32_t>(faces, faces + m_indexCount);
+//
+//}
 
 FaceArray::FaceArray(const std::vector<std::vector<uint32_t>>& indices)
         : m_faceSizes(indices.size())
@@ -131,6 +134,7 @@ glm::dvec3 FaceArray::calculateNormal(const std::vector<glm::dvec3>& boundary)
 
 void FaceArray::calculateNormals(const std::vector<glm::dvec3>& vertices)
 {
+
     m_normals = std::vector<glm::dvec3>(m_faceCount);
 
     uint32_t *idxPtr = &m_faces[0];
@@ -157,9 +161,10 @@ void FaceArray::calculateNormals(const std::vector<glm::dvec3>& vertices)
     }
 }
 
+// Triangulates the faces based on edges created from the provided vertices. May crash if called on an invalid object
 void FaceArray::triangulate(const std::vector<glm::dvec3>& vertices)
 {
-//    std::cout << "Triangulating... " << m_normals.size() << " " << m_faceCount << "\n"; TODO verify
+//    std::cout << "Triangulating... " << m_normals.size() << " " << m_faceCount << "\n"; //TODO verify
 //    if (!m_normals.empty() && m_normals.size() != m_faceCount) throw std::runtime_error("[FaceArray] Mystery normal error");
 //    if (m_normals.size() < m_faceCount) calculateNormals(vertices);
 //    calculateNormals(vertices);
@@ -306,11 +311,13 @@ const std::vector<Triangle>& FaceArray::triangles() const
     return m_triangles;
 }
 
+// Returns the index of the first triangle belonging to the specified face, and the number of triangles belonging to that face
 std::tuple<uint32_t, uint32_t> FaceArray::triangleLookup(uint32_t faceIdx) const
 {
-    if (faceIdx >= m_faceCount) return {};
-    else if (faceIdx + 1 == m_faceCount)return { m_triFaceLookup[faceIdx], m_triangles.size() - m_triFaceLookup[faceIdx] };
-    else return { m_triFaceLookup[faceIdx], m_triFaceLookup[faceIdx + 1] - m_triFaceLookup[faceIdx] };
+    if (faceIdx >= m_faceCount) throw std::runtime_error("[FaceArray] Can not lookup triangle. Index out of bounds");
+
+    uint32_t last = faceIdx + 1 < m_faceCount ? m_triFaceLookup[faceIdx + 1] : m_triangles.size();
+    return { m_triFaceLookup[faceIdx], last - m_triFaceLookup[faceIdx] };
 }
 
 std::vector<glm::dvec3> FaceArray::faceBorder(uint32_t idx, const std::vector<glm::dvec3>& vertices) const
@@ -446,11 +453,24 @@ bool FaceArray::empty() const
     return m_faceCount == 0;
 }
 
+bool FaceArray::isValid() const
+{
+    if (m_faceCount == 0 || m_faces.empty() || (m_faceCount != m_faceSizes.size())) return false;
+
+    uint32_t sum = 0;
+    for (uint32_t i = 0; i < m_faceCount; i++) {
+        if (m_faceSizes[i] < 3) return false;
+        sum += m_faceSizes[i];
+    }
+
+    return sum <= m_faces.size();
+}
+
 void FaceArray::print() const
 {
     uint32_t idx = 0;
 
-    std::cout << "\n~~~~~ Faces (" << m_faceCount << "|" << triangleCount() << ") ~~~~~\n";
+    std::cout << "\n~~~~~ Faces (" << m_faceCount << " " << m_faceSizes.size() << "|" << triangleCount() << " " << m_faces.size() << ") ~~~~~\n";
     for (uint32_t i = 0; i < m_faceCount; i++) {
         std::cout << i << "| ";
         for (uint32_t j = 0; j < m_faceSizes[i]; j++) {

@@ -40,6 +40,7 @@ public:
     bool deserialize(std::ifstream& file) override;
 
     void setType(Type type);
+    void setAxisEnabled(bool enable);
 
     void setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate = false);
 
@@ -56,6 +57,8 @@ public:
     void prepareColliderVisuals();
 
     Type getType() const;
+
+    bool isAxisEnabled() const;
 
     bool isManifold();
     double area();
@@ -126,6 +129,7 @@ protected:
     std::shared_ptr<Mesh> m_sphereMesh;
     bool m_colliderVisualsEnable;
 
+    bool m_axisEnable;
 
     bool m_isManifold;
     double m_area;
