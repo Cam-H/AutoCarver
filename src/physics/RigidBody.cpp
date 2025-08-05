@@ -15,17 +15,9 @@
 #include "geometry/MeshBuilder.h"
 #include "geometry/collision/Collision.h"
 
-RigidBody::RigidBody(const std::string& filename)
-        : RigidBody((const std::shared_ptr<Mesh>&)nullptr)
-{
-    Serializable::deserialize(filename);
-
-    updateColliders();
-}
-
-RigidBody::RigidBody(const std::shared_ptr<Mesh>& mesh)
+RigidBody::RigidBody()
     : m_type(Type::STATIC)
-    , m_mesh(mesh)
+    , m_mesh(nullptr)
     , m_hullMesh(nullptr)
     , m_hullOK(false)
     , m_layer(1)
@@ -48,13 +40,31 @@ RigidBody::RigidBody(const std::shared_ptr<Mesh>& mesh)
     , Transformable()
 {
 
+}
+
+RigidBody::RigidBody(const std::string& filename)
+        : RigidBody()
+{
+    Serializable::deserialize(filename);
+
+    updateColliders();
+}
+
+RigidBody::RigidBody(const std::shared_ptr<Mesh>& mesh)
+    : RigidBody()
+{
+    m_mesh = mesh;
+
     updateColliders();
 }
 
 RigidBody::RigidBody(const ConvexHull& hull)
-        : RigidBody(std::make_shared<Mesh>(hull))
+        : RigidBody()
 {
-
+    m_mesh = std::make_shared<Mesh>(hull);
+    m_hull = hull;
+    m_hullOK = hull.isValid();
+    m_boundingSphere = Sphere::enclose(m_hull.vertices());
 }
 
 bool RigidBody::serialize(const std::string& filename)
@@ -231,7 +241,8 @@ void RigidBody::updateColliders()
     m_hull = ConvexHull(m_mesh->vertices());
     m_hullOK = m_hull.vertexCount() >= 4;
 
-    m_boundingSphere = Sphere::enclose(m_hull.vertices());
+    if (m_hullOK) m_boundingSphere = Sphere::enclose(m_hull.vertices());
+    else m_boundingSphere = Sphere::enclose(m_mesh->vertices());
 
     // Create new mesh for colliders, if one is already in use (replacement)
     if (m_colliderVisualsEnable) {
@@ -382,6 +393,20 @@ void RigidBody::calculateInertiaTensor()
 {
     m_inertiaTensor = (m_mesh != nullptr) ? glm::inverse(m_mesh->inertiaTensor() * m_density) : 0;
     m_inertiaTensorOK = true;
+}
+
+std::tuple<bool, double> RigidBody::raycast(Ray ray, double tLim)
+{
+    // Transform ray relative to the body
+    ray = glm::inverse(m_transform) * ray;
+
+    // Initial check against bounding sphere
+    {
+        auto [hit, t] = Collision::raycast(m_boundingSphere, ray);
+        if (!hit || t > tLim) return { false, 0 };
+    }
+
+    return m_mesh->raycast(ray);
 }
 
 void RigidBody::print() const

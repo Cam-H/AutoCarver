@@ -1,6 +1,5 @@
 
-qt_add_library(AutoCarverLib
-
+add_library(AutoCarverLib
         core/Timer.cpp
         core/Sculpture.cpp
         core/Scene.cpp
@@ -81,31 +80,21 @@ qt_add_library(AutoCarverLib
         robot/trajectory/CartesianTrajectory.cpp
         )
 
-target_link_libraries(AutoCarverLib PRIVATE
+set_target_properties(AutoCarverLib PROPERTIES
+        AUTOMOC ON
+        AUTOUIC ON
+        )
+
+target_link_libraries(AutoCarverLib PUBLIC
         Qt::Core
         Qt::Gui
         Qt::UiTools
+        Qt::Widgets
         Qt::OpenGL
         Qt::OpenGLWidgets
-        Qt::Widgets
         libassimp-6d
         )
 
-qt_add_executable(AutoCarver
-        core/EntryPoint.cpp)
+add_executable(AutoCarver core/EntryPoint.cpp)
 
-target_link_libraries(AutoCarver PRIVATE
-        Qt::Core
-        Qt::Gui
-        Qt::UiTools
-        Qt::OpenGL
-        Qt::OpenGLWidgets
-        Qt::Widgets
-        libassimp-6d
-        AutoCarverLib
-        )
-
-set_target_properties(AutoCarver PROPERTIES
-#        WIN32_EXECUTABLE TRUE
-        MACOSX_BUNDLE TRUE
-        )
+target_link_libraries(AutoCarver PRIVATE AutoCarverLib)

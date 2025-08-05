@@ -15,6 +15,7 @@
 
 #include <iostream>
 #include <limits>
+#include <cassert>
 
 FaceArray::FaceArray(uint32_t faceCount, uint32_t indexCount)
         : m_faceCount(faceCount)
@@ -32,11 +33,11 @@ FaceArray::FaceArray(uint32_t faceCount, uint32_t indexCount)
 //    std::fill(m_faceSizes.begin(), m_faceSizes.end(), 3);
 //}
 
-FaceArray::FaceArray(const std::vector<Triangle>& faces)
-        : FaceArray(faces.size(), sizeof(Triangle) * faces.size())
+FaceArray::FaceArray(const std::vector<TriIndex>& faces)
+        : FaceArray(faces.size(), sizeof(TriIndex) * faces.size())
 {
     uint32_t idx = 0;
-    for (const Triangle& tri : faces) {
+    for (const TriIndex& tri : faces) {
         m_faces[idx++] = tri.I0;
         m_faces[idx++] = tri.I1;
         m_faces[idx++] = tri.I2;
@@ -115,7 +116,7 @@ glm::dvec3 FaceArray::calculateNormal(const std::vector<glm::dvec3>& boundary)
 {
     if (boundary.size() < 3) throw std::runtime_error("[FaceArray] Can not calculate the normal of boundary! Inadequate size");
 
-    if (boundary.size() == 3) return Triangle::normal(boundary[0], boundary[1], boundary[2]);
+    if (boundary.size() == 3) return Triangle3D::normal(boundary[0], boundary[1], boundary[2]);
 
     glm::dvec3 normal = {};
     for (uint32_t i = 0; i < boundary.size(); i++) {
@@ -140,7 +141,7 @@ void FaceArray::calculateNormals(const std::vector<glm::dvec3>& vertices)
     uint32_t *idxPtr = &m_faces[0];
     for (uint32_t i = 0; i < m_faceCount; i++) {
         if (m_faceSizes[i] == 3) { // Simple cross-product normal
-            m_normals[i] = Triangle::normal(vertices[*idxPtr], vertices[*(idxPtr + 1)], vertices[*(idxPtr + 2)]);
+            m_normals[i] = Triangle3D::normal(vertices[*idxPtr], vertices[*(idxPtr + 1)], vertices[*(idxPtr + 2)]);
         } else { // Otherwise, evaluate the normal using Newell's method
             m_normals[i] = { 0, 0, 0 };
             for (uint32_t j = 0; j < m_faceSizes[i]; j++) {
@@ -191,7 +192,7 @@ void FaceArray::triangulate(const std::vector<glm::dvec3>& vertices)
 
             // Map indices to the original set
             m_triFaceLookup.emplace_back(m_triangles.size());
-            for (Triangle& tri : triangles) {
+            for (TriIndex& tri : triangles) {
                 m_triangles.emplace_back(
                         *(idxPtr + tri.I0),
                         *(idxPtr + tri.I1),
@@ -306,7 +307,7 @@ uint32_t FaceArray::triangleCount() const
     return m_triangles.size();
 }
 
-const std::vector<Triangle>& FaceArray::triangles() const
+const std::vector<TriIndex>& FaceArray::triangles() const
 {
     return m_triangles;
 }
@@ -314,20 +315,32 @@ const std::vector<Triangle>& FaceArray::triangles() const
 // Returns the index of the first triangle belonging to the specified face, and the number of triangles belonging to that face
 std::tuple<uint32_t, uint32_t> FaceArray::triangleLookup(uint32_t faceIdx) const
 {
-    if (faceIdx >= m_faceCount) throw std::runtime_error("[FaceArray] Can not lookup triangle. Index out of bounds");
+    assert(faceIdx < m_faceCount);
 
     uint32_t last = faceIdx + 1 < m_faceCount ? m_triFaceLookup[faceIdx + 1] : m_triangles.size();
     return { m_triFaceLookup[faceIdx], last - m_triFaceLookup[faceIdx] };
 }
 
-std::vector<glm::dvec3> FaceArray::faceBorder(uint32_t idx, const std::vector<glm::dvec3>& vertices) const
+// Returns the index of the face to which the specified triangle index belongs
+uint32_t FaceArray::faceLookup(uint32_t triIdx) const
 {
-    if (idx >= m_faceCount) throw std::runtime_error("[FaceArray] Invalid element access when generating border");
+    assert(triIdx < m_triangles.size());
+
+    for (uint32_t i = 1; i < m_triFaceLookup.size(); i++) {
+        if (triIdx < m_triFaceLookup[i]) return i - 1;
+    }
+
+    return m_triFaceLookup.size() - 1;
+}
+
+std::vector<glm::dvec3> FaceArray::faceBorder(uint32_t faceIdx, const std::vector<glm::dvec3>& vertices) const
+{
+    assert(faceIdx < m_faceCount);
 
     std::vector<glm::dvec3> border;
 
-    auto *ptr = idxPtr(idx);
-    for (uint32_t i = 0; i < m_faceSizes[idx]; i++) {
+    auto *ptr = idxPtr(faceIdx);
+    for (uint32_t i = 0; i < m_faceSizes[faceIdx]; i++) {
         if (*ptr >= vertices.size()) throw std::runtime_error("[FaceArray] Invalid vertex element access when generating border");
         border.push_back(vertices[*ptr++]);
     }
@@ -338,7 +351,7 @@ std::vector<glm::dvec3> FaceArray::faceBorder(uint32_t idx, const std::vector<gl
 double FaceArray::volume(const std::vector<glm::dvec3>& vertices) const
 {
     double sum = 0;
-    for (const Triangle& tri : m_triangles) {
+    for (const TriIndex& tri : m_triangles) {
 
         // Add contribution of tetrahedron to volume
         sum += glm::dot(vertices[tri.I0], glm::cross(vertices[tri.I1], vertices[tri.I2]));

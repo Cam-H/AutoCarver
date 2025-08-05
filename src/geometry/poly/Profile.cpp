@@ -280,7 +280,7 @@ std::vector<uint32_t> Profile::delauneyRefinement()
     auto triangles = Polygon::triangulate(vertices);
 
     // Select the triangle on the boundary (The only accessible tri)
-    for (const Triangle& tri : triangles) {
+    for (const TriIndex& tri : triangles) {
         if (tri.has(0) && tri.has(indices.size() - 1)) {
             uint32_t splitVertex = tri.last(0, indices.size() - 1);
             triangle = { indices[0], indices[splitVertex], indices[indices.size() - 1] };
@@ -333,7 +333,7 @@ double Profile::area(const std::vector<uint32_t>& indices) const
         std::cout << indices.size() << " XXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n";
         return 0;
     } else if (indices.size() == 3)
-        return std::abs(Triangle::area(m_vertices[indices[0]], m_vertices[indices[1]], m_vertices[indices[2]]));
+        return std::abs(Triangle2D::area(m_vertices[indices[0]], m_vertices[indices[1]], m_vertices[indices[2]]));
     else throw std::runtime_error("[Profile] Area calculation not yet developed");
 }
 
@@ -391,7 +391,7 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
         std::vector<glm::dvec2> vertices = sectionVertices(m_remainder[m_next]);
         auto triangles = Polygon::triangulate(vertices);
 
-        for (const Triangle& tri: triangles) {
+        for (const TriIndex& tri: triangles) {
             edges.emplace_back(vertices[tri.I0], vertices[tri.I1]);
             edges.emplace_back(vertices[tri.I1], vertices[tri.I2]);
             edges.emplace_back(vertices[tri.I2], vertices[tri.I0]);

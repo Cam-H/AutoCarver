@@ -14,7 +14,10 @@
 #include <utility>
 //#include <glm/gtx/norm.hpp>
 
+#include "primitives/Ray.h"
+
 #include "core/Timer.h"
+#include "geometry/collision/Collision.h"
 
 Mesh::Mesh()
     : Mesh(0, 0, 0)
@@ -42,7 +45,7 @@ Mesh::Mesh(const ConvexHull& hull, bool applyColorPattern)
     initialize();
 }
 
-Mesh::Mesh(const std::vector<glm::dvec3>& vertices, const std::vector<Triangle>& faces)
+Mesh::Mesh(const std::vector<glm::dvec3>& vertices, const std::vector<TriIndex>& faces)
     : Mesh()
 
 {
@@ -145,7 +148,7 @@ void Mesh::calculateVertexNormals()
     for (uint32_t i = 0; i < m_faces.faceCount(); i++) {
         auto [start, count] = m_faces.triangleLookup(i);
         for (uint32_t j = 0; j < count; j++) {
-            const Triangle& triangle = m_faces.triangles()[start + j];
+            const TriIndex& triangle = m_faces.triangles()[start + j];
             const glm::dvec3& faceNormal = m_faces.normal(i);
 
             normals[triangle.I0] += faceNormal;
@@ -160,6 +163,33 @@ void Mesh::calculateVertexNormals()
     }
 
     m_vertexNormals = VertexArray(normals);
+}
+
+std::tuple<bool, double> Mesh::raycast(const Ray& ray) const
+{
+    auto [hit, t, idx] = pickFace(ray);
+    return { hit, t };
+}
+
+std::tuple<bool, double, uint32_t> Mesh::pickFace(const Ray& ray) const
+{
+    const std::vector<TriIndex>& triangles = m_faces.triangles();
+    double t = -1;
+    uint32_t idx = 0;
+
+    for (const TriIndex& tri : triangles) {
+        auto [hit, tTest] = Collision::raycast(Triangle3D(m_vertices.vertices(), tri), ray);
+        if (hit && (t < 0 || tTest < t)) {
+            t = tTest;
+            idx = &tri - &triangles[0];
+        }
+    }
+
+    if (t != -1) {
+        return { true, t, m_faces.faceLookup(idx) };
+    }
+
+    return { false, 0, 0 };
 }
 
 void Mesh::print() const
@@ -505,13 +535,13 @@ glm::dvec3 Mesh::centroid() const
     double sum = 0;
     glm::dvec3 centroid(0.0f);
 
-    for (const Triangle& tri : m_faces.triangles()) {
+    for (const TriIndex& tri : m_faces.triangles()) {
         glm::dvec3 a = m_vertices[tri.I0];
         glm::dvec3 b = m_vertices[tri.I1];
         glm::dvec3 c = m_vertices[tri.I2];
 
         glm::dvec3 center = (a + b + c) * (1.0 / 3);
-        double area = Triangle::area(a, b, c);
+        double area = Triangle3D::area(a, b, c);
 
         centroid += center * area;
         sum += area;
@@ -541,7 +571,7 @@ glm::dmat3 Mesh::inertiaTensor() const
 {
     glm::dmat3 it(0.0f);
 
-    for (const Triangle& tri : m_faces.triangles()) {
+    for (const TriIndex& tri : m_faces.triangles()) {
         it += tetrahedronInertiaTensor(m_vertices[tri.I0], m_vertices[tri.I1], m_vertices[tri.I2]);
     }
 

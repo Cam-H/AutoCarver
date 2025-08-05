@@ -99,7 +99,7 @@ void ControlWidget::handleCollision(uint32_t active)
     m_scene->bodies()[3]->setPosition(result.colliderBClosest());
 
     if (colliding) {
-        m_scene->bodies()[active]->translate((!active ? 1.0f : -1.0f) * result.overlap());
+        m_scene->bodies()[active]->translate((!active ? 1.0 : -1.0) * result.overlap());
         std::cout << "Overlap: " << result.overlap().x << " " << result.overlap().y << " " << result.overlap().z << "\n";
     }
 

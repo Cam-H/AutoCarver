@@ -33,9 +33,9 @@ void EPA::setWorldTransform(const glm::dmat4& transform)
     m_bWorld = { temp.x, temp.y, temp.z };
 }
 
-glm::dvec3 EPA::fromBarycentric(const std::vector<glm::dvec3>& va, const Triangle& triangle, const glm::dvec3& bary)
+glm::dvec3 EPA::fromBarycentric(const Triangle3D& triangle, const glm::dvec3& bary)
 {
-    return bary.x * va[triangle.I0] + bary.y * va[triangle.I1] + bary.z * va[triangle.I2];
+    return bary.x * triangle.a + bary.y * triangle.b + bary.z * triangle.c;
 }
 
 void EPA::exportState(const std::string& path)
@@ -43,7 +43,7 @@ void EPA::exportState(const std::string& path)
     std::vector<glm::dvec3> outVertices;
     for (const Simplex::Vertex& vertex : vertices) outVertices.emplace_back(vertex.val);
 
-    std::vector<Triangle> triangles;
+    std::vector<TriIndex> triangles;
     for (const Facet& facet : facets) triangles.emplace_back(facet.triangle);
 
     MeshHandler::exportMesh(std::make_shared<Mesh>(outVertices, triangles), path);
@@ -71,8 +71,8 @@ void EPA::prepareFacets(const Simplex& simplex, std::vector<std::pair<double, ui
 {
     for (uint32_t i = 0; i < 4; i++) vertices.push_back(simplex[i]);
 
-    std::array<Triangle, 4> indices = {
-            Triangle{0, 1, 2}, {0, 2, 3}, {0, 3, 1}, {3, 2, 1}
+    std::array<TriIndex, 4> indices = {
+            TriIndex{0, 1, 2}, {0, 2, 3}, {0, 3, 1}, {3, 2, 1}
     };
 
     std::vector<std::vector<uint32_t>> neighbors = {{2, 3, 1}, {0, 3, 2}, {1, 3, 0}, {1, 0, 2}};
@@ -105,7 +105,7 @@ void EPA::prepareFacets(const std::vector<uint32_t>& horizon, std::vector<std::p
         facets[horizon[j]].neighbors[z] = currentFacet;// Link against existing facet beyond the horizon
 
         // Prepare the new facet and link
-        Triangle triangle = {(uint32_t)vertices.size() - 1, lastVertex, horizon[j + 1] };
+        TriIndex triangle = {(uint32_t)vertices.size() - 1, lastVertex, horizon[j + 1] };
         glm::dvec3 norm = normal(triangle.I0, triangle.I1, triangle.I2);
 
         Facet facet = {triangle, norm, glm::dot(norm, -vertices[triangle.I0].val), {lastFacet, horizon[j], nextFacet}, true };

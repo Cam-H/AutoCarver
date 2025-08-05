@@ -50,7 +50,7 @@ EPA::EPA(const T1& a, const T2& b, Simplex simplex, const glm::dmat4& relative)
     }
 
     uint32_t idx = order[0].second;
-    const Triangle& tri = facets[idx].triangle;
+    const TriIndex& tri = facets[idx].triangle;
 
 
     // Record cs results
@@ -61,14 +61,14 @@ EPA::EPA(const T1& a, const T2& b, Simplex simplex, const glm::dmat4& relative)
 
     // TODO - Barycentric does not always give a reliable result for closest points. Need to evaluate closest of triangle-line or triangle-triangle
     // Calculate the barycentric co-ordinates of the intersection point
-    glm::dvec3 bary = Triangle::clampedBarycentric(vertices[tri.I0].val, vertices[tri.I1].val, vertices[tri.I2].val, proj);
+    glm::dvec3 bary = Triangle3D::clampedBarycentric(vertices[tri.I0].val, vertices[tri.I1].val, vertices[tri.I2].val, proj);
 
-    Triangle triA = { vertices[tri.I0].idx.first, vertices[tri.I1].idx.first, vertices[tri.I2].idx.first };
-    Triangle triB = { vertices[tri.I0].idx.second, vertices[tri.I1].idx.second, vertices[tri.I2].idx.second };
+    TriIndex triA = { vertices[tri.I0].idx.first, vertices[tri.I1].idx.first, vertices[tri.I2].idx.first };
+    TriIndex triB = { vertices[tri.I0].idx.second, vertices[tri.I1].idx.second, vertices[tri.I2].idx.second };
 
     // Calculate the closest points (locally) on the colliders
-    m_aWorld = m_aLocal = fromBarycentric(a.vertices(), triA, bary);
-    m_bWorld = m_bLocal = fromBarycentric(b.vertices(), triB, bary); // TODO fix bLocal
+    m_aWorld = m_aLocal = fromBarycentric(Triangle3D(a.vertices(), triA), bary);
+    m_bWorld = m_bLocal = fromBarycentric(Triangle3D(b.vertices(), triB), bary); // TODO fix bLocal
 
     m_worldOffset = m_localOffset = -proj;
 

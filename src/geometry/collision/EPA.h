@@ -55,7 +55,7 @@ public:
 private:
 
     struct Facet {
-        Triangle triangle;
+        TriIndex triangle;
         glm::dvec3 normal;
         double value;
 
@@ -76,7 +76,7 @@ private:
     void calculateHorizon(const glm::dvec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon);
 
     [[nodiscard]] glm::dvec3 barycentric(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& p);
-    [[nodiscard]] static glm::dvec3 fromBarycentric(const std::vector<glm::dvec3>& va, const Triangle& triangle, const glm::dvec3& bary);
+    [[nodiscard]] static glm::dvec3 fromBarycentric(const Triangle3D& triangle, const glm::dvec3& bary);
 
     void exportState(const std::string& path);
 private:

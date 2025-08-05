@@ -5,9 +5,12 @@
 #include "Scene.h"
 
 #include "fileIO/MeshHandler.h"
+#include "geometry/primitives/Plane.h"
+#include "geometry/primitives/AABB.h"
 #include "geometry/primitives/ConvexHull.h"
 #include "geometry/collision/EPA.h"
 #include "physics/Constraint.h"
+#include "geometry/collision/Collision.h"
 
 Scene::Scene()
     : m_updateThread(nullptr)
@@ -267,6 +270,27 @@ const std::vector<std::shared_ptr<RigidBody>>& Scene::bodies()
 uint32_t Scene::bodyCount()
 {
     return m_bodies.size();
+}
+
+std::tuple<std::shared_ptr<RigidBody>, double> Scene::raycast(const Ray& ray) const
+{
+    // TODO potential optimization: prepass or sort bodies relative to ray before evaluating
+    double tMin = std::numeric_limits<double>::max();
+    uint32_t idx = 0;
+
+    for (const std::shared_ptr<RigidBody>& body : m_bodies) {
+        auto [hit, t] = body->raycast(ray, tMin);
+        if (hit && t < tMin) {
+            tMin = t;
+            idx = &body - &m_bodies[0];
+        }
+    }
+
+    if (tMin < std::numeric_limits<double>::max()) {
+        return { m_bodies[idx], tMin };
+    }
+
+    return { nullptr, 0 };
 }
 
 //std::vector<const std::shared_ptr<Mesh>&> Scene::meshes()

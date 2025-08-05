@@ -281,9 +281,9 @@ int main(int argc, char *argv[])
     robot->setJointValueDg(2, -45);
     axes = robot->getEOATAxes();
 
-    auto eoatMesh = MeshHandler::loadAsMeshBody("../res/meshes/Blade.obj");
-    auto eoat = scene->createBody(eoatMesh);
-    robot->setEOAT(eoat, false);
+//    auto eoatMesh = MeshHandler::loadAsMeshBody("../res/meshes/Blade.obj");
+//    auto eoat = scene->createBody(eoatMesh);
+//    robot->setEOAT(eoat, false);
 //    robot->links().back()->setMesh(eoatMesh);
 
 //    scene->createBody(eoatMesh);
@@ -394,23 +394,23 @@ int main(int argc, char *argv[])
     });
 
 
-    auto showMeshButton = window->findChild<QCheckBox*>("showMeshButton");
-    QObject::connect(showMeshButton, &QCheckBox::clicked, [&](bool checked) {
-        if (checked) sceneWidget->show(0, Scene::Model::MESH);
-        else sceneWidget->hide(0, Scene::Model::MESH);
-    });
-
-    auto showHullButton = window->findChild<QCheckBox*>("showHullButton");
-    QObject::connect(showHullButton, &QCheckBox::clicked, [&](bool checked) {
-        if (checked) sceneWidget->showAll(Scene::Model::HULL);
-        else sceneWidget->hideAll(Scene::Model::HULL);
-    });
-
-    auto showSphereButton = window->findChild<QCheckBox*>("showSphereButton");
-    QObject::connect(showSphereButton, &QCheckBox::clicked, [&](bool checked) {
-        if (checked) sceneWidget->showAll(Scene::Model::BOUNDING_SPHERE);
-        else sceneWidget->hideAll(Scene::Model::BOUNDING_SPHERE);
-    });
+//    auto showMeshButton = window->findChild<QCheckBox*>("showMeshButton");
+//    QObject::connect(showMeshButton, &QCheckBox::clicked, [&](bool checked) {
+//        if (checked) sceneWidget->show(0, Scene::Model::MESH);
+//        else sceneWidget->hide(0, Scene::Model::MESH);
+//    });
+//
+//    auto showHullButton = window->findChild<QCheckBox*>("showHullButton");
+//    QObject::connect(showHullButton, &QCheckBox::clicked, [&](bool checked) {
+//        if (checked) sceneWidget->showAll(Scene::Model::HULL);
+//        else sceneWidget->hideAll(Scene::Model::HULL);
+//    });
+//
+//    auto showSphereButton = window->findChild<QCheckBox*>("showSphereButton");
+//    QObject::connect(showSphereButton, &QCheckBox::clicked, [&](bool checked) {
+//        if (checked) sceneWidget->showAll(Scene::Model::BOUNDING_SPHERE);
+//        else sceneWidget->hideAll(Scene::Model::BOUNDING_SPHERE);
+//    });
 
     auto showAxesButton = window->findChild<QCheckBox*>("showAxesButton");
     QObject::connect(showAxesButton, &QCheckBox::clicked, [&](bool checked) {

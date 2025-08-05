@@ -234,12 +234,12 @@ double Polygon::cross(const glm::dvec2& origin, const glm::dvec2& a, const glm::
     return (a.x - origin.x) * (b.y - origin.y) - (a.y - origin.y) * (b.x - origin.x);
 }
 
-std::vector<Triangle> Polygon::triangulate() const
+std::vector<TriIndex> Polygon::triangulate() const
 {
     return triangulate(m_vertices);
 }
 
-std::vector<Triangle> Polygon::triangulate(const std::vector<glm::dvec2>& vertices)
+std::vector<TriIndex> Polygon::triangulate(const std::vector<glm::dvec2>& vertices)
 {
     CDT::Triangulation<double> cdt;
 
@@ -253,7 +253,7 @@ std::vector<Triangle> Polygon::triangulate(const std::vector<glm::dvec2>& vertic
     for (uint32_t i = 0; i < vertices.size() - 1; i++) edges.emplace_back(i, i + 1);
     edges.emplace_back(vertices.size() - 1, 0);
 
-    std::vector<Triangle> triangles;
+    std::vector<TriIndex> triangles;
 
     try {
 

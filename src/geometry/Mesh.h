@@ -19,6 +19,8 @@
 #include "VertexArray.h"
 #include "FaceArray.h"
 
+class Ray;
+
 static glm::dvec3 NULL_COLOR = { 1.0f, 0.0f, 1.0f };
 
 
@@ -30,7 +32,7 @@ public:
 
     explicit Mesh(const ConvexHull& hull, bool applyColorPattern = true);
 
-    explicit Mesh(const std::vector<glm::dvec3>& vertices, const std::vector<Triangle>& faces);
+    explicit Mesh(const std::vector<glm::dvec3>& vertices, const std::vector<TriIndex>& faces);
 
     explicit Mesh(const std::string& filename);
     explicit Mesh(std::ifstream& file);
@@ -108,6 +110,9 @@ public:
     [[nodiscard]] glm::dmat3 inertiaTensor() const;
 
     std::vector<uint32_t> sharedFaces(const std::shared_ptr<Mesh>& reference) const;
+
+    std::tuple<bool, double> raycast(const Ray& ray) const;
+    std::tuple<bool, double, uint32_t> pickFace(const Ray& ray) const;
 
     void print() const;
 

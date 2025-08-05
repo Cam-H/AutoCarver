@@ -146,9 +146,9 @@ void PolygonWidget::paintEvent(QPaintEvent *)
     // Draw tesselation results
     if (m_triangulation) {
         Polygon *poly = getPolygon();
-        std::vector<Triangle> triangles = poly->triangulate();
+        std::vector<TriIndex> triangles = poly->triangulate();
 
-        for (const Triangle &tri : triangles) {
+        for (const TriIndex &tri : triangles) {
             painter.setPen(colorSet[idx]);
             if (++idx >= colorSet.size()) idx = 0;
 

@@ -17,6 +17,7 @@
 #include <vector>
 #include <unordered_map>
 
+#include "geometry/primitives/Ray.h"
 #include "core/Scene.h"
 
 #include "renderer/RenderGeometry.h"
@@ -27,10 +28,14 @@ class SceneWidget : public QOpenGLWidget, protected QOpenGLFunctions
 {
 Q_OBJECT
 
+signals:
+    void perspectiveChanged();
+    void mousepick(Ray ray);
+
 public:
     using QOpenGLWidget::QOpenGLWidget;
     SceneWidget(QWidget* parent = nullptr);
-    SceneWidget(const std::shared_ptr<Scene>& scene = nullptr, QWidget* parent = nullptr);
+    SceneWidget(const std::shared_ptr<Scene>& scene, QWidget* parent = nullptr);
     ~SceneWidget();
 
     void setScene(const std::shared_ptr<Scene>& scene);
@@ -58,9 +63,6 @@ public:
     void updateRenderGeometry(const std::shared_ptr<Mesh>& mesh);
 
     Camera& camera();
-
-signals:
-    void perspectiveChanged();
 
 protected:
 

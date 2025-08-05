@@ -16,7 +16,7 @@ class FaceArray {
 public:
     FaceArray(uint32_t faceCount, uint32_t indexCount);
 
-    explicit FaceArray(const std::vector<Triangle>& faces);
+    explicit FaceArray(const std::vector<TriIndex>& faces);
 
     explicit FaceArray(const std::vector<std::vector<uint32_t>>& indices);
 
@@ -50,11 +50,12 @@ public:
     [[nodiscard]] glm::dvec3 color(uint32_t idx) const;
 
     [[nodiscard]] uint32_t triangleCount() const;
-    [[nodiscard]] const std::vector<Triangle>& triangles() const;
+    [[nodiscard]] const std::vector<TriIndex>& triangles() const;
 
     [[nodiscard]] std::tuple<uint32_t, uint32_t> triangleLookup(uint32_t faceIdx) const;
+    [[nodiscard]] uint32_t faceLookup(uint32_t triIdx) const;
 
-    [[nodiscard]] std::vector<glm::dvec3> faceBorder(uint32_t idx, const std::vector<glm::dvec3>& vertices) const;
+    [[nodiscard]] std::vector<glm::dvec3> faceBorder(uint32_t faceIdx, const std::vector<glm::dvec3>& vertices) const;
     [[nodiscard]] double volume(const std::vector<glm::dvec3>& vertices) const;
 
 //    FaceArray triangulated();
@@ -94,7 +95,7 @@ private:
     std::vector<glm::dvec3> m_normals;
     std::vector<glm::dvec3> m_colors;
 
-    std::vector<Triangle> m_triangles;
+    std::vector<TriIndex> m_triangles;
     std::vector<uint32_t> m_triFaceLookup;
 
     uint32_t m_faceCount; // Total number of faces

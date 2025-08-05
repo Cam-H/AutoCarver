@@ -70,7 +70,7 @@ void* RenderGeometry::vertexData(const std::shared_ptr<Mesh>& mesh)
         for (uint32_t i = 0; i < mesh->faceCount(); i++) { // Every face
             auto [start, count] = mesh->faces().triangleLookup(i);
             for (uint32_t j = 0; j < count; j++) { // Every triangle in each face
-                const Triangle& triangle = mesh->faces().triangles()[start + j];
+                const TriIndex& triangle = mesh->faces().triangles()[start + j];
 
                 for (uint32_t k = 0; k < 3; k++) { // Every vertex in each triangle
                     const glm::dvec3& vertex = attribs[0].get()[triangle[k]];

@@ -8,6 +8,8 @@
 #include <QVector3D>
 #include <QMatrix4x4>
 
+#include "geometry/primitives/Ray.h"
+
 class Camera {
 public:
 
@@ -39,24 +41,27 @@ public:
 
 
     // Camera getters
-    Type getType() const;
+    [[nodiscard]] Type getType() const;
 
-    double getRadius() const;
+    [[nodiscard]] double getRadius() const;
 
-    double getYaw() const;
-    double getPitch() const;
+    [[nodiscard]] double getYaw() const;
+    [[nodiscard]] double getPitch() const;
 
-    QVector3D getPosition() const;
-    QVector3D getFocus() const;
+    [[nodiscard]] QVector3D getPosition() const;
+    [[nodiscard]] QVector3D getFocus() const;
 
-    QVector3D forward() const;
-    QVector3D horizontal() const;
-    QVector3D vertical() const;
+    [[nodiscard]] QVector3D forward() const;
+    [[nodiscard]] QVector3D horizontal() const;
+    [[nodiscard]] QVector3D vertical() const;
 
-    QMatrix4x4 getViewProjection() const;
+    [[nodiscard]] QMatrix4x4 getViewProjection() const;
 
 
-    QVector3D cameraRotated(QVector3D base) const;
+    [[nodiscard]] QVector3D cameraRotated(QVector3D base) const;
+
+    // Returns a world-space ray projected from the camera, provided the normalized screen coordinates
+    [[nodiscard]] Ray getRay(QPointF position) const;
 
 private:
 

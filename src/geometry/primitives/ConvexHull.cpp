@@ -56,7 +56,7 @@ void ConvexHull::initialize()
     // Default to minimum hull size that will not introduce potential bugs
     m_vertices.reserve(m_cloud.size());
 
-    std::vector<Triangle> triangles = initialApproximation();
+    std::vector<TriIndex> triangles = initialApproximation();
 
     if (triangles.empty()) {
 //        m_cloud.clear();
@@ -357,8 +357,8 @@ std::vector<uint32_t> ConvexHull::horizon(const glm::dvec3& axis, const glm::dve
     return boundary;
 }
 
-std::vector<Triangle> ConvexHull::initialApproximation(){
-    std::vector<Triangle> triangles;
+std::vector<TriIndex> ConvexHull::initialApproximation(){
+    std::vector<TriIndex> triangles;
 
     // Find a pair of extreme points of the point cloud
     std::vector<uint32_t> extremes = { 0, 0, 0, 0 };
@@ -396,7 +396,7 @@ std::vector<Triangle> ConvexHull::initialApproximation(){
 
     // Swap vertices if needed to ensure proper winding
     auto ref = m_vertices[3] - m_vertices[0];
-    auto normal = Triangle::normal(m_vertices[0], m_vertices[1], m_vertices[2]);
+    auto normal = Triangle3D::normal(m_vertices[0], m_vertices[1], m_vertices[2]);
 
     if (glm::dot(ref, normal) > 0) {
         std::swap(m_vertices[0], m_vertices[1]);
@@ -411,19 +411,14 @@ std::vector<Triangle> ConvexHull::initialApproximation(){
     return triangles;
 }
 
-glm::dvec3 ConvexHull::wNormal(const Triangle& triangle)
-{
-    return Triangle::normal(m_vertices[triangle.I0], m_vertices[triangle.I1], m_vertices[triangle.I2]);
-}
-
-void ConvexHull::prepareFacets(const std::vector<Triangle>& triangles){
+void ConvexHull::prepareFacets(const std::vector<TriIndex>& triangles){
     std::vector<uint32_t> free(m_cloud.size());
     std::iota(free.begin(), free.end(), 0);
 
     std::vector<std::vector<uint32_t>> neighbors = { { 2, 3, 1 }, { 0, 3, 2 }, { 1, 3, 0 }, { 1, 0, 2 } };
     for (uint32_t i = 0; i < triangles.size(); i++) {
 
-        glm::dvec3 normal = wNormal(triangles[i]);
+        glm::dvec3 normal = Triangle3D(m_vertices, triangles[i]).normal();
 
         Facet facet = {triangles[i], normal, {}, neighbors[i], true};
         sortCloud(free, facet);
@@ -443,8 +438,8 @@ void ConvexHull::prepareFacets(const std::vector<uint32_t>& horizon, std::vector
         facets[horizon[j]].neighbors[z] = currentFacet;// Link against existing facet beyond the horizon
 
         // Prepare the new facet and link
-        Triangle triangle = { (uint32_t)m_vertices.size() - 1, lastVertex, horizon[j + 1] };
-        glm::dvec3 normal = wNormal(triangle);
+        TriIndex triangle = { (uint32_t)m_vertices.size() - 1, lastVertex, horizon[j + 1] };
+        glm::dvec3 normal = Triangle3D(m_vertices, triangle).normal();
 
         Facet facet = {triangle, normal, {}, {lastFacet, horizon[j], nextFacet}, true};
         sortCloud(set, facet);

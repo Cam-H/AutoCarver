@@ -13,6 +13,7 @@
 #include <map>
 
 class Triangle;
+class Plane;
 class Axis3D;
 class Mesh;
 class ConvexHull;
@@ -21,9 +22,8 @@ class Octree;
 class MeshBuilder {
 public:
 
-    static std::shared_ptr<Mesh> plane(double width, const glm::dvec3& origin, const glm::dvec3& normal);
-//    static std::shared_ptr<Mesh> plane(double length, double width, const dvec3f& origin, const dvec3f& normal, const dvec3f& ref);
-    static std::shared_ptr<Mesh> plane(double length, double width, const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& ref);
+    static std::shared_ptr<Mesh> plane(const Plane& obj, double width);
+    static std::shared_ptr<Mesh> plane(const Axis3D& system, const glm::dvec3& origin, double length, double width);
 
     static std::shared_ptr<Mesh> box(double sideLength = 1.0f);
     static std::shared_ptr<Mesh> box(double length, double width, double height);
@@ -56,7 +56,7 @@ public:
 
 private:
 
-    static void icosahedron(double radius, std::vector<glm::dvec3>& vertices, std::vector<Triangle>& faces);
+    static void icosahedron(double radius, std::vector<glm::dvec3>& vertices, std::vector<TriIndex>& faces);
     static uint32_t getMidPoint(std::vector<glm::dvec3>& vertices, std::map<uint64_t, uint32_t> &table, uint64_t iA, uint64_t iB, double scalar);
 
 //    static std::shared_ptr<Mesh> cube(glm::dvec3 *vertexPtr, uint32_t *facePtr);

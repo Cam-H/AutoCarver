@@ -54,8 +54,8 @@ public:
     std::vector<uint32_t> hull() const;
     static std::vector<uint32_t> hull(const std::vector<glm::dvec2>& vertices);
 
-    std::vector<Triangle> triangulate() const;
-    static std::vector<Triangle> triangulate(const std::vector<glm::dvec2>& vertices);
+    std::vector<TriIndex> triangulate() const;
+    static std::vector<TriIndex> triangulate(const std::vector<glm::dvec2>& vertices);
 
     [[nodiscard]] virtual std::vector<std::pair<glm::dvec2, glm::dvec2>> debugEdges() const;
 

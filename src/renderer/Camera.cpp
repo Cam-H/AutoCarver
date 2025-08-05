@@ -186,3 +186,31 @@ QMatrix4x4 Camera::getViewProjection() const
 {
     return m_viewProjection;
 }
+
+Ray Camera::getRay(QPointF position) const
+{
+    QVector3D fwd = forward(), horz = horizontal(), vert = vertical();
+
+    // Create a ray directly from the camera
+    Ray ray({ m_eye.x(), m_eye.y(), m_eye.z() }, { fwd.x(), fwd.y(), fwd.z() });
+
+    if (m_type == Type::PERSPECTIVE) {
+        double tFOV = tan(M_PI * m_fov / 360.0);
+        double viewHeight = 2.0f * tFOV;
+        double viewWidth = viewHeight * m_aspect;
+
+        double px = position.x() * viewWidth / 2.0;
+        double py = position.y() * viewHeight / 2.0;
+
+        // Add contribution from off center starts
+        ray.axis += px * glm::dvec3(horz.x(), horz.y(), horz.z())
+                  + py * glm::dvec3(vert.x(), vert.y(), vert.z());
+
+    } else {
+        throw std::runtime_error("[Camera] Can not project orthographic ray. Function not yet developed");
+    }
+
+    ray.axis = glm::normalize(ray.axis);
+
+    return ray;
+}

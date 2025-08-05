@@ -6,14 +6,14 @@
 
 #include <iostream>
 
-Triangle::Triangle(uint32_t I0, uint32_t I1, uint32_t I2)
+TriIndex::TriIndex(uint32_t I0, uint32_t I1, uint32_t I2)
     : I0(I0)
     , I1(I1)
     , I2(I2)
 {
 }
 
-bool Triangle::operator==(const Triangle& other) const {
+bool TriIndex::operator==(const TriIndex& other) const {
     uint32_t offset = (other.I0 == I0) + 2 * (other.I1 == I0) + 3 * (other.I2 == I0);
     switch (offset) {
         case 1:
@@ -27,7 +27,7 @@ bool Triangle::operator==(const Triangle& other) const {
 //    return I0 == other.I0 && I1 == other.I1 && I2 == other.I2;
 }
 
-uint32_t Triangle::operator[](uint32_t i) const
+uint32_t TriIndex::operator[](uint32_t i) const
 {
     switch(i){
         case 2:
@@ -40,7 +40,7 @@ uint32_t Triangle::operator[](uint32_t i) const
     }
 }
 
-uint32_t& Triangle::operator[](uint32_t i)
+uint32_t& TriIndex::operator[](uint32_t i)
 {
     switch(i){
         case 2:
@@ -53,67 +53,92 @@ uint32_t& Triangle::operator[](uint32_t i)
     }
 }
 
-bool Triangle::isValid() const
+bool TriIndex::isValid() const
 {
     return I0 != I1 && I0 != I2 && I1 != I2;
 }
 
-bool Triangle::has(uint32_t i) const
+bool TriIndex::has(uint32_t i) const
 {
     return i == I0 || i == I1 || i == I2;
 }
 
-uint32_t Triangle::last(uint32_t a, uint32_t b) const
+uint32_t TriIndex::last(uint32_t a, uint32_t b) const
 {
     if (I0 != a && I0 != b) return I0;
     if (I1 != a && I1 != b) return I1;
     return I2;
 }
 
-double Triangle::signedArea(const QVector2D& a, const QVector2D& b, const QVector2D& c)
+
+//double Triangle::signedArea(const QVector2D& a, const QVector2D& b, const QVector2D& c)
+//{
+//    return (a.x() - c.x()) * (b.y() - c.y()) - (b.x() - c.x()) * (a.y() - c.y());
+//}
+//
+//double Triangle::area(const QVector2D& a, const QVector2D& b, const QVector2D& c)
+//{
+//    return 0.5f * (a.x() * (b.y() - c.y()) + b.x() * (c.y() - a.y()) + c.x() * (a.y() - b.y()));
+//}
+//
+//double Triangle::area(const QVector3D& a, const QVector3D& b, const QVector3D& c) {
+//    QVector3D ab = b - a;
+//    QVector3D ac = c - a;
+//
+//    return 0.5f * (double)sqrt(pow(ab.y() * ac.z() - ab.z() * ac.y(), 2)
+//    + pow(ab.z() * ac.x() - ab.x ()* ac.z(), 2)
+//    + pow(ab.x() * ac.y() - ab.y() * ac.x(), 2));
+//}
+
+Triangle3D::Triangle3D(const std::vector<glm::dvec3>& vertices, const TriIndex& indices)
+    : a(vertices[indices.I0])
+    , b(vertices[indices.I1])
+    , c(vertices[indices.I2])
 {
-    return (a.x() - c.x()) * (b.y() - c.y()) - (b.x() - c.x()) * (a.y() - c.y());
+//    if (indices.I0 >= vertices.size() || indices.I1 >= vertices.size() || indices.I2 >= vertices.size()) {
+//        throw std::runtime_error("[Triangle3D] Can not prepare triangle index out of bounds");
+//    }
+//
+//    a = vertices[indices.I0];
+//    b = vertices[indices.I1];
+//    c = vertices[indices.I2];
 }
 
-double Triangle::area(const QVector2D& a, const QVector2D& b, const QVector2D& c)
+Triangle3D::Triangle3D(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c)
+    : a(a)
+    , b(b)
+    , c(c)
 {
-    return 0.5f * (a.x() * (b.y() - c.y()) + b.x() * (c.y() - a.y()) + c.x() * (a.y() - b.y()));
+
 }
 
-double Triangle::area(const QVector3D& a, const QVector3D& b, const QVector3D& c) {
-    QVector3D ab = b - a;
-    QVector3D ac = c - a;
-
-    return 0.5f * (double)sqrt(pow(ab.y() * ac.z() - ab.z() * ac.y(), 2)
-    + pow(ab.z() * ac.x() - ab.x ()* ac.z(), 2)
-    + pow(ab.x() * ac.y() - ab.y() * ac.x(), 2));
-}
-
-double Triangle::area(const glm::vec2& a, const glm::vec2& b, const glm::vec2& c)
+glm::dvec3 Triangle3D::normal() const
 {
-    return 0.5f * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y));
-}
-double Triangle::area(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c)
-{
-    return 0.5f * glm::length(glm::cross(b - a, c - a));
+    return normal(a, b, c);
 }
 
-double Triangle::cross(const QVector2D &pivot, const QVector2D &a, const QVector2D &b)
-{
-    return cross(a - pivot, b - pivot);
-}
-
-double Triangle::cross(const QVector2D &v1, const QVector2D &v2)
-{
-    return v1.x() * v2.y() - v2.x() * v1.y();
-}
-
-glm::dvec3 Triangle::normal(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c)
+glm::dvec3 Triangle3D::normal(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c)
 {
     return glm::normalize(glm::cross(b - a, c - a));
 }
 
-glm::dvec3 Triangle::barycentric(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& p)
+double Triangle3D::area(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c)
+{
+    return 0.5f * glm::length(glm::cross(b - a, c - a));
+}
+
+double Triangle3D::cross(const QVector2D &pivot, const QVector2D &a, const QVector2D &b)
+{
+    return cross(a - pivot, b - pivot);
+}
+
+double Triangle3D::cross(const QVector2D &v1, const QVector2D &v2)
+{
+    return v1.x() * v2.y() - v2.x() * v1.y();
+}
+
+
+glm::dvec3 Triangle3D::barycentric(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& p)
 {
     glm::dvec3 ab = b - a, ac = c - a, ap = p - a;
 
@@ -132,7 +157,7 @@ glm::dvec3 Triangle::barycentric(const glm::dvec3& a, const glm::dvec3& b, const
     };
 }
 
-glm::dvec3 Triangle::clampedBarycentric(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& p)
+glm::dvec3 Triangle3D::clampedBarycentric(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& p)
 {
     glm::dvec3 ab = b - a, ac = c - a, ap = p - a;
 
@@ -177,11 +202,16 @@ glm::dvec3 Triangle::clampedBarycentric(const glm::dvec3& a, const glm::dvec3& b
     return { va * den, v, w };
 }
 
-bool Triangle::encloses(const QVector2D& a, const QVector2D& b, const QVector2D& c, const QVector2D& p)
+bool Triangle3D::encloses(const QVector2D& a, const QVector2D& b, const QVector2D& c, const QVector2D& p)
 {
     if (cross(a, p, b) < 0) return false;
     if (cross(b, p, c) < 0) return false;
     if (cross(c, p, a) < 0) return false;
 
     return true;
+}
+
+double Triangle2D::area(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c)
+{
+    return 0.5f * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y));
 }

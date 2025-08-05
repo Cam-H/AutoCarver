@@ -3,6 +3,9 @@
 
 #include <iostream>
 
+#include "renderer/SceneWidget.h"
+
+
 int main(int argc, char *argv[]) {
     QApplication a(argc, argv);
     QPushButton button("Hello world!", nullptr);

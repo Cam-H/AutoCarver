@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
     scene = std::make_shared<Scene>();
 
     // Create a cutting plane
-    auto model = MeshBuilder::plane(10, glm::dvec3(), glm::dvec3(0, 1, 0));
+    auto model = MeshBuilder::plane(Plane(glm::dvec3(), glm::dvec3(0, 1, 0)), 10);
     model->setBaseColor({1, 1, 1 });
     plane = scene->createBody(model);
     plane->setLayer(0);

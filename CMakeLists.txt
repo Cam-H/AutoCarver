@@ -12,7 +12,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 list(APPEND CMAKE_PREFIX_PATH C:/Qt/6.7.3/mingw_64/lib/cmake)
 #list(APPEND CMAKE_PREFIX_PATH C:/Qt/6.9.1/mingw_64/bin)
 #message("${CMAKE_PREFIX_PATH}")
-find_package(Qt6 REQUIRED COMPONENTS Core Gui UiTools OpenGL OpenGLWidgets Widgets)
+find_package(Qt6 COMPONENTS
+        Core
+        Gui
+        UiTools
+        Widgets
+        OpenGL
+        OpenGLWidgets
+        REQUIRED)
 
 qt_standard_project_setup()
 

@@ -61,20 +61,20 @@ int main(int argc, char *argv[])
 
     displayWidget = window->findChild<PolygonWidget*>("displayWidget");
 
-    polygons.emplace_back(std::vector<glm::vec2>{
+    polygons.emplace_back(std::vector<glm::dvec2>{
             { 213.000000, 156.000000},{ 205.000000, 276.000000},{ 400.000000, 100.000000},{ 420.000000, 189.000000},{ 314.000000, 252.000000},{ 342.000000, 400.000000},{ 265.000000, 304.000000},{ 114.000000, 422.000000},{ 95.000000, 402.000000},{ 158.000000, 349.000000},{ 24.000000, 196.000000},{ 108.000000, 246.000000},{ 103.000000, 34.000000},{ 119.000000, 171.000000},{ 197.000000, 96.000000},{ 240.000000, 23.000000}
     });
 
-    polygons.emplace_back(std::vector<glm::vec2>{
+    polygons.emplace_back(std::vector<glm::dvec2>{
             { 100.000000, 100.000000},{ 445.000000, 70.000000},{ 216.000000, 230.000000},{ 238.000000, 150.000000},{ 184.000000, 143.000000},{ 144.000000, 252.000000},{ 203.000000, 341.000000},{ 400.000000, 400.000000},{ 95.000000, 402.000000}
     });
 
-    polygons.emplace_back(std::vector<glm::vec2>{
+    polygons.emplace_back(std::vector<glm::dvec2>{
             { 100.000000, 100.000000},{ 400.000000, 100.000000},{ 400.000000, 400.000000},{ 95.000000, 402.000000}
     });
 
 
-    polygons.emplace_back(std::vector<glm::vec2>{
+    polygons.emplace_back(std::vector<glm::dvec2>{
             glm::vec2(100.0f, 100.0f),
             glm::vec2(400.0f, 100.0f),
             glm::vec2(400.0f, 400.0f),
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
             glm::vec2(63.0f, 62.0f)
     });
 
-    auto test = std::vector<glm::vec2>{
+    auto test = std::vector<glm::dvec2>{
             {341.096,42.1527},
             {345.347,42.4847},
             {351.444,46.3256},
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
             {286.848,42.1527}
     };
 
-    Polygon::cullCollinear(test);
+//    Polygon::cullCollinear(test);
     polygons.emplace_back(test);
 
     auto polygonCheck = window->findChild<QCheckBox*>("polygonCheck");

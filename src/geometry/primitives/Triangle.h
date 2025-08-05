@@ -8,23 +8,23 @@
 #include <QVector2D>
 #include <QVector3D>
 
-#include "glm.hpp"
+#include <glm.hpp>
 
-class Triangle {
+class TriIndex {
 public:
 
-    Triangle(uint32_t I0, uint32_t I1, uint32_t I2);
+    TriIndex(uint32_t I0, uint32_t I1, uint32_t I2);
 
-    bool operator==(const Triangle& other) const;
+    bool operator==(const TriIndex& other) const;
 
     uint32_t operator[](uint32_t i) const;
     uint32_t& operator[](uint32_t i);
 
     [[nodiscard]] bool isValid() const;
 
-    bool has(uint32_t i) const;
+    [[nodiscard]] bool has(uint32_t i) const;
 
-    uint32_t last(uint32_t a, uint32_t b) const;
+    [[nodiscard]] uint32_t last(uint32_t a, uint32_t b) const;
 
 //    friend std::ostream& operator<<(std::ostream& os, const Triangle& tri)
 //    {
@@ -32,13 +32,27 @@ public:
 //        return os;
 //    }
 
-    static double signedArea(const QVector2D& a, const QVector2D& b, const QVector2D& c);
+    uint32_t I0;
+    uint32_t I1;
+    uint32_t I2;
+};
 
-    static double area(const QVector2D& a, const QVector2D& b, const QVector2D& c);
+class Triangle3D {
+public:
 
-    static double area(const QVector3D& a, const QVector3D& b, const QVector3D& c);
+    Triangle3D(const std::vector<glm::dvec3>& vertices, const TriIndex& indices);
+    Triangle3D(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c);
 
-    static double area(const glm::vec2& a, const glm::vec2& b, const glm::vec2& c);
+    [[nodiscard]] glm::dvec3 normal() const;
+
+    static glm::dvec3 normal(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c);
+
+//    static double signedArea(const QVector2D& a, const QVector2D& b, const QVector2D& c);
+//
+//    static double area(const QVector2D& a, const QVector2D& b, const QVector2D& c);
+//
+//    static double area(const QVector3D& a, const QVector3D& b, const QVector3D& c);
+
     static double area(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c);
 
 
@@ -53,17 +67,22 @@ public:
     static double cross(const QVector2D &pivot, const QVector2D &a, const QVector2D &b);
     static double cross(const QVector2D &v1, const QVector2D &v2);
 
-    static glm::dvec3 normal(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c);
 
     static glm::dvec3 barycentric(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& p);
     static glm::dvec3 clampedBarycentric(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& p);
 
     static bool encloses(const QVector2D& a, const QVector2D& b, const QVector2D& c, const QVector2D& p);
 
-    uint32_t I0;
-    uint32_t I1;
-    uint32_t I2;
+    glm::dvec3 a;
+    glm::dvec3 b;
+    glm::dvec3 c;
 };
 
+class Triangle2D {
+public:
+
+    static double area(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c);
+
+};
 
 #endif //AUTOCARVER_TRIANGLE_H

@@ -78,7 +78,7 @@ public:
 private:
 
     struct Facet {
-        Triangle triangle;
+        TriIndex triangle;
         glm::dvec3 normal;
         std::vector<uint32_t> outside;
         std::vector<uint32_t> neighbors;
@@ -89,12 +89,12 @@ private:
 
     void initialize();
 
-    std::vector<Triangle> initialApproximation();
-    glm::dvec3 wNormal(const Triangle& triangle);
+    std::vector<TriIndex> initialApproximation();
+//    glm::dvec3 wNormal(const Triangle& triangle);
 
     [[nodiscard]] uint32_t step(const glm::dvec3& normal, const glm::dvec3& axis, uint32_t index) const;
 
-    void prepareFacets(const std::vector<Triangle>& triangles);
+    void prepareFacets(const std::vector<TriIndex>& triangles);
     void prepareFacets(const std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
     void sortCloud(std::vector<uint32_t>& free, Facet& facet);
     void calculateHorizon(const glm::dvec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);

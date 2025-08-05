@@ -11,12 +11,7 @@
 
 
 SceneWidget::SceneWidget(QWidget* parent)
-    : SceneWidget(nullptr, parent)
-{
-}
-
-SceneWidget::SceneWidget(const std::shared_ptr<Scene>& scene, QWidget* parent)
-    : m_scene(scene)
+    : m_scene(nullptr)
     , m_timer(nullptr)
     , m_interval(1000 / 60)
     , m_defaultProgramIdx(0)
@@ -31,6 +26,12 @@ SceneWidget::SceneWidget(const std::shared_ptr<Scene>& scene, QWidget* parent)
     , m_showAxes(true)
     , QOpenGLWidget(parent)
 {
+}
+
+SceneWidget::SceneWidget(const std::shared_ptr<Scene>& scene, QWidget* parent)
+    : SceneWidget(parent)
+{
+    m_scene = scene;
 }
 
 SceneWidget::~SceneWidget()
@@ -51,8 +52,18 @@ void SceneWidget::setScene(const std::shared_ptr<Scene>& scene)
 
 void SceneWidget::mousePressEvent(QMouseEvent *e)
 {
+    if (e->buttons() == Qt::MouseButton::LeftButton) {
+        auto ndc = QPointF{
+            2.0f * e->position().x() / QWidget::width() - 1.0f,
+            1.0f - 2.0f * e->position().y() / QWidget::height()
+        };
+
+        emit mousepick(m_camera.getRay(ndc));
+    }
+
     // Save mouse press position
     m_mouseLastPosition = QVector2D(e->position());
+    QOpenGLWidget::mousePressEvent(e);
 }
 
 void SceneWidget::mouseMoveEvent(QMouseEvent *e)
@@ -90,7 +101,7 @@ void SceneWidget::wheelEvent(QWheelEvent *e)
 
     m_camera.setRadius(radius);
 
-    emit perspectiveChanged();//TODO
+    emit perspectiveChanged();
 
     update();
 }

@@ -7,11 +7,11 @@
 
 #include <iostream>
 
-#include "glm.hpp"
+#include <glm.hpp>
 
 class Ray;
 class Plane;
-class Triangle;
+class Triangle3D;
 class Circle;
 class Sphere;
 class AABB;
@@ -23,6 +23,14 @@ class ConvexHull;
 // An array of static collision detection methods for primitive shapes
 class Collision {
 public:
+
+    static std::tuple<bool, double> raycast(const Plane& plane, const Ray& ray);
+    static std::tuple<bool, double> raycast(const Triangle3D& triangle, const Ray& ray);
+    static std::tuple<bool, double> raycast(const Sphere& sphere, const Ray& ray);
+    static std::tuple<bool, double> raycast(const AABB& box, const Ray& ray);
+    static std::tuple<bool, double> raycast(const ConvexHull& hull, const Ray& ray);
+
+    static std::tuple<bool, double, uint32_t> pickFace(const ConvexHull& hull, const Ray& ray);
 
     // Determine if there is an intersection between the specified bodies
     static bool test(const Plane& bodyA, const Plane& bodyB);

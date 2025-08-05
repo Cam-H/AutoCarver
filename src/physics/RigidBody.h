@@ -17,6 +17,7 @@
 #include "geometry/Mesh.h"
 #include "geometry/primitives/ConvexHull.h"
 #include "geometry/primitives/Sphere.h"
+#include "geometry/primitives/Ray.h"
 
 #include "geometry/Transformable.h"
 #include "geometry/collision/EPA.h"
@@ -94,9 +95,13 @@ public:
 
     EPA collision(const std::shared_ptr<RigidBody>& body);
 
+    virtual std::tuple<bool, double> raycast(Ray ray, double tLim);
+
     void print() const;
 
 private:
+
+    RigidBody();
 
     void prepareHullVisual();
     void prepareSphereVisual();

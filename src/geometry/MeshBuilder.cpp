@@ -9,6 +9,7 @@
 #include <unordered_map>
 
 #include "Mesh.h"
+#include "geometry/primitives/Plane.h"
 #include "geometry/primitives/Triangle.h"
 #include "geometry/primitives/ConvexHull.h"
 #include "Axis3D.h"
@@ -20,17 +21,18 @@
 #include <gtx/quaternion.hpp>
 
 
-std::shared_ptr<Mesh> MeshBuilder::plane(double width, const glm::dvec3& origin, const glm::dvec3& normal)
+std::shared_ptr<Mesh> MeshBuilder::plane(const Plane& obj, double width)
 {
-    glm::dvec3 ref = normal.x * normal.x < 0.99 ? glm::dvec3{1.0, 0.0, 0.0} : glm::dvec3{0.0, 1.0, 0.0};
-    return plane(width, width, origin, normal, ref);
+    return plane(Axis3D(obj.normal), obj.origin, width, width);
 }
 
-std::shared_ptr<Mesh> MeshBuilder::plane(double length, double width, const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& ref)
+std::shared_ptr<Mesh> MeshBuilder::plane(const Axis3D& system, const glm::dvec3& origin, double length, double width)
 {
 
-    glm::dvec3 wAxis = glm::normalize(glm::cross(normal, ref)), lAxis = glm::normalize(glm::cross(normal, wAxis));
-    glm::dvec3 a = origin + wAxis * width * 0.5 + lAxis * length * 0.5, b = a - wAxis * width, c = b - lAxis * length, d = c + wAxis * width;
+    glm::dvec3 a = origin + system.xAxis * width * 0.5 + system.yAxis * length * 0.5,
+               b = a - system.xAxis * width,
+               c = b - system.yAxis * length,
+               d = c + system.xAxis * width;
 
     auto mesh = std::make_shared<Mesh>(4, 2, 8);
 
@@ -167,14 +169,14 @@ std::shared_ptr<Mesh> MeshBuilder::extrude(const std::vector<glm::dvec3>& border
 
 std::shared_ptr<Mesh> MeshBuilder::icosahedron(double radius){
     std::vector<glm::dvec3> vertices;
-    std::vector<Triangle> faces;
+    std::vector<TriIndex> faces;
 
     icosahedron(radius, vertices, faces);
 
     return std::make_shared<Mesh>(vertices, faces);
 }
 
-void MeshBuilder::icosahedron(double radius, std::vector<glm::dvec3>& vertices, std::vector<Triangle>& faces)
+void MeshBuilder::icosahedron(double radius, std::vector<glm::dvec3>& vertices, std::vector<TriIndex>& faces)
 {
 
     vertices.reserve(12);
@@ -235,7 +237,7 @@ std::shared_ptr<Mesh> MeshBuilder::icosphere(double radius, uint8_t subdivisions
     std::vector<glm::dvec3> vertices;
     vertices.reserve(vertexCount);
 
-    std::vector<Triangle> faces;
+    std::vector<TriIndex> faces;
 //    faces.reserve(20 * 4 * subdivisions);
 
     icosahedron(radius, vertices, faces);
@@ -256,7 +258,7 @@ std::shared_ptr<Mesh> MeshBuilder::icosphere(double radius, uint8_t subdivisions
             faces.emplace_back(faces[j].I0, a, c);
             faces.emplace_back(faces[j].I1, b, a);
             faces.emplace_back(faces[j].I2, c, b);
-            faces[j] = Triangle{a, b, c};
+            faces[j] = TriIndex(a, b, c);
         }
     }
 
