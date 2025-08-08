@@ -85,7 +85,7 @@ Mesh::Mesh(uint32_t vertexCount, uint32_t faceCount, uint32_t indexCount)
 void Mesh::initialize()
 {
     if (!m_initialized) {
-        if (!m_faces.isValid()) {
+        if (!m_faces.isValid(m_vertices.size())) {
             m_faces.print();
             throw std::runtime_error("[Mesh] Can not initialize when faces are invalid");
         }

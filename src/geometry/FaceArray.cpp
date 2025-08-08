@@ -106,6 +106,44 @@ FaceArray FaceArray::deserialize(std::ifstream& file)
     return faces;
 }
 
+void FaceArray::addFace(std::vector<uint32_t> face)
+{
+    // Reject faces malformed faces (Multiple indices)
+    for (uint32_t i = 0; i < face.size() - 1; i++) {
+        if (face[i] == face[i + 1]) { // Allow duplicate adjacent vertices, but remove
+            if (face.size() < 4) return;
+
+            face.erase(face.begin() + i + 1);
+            i--;
+            continue;
+        }
+
+        for (uint32_t j = i + 1; j < face.size(); j++) {
+            if (face[i] == face[j]) {
+//                throw std::runtime_error("[FaceArray] Malformed face. Can not attach");
+                return;
+            }
+        }
+    }
+
+    m_faces.insert(m_faces.end(), face.begin(), face.end());
+    m_faceSizes.emplace_back(face.size());
+    m_faceCount++;
+
+    m_colors.emplace_back(1, 1, 1);
+}
+
+void FaceArray::addFace(const std::vector<uint32_t>& face, const glm::dvec3& color)
+{
+    uint32_t count = m_faceCount;
+
+    addFace(face);
+
+    if (count < m_faceCount) {
+        m_colors.back() = color;
+    }
+}
+
 void FaceArray::assignNormals(const std::vector<glm::dvec3>& normals)
 {
     m_normals = normals;
@@ -200,7 +238,6 @@ void FaceArray::triangulate(const std::vector<glm::dvec3>& vertices)
                         );
             }
         }
-
 
         idxPtr += m_faceSizes[i];
     }
@@ -476,7 +513,19 @@ bool FaceArray::isValid() const
         sum += m_faceSizes[i];
     }
 
+    std::cout << "FS " << sum << " " << m_faces.size() << "\n";
+
     return sum <= m_faces.size();
+}
+
+bool FaceArray::isValid(uint32_t maxIndex) const
+{
+    if (isValid()) {
+        for (uint32_t idx : m_faces) if (idx > maxIndex) return false;
+        return true;
+    }
+
+    return false;
 }
 
 void FaceArray::print() const

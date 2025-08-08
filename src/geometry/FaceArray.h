@@ -23,6 +23,9 @@ public:
     bool serialize(std::ofstream& file);
     static FaceArray deserialize(std::ifstream& file);
 
+    void addFace(std::vector<uint32_t> face);
+    void addFace(const std::vector<uint32_t>& face, const glm::dvec3& color);
+
     void assignNormals(const std::vector<glm::dvec3>& normals);
 
     static glm::dvec3 calculateNormal(const std::vector<glm::dvec3>& boundary);
@@ -76,6 +79,7 @@ public:
     [[nodiscard]] bool empty() const;
 
     [[nodiscard]] bool isValid() const;
+    [[nodiscard]] bool isValid(uint32_t maxIndex) const;
 
     void print() const;
 

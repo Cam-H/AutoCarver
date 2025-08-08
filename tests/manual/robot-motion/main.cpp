@@ -36,6 +36,7 @@ QWidget *window = nullptr;
 std::shared_ptr<SculptProcess> scene = nullptr;
 SceneWidget *sceneWidget = nullptr;
 std::shared_ptr<Robot> robot = nullptr;
+std::shared_ptr<RigidBody> lastPick = nullptr;
 
 std::vector<QSpinBox*> jointFields;
 std::vector<QDoubleSpinBox*> posFields;
@@ -251,6 +252,7 @@ void doControlEnable()
 
 int main(int argc, char *argv[])
 {
+
     QApplication app(argc, argv);
 
     QSurfaceFormat format;
@@ -273,6 +275,7 @@ int main(int argc, char *argv[])
     robot = scene->createRobot(std::make_shared<ArticulatedWrist>(0.2, 1.2, 1.2, 0.2));
     robot->translate({ -2, 0, 0 });
     robot->rotate({ 0, 1, 0 }, M_PI);
+    robot->setLinkMesh(0, MeshHandler::loadAsMeshBody(R"(..\res\meshes\RobotBase.obj)"));
 
     sceneWidget = window->findChild<SceneWidget*>("sceneWidget");
     sceneWidget->setScene(scene);
@@ -281,12 +284,9 @@ int main(int argc, char *argv[])
     robot->setJointValueDg(2, -45);
     axes = robot->getEOATAxes();
 
-//    auto eoatMesh = MeshHandler::loadAsMeshBody("../res/meshes/Blade.obj");
-//    auto eoat = scene->createBody(eoatMesh);
-//    robot->setEOAT(eoat, false);
-//    robot->links().back()->setMesh(eoatMesh);
-
-//    scene->createBody(eoatMesh);
+    auto eoatMesh = MeshHandler::loadAsMeshBody("../res/meshes/Blade.obj");
+    auto eoat = scene->createBody(eoatMesh);
+    robot->setEOAT(eoat, false);
 
     robot->update();
     sceneWidget->update();
@@ -394,27 +394,50 @@ int main(int argc, char *argv[])
     });
 
 
-//    auto showMeshButton = window->findChild<QCheckBox*>("showMeshButton");
-//    QObject::connect(showMeshButton, &QCheckBox::clicked, [&](bool checked) {
-//        if (checked) sceneWidget->show(0, Scene::Model::MESH);
-//        else sceneWidget->hide(0, Scene::Model::MESH);
-//    });
-//
-//    auto showHullButton = window->findChild<QCheckBox*>("showHullButton");
-//    QObject::connect(showHullButton, &QCheckBox::clicked, [&](bool checked) {
-//        if (checked) sceneWidget->showAll(Scene::Model::HULL);
-//        else sceneWidget->hideAll(Scene::Model::HULL);
-//    });
-//
-//    auto showSphereButton = window->findChild<QCheckBox*>("showSphereButton");
-//    QObject::connect(showSphereButton, &QCheckBox::clicked, [&](bool checked) {
-//        if (checked) sceneWidget->showAll(Scene::Model::BOUNDING_SPHERE);
-//        else sceneWidget->hideAll(Scene::Model::BOUNDING_SPHERE);
-//    });
+    auto showMeshButton = window->findChild<QCheckBox*>("showMeshButton");
+    QObject::connect(showMeshButton, &QCheckBox::clicked, [&](bool checked) {
+        if (checked) sceneWidget->show(0, Scene::Model::MESH);
+        else sceneWidget->hide(0, Scene::Model::MESH);
+    });
+
+    auto showHullButton = window->findChild<QCheckBox*>("showHullButton");
+    QObject::connect(showHullButton, &QCheckBox::clicked, [&](bool checked) {
+        if (checked) sceneWidget->showAll(Scene::Model::HULL);
+        else sceneWidget->hideAll(Scene::Model::HULL);
+    });
+
+    auto showSphereButton = window->findChild<QCheckBox*>("showSphereButton");
+    QObject::connect(showSphereButton, &QCheckBox::clicked, [&](bool checked) {
+        if (checked) sceneWidget->showAll(Scene::Model::BOUNDING_SPHERE);
+        else sceneWidget->hideAll(Scene::Model::BOUNDING_SPHERE);
+    });
 
     auto showAxesButton = window->findChild<QCheckBox*>("showAxesButton");
     QObject::connect(showAxesButton, &QCheckBox::clicked, [&](bool checked) {
         sceneWidget->enableAxes(checked);
+    });
+
+    QObject::connect(sceneWidget, &SceneWidget::mousepick, [&](Ray ray) {
+        auto [body, t] = scene->raycast(ray);
+        if (body != nullptr) {
+            body->mesh()->setFaceColor(body->mesh()->baseColor());
+            auto [hit, tDup, faceIdx] = body->mesh()->pickFace(glm::inverse(body->getTransform()) * ray);
+            if (hit) body->mesh()->setFaceColor(faceIdx, { 0, 1, 0 });
+            else body->mesh()->setFaceColor({ 0, 0, 1 });
+
+            sceneWidget->updateRenderGeometry(body->mesh());
+        }
+
+        if (body != lastPick) {
+            if (lastPick != nullptr) {
+                lastPick->mesh()->setFaceColor(lastPick->mesh()->baseColor());
+                sceneWidget->updateRenderGeometry(lastPick->mesh());
+            }
+
+            lastPick = body;
+        }
+
+        sceneWidget->update();
     });
 
     treeWidget = window->findChild<QTreeWidget*>("treeWidget");

@@ -32,14 +32,31 @@ std::shared_ptr<Mesh> MeshHandler::loadAsMeshBody(const std::string& filepath, d
         return nullptr;
     }
 
+//    TODO Development for separate node-based loading
+//    std::vector<aiNode*> next = { scene->mRootNode }, nodes = {};
+//    while (!next.empty()) {
+//        nodes.emplace_back(next.back());
+//        next.pop_back();
+//
+//        for (uint32_t i = 0; i < nodes.back()->mNumChildren; i++) {
+//            next.emplace_back(nodes.back()->mChildren[i]);
+//        }
+//    }
+//
+//    for (const aiNode* node : nodes) {
+//        std::cout << node << " " << node->mNumChildren << " " << node->mName.C_Str() << " " << node->mNumMeshes << " " << node->mParent << "\n";
+//    }
+
     // Capture number of features
     uint32_t vertexCount = 0, faceCount = 0, indexCount = 0;
     for (uint32_t i = 0; i < scene->mNumMeshes; i++) {
         vertexCount += scene->mMeshes[i]->mNumVertices;
-        faceCount += scene->mMeshes[i]->mNumFaces;
-        for (uint32_t j = 0; j < scene->mMeshes[i]->mNumFaces; j++) {
-            indexCount += scene->mMeshes[i]->mFaces[j].mNumIndices;
-        }
+//        faceCount += scene->mMeshes[i]->mNumFaces;
+//        for (uint32_t j = 0; j < scene->mMeshes[i]->mNumFaces; j++) {
+//            indexCount += scene->mMeshes[i]->mFaces[j].mNumIndices;
+//        }
+
+//        std::cout << "TRAIT: " << scene->mMeshes[i]->mNumVertices << " " << scene->mMeshes[i]->mNumFaces << " " << indexCount << "\n";
     }
 
     // Capture materials
@@ -50,10 +67,9 @@ std::shared_ptr<Mesh> MeshHandler::loadAsMeshBody(const std::string& filepath, d
         diffuseColors.emplace_back(diffuse.r, diffuse.g, diffuse.b);
     }
 
-    auto mesh = std::make_shared<Mesh>(vertexCount, faceCount, indexCount);
+    auto mesh = std::make_shared<Mesh>(vertexCount, 0, 0);
 
-    uint32_t vIdx = 0;
-    uint32_t *idxPtr = mesh->m_faces[0], *sizePtr = mesh->m_faces.faceSizes(), vOffset = 0, idxOffset = 0;
+    uint32_t vIdx = 0, vOffset = 0, idxOffset = 0;
 
     // Convert file content to a usable format
     for (uint32_t i = 0; i < scene->mNumMeshes; i++) {
@@ -67,23 +83,20 @@ std::shared_ptr<Mesh> MeshHandler::loadAsMeshBody(const std::string& filepath, d
             );
         }
 
-//        std::cout << i << "| " << scene->mMeshes[i]->mNumVertices << " " << scene->mMeshes[i]->mNumFaces << "\n";
-
         // Capture faces
         for (uint32_t j = 0; j < scene->mMeshes[i]->mNumFaces; j++) {
-            *sizePtr++ = scene->mMeshes[i]->mFaces[j].mNumIndices;
-            for (uint32_t k = 0; k < scene->mMeshes[i]->mFaces[j].mNumIndices; k++) {
-                *idxPtr++ = scene->mMeshes[i]->mFaces[j].mIndices[k] + vOffset;
-            }
+            auto face = std::vector<uint32_t>(
+                    scene->mMeshes[i]->mFaces[j].mIndices,
+                    scene->mMeshes[i]->mFaces[j].mIndices + scene->mMeshes[i]->mFaces[j].mNumIndices);
 
-//            std::cout << j << "J " << scene->mMeshes[i]->mFaces[j].mNumIndices << "\n";
-            mesh->m_faces.setColor(j + idxOffset, diffuseColors[scene->mMeshes[i]->mMaterialIndex]);
+            for (uint32_t& idx : face) idx += vOffset;
+
+            mesh->m_faces.addFace(face, diffuseColors[scene->mMeshes[i]->mMaterialIndex]);
         }
 
         vOffset += scene->mMeshes[i]->mNumVertices;
         idxOffset += scene->mMeshes[i]->mNumFaces;
     }
-
 
     mesh->initialize();
 

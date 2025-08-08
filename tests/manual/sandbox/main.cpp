@@ -7,7 +7,7 @@
 
 int main(int argc, char **argv)
 {
-    MeshHandler::loadAsMeshBody("../res/meshes/TurntableBase.obj");
+    MeshHandler::loadAsMeshBody("../res/meshes/RobotBase.obj");
 
     return 0;
 }
