@@ -22,6 +22,11 @@ void Plane::rotate(const glm::dvec3& axis, double theta)
     normal = normal * glm::angleAxis(theta, axis);
 }
 
+void Plane::rotate(const glm::dquat& rotation)
+{
+    normal = normal * rotation;
+}
+
 void Plane::invert()
 {
     normal = -normal;
@@ -32,16 +37,14 @@ bool Plane::isValid() const
     return glm::dot(normal, normal) > 1e-12;
 }
 
-// Calculate the rotation of the plane normal about the specified axis
-double Plane::axialRotation(const glm::dvec3& axis) const
-{
-    glm::dvec3 proj = normal - axis * glm::dot(normal, axis);
-    return atan2(proj.x, -proj.z);
-}
-
 Plane Plane::rotated(const glm::dvec3& axis, double theta) const
 {
     return { origin, normal * glm::angleAxis(theta, axis) };
+}
+
+Plane Plane::rotated(const glm::dquat& rotation) const
+{
+    return { origin, normal * rotation };
 }
 
 Plane Plane::inverted() const

@@ -30,6 +30,7 @@ public:
     void update();
 
     void setEOAT(const std::shared_ptr<RigidBody>& eoat, bool preserveTransform = true);
+    void translateEOAT(const glm::dvec3& translation);
 
     void setJointValue(uint32_t idx, double value);
     void setJointValueDg(uint32_t idx, double value);
@@ -60,17 +61,17 @@ public:
     [[nodiscard]] std::vector<double> getJointVelocity() const;
     [[nodiscard]] std::vector<double> getJointAcceleration() const;
 
-    [[nodiscard]] const std::shared_ptr<RigidBody>& getEOAT() const;
+    [[nodiscard]] std::shared_ptr<RigidBody> getEOAT() const;
 
-    [[nodiscard]] const glm::dmat4x4& getEOATTransform() const;
-    [[nodiscard]] glm::dvec3 getEOATPosition() const;
-    [[nodiscard]] Axis3D getEOATAxes() const;
-    [[nodiscard]] glm::dvec3 getEOATEuler() const;
+    [[nodiscard]] glm::dvec3 getPosition() const;
+    [[nodiscard]] Axis3D getAxes() const;
 
     [[nodiscard]] Pose getPose() const;
     [[nodiscard]] Pose getPose(const Waypoint& waypoint) const;
 
     [[nodiscard]] Waypoint inverse(const Pose& pose) const;
+
+    [[nodiscard]] Waypoint preferredWaypoint(const Waypoint& optionA, const Waypoint& optionB) const;
 
     bool inTransit() const;
 
@@ -90,6 +91,8 @@ private:
     std::vector<std::shared_ptr<RigidBody>> m_links;
 
     std::shared_ptr<RigidBody> m_eoat;
+    glm::dmat4 m_eoatTransform; // Transform calculated directly from kinematic chain
+
     glm::dmat4 m_eoatRelativeTransform;
 
     //

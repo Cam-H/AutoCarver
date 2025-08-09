@@ -513,8 +513,6 @@ bool FaceArray::isValid() const
         sum += m_faceSizes[i];
     }
 
-    std::cout << "FS " << sum << " " << m_faces.size() << "\n";
-
     return sum <= m_faces.size();
 }
 

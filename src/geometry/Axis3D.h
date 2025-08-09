@@ -32,6 +32,9 @@ public:
     void rotate(const glm::dvec3& axis, double theta);
     void rotate(const glm::dquat& rotation);
 
+    void flipXZ();
+    void flipYZ();
+
     [[nodiscard]] bool isValid() const;
     static bool compare(const Axis3D& lhs, const Axis3D& rhs, double tolerance);
 

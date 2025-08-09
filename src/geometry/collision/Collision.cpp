@@ -16,8 +16,8 @@
 std::tuple<bool, double> Collision::raycast(const Plane& plane, const Ray& ray)
 {
     double den = glm::dot(plane.normal, ray.axis);
-//    if (std::abs(den) < 1e-12) return { false, 0 }; // Parallel case - No intersection
-    if (den < -1e-12) return { false, 0 }; // Parallel case + Behind plane case - No intersection
+    if (std::abs(den) < 1e-12) return { false, 0 }; // Parallel case - No intersection
+//    if (den < -1e-12) return { false, 0 }; // Parallel case + Behind plane case - No intersection
 
     double t = glm::dot(plane.normal, plane.origin - ray.origin) / den;
     return { t >= 0, t };

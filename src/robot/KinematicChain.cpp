@@ -15,13 +15,6 @@
 #include "geometry/Transformable.h"
 
 KinematicChain::KinematicChain()
-    : m_axisTransform3(1, 0, 0,
-                       0, 0, 1,
-                       0, -1, 0)
-    , m_axisTransform4(1, 0, 0, 0,
-                       0, 0, -1, 0,
-                       0, 1, 0, 0,
-                       0, 0, 0, 1)
 {
 
 }
@@ -76,7 +69,7 @@ std::vector<double> KinematicChain::invkin(const glm::dmat4& transform)
     glm::dvec3 scale;
     glm::dvec3 skew;
     glm::dvec4 perspective;
-    glm::decompose(m_axisTransform4 * transform, scale, rotation, translation, skew, perspective);
+    glm::decompose(KC_AXIS_TRANSFORM * transform, scale, rotation, translation, skew, perspective);
 
     return invkin(translation, rotation);
 }
@@ -85,14 +78,14 @@ std::vector<double> KinematicChain::invkin(const glm::dmat4& transform)
 // Parameters must be expressed in the local coordinate system
 std::vector<double> KinematicChain::invkin(const Pose& pose)
 {
-    return invkin(m_axisTransform3 * pose.position, glm::quat_cast(m_axisTransform3 * pose.axes.toTransform()));
+    return invkin(KC_AXIS_ROTATION * pose.position, glm::quat_cast(KC_AXIS_ROTATION * pose.axes.toTransform()));
 }
 
 // Calculates required joint angles to reach the specified position and orientation
 // Parameters must be expressed in the local coordinate system
 std::vector<double> KinematicChain::invkin(const glm::dvec3& position, const glm::dvec3& euler)
 {
-    return invkin(m_axisTransform3 * position, glm::quat_cast(m_axisTransform3 * glm::mat3_cast(glm::dquat(euler))));
+    return invkin(KC_AXIS_ROTATION * position, glm::quat_cast(KC_AXIS_ROTATION * glm::mat3_cast(glm::dquat(euler))));
 }
 
 // Internal method for actually solving the inverse kinematics problem
@@ -115,9 +108,8 @@ uint32_t KinematicChain::jointCount()
 }
 Joint& KinematicChain::getJoint(uint32_t idx)
 {
-    if (idx < m_joints.size()) return m_joints[idx];
-    std::cout << "\033[31mInvalid joint index selected\033[0m\n";
-    return NULL_JOINT;
+    if (idx >= m_joints.size()) throw std::runtime_error("[Joint] Index out of bounds");
+    return m_joints[idx];
 }
 const std::vector<Joint>& KinematicChain::getJoints()
 {
@@ -179,10 +171,10 @@ bool KinematicChain::ikValidation(const std::vector<double>& values)
 {
     for (uint32_t i = 0; i < values.size(); i++) {
         if (std::isnan(values[i])) {
-            std::cout << "\033[31mFailed to solve for the specified position! Out of range!\033[0m\n";
+//            std::cout << "\033[31mFailed to solve for the specified position! Out of range!\033[0m\n";
             return false;
         } else if (!m_joints[i].withinLimits(values[i])) {
-            std::cout << "\033[31mFailed to solve for the specified position! Robot mobility is limited!\033[0m\n";
+//            std::cout << "\033[31mFailed to solve for the specified position! Robot mobility is limited!\033[0m\n";
             return false;
         }
     }
@@ -200,8 +192,8 @@ bool KinematicChain::ikValidation(const std::vector<double>& values, const glm::
     // Verify the calculated iks result in the specified position
     glm::dvec3 delta = position - glm::dvec3{ transform[3][0], transform[3][1], transform[3][2] };
     if (glm::dot(delta, delta) < 1e-3) {
-        std::cout << "\033[31mFailed to solve! Specified position does not match calculated result! Delta: "
-            << "[" << delta.x << ", " << delta.y << ", " << delta.z << "]\033[0m\n";
+//        std::cout << "\033[31mFailed to solve! Specified position does not match calculated result! Delta: "
+//            << "[" << delta.x << ", " << delta.y << ", " << delta.z << "]\033[0m\n";
         return false;
     }
 
@@ -229,18 +221,30 @@ std::vector<glm::dmat4> KinematicChain::jointTransforms() const
 {
     std::vector<glm::dmat4> transforms = jointHTMs();
     for (glm::dmat4& transform : transforms) {
-        transform = m_axisTransform4 * transform;
+        transform = KC_AXIS_TRANSFORM * transform;
     }
 
     return transforms;
 }
 
-const glm::dmat3& KinematicChain::axisInversion() const
+const glm::dmat3& KinematicChain::axisInversion()
 {
-    return m_axisTransform3;
+    return KC_AXIS_ROTATION;
 }
 
-const glm::dmat4& KinematicChain::inversion() const
+const glm::dmat4& KinematicChain::inversion()
 {
-    return m_axisTransform4;
+    return KC_AXIS_TRANSFORM;
+}
+
+// Verifies that the waypoint is well-formed and within predefined joint limits
+bool KinematicChain::validate(const Waypoint& waypoint) const
+{
+    if (!waypoint.isValid() || waypoint.values.size() != m_joints.size()) return false;
+
+    for (uint32_t i = 0; i < m_joints.size(); i++) {
+        if (!m_joints[i].withinLimits(waypoint.values[i])) return false;
+    }
+
+    return true;
 }

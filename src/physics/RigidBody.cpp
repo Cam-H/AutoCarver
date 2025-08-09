@@ -100,6 +100,11 @@ bool RigidBody::deserialize(std::ifstream& file)
     return false;
 }
 
+void RigidBody::moved()
+{
+    
+}
+
 void RigidBody::setType(Type type)
 {
     if (m_type != type) m_massOK = m_inertiaTensorOK = false;
@@ -397,16 +402,22 @@ void RigidBody::calculateInertiaTensor()
 
 std::tuple<bool, double> RigidBody::raycast(Ray ray, double tLim)
 {
+    auto [hit, t, idx] = pickFace(ray, tLim);
+    return { hit, t };
+}
+
+std::tuple<bool, double, uint32_t> RigidBody::pickFace(Ray ray, double tLim)
+{
     // Transform ray relative to the body
     ray = glm::inverse(m_transform) * ray;
 
     // Initial check against bounding sphere
     {
         auto [hit, t] = Collision::raycast(m_boundingSphere, ray);
-        if (!hit || t > tLim) return { false, 0 };
+        if (!hit || t > tLim) return { false, 0, 0 };
     }
 
-    return m_mesh->raycast(ray);
+    return m_mesh->pickFace(ray);
 }
 
 void RigidBody::print() const

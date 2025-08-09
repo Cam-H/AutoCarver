@@ -17,11 +17,11 @@
 #include "core/Functions.h"
 
 Robot::Robot(const std::shared_ptr<KinematicChain>& kinematics, const std::shared_ptr<RigidBody>& eoat)
-    : m_kinematics(kinematics)
-    , m_eoat(eoat)
-    , m_eoatRelativeTransform()
-    , Transformable()
-    , m_invTransform(1.0)
+        : m_kinematics(kinematics)
+        , m_eoatTransform(1.0)
+        , m_eoatRelativeTransform()
+        , m_invTransform(1.0)
+        , Transformable()
 {
 
 }
@@ -96,6 +96,7 @@ void Robot::setEOAT(const std::shared_ptr<RigidBody>& eoat, bool preserveTransfo
 {
     if (m_eoat != nullptr) { // Cleanup old EOAT
         m_eoat->setAxisEnabled(false);
+//        m_eoat->mesh()->transform(m_kinematics->inversion());
     }
 
     m_eoat = eoat;
@@ -106,12 +107,20 @@ void Robot::setEOAT(const std::shared_ptr<RigidBody>& eoat, bool preserveTransfo
 //    m_eoat->mesh()->rotate(glm::quat_cast(glm::inverse(m_kinematics->axisTransform())));
 
     m_eoatRelativeTransform = glm::inverse(m_kinematics->inversion());
+//    m_eoatRelativeTransform = glm::dmat4(1.0);
+//    m_eoat->mesh()->transform(glm::inverse(m_kinematics->inversion()));
 
     if (preserveTransform) {
-        m_eoatRelativeTransform = glm::inverse(getEOATTransform()) * m_eoat->getTransform() * m_eoatRelativeTransform;//TODO test
+//        m_eoatRelativeTransform = glm::inverse(m_links.back()->getTransform()) * m_eoat->getTransform() * m_eoatRelativeTransform;//TODO test
     }
 
 
+    updateTransforms();
+}
+
+void Robot::translateEOAT(const glm::dvec3& translation)
+{
+    m_eoatRelativeTransform = glm::translate(m_eoatRelativeTransform, translation);
     updateTransforms();
 }
 
@@ -132,11 +141,11 @@ void Robot::setJointValueDg(uint32_t idx, double value)
 
 void Robot::moveTo(const glm::dvec3& position)
 {
-    moveTo(Pose(position, getEOATAxes()));
+    moveTo(Pose(position, getAxes()));
 }
 void Robot::moveTo(const Axis3D& axes)
 {
-    moveTo(Pose(getEOATPosition(), axes));
+    moveTo(Pose(getPosition(), axes));
 }
 
 void Robot::moveTo(const Pose& pose)
@@ -171,6 +180,8 @@ void Robot::setLinkMesh(uint32_t index, const std::shared_ptr<Mesh>& mesh)
 
 void Robot::updateTransforms()
 {
+    if (m_links.empty()) return;
+
     m_links[0]->setTransform(m_transform); // Robot base
 
     const std::vector<glm::dmat4> transforms = m_kinematics->jointTransforms();
@@ -178,8 +189,10 @@ void Robot::updateTransforms()
         m_links[i + 1]->setTransform(m_transform * transforms[i]);
     }
 
+    m_eoatTransform = m_transform * transforms.back();
+
     if (m_eoat != nullptr) {
-        m_eoat->setTransform(m_transform * transforms.back() * m_eoatRelativeTransform);
+        m_eoat->setTransform(m_eoatTransform * m_eoatRelativeTransform);
     }
 }
 
@@ -251,42 +264,23 @@ std::vector<double> Robot::getJointAcceleration() const
     return m_currentTrajectory->acceleration();
 }
 
-const std::shared_ptr<RigidBody>& Robot::getEOAT() const
+std::shared_ptr<RigidBody> Robot::getEOAT() const
 {
-    if (m_links.empty()) throw std::runtime_error("[Robot] The robot does not have an EOAT");
-    return m_links.back();
+    return m_eoat;
 }
 
-const glm::dmat4x4& Robot::getEOATTransform() const
+glm::dvec3 Robot::getPosition() const
 {
-    if (m_links.empty()) throw std::runtime_error("[Robot] No Links!");
-    return m_links.back()->getTransform();
+    return Transformable::position(m_eoatTransform);
 }
-
-glm::dvec3 Robot::getEOATPosition() const
+Axis3D Robot::getAxes() const
 {
-    if (m_links.empty()) return {};
-    return Transformable::position(m_links.back()->getTransform());
-}
-
-Axis3D Robot::getEOATAxes() const
-{
-    if (m_links.empty()) return {};
-
-    return { m_links.back()->getRotation() };
-}
-
-glm::dvec3 Robot::getEOATEuler() const
-{
-    if (m_links.empty()) return {};
-
-    const glm::dmat4& transform = m_links.back()->getTransform();
-    return glm::eulerAngles(glm::quat_cast(transform));
+    return { Transformable::rotation(m_eoatTransform) };
 }
 
 Pose Robot::getPose() const
 {
-    return { getEOATPosition(), getEOATAxes() };
+    return { getPosition(), getAxes() };
 }
 Pose Robot::getPose(const Waypoint& waypoint) const
 {
@@ -296,6 +290,27 @@ Pose Robot::getPose(const Waypoint& waypoint) const
 Waypoint Robot::inverse(const Pose& pose) const
 {
     return Waypoint(m_kinematics->invkin(m_invTransform * pose), false);
+}
+
+// Selects the better waypoint based on distance from joint limits
+Waypoint Robot::preferredWaypoint(const Waypoint& optionA, const Waypoint& optionB) const
+{
+    // Confirm that both waypoints are valid
+    bool vA = m_kinematics->validate(optionA), vB = m_kinematics->validate(optionB);
+    if (!vA || !vB) {
+        if (vA) return optionA;
+        if (vB) return optionB;
+        return Waypoint();
+    }
+
+    double aWeight = 0, bWeight = 0;
+    for (uint32_t i = 0; i < optionA.values.size(); i++) {
+        const auto& joint = m_kinematics->getJoints()[i];
+        aWeight += 1 - (joint.remainingLimit(optionA.values[i]) / joint.getRange());
+        bWeight += 1 - (joint.remainingLimit(optionB.values[i]) / joint.getRange());
+    }
+
+    return aWeight < bWeight ? optionA : optionB;
 }
 
 bool Robot::inTransit() const

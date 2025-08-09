@@ -34,7 +34,10 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     , m_convexTrimEnable(true)
     , m_processCutEnable(true)
     , m_continuous(false)
+    , m_ttOffset(0, 0, 0)
     , m_fwd(1, 0, 0)
+    , m_fwdOffset(0.6) // TODO when adapting for different models these need to be changed
+    , m_rThickness(0.011)
     , m_latestRobotCommand()
     , m_solver(Interpolator::SolverType::QUINTIC)
 {
@@ -43,14 +46,24 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
 
     m_sculpture = std::make_shared<Sculpture>(model, m_config.materialWidth, m_config.materialHeight);
 
-
     prepareBody(m_sculpture, 1);
     prepareBody(m_sculpture->model(), 1);
 
+    prepareTurntable();
+
+    m_turntable->setEOAT(m_sculpture, false);
+    m_turntable->translateEOAT(m_ttOffset);
+
+
+    m_latestTableCommand = m_turntable->getWaypoint();
+}
+
+void SculptProcess::prepareTurntable()
+{
+//    model->transform(glm::inverse(KC_AXIS_TRANSFORM));
 
     auto ttTableMesh = MeshHandler::loadAsMeshBody("../res/meshes/TurntableTable.obj");
     createBody(ttTableMesh);
-    std::cout << m_sculpture->width() << " " << m_sculpture->height() << " " << ttTableMesh->ySpan() << "W\n";
 
     auto chain = std::make_shared<KinematicChain>();
     chain->addJoint(Joint(Joint::Type::REVOLUTE, { 0.0f, 0.0f, 0.0f, 0.0f }, 0));
@@ -64,19 +77,16 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     auto ttj0Mesh = MeshHandler::loadAsMeshBody("../res/meshes/TurntableJ0.obj");
     m_turntable->setLinkMesh(1, ttj0Mesh);
 
+    double near, far;
+    glm::dvec3 axis = m_turntable->links().back()->getRotation() * -UP;
+    ttj0Mesh->extents(axis, near, far);
+    m_ttOffset = UP * far;
 
-    m_turntable->setEOAT(m_sculpture, false);
-    m_turntable->links()[0]->print();
-    m_turntable->links()[1]->print();
-
-    auto c = ttj0Mesh->boundedOffset();
-    std::cout << "CC " << c.x << " " << c.y << " " << c.z << "\n";
-    c = ttBaseMesh->boundedOffset();
-    std::cout << "CC2 " << c.x << " " << c.y << " " << c.z << "\n";
-
-//    ttBaseMesh->normalize();
-
-    m_latestTableCommand = m_turntable->getWaypoint();
+//    std::cout << "NF: " << near << " " << far << "\n";
+//    auto c = ttj0Mesh->boundedOffset();
+//    std::cout << "CC " << c.x << " " << c.y << " " << c.z << "\n";
+//    c = ttBaseMesh->boundedOffset();
+//    std::cout << "CC2 " << c.x << " " << c.y << " " << c.z << "\n";
 }
 
 SculptProcess::~SculptProcess()
@@ -170,7 +180,8 @@ void SculptProcess::setSculptingRobot(const std::shared_ptr<Robot>& robot){
     m_robot = robot;
 
     if (m_robot != nullptr) {
-        m_fwd = glm::normalize(m_turntable->position() - m_robot->position());
+        auto delta = m_turntable->position() - m_robot->position();
+        m_fwd = glm::normalize(delta - UP * glm::dot(UP, delta));
         m_latestRobotCommand = m_robot->getWaypoint();
         m_baseVelocityLimits = std::vector<double>(m_robot->dof(), M_PI / 2);
         m_baseAccelerationLimits = std::vector<double>(m_robot->dof(), M_PI);
@@ -192,6 +203,81 @@ void SculptProcess::setContinuous(bool enable)
     m_continuous = enable;
 }
 
+
+void SculptProcess::alignToFace(uint32_t faceIdx)
+{
+    assert(faceIdx < m_sculpture->mesh()->faceCount());
+    assert(m_robot != nullptr);
+
+    Waypoint wp = alignedToFaceWP(faceIdx);
+    if (wp.isValid()) m_robot->moveTo(wp);
+}
+
+Waypoint SculptProcess::alignedToFaceWP(uint32_t faceIdx) const
+{
+    auto face = m_sculpture->mesh()->faces()[faceIdx];
+
+    auto rotation = glm::quat_cast(m_sculpture->getTransform());
+
+    Axis3D axes(rotation * m_sculpture->mesh()->faces().normal(faceIdx));
+    axes.rotateX(-M_PI / 2);
+
+    // Convert face into world-space vertices
+    std::vector<glm::dvec3> border(m_sculpture->mesh()->faces().faceSizes()[faceIdx]);
+    for (uint32_t i = 0; i < border.size(); i++) {
+        border[i] = rotation * m_sculpture->mesh()->vertices()[face[i]] + m_sculpture->position();
+    }
+
+    // Find the better position for access (If possible)
+    auto optionA = alignedToFaceWP(axes, border);
+    axes.flipXZ();
+    auto optionB = alignedToFaceWP(axes, border);
+
+    return m_robot->preferredWaypoint(optionA, optionB);
+}
+
+// Returns the necessary joint angles for the robot to reach the given pose.
+Waypoint SculptProcess::alignedToFaceWP(const Axis3D& axes, const std::vector<glm::dvec3>& border) const
+{
+
+    // Select vertex nearest along the cutting parallel
+    uint32_t idx = 0;
+    if (VertexArray::extreme(border, -axes.zAxis, idx)) {
+
+        // If multiple vertices are equally close, select the one nearest the robot (only applies to adjacent vertices)
+        uint32_t pre = (idx == 0 ? border.size() - 1 : idx - 1), post = (idx + 1) % border.size();
+
+        glm::dvec3 delta = border[pre] - border[idx];
+        if (std::abs(glm::dot(delta, axes.zAxis)) < 1e-12 && glm::dot(delta, m_fwd) < 0) idx = pre;
+
+        delta = border[post] - border[idx];
+        if (std::abs(glm::dot(delta, axes.zAxis)) < 1e-12 && glm::dot(delta, m_fwd) < 0) idx = post;
+
+        return alignedToVertexWP(axes, border[idx]);
+    }
+
+    return Waypoint();
+}
+
+// Returns the necessary joint angles for the robot to reach the given pose. Draws back from vertex until a valid position is found
+Waypoint SculptProcess::alignedToVertexWP(const Axis3D& axes, const glm::dvec3& vertex) const
+{
+    // Apply robot offsets to vertex (Difference between origin and start of cutting surface)
+    glm::dvec3 tVertex = vertex - axes.zAxis * m_fwdOffset + axes.yAxis * 0.5 * m_rThickness;
+
+    glm::dvec3 step = -0.05 * axes.zAxis;
+    Pose pose(tVertex, axes);
+    Waypoint wp = m_robot->inverse(pose);
+
+    int limit = 10;
+    while (!wp.isValid() && limit-- > 0) {
+        pose.globalTranslate(step);
+        wp = m_robot->inverse(pose);
+    }
+
+    return wp;
+}
+
 bool SculptProcess::simulationComplete() const
 {
     return m_step >= m_actions.size();
@@ -205,6 +291,11 @@ bool SculptProcess::simulationIdle() const
 bool SculptProcess::simulationActive() const
 {
     return !simulationComplete() && (m_actions[m_step].target->inTransit() || m_continuous);
+}
+
+const std::shared_ptr<Sculpture>& SculptProcess::getSculpture() const
+{
+    return m_sculpture;
 }
 
 const std::shared_ptr<Robot>& SculptProcess::getSculptor() const
@@ -258,7 +349,7 @@ ConvexHull SculptProcess::planConvexTrim(const ConvexHull& hull, const Plane& pl
 //        glm::ddvec3 normal = Triangle::normal(border[0], border[1], border[2]);
 
     std::shared_ptr<Trajectory> trajectory;
-    double baseRotation = plane.axialRotation(UP), rotation;
+    double baseRotation = Ray::axialRotation(UP, plane.normal), rotation;
 
     // Try developing a trajectory that will allow the robot to complete the planar section
     for (double offset : attemptOffsets) {

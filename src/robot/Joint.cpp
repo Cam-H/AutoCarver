@@ -48,6 +48,11 @@ double Joint::getUpperLimit() const
     return m_upperLimit;
 }
 
+double Joint::getRange() const
+{
+    return m_upperLimit - m_lowerLimit;
+}
+
 double Joint::getValue() const
 {
     return m_value;
@@ -56,6 +61,14 @@ double Joint::getValue() const
 bool Joint::withinLimits(double value) const
 {
     return value > m_lowerLimit && value < m_upperLimit;
+}
+
+// Return the distance between the value and the nearest limit
+double Joint::remainingLimit(double value) const
+{
+    double lLim = value - m_lowerLimit, uLim = m_upperLimit - value;
+    if (lLim <= 0 || uLim <= 0) return 0;
+    return std::min(lLim, uLim);
 }
 
 glm::dmat4 Joint::calculateHTM() const

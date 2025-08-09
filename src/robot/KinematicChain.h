@@ -13,7 +13,17 @@
 class Pose;
 class Waypoint;
 
-static Joint NULL_JOINT = Joint(Joint::Type::NONE, {0, 0, 0, 0});
+// YZ Transformation to correct difference in coordinate systems
+static const glm::dmat3 KC_AXIS_ROTATION(
+        1,  0, 0,
+        0,  0, 1,
+        0, -1, 0);
+
+static const glm::dmat4 KC_AXIS_TRANSFORM(
+        1, 0,  0, 0,
+        0, 0, -1, 0,
+        0, 1,  0, 0,
+        0, 0,  0, 1);
 
 class KinematicChain {
 public:
@@ -42,8 +52,11 @@ public:
 
     [[nodiscard]] std::vector<glm::dmat4> jointTransforms() const;
 
-    [[nodiscard]] const glm::dmat3& axisInversion() const;
-    [[nodiscard]] const glm::dmat4& inversion() const;
+    [[nodiscard]] static const glm::dmat3& axisInversion();
+    [[nodiscard]] static const glm::dmat4& inversion();
+
+    [[nodiscard]] bool validate(const Waypoint& waypoint) const;
+
 
 protected:
 
@@ -59,11 +72,6 @@ protected:
 
 protected:
     std::vector<Joint> m_joints;
-
-    // YZ Transformation to correct difference in coordinate systems
-    glm::dmat3 m_axisTransform3;
-    glm::dmat4 m_axisTransform4;
-
 };
 
 

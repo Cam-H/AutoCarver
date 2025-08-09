@@ -32,8 +32,11 @@ public:
 
     [[nodiscard]] double getLowerLimit() const;
     [[nodiscard]] double getUpperLimit() const;
+    [[nodiscard]] double getRange() const;
+
     [[nodiscard]] double getValue() const;
-    bool withinLimits(double value) const;
+    [[nodiscard]] bool withinLimits(double value) const;
+    [[nodiscard]] double remainingLimit(double value) const;
 //    const glm::dvec3& getCenter() const;
 
 //    [[nodiscard]] const glm::dmat4x4& getTransform() const;

@@ -40,6 +40,8 @@ public:
     bool deserialize(const std::string& filename) override;
     bool deserialize(std::ifstream& file) override;
 
+    void moved() override;
+
     void setType(Type type);
     void setAxisEnabled(bool enable);
 
@@ -96,6 +98,7 @@ public:
     EPA collision(const std::shared_ptr<RigidBody>& body);
 
     virtual std::tuple<bool, double> raycast(Ray ray, double tLim);
+    virtual std::tuple<bool, double, uint32_t> pickFace(Ray ray, double tLim);
 
     void print() const;
 

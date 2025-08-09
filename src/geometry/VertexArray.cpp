@@ -148,6 +148,18 @@ std::vector<glm::dvec3> VertexArray::rotated(const std::vector<glm::dvec3>& vert
     return rotatedVertices;
 }
 
+void VertexArray::transform(const glm::dmat4& trans)
+{
+    transform(m_vertices, trans);
+}
+void VertexArray::transform(std::vector<glm::dvec3>& vertices, const glm::dmat4& trans)
+{
+    for (glm::dvec3& vertex : vertices) {
+        glm::dvec4 transformed = trans * glm::dvec4(vertex.x, vertex.y, vertex.z, 1.0);
+        vertex = { transformed.x, transformed.y, transformed.z };
+    }
+}
+
 void VertexArray::replace(uint32_t idx, const glm::dvec3& replacement)
 {
     if (idx < m_vertices.size()) {
@@ -233,6 +245,22 @@ bool VertexArray::extreme(uint32_t p1, uint32_t p2, uint32_t& max) const
 bool VertexArray::extreme(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max) const
 {
     return extreme(m_vertices, p1, p2, p3, max);
+}
+
+bool VertexArray::extreme(const std::vector<glm::dvec3>& vertices, const glm::dvec3& axis, uint32_t &max)
+{
+    double maxValue = std::numeric_limits<double>::lowest();
+
+    for(uint32_t i = 0; i < vertices.size(); i++){
+        double value = glm::dot(vertices[i], axis);
+
+        if(value > maxValue){
+            maxValue = value;
+            max = i;
+        }
+    }
+
+    return maxValue > std::numeric_limits<double>::lowest() + 1e-12;
 }
 
 bool VertexArray::extremes(const std::vector<glm::dvec3>& vertices, const glm::dvec3& axis, uint32_t &min, uint32_t &max)

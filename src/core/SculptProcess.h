@@ -44,9 +44,13 @@ public:
     void setSculptingRobot(const std::shared_ptr<Robot>& robot);
     void setContinuous(bool enable);
 
+    void alignToFace(uint32_t faceIdx);
+
     bool simulationComplete() const;
     bool simulationIdle() const;
     bool simulationActive() const;
+
+    const std::shared_ptr<Sculpture>& getSculpture() const;
 
     const std::shared_ptr<Robot>& getSculptor() const;
     const std::shared_ptr<Robot>& getTurntable() const;
@@ -69,6 +73,12 @@ private:
         bool started;
         bool trigger;
     };
+
+    void prepareTurntable();
+
+    [[nodiscard]] Waypoint alignedToFaceWP(uint32_t faceIdx) const;
+    [[nodiscard]] Waypoint alignedToFaceWP(const Axis3D& axes, const std::vector<glm::dvec3>& border) const;
+    [[nodiscard]] Waypoint alignedToVertexWP(const Axis3D& axes, const glm::dvec3& vertex) const;
 
     void planConvexTrim();
     ConvexHull planConvexTrim(const ConvexHull& hull, const Plane& plane);
@@ -97,8 +107,11 @@ private:
     std::shared_ptr<Sculpture> m_sculpture;
 
     std::shared_ptr<Robot> m_turntable;
+    glm::dvec3 m_ttOffset; // Offset to table surface
+
     std::shared_ptr<Robot> m_robot;
-    glm::dvec3 m_fwd;
+    glm::dvec3 m_fwd; // Horizontal offset from robot to turntable
+    double m_fwdOffset, m_rThickness;
 
     std::vector<double> m_baseVelocityLimits, m_baseAccelerationLimits;
     std::vector<double> m_slowVelocityLimits; // TODO use cartesian speed limit (Needs further trajectory development)

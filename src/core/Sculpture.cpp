@@ -63,11 +63,11 @@ void Sculpture::scaleToFit(const std::shared_ptr<Mesh>& model, double width, dou
 
 void Sculpture::prepareBox()
 {
-
     m_mesh->setBaseColor(baseColor());
     m_mesh->scale({ m_width, m_height, m_width });
     m_mesh->translate({ 0, m_height / 2, 0 });
-    m_hull = ConvexHull(m_mesh);
+
+    updateColliders();
     CompositeBody::restore();
 
     prepareTree();
@@ -91,10 +91,12 @@ void Sculpture::restore()
 }
 void Sculpture::restoreAsHull()
 {
-    m_hull = modelBody->hull();
-    CompositeBody::restore();
-    m_mesh = std::make_shared<Mesh>(m_hull);
+    m_mesh = std::make_shared<Mesh>(modelBody->hull());
     m_mesh->setFaceColor(baseColor());
+
+    updateColliders();
+    CompositeBody::restore();
+
 }
 
 void Sculpture::moved()

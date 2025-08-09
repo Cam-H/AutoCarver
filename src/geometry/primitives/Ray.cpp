@@ -42,6 +42,18 @@ bool Ray::isValid() const
     return 1 - 1e-12 < len && len < 1 + 1e-12;
 }
 
+// Calculate the rotation of the ray axis about the specified reference axis
+double Ray::axialRotation(const glm::dvec3& reference) const
+{
+    return axialRotation(reference, axis);
+}
+
+double Ray::axialRotation(const glm::dvec3& reference, const glm::dvec3& axis)
+{
+    glm::dvec3 proj = axis - reference * glm::dot(axis, reference);
+    return atan2(proj.x, -proj.z);
+}
+
 double Ray::squareDistance(const glm::dvec3& vertex) const
 {
     glm::dvec3 delta = vertex - origin;

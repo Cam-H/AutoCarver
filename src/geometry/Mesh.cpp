@@ -232,6 +232,11 @@ void Mesh::rotate(const glm::dquat& rotation)
     m_vertices.rotate(rotation);
 }
 
+void Mesh::transform(const glm::dmat4& transform)
+{
+    m_vertices.transform(transform);
+}
+
 void Mesh::normalize(double scalar)
 {
     double dx = xSpan(), dy = ySpan(), dz = zSpan();

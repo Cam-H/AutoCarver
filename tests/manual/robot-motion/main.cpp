@@ -11,6 +11,8 @@
 #include <QFile>
 #include <QDir>
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <gtx/string_cast.hpp>
 
 #ifndef QT_NO_OPENGL
 #include "renderer/UiLoader.h"
@@ -37,6 +39,10 @@ std::shared_ptr<SculptProcess> scene = nullptr;
 SceneWidget *sceneWidget = nullptr;
 std::shared_ptr<Robot> robot = nullptr;
 std::shared_ptr<RigidBody> lastPick = nullptr;
+std::shared_ptr<Sculpture> sculpture = nullptr;
+std::shared_ptr<RigidBody> eoat = nullptr;
+
+uint32_t planeIdx = std::numeric_limits<uint32_t>::max();
 
 std::vector<QSpinBox*> jointFields;
 std::vector<QDoubleSpinBox*> posFields;
@@ -97,9 +103,9 @@ void updateJointFields()
 
 void updatePositionFields()
 {
-    axes = robot->getEOATAxes();
+    axes = robot->getAxes();
 
-    auto position = robot->getEOATPosition();
+    auto position = robot->getPosition();
     if (localTranslation) position = axes.localize(position);
 
     for (uint32_t j = 0; j < 3; j++) {
@@ -272,8 +278,15 @@ int main(int argc, char *argv[])
 
 
     scene = std::make_shared<SculptProcess>(model);
+    sculpture = scene->getSculpture();
+    sculpture->restoreAsHull();
+
+//    for (const std::shared_ptr<RigidBody>& body : scene->bodies()) {
+//        body->prepareColliderVisuals();
+//    }
+
     robot = scene->createRobot(std::make_shared<ArticulatedWrist>(0.2, 1.2, 1.2, 0.2));
-    robot->translate({ -2, 0, 0 });
+    robot->translate({ -2, 1, 0 });
     robot->rotate({ 0, 1, 0 }, M_PI);
     robot->setLinkMesh(0, MeshHandler::loadAsMeshBody(R"(..\res\meshes\RobotBase.obj)"));
 
@@ -282,12 +295,14 @@ int main(int argc, char *argv[])
 
     robot->setJointValueDg(1, 135);
     robot->setJointValueDg(2, -45);
-    axes = robot->getEOATAxes();
+    axes = robot->getAxes();
 
     auto eoatMesh = MeshHandler::loadAsMeshBody("../res/meshes/Blade.obj");
-    auto eoat = scene->createBody(eoatMesh);
+    eoat = scene->createBody(eoatMesh);
+    eoat->prepareColliderVisuals();
     robot->setEOAT(eoat, false);
 
+    scene->setSculptingRobot(robot);
     robot->update();
     sceneWidget->update();
 
@@ -326,11 +341,11 @@ int main(int argc, char *argv[])
     // EOAT position
     for (uint8_t i = 0; i < 3; i++) {
         auto *field = posFields[i];
-        auto position = robot->getEOATPosition();
+        auto position = robot->getPosition();
         field->setValue(position[i]);
 
         QObject::connect(field, &QDoubleSpinBox::valueChanged, [i](double value) {
-            glm::dvec3 position = robot->getEOATPosition();
+            glm::dvec3 position = robot->getPosition();
             if (localTranslation) position = axes.localize(position);
             position[i] = value;
 
@@ -348,6 +363,13 @@ int main(int argc, char *argv[])
     QObject::connect(ttAngleField, &QSpinBox::valueChanged, [&](int value) {
         scene->getTurntable()->setJointValueDg(0, value);
         scene->getTurntable()->update();
+
+        if (planeIdx != std::numeric_limits<uint32_t>::max()) {
+            scene->alignToFace(planeIdx);
+            updatePositionFields();
+            updateJointFields();
+        }
+
         sceneWidget->update();
     });
 
@@ -415,21 +437,27 @@ int main(int argc, char *argv[])
     auto showAxesButton = window->findChild<QCheckBox*>("showAxesButton");
     QObject::connect(showAxesButton, &QCheckBox::clicked, [&](bool checked) {
         sceneWidget->enableAxes(checked);
+        sceneWidget->update();
     });
 
     QObject::connect(sceneWidget, &SceneWidget::mousepick, [&](Ray ray) {
         auto [body, t] = scene->raycast(ray);
-        if (body != nullptr) {
+        if (body == sculpture) { // Only select sculpture
             body->mesh()->setFaceColor(body->mesh()->baseColor());
-            auto [hit, tDup, faceIdx] = body->mesh()->pickFace(glm::inverse(body->getTransform()) * ray);
+            auto [hit, tDup, faceIdx] = body->pickFace(ray, std::numeric_limits<double>::max());
             if (hit) body->mesh()->setFaceColor(faceIdx, { 0, 1, 0 });
             else body->mesh()->setFaceColor({ 0, 0, 1 });
 
+            planeIdx = faceIdx;
+            scene->alignToFace(planeIdx);
+            updatePositionFields();
+            updateJointFields();
+
             sceneWidget->updateRenderGeometry(body->mesh());
-        }
+        } else planeIdx = std::numeric_limits<uint32_t>::max();
 
         if (body != lastPick) {
-            if (lastPick != nullptr) {
+            if (lastPick == sculpture) {
                 lastPick->mesh()->setFaceColor(lastPick->mesh()->baseColor());
                 sceneWidget->updateRenderGeometry(lastPick->mesh());
             }

@@ -104,6 +104,17 @@ void Axis3D::rotate(const glm::dquat& rotation)
     zAxis = zAxis * rotation;
 }
 
+void Axis3D::flipXZ()
+{
+    xAxis = -xAxis;
+    zAxis = -zAxis;
+}
+void Axis3D::flipYZ()
+{
+    yAxis = -yAxis;
+    zAxis = -zAxis;
+}
+
 bool Axis3D::isValid() const
 {
     return checkAxis(xAxis, xAxis, 1e-12)

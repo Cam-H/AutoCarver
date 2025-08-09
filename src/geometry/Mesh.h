@@ -50,6 +50,7 @@ public:
     void translate(const glm::dvec3& translation);
     void rotate(const glm::dvec3& axis, double theta);
     void rotate(const glm::dquat& rotation);
+    void transform(const glm::dmat4& transform);
 
     void normalize(double scalar = 1.0f);
     void center();

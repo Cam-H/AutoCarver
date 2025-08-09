@@ -52,6 +52,10 @@ public:
     static std::vector<glm::dvec3> rotated(const std::vector<glm::dvec3>& vertices, const glm::dvec3& axis, double theta);
     static std::vector<glm::dvec3> rotated(const std::vector<glm::dvec3>& vertices, const glm::dquat& rotation);
 
+    void transform(const glm::dmat4& trans);
+    static void transform(std::vector<glm::dvec3>& vertices, const glm::dmat4& trans);
+
+
     void replace(uint32_t idx, const glm::dvec3& replacement);
     void remove(uint32_t idx);
     void swap(uint32_t I0, uint32_t I1);
@@ -73,6 +77,7 @@ public:
     bool extreme(uint32_t p1, uint32_t p2, uint32_t& max) const; // Get furthest vertex (perpendicular) from the provided axis
     bool extreme(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max) const; // Get furthest vertex from the plane formed by provided indices
 
+    static bool extreme(const std::vector<glm::dvec3>& vertices, const glm::dvec3& axis, uint32_t &max);
     static bool extremes(const std::vector<glm::dvec3>& vertices, const glm::dvec3& axis, uint32_t &min, uint32_t &max);
     static bool extreme(const std::vector<glm::dvec3>& vertices, uint32_t p1, uint32_t p2, uint32_t& max);
     static bool extreme(const std::vector<glm::dvec3>& vertices, uint32_t p1, uint32_t p2, uint32_t p3, uint32_t& max);
