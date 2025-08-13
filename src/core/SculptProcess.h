@@ -15,6 +15,7 @@
 
 #include "geometry/curves/Interpolator.h"
 #include "robot/trajectory/Waypoint.h"
+#include "robot/trajectory/CompositeTrajectory.h"
 
 class Profile;
 
@@ -76,12 +77,19 @@ private:
 
     void prepareTurntable();
 
-    [[nodiscard]] Waypoint alignedToFaceWP(uint32_t faceIdx) const;
+    [[nodiscard]] Waypoint alignedToFaceWP(const std::vector<glm::dvec3>& border, const glm::dvec3& normal) const;
     [[nodiscard]] Waypoint alignedToFaceWP(const Axis3D& axes, const std::vector<glm::dvec3>& border) const;
     [[nodiscard]] Waypoint alignedToVertexWP(const Axis3D& axes, const glm::dvec3& vertex) const;
+    [[nodiscard]] Waypoint alignedToVertexWP(const Axis3D& axes, const glm::dvec3& vertex, const glm::dvec3& tryAxis, double tryLimit) const;
+
+    static void toWorldSpace(glm::dvec3& normal, const glm::dquat& rotation);
+    void toWorldSpace(std::vector<glm::dvec3>& border, const glm::dquat& rotation) const;
+
+    [[nodiscard]] static Axis3D faceAlignedAxes(const glm::dvec3& normal, bool alignHorizontal);
+    [[nodiscard]] glm::dvec3 poseAdjustedVertex(const Axis3D& axes, const glm::dvec3& vertex) const;
 
     void planConvexTrim();
-    ConvexHull planConvexTrim(const ConvexHull& hull, const Plane& plane);
+    bool planConvexTrim(const ConvexHull& hull, const Plane& plane);
 
     void planOutlineRefinement(double stepDg);
     void planOutlineRefinement(Profile& profile);
@@ -92,10 +100,17 @@ private:
 
     void planRoboticSection(const std::shared_ptr<Trajectory>& trajectory);
 
-    std::shared_ptr<Trajectory> preparePlanarTrajectory(const Axis3D& axes, const std::vector<glm::dvec3>& border);
+    std::shared_ptr<CompositeTrajectory> prepareApproach(const Waypoint& destination);
+
+    std::shared_ptr<Trajectory> preparePlanarTrajectory(const std::vector<glm::dvec3>& border, const glm::dvec3& normal);
+    std::shared_ptr<Trajectory> prepareThroughCut(const Pose& startPose, double depth, const glm::dvec3& off);
+    std::shared_ptr<Trajectory> prepareBlindCut(const Pose& pose, double depth);
+
     void planRoboticSection(const std::vector<glm::dvec3>& border);
 
     void nextAction();
+
+    [[nodiscard]] bool validateTrajectory(const std::shared_ptr<Trajectory>& trajectory, double dt);
 
     static uint32_t identifySculpture(const std::vector<std::shared_ptr<Mesh>>& fragments);
 
@@ -111,10 +126,15 @@ private:
 
     std::shared_ptr<Robot> m_robot;
     glm::dvec3 m_fwd; // Horizontal offset from robot to turntable
-    double m_fwdOffset, m_rThickness;
+    double m_bladeLength, m_bladeWidth, m_bladeThickness;
+
+    std::vector<bool> m_robotMask, m_eoatMask;
+
 
     std::vector<double> m_baseVelocityLimits, m_baseAccelerationLimits;
     std::vector<double> m_slowVelocityLimits; // TODO use cartesian speed limit (Needs further trajectory development)
+
+    double m_minCutVolume; // Skip cuts when the reduced volume is less than this limit
 
     Waypoint m_robotHome;
     Waypoint m_robotNeutral;

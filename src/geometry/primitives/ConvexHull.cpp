@@ -44,6 +44,7 @@ ConvexHull::ConvexHull(const std::vector<glm::dvec3>& cloud)
         , m_faces(0, 0)
         , m_volume(-1.0f)
         , m_walkStart(0)
+        , m_orphans(false)
 
 {
     initialize();
@@ -89,6 +90,14 @@ void ConvexHull::initialize()
     m_center = m_center * (1 / (double)m_vertices.size());
 
     m_walks = m_faces.edgeList();
+
+    // Verify that the hull is well-formed (If not walk() defaults to a less efficient method)
+    for (const std::vector<uint32_t>& walks : m_walks) {
+        if (walks.empty()) {
+            m_orphans = true;
+            break;
+        }
+    }
 }
 
 void ConvexHull::prepareFaces()
@@ -231,15 +240,19 @@ uint32_t ConvexHull::walk(const glm::dvec3& axis) const
     uint32_t index = m_walkStart;
 
     // Skip over any orphan vertices
-    while (index < m_walks.size() && m_walks[index].empty()) index++;
+//    while (index < m_walks.size() && m_walks[index].empty()) index++;
 
-    return walk(axis, index);
+    return walk(axis, m_walkStart);
 }
 
 uint32_t ConvexHull::walk(const glm::dvec3& axis, uint32_t index) const
 {
     if (index >= m_walks.size()) throw std::runtime_error("[ConvexHull] Index out of bounds. Can not walk");
-    else if (m_walks[index].empty()) throw std::runtime_error("[ConvexHull] Orphaned start point. Can not walk");
+    else if (m_orphans) {
+//        std::cout << "\033[93m[ConvexHull] Orphaned start point. Can not walk. Using fallback method\033[0m\n";
+        VertexArray::extreme(m_vertices, axis, index);
+        return index;
+    }
 
     uint32_t i = 0;
     while (i == 0) { // Only true when arriving at a fresh vertex

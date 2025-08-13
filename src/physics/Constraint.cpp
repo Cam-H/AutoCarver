@@ -11,41 +11,26 @@
 
 #include "RigidBody.h"
 #include "geometry/collision/EPA.h"
-#include "geometry/Axis3D.h"
 
-const double BETA = 0.01;
+const double BETA = 0.001;
 const double DEPTH_SLOP = 0.01;
 const double RESTITUTION_SLOP = 0.1;
 
 Constraint::Constraint(const std::shared_ptr<RigidBody>& a, const std::shared_ptr<RigidBody>& b, const EPA& collision)
     : rb1(a)
     , rb2(b)
-    , lra(collision.colliderAClosestLocal())
-    , lrb(collision.colliderBClosestLocal())
-    , normal(-glm::normalize(collision.overlap()))
+    , lra(collision.colliderAClosestLocal() - a->centroid())
+    , lrb(collision.colliderBClosestLocal() - b->centroid())
+    , system(-glm::normalize(collision.overlap()))
     , depth(collision.distance())
-    , m_JN(jacobian(normal))
+    , m_JN(jacobian(system.zAxis))
+    , m_JT1(jacobian(system.xAxis))
+    , m_JT2(jacobian(system.yAxis))
 
     , m_normalImpulse(0)
     , m_tangent1Impulse(0)
     , m_tangent2Impulse(0)
 {
-
-    glm::dvec3 ca = a->mesh()->centroid(), cb = b->mesh()->centroid();
-//    std::cout << a << " " << ca.x << " " << ca.y << " " << ca.z << " || " << b << " " << cb.x << " " << cb.y << " " << cb.z << "\n";
-
-    Axis3D system(normal);
-    m_tangent1 = system.xAxis;
-    m_tangent2 = system.yAxis;
-
-    m_JT1 = jacobian(m_tangent1);
-    m_JT2 = jacobian(m_tangent2);
-//    std::cout << "Axes: " << glm::to_string(normal) << "\n" << glm::to_string(m_tangent1) << "\n" << glm::to_string(m_tangent2) << "\n";
-
-    // Stop calculations from factoring in motion of static/kinematic bodies
-    if (b->getType() != RigidBody::Type::DYNAMIC) {
-        m_JN.VB = m_JN.WB = m_JT1.VB = m_JT1.WB = m_JT2.VB = m_JT2.WB = {};
-    }
 
     // Calculate the effective mass from linear and rotational contributions
     calculateEffectiveMass(m_JN);
@@ -53,7 +38,7 @@ Constraint::Constraint(const std::shared_ptr<RigidBody>& a, const std::shared_pt
     calculateEffectiveMass(m_JT2);
 
     // TODO select based on materials of colliding bodies
-    frictionCoefficient = 0.1;
+    frictionCoefficient = 0.3;
     resitutionCoefficient = 0.0;
 }
 
@@ -64,8 +49,11 @@ Jacobian Constraint::jacobian(const glm::dvec3& axis)
 
 void Constraint::calculateEffectiveMass(Jacobian& J)
 {
-    J.mass = glm::dot(J.VA, J.VA) / rb1->mass() + glm::dot(J.WA * rb1->inertiaTensor(), J.WA)
-           + glm::dot(J.VB, J.VB) / rb2->mass() + glm::dot(J.WB * rb2->inertiaTensor(), J.WB);
+    J.mass = glm::dot(J.VA, J.VA) / rb1->mass() + glm::dot(rb1->inertiaTensor() * J.WA, J.WA);
+
+    if (rb2->getType() == RigidBody::Type::DYNAMIC) { // Non-dynamic bodies should in effect have infinite mass
+        J.mass += glm::dot(J.VB, J.VB) / rb2->mass() + glm::dot(J.WB * rb2->inertiaTensor(), J.WB);
+    }
 }
 
 void Constraint::iterateNormal(double step)
@@ -76,7 +64,7 @@ void Constraint::iterateNormal(double step)
 
 //    std::cout << "IT " << lambda << " -> " << sum << " " << m_normalImpulse << "\n";
 
-    if (m_normalImpulse != sum) std::cout << sum - m_normalImpulse << " ";
+//    if (m_normalImpulse != sum) std::cout << sum - m_normalImpulse << " ";
     apply(m_JN, sum - m_normalImpulse);
     m_normalImpulse = sum;
 }
@@ -132,7 +120,7 @@ double Constraint::baumgarteContribution(double step) const
 }
 double Constraint::restitutionContribution() const
 {
-    double speed = glm::dot(normal, -rb1->getLinearVelocity() + rb2->getLinearVelocity()
+    double speed = glm::dot(system.zAxis, -rb1->getLinearVelocity() + rb2->getLinearVelocity()
                             - glm::cross(rb1->getAngularVelocity(), lra)
                             + glm::cross(rb2->getAngularVelocity(), lrb));
 
@@ -147,6 +135,7 @@ void Constraint::apply(const Jacobian& J, double impulse)
 //    std::cout << glm::to_string(m_JWA) << " " << glm::to_string(rb1->inertiaTensor()) << "\n";
 //    std::cout << glm::to_string(rb1->inertiaTensor() * m_JWA * impulse) << "\n";
 
+    // First body is required to be dynamic
     rb1->setLinearVelocity(rb1->getLinearVelocity() + J.VA * impulse / rb1->mass());
     rb1->setAngularVelocity(rb1->getAngularVelocity() + rb1->inertiaTensor() * J.WA * impulse);
 

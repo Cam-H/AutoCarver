@@ -5,7 +5,7 @@
 #include "CartesianTrajectory.h"
 
 
-
+// translation - in units local to the axes defined in initialPose
 CartesianTrajectory::CartesianTrajectory(const std::shared_ptr<Robot>& robot, const Pose& initialPose, const glm::dvec3& translation)
     : TOPPTrajectory(cartesianWaypoints(robot, initialPose, translation))
 {
@@ -35,6 +35,8 @@ std::vector<Waypoint> CartesianTrajectory::cartesianWaypoints(const std::shared_
 
     if (waypoints[0].isValid() && remainder[0].isValid()) { // Don't try if endpoints are impossible to reach
 
+        uint32_t dof = waypoints[0].values.size();
+
         glm::dvec3 axis = finalPose.position - initialPose.position;
         double length = glm::length(axis);
         Ray ray(initialPose.position, axis / length);
@@ -58,13 +60,27 @@ std::vector<Waypoint> CartesianTrajectory::cartesianWaypoints(const std::shared_
                 pose = initialPose;
                 pose.globalTranslate(axis * steps.back());
                 remainder.emplace_back(robot->inverse(pose));
+                if (dof != remainder.back().values.size()) return { robot->getWaypoint() }; // Stop if some point along the path is not reachable
             }
         }
 
         return waypoints;
     }
 
-    return {};
+
+    // Default to current robot position in case of failure (Must have a waypoint
+    return { robot->getWaypoint() };
+//    return {};
+}
+
+std::shared_ptr<CartesianTrajectory> CartesianTrajectory::reversed(const std::shared_ptr<Robot>& robot) const
+{
+    auto initialPose = robot->getPose(end());
+    auto finalPose = robot->getPose(start());
+
+    glm::dvec3 delta = finalPose.position - initialPose.position;
+
+    return std::make_shared<CartesianTrajectory>(robot, initialPose, initialPose.axes.localize(delta));
 }
 
 bool CartesianTrajectory::validate(const std::shared_ptr<Robot>& robot, double dt) const

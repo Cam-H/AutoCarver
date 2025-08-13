@@ -71,17 +71,23 @@ int main(int argc, char *argv[])
 //    scene->enableConvexTrim(false);
 //    scene->setContinuous(true);
 
-    robot = scene->createRobot(std::make_shared<ArticulatedWrist>(0.2, 1.2, 1.2, 1));
+    robot = scene->createRobot(std::make_shared<ArticulatedWrist>(0.2, 1.2, 1.2, 0.35));
     robot->setJointValueDg(1, 110);
     robot->setJointValueDg(2, 20);
     robot->setJointValueDg(4, -130);
-    robot->getEOAT()->setMask(0);
-
-    robot->translate({2, 0, 0});
+    robot->translate({ 2, 1, 0 });
     robot->rotate({ 0, 1, 0 }, M_PI);
-    robot->update();
+    robot->setLinkMesh(0, MeshHandler::loadAsMeshBody(R"(..\res\meshes\RobotBase.obj)"));
+
+    robot->setLinkMesh(6, MeshHandler::loadAsMeshBody(R"(..\res\meshes\BladeAttachment.obj)"));
+
+    auto eoatMesh = MeshHandler::loadAsMeshBody("../res/meshes/Blade.obj");
+    auto eoat = scene->createBody(eoatMesh);
+    eoat->prepareColliderVisuals();
+    robot->setEOAT(eoat, false);
 
     scene->setSculptingRobot(robot);//
+    robot->update();
 
     sceneWidget = window->findChild<SceneWidget*>("sceneWidget");
 //    sceneWidget->camera().setPosition(QVector3D(15, 0, 0));
@@ -97,8 +103,8 @@ int main(int argc, char *argv[])
 
     auto hullButton = window->findChild<QCheckBox*>("hullButton");
     QObject::connect(hullButton, &QCheckBox::clicked, [&](bool checked) {
-        if (checked) sceneWidget->show(0, Scene::Model::HULL);
-        else sceneWidget->hide(0, Scene::Model::HULL);
+        if (checked) sceneWidget->showAll(Scene::Model::HULL);
+        else sceneWidget->hideAll(Scene::Model::HULL);
         sceneWidget->update();
     });
 
@@ -137,17 +143,17 @@ int main(int argc, char *argv[])
         }
     });
 
+//    scene->enableCollisionColoring(false);
+    scene->start();
+
     // Handle updating robot
     updateThread = std::make_unique<std::thread>([](){
-        Timer rateTimer;
         bool idle = false, complete = false;
 
         while (true) {
-            scene->step((double)rateTimer.getElapsedSeconds());
-            rateTimer.reset();
-
             if (scene->simulationActive() || (!idle && scene->simulationIdle()) || (!complete && scene->simulationComplete())) {
                 sceneWidget->update();
+
                 complete = scene->simulationComplete();
             } else {
                 stepButton->setEnabled(true);

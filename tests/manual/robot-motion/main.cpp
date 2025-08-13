@@ -118,6 +118,7 @@ void updatePositionFields()
 void updateAxes()
 {
     robot->moveTo(axes);
+    scene->update();
     sceneWidget->update();
 
     if (localTranslation) updatePositionFields();
@@ -167,7 +168,7 @@ void applyWaypoint()
     updateJointFields();
     updatePositionFields();
 
-    scene->step(0.01);
+    scene->update();
     sceneWidget->update();
 }
 
@@ -285,7 +286,7 @@ int main(int argc, char *argv[])
 //        body->prepareColliderVisuals();
 //    }
 
-    robot = scene->createRobot(std::make_shared<ArticulatedWrist>(0.2, 1.2, 1.2, 0.2));
+    robot = scene->createRobot(std::make_shared<ArticulatedWrist>(0.2, 1.2, 1.2, 0.35));
     robot->translate({ -2, 1, 0 });
     robot->rotate({ 0, 1, 0 }, M_PI);
     robot->setLinkMesh(0, MeshHandler::loadAsMeshBody(R"(..\res\meshes\RobotBase.obj)"));
@@ -297,10 +298,13 @@ int main(int argc, char *argv[])
     robot->setJointValueDg(2, -45);
     axes = robot->getAxes();
 
+    robot->setLinkMesh(6, MeshHandler::loadAsMeshBody(R"(..\res\meshes\BladeAttachment.obj)"));
+
     auto eoatMesh = MeshHandler::loadAsMeshBody("../res/meshes/Blade.obj");
     eoat = scene->createBody(eoatMesh);
     eoat->prepareColliderVisuals();
     robot->setEOAT(eoat, false);
+    eoat->setName("BLADE");
 
     scene->setSculptingRobot(robot);
     robot->update();
@@ -328,7 +332,7 @@ int main(int argc, char *argv[])
         field->setValue(std::round(robot->getJointValueDg(i)));
         QObject::connect(field, &QSpinBox::valueChanged, [field, i](int value) {
             robot->setJointValueDg(i, value);
-            robot->update();
+            scene->update();
             sceneWidget->update();
 
             field->setValue(std::round(robot->getJointValueDg(i)));
@@ -352,6 +356,7 @@ int main(int argc, char *argv[])
             if (localTranslation) position = axes.delocalize(position);
 
             robot->moveTo(position);
+            scene->update();
             sceneWidget->update();
 
             updatePositionFields();
@@ -368,6 +373,8 @@ int main(int argc, char *argv[])
             scene->alignToFace(planeIdx);
             updatePositionFields();
             updateJointFields();
+
+            scene->update();
         }
 
         sceneWidget->update();
@@ -453,6 +460,8 @@ int main(int argc, char *argv[])
             updatePositionFields();
             updateJointFields();
 
+            scene->update();
+
             sceneWidget->updateRenderGeometry(body->mesh());
         } else planeIdx = std::numeric_limits<uint32_t>::max();
 
@@ -527,6 +536,8 @@ int main(int argc, char *argv[])
         auto traj = std::make_shared<SimpleTrajectory>(start, end, solver);
         traj->limit(vLims, aLims);
 
+        std::cout << "Collision: " << traj->test(scene.get(), robot, 0.01) << "\n";
+
         test(traj);
     });
 
@@ -591,6 +602,8 @@ int main(int argc, char *argv[])
 
     plotWidget = window->findChild<LineChartWidget*>("chartWidget");
     plotWidget->ylim(-180, 180);
+
+    scene->print();
 
     window->show();
 

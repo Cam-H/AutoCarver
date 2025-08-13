@@ -57,7 +57,7 @@ uint32_t PiecewisePolyPath::order() const
 
 double PiecewisePolyPath::sEnd() const
 {
-    return !m_breakpoints.empty() * m_breakpoints.back();
+    return !m_breakpoints.empty() ? m_breakpoints.back() : 0;
 }
 
 bool PiecewisePolyPath::empty() const

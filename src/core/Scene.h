@@ -33,11 +33,13 @@ public:
     void start();
     void pause();
     virtual void step(double delta);
+    void update();
+
     void stop();
 
     void setTimeScaling(double scalar);
 
-    void connect(void(*function)());
+    void enableCollisionColoring(bool enable);
 
     void clear(uint8_t level = 0);
 
@@ -53,17 +55,19 @@ public:
 //    std::vector<const std::shared_ptr<Mesh>&> meshes();
     void prepareBody(const std::shared_ptr<RigidBody>& body, uint8_t level = 0);
 
-    std::tuple<std::shared_ptr<RigidBody>, double> raycast(const Ray& ray) const;
+    [[nodiscard]] std::tuple<std::shared_ptr<RigidBody>, double> raycast(const Ray& ray) const;
 
-protected:
+    [[nodiscard]] bool test(const std::shared_ptr<Robot>& robot) const;
+    [[nodiscard]] bool test(const std::shared_ptr<RigidBody>& body) const;
+
+    void print() const;
 
 private:
     void run();
-    void update();
+
+    void colorCollision(const std::shared_ptr<Robot>& robot);
 
 protected:
-
-
 
     std::vector<std::shared_ptr<RigidBody>> m_bodies;
     std::vector<std::shared_ptr<Robot>> m_robots;
@@ -74,7 +78,7 @@ protected:
 
     double m_timeScalar;
 
-    std::vector<void(*)()> callbacks;
+    bool m_colorCollisions;
 
 };
 

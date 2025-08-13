@@ -9,11 +9,16 @@
 
 
 TOPPTrajectory::TOPPTrajectory(const std::vector<Waypoint>& waypoints)
-    : Trajectory(!waypoints.empty() ? waypoints[0].values.size() : 0)
+    : Trajectory(0)
     , m_path(waypoints)
     , m_ds(m_path.sEnd())
 {
-    m_inDg = waypoints[0].inDg;
+    if (!waypoints.empty()) {
+        m_dof = waypoints[0].values.size();
+        resetLimits();
+
+        m_inDg = waypoints[0].inDg;
+    }
 }
 
 TOPPTrajectory::TOPPTrajectory(const std::vector<Waypoint>& waypoints, const std::vector<double>& vLims, const std::vector<double>& aLims)

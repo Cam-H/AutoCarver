@@ -7,8 +7,8 @@
 #include <iostream>
 
 CompositeTrajectory::CompositeTrajectory(uint32_t dof)
-        : Trajectory(dof)
-        , m_valid(true)
+    : Trajectory(dof)
+    , m_valid(true)
 {
 
 }
@@ -23,6 +23,12 @@ void CompositeTrajectory::addTrajectory(const std::shared_ptr<Trajectory>& traje
         std::cout << "Failed to add trajectory. The trajectory provided is invalid\n";
         m_valid = false;
     }
+}
+
+void CompositeTrajectory::clear()
+{
+    m_trajectories.clear();
+    m_valid = true;
 }
 
 void CompositeTrajectory::update()

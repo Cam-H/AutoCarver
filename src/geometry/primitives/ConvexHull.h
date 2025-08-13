@@ -117,6 +117,7 @@ private:
     glm::dvec3 m_center;
     std::vector<std::vector<uint32_t>> m_walks;
     uint32_t m_walkStart;
+    bool m_orphans;
 
     double m_volume;
 

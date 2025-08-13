@@ -15,13 +15,16 @@
 #include "geometry/MeshBuilder.h"
 #include "geometry/collision/Collision.h"
 
+const double HOLD_THRESHOLD = 1e-6;
+
 RigidBody::RigidBody()
     : m_type(Type::STATIC)
+    , m_name()
     , m_mesh(nullptr)
     , m_hullMesh(nullptr)
     , m_hullOK(false)
-    , m_layer(1)
-    , m_mask(1)
+    , m_mask(0xFFFFFFFF)
+    , m_layer(0xFFFFFFFF)
     , m_isManifold(false)
     , m_area(0)
     , m_volume(0)
@@ -102,13 +105,18 @@ bool RigidBody::deserialize(std::ifstream& file)
 
 void RigidBody::moved()
 {
-    
+    Transformable::moved();
 }
 
 void RigidBody::setType(Type type)
 {
     if (m_type != type) m_massOK = m_inertiaTensorOK = false;
     m_type = type;
+}
+
+void RigidBody::setName(const std::string& name)
+{
+    m_name = name;
 }
 
 void RigidBody::setAxisEnabled(bool enable)
@@ -124,13 +132,29 @@ void RigidBody::setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate
     if (doColliderUpdate) updateColliders();
 }
 
+void RigidBody::setHull(const ConvexHull& hull)
+{
+    m_hull = hull;
+    prepareColliders();
+}
+
+
+void RigidBody::setMask(uint32_t mask)
+{
+    m_mask = mask;
+}
 void RigidBody::setLayer(uint32_t layer)
 {
     m_layer = layer;
 }
-void RigidBody::setMask(uint32_t mask)
+
+void RigidBody::resetMask()
 {
-    m_mask = mask;
+    m_mask = 0xFFFFFFFF;
+}
+void RigidBody::resetLayer()
+{
+    m_layer = 0xFFFFFFFF;
 }
 
 void RigidBody::setDensity(double density)
@@ -159,7 +183,7 @@ bool RigidBody::boundaryCollision(const std::shared_ptr<RigidBody>& body)
 
 bool RigidBody::collides(const std::shared_ptr<RigidBody>& body)
 {
-    if (!m_hullOK || !body->m_hullOK || !boundaryCollision(body)) return false;
+    if (body.get() == this || !m_hullOK || !body->m_hullOK || !boundaryCollision(body)) return false;
 
     glm::dmat4 relative = glm::inverse(m_transform) * body->m_transform;
 
@@ -171,7 +195,9 @@ bool RigidBody::collides(const std::shared_ptr<RigidBody>& body)
         cacheCollision(body, simplex[0].idx);
         return simplex.colliding();
     } catch (std::exception& e) {
-        std::cout << "\033[93m[RigidBody] Failed to test collision\n" << e.what() << "\033[0m\n";
+        m_hull.print();
+        body->m_hull.print();
+        std::cout << "\033[93m[RigidBody] Failed to test collision [" << m_name + " ~ " << body->m_name << "]\n" << e.what() << "\033[0m\n";
         return false;
     }
 }
@@ -216,8 +242,13 @@ std::pair<uint32_t, uint32_t> RigidBody::cachedCollision(const std::shared_ptr<R
 void RigidBody::step(double delta)
 {
     if (m_type != Type::STATIC) {
-        globalTranslate(m_linearVelocity * delta);
-        rotate(m_angularVelocity * delta);
+        glm::dvec3 acceleration = m_linearVelocity + m_angularVelocity;
+//        std::cout << "ACCL: " << glm::dot(acceleration, acceleration) << "\n";
+        if (glm::dot(acceleration, acceleration) > HOLD_THRESHOLD) {
+            globalTranslate(m_linearVelocity * delta);
+            rotate(m_angularVelocity * delta);
+//            m_moved = true;
+        }
     }
 
     // Must happen after translation so there is time for constraints to act
@@ -242,8 +273,12 @@ void RigidBody::updateColliders()
     m_hullOK = false;
 
     if (m_mesh == nullptr) return;
-
     m_hull = ConvexHull(m_mesh->vertices());
+    prepareColliders();
+}
+
+void RigidBody::prepareColliders()
+{
     m_hullOK = m_hull.vertexCount() >= 4;
 
     if (m_hullOK) m_boundingSphere = Sphere::enclose(m_hull.vertices());
@@ -279,6 +314,11 @@ void RigidBody::prepareSphereVisual()
 RigidBody::Type RigidBody::getType() const
 {
     return m_type;
+}
+
+const std::string& RigidBody::getName() const
+{
+    return m_name;
 }
 
 bool RigidBody::isAxisEnabled() const
@@ -320,6 +360,7 @@ glm::dvec3 RigidBody::centroid()
     return m_mesh != nullptr ? m_mesh->centroid() : glm::dvec3{};
 }
 
+// Returns the inverse of the inertia tensor for this body
 glm::dmat3 RigidBody::inertiaTensor()
 {
     if (!m_inertiaTensorOK) calculateInertiaTensor();
@@ -396,8 +437,11 @@ void RigidBody::calculateMass()
 
 void RigidBody::calculateInertiaTensor()
 {
-    m_inertiaTensor = (m_mesh != nullptr) ? glm::inverse(m_mesh->inertiaTensor() * m_density) : 0;
-    m_inertiaTensorOK = true;
+    if (m_mesh != nullptr) {
+//        m_inertiaTensor = m_mesh->inertiaTensor() * m_density;
+        m_inertiaTensor = glm::inverse(m_mesh->inertiaTensor() * m_density);
+        m_inertiaTensorOK = true;
+    }
 }
 
 std::tuple<bool, double> RigidBody::raycast(Ray ray, double tLim)
@@ -424,5 +468,6 @@ void RigidBody::print() const
 {
     auto pos = position();
 
-    std::cout << "[RigidBody] position: (" << pos.x << ", " << pos.y << ", " << pos.z << ")\n";
+    std::cout << "[RigidBody] " << m_name << ", position: (" << pos.x << ", " << pos.y << ", " << pos.z << "), layer: "
+              << m_layer << ", mask: " << m_mask << "\n";
 }

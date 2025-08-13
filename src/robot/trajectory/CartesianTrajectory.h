@@ -19,6 +19,8 @@ class CartesianTrajectory : public TOPPTrajectory {
 public:
     CartesianTrajectory(const std::shared_ptr<Robot>& robot, const Pose& initialPose, const glm::dvec3& translation);
 
+    [[nodiscard]] std::shared_ptr<CartesianTrajectory> reversed(const std::shared_ptr<Robot>& robot) const;
+
     [[nodiscard]] bool validate(const std::shared_ptr<Robot>& robot, double dt) const override;
 
 private:

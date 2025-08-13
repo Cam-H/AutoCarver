@@ -6,14 +6,16 @@
 
 #include <cassert>
 
+#include "core/Scene.h"
+
 Trajectory::Trajectory(uint32_t dof)
     : m_dof(dof)
     , m_t(0.0)
     , m_tStep(0.05)
     , m_duration(0.0)
     , m_minDuration(0.0)
-    , m_velocityLimits(dof, std::numeric_limits<double>::max())
-    , m_accelerationLimits(dof, std::numeric_limits<double>::max())
+    , m_velocityLimits(m_dof, std::numeric_limits<double>::max())
+    , m_accelerationLimits(m_dof, std::numeric_limits<double>::max())
     , m_maxVelocity(0.0)
     , m_maxAcceleration(0.0)
     , m_inDg(false)
@@ -44,6 +46,14 @@ void Trajectory::setDuration(double duration)
     m_maxAcceleration *= scalar;
 
     m_duration = duration;
+}
+
+// Restore original limits (Equivalent to removing them entirely)
+void Trajectory::resetLimits()
+{
+    m_velocityLimits = std::vector<double>(m_dof, std::numeric_limits<double>::max());
+    m_accelerationLimits = std::vector<double>(m_dof, std::numeric_limits<double>::max());
+    update();
 }
 
 // Set velocity limits
@@ -156,7 +166,8 @@ double Trajectory::tStep() const
 
 bool Trajectory::complete() const
 {
-    return m_t - 1 > m_tStep;
+//    return m_t - 1 > m_tStep;
+    return m_t >= 1.0;
 }
 
 std::vector<double> Trajectory::velocity() const
@@ -194,4 +205,23 @@ bool Trajectory::validate(const std::shared_ptr<Robot>& robot, double dt) const
 //    }
 
     return m_dof > 0;
+}
+
+// Iterates through the trajectory at the specified rate (dt) to check for collisions with scene objects
+bool Trajectory::test(const Scene* scene, const std::shared_ptr<Robot>& robot, double dt) const
+{
+    const Waypoint initialWP = robot->getWaypoint();
+
+//    return false;
+
+    double t = dt;
+    while (t <= 1.0) {
+        robot->moveTo(evaluate(t));
+        if (scene->test(robot)) break;
+
+        t += dt;
+    }
+
+    robot->moveTo(initialWP); // Restore initial position
+    return t < 1.0;
 }

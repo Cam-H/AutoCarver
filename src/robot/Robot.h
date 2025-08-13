@@ -45,6 +45,8 @@ public:
 
     void setLinkMesh(uint32_t index, const std::shared_ptr<Mesh>& mesh);
 
+    void setName(const std::string& name);
+    [[nodiscard]] const std::string& getName() const;
     [[nodiscard]] bool isValid() const;
     [[nodiscard]] uint32_t dof() const;
 
@@ -82,6 +84,12 @@ protected:
     void updateTransforms();
 
 private:
+
+    [[nodiscard]] static uint32_t linkMask(uint32_t level) ;
+
+private:
+
+    std::string m_name;
 
     glm::dmat4 m_invTransform;
 

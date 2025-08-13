@@ -33,6 +33,8 @@
 std::shared_ptr<Scene> scene = nullptr;
 SceneWidget *sceneWidget = nullptr;
 
+std::unique_ptr<std::thread> updateThread;
+
 std::shared_ptr<RigidBody> plane;
 std::shared_ptr<RigidBody> base;
 
@@ -67,11 +69,6 @@ static QWidget *loadUiFile(QWidget *parent)
     file.close();
 
     return widget;
-}
-
-void sceneUpdate()
-{
-    sceneWidget->update();
 }
 
 int main(int argc, char *argv[])
@@ -143,8 +140,8 @@ int main(int argc, char *argv[])
     // Handle mesh slice button
     auto *sliceButton = widget->findChild<QPushButton*>("sliceButton");
     QObject::connect(sliceButton, &QPushButton::clicked, [&]() {
-        std::cout << "Result: [" << Collision::intersection(base->hull(), Plane(plane->position(), -plane->up())).size() << "] ["
-            << Collision::intersection(base->hull(), Plane(plane->position(), plane->up())).size() << "]\n";
+//        std::cout << "Result: [" << Collision::intersection(base->hull(), Plane(plane->position(), -plane->up())).size() << "] ["
+//            << Collision::intersection(base->hull(), Plane(plane->position(), plane->up())).size() << "]\n";
 
         auto fragments = Collision::fragments(base->hull(), Plane(plane->position(), plane->up()));
 
@@ -173,8 +170,16 @@ int main(int argc, char *argv[])
 
     scene->start();
 
-    scene->connect(&sceneUpdate);
-//    sceneWidget->start();
+
+    // Update render
+    updateThread = std::make_unique<std::thread>([](){
+
+        while (true) {
+            sceneWidget->update();
+
+            std::this_thread::sleep_for(std::chrono::nanoseconds(20000000));
+        }
+    });
 
     return app.exec();
 }

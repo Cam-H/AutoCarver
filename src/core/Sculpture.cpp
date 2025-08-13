@@ -23,7 +23,11 @@ Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, double width, double he
     scaleToFit(model, m_width, m_height);
     prepareBox();
 
+    prepareColliderVisuals();
+
     modelBody = std::make_shared<RigidBody>(model);
+    modelBody->setLayer(0);
+    modelBody->setMask(0);
 
     std::cout << "Volume ratio: " << 100 * bulkUsageRatio() << "% material usage, " << 100 * remainderRatio() << "% Remaining\n";
 }

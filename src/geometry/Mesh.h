@@ -67,8 +67,10 @@ public:
     double ySpan() const;
     double zSpan() const;
 
-    void overrideColor(bool enable);
     void setBaseColor(const glm::dvec3& color);
+
+    void enableColorOverride(bool enable);
+    void setOverrideColor(const glm::dvec3& color);
 
     void setVertexColor(const glm::dvec3& color);
     void setVertexColor(uint32_t vertexIdx, const glm::dvec3& color);
@@ -85,12 +87,13 @@ public:
     [[nodiscard]] const std::vector<glm::dvec3>& vertexColors() const;
 
     [[nodiscard]] const glm::dvec3& baseColor() const;
+    [[nodiscard]] const glm::dvec3& overrideColor() const;
 
     [[nodiscard]] bool colorsAssigned() const;
     [[nodiscard]] bool faceColorsAssigned() const;
     [[nodiscard]] bool vertexColorsAssigned() const;
 
-    [[nodiscard]] bool useBaseColor() const;
+    [[nodiscard]] bool useOverrideColor() const;
 
     [[nodiscard]] uint32_t triangleCount() const;
     const uint32_t* indices() const;
@@ -142,9 +145,13 @@ private:
 
     VertexArray m_vertexNormals;
 
-    bool m_colorOverride;
     glm::dvec3 m_baseColor;
+
+    bool m_colorOverrideEnable;
+    glm::dvec3 m_overrideColor;
+
     std::vector<glm::dvec3> m_vertexColors;
+
 
     bool m_adjacencyOK;
     std::vector<std::vector<uint32_t>> m_adjacencies;

@@ -45,9 +45,9 @@
          <property name="geometry">
           <rect>
            <x>0</x>
-           <y>0</y>
+           <y>-569</y>
            <width>433</width>
-           <height>1868</height>
+           <height>1935</height>
           </rect>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_6">
@@ -97,13 +97,6 @@
                         </property>
                         <property name="checked">
                          <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="1">
-                       <widget class="QCheckBox" name="lockButton">
-                        <property name="text">
-                         <string>Lock in plane</string>
                         </property>
                        </widget>
                       </item>
@@ -289,6 +282,25 @@
                       </font>
                      </property>
                      <layout class="QGridLayout" name="gridLayout_7">
+                      <item row="0" column="0">
+                       <widget class="QLabel" name="label_27">
+                        <property name="font">
+                         <font>
+                          <pointsize>11</pointsize>
+                         </font>
+                        </property>
+                        <property name="text">
+                         <string>Turntable</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QLabel" name="label_28">
+                        <property name="text">
+                         <string>J0 Angle</string>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="1" column="1">
                        <widget class="QSpinBox" name="ttAngleField">
                         <property name="font">
@@ -304,25 +316,6 @@
                         </property>
                         <property name="singleStep">
                          <number>5</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="0">
-                       <widget class="QLabel" name="label_28">
-                        <property name="text">
-                         <string>J0 Angle</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="0">
-                       <widget class="QLabel" name="label_27">
-                        <property name="font">
-                         <font>
-                          <pointsize>11</pointsize>
-                         </font>
-                        </property>
-                        <property name="text">
-                         <string>Turntable</string>
                         </property>
                        </widget>
                       </item>
@@ -363,50 +356,10 @@
                       </font>
                      </property>
                      <layout class="QGridLayout" name="gridLayout_2">
-                      <item row="4" column="1">
-                       <widget class="QDoubleSpinBox" name="zField">
-                        <property name="minimum">
-                         <double>-5.000000000000000</double>
-                        </property>
-                        <property name="maximum">
-                         <double>5.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.100000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="7" column="0">
-                       <widget class="QPushButton" name="decYButton">
+                      <item row="7" column="1">
+                       <widget class="QPushButton" name="incYButton">
                         <property name="text">
-                         <string>Rotate Y-</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="6" column="1">
-                       <widget class="QPushButton" name="incXButton">
-                        <property name="text">
-                         <string>Rotate X+</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="1">
-                       <widget class="QDoubleSpinBox" name="yField">
-                        <property name="minimum">
-                         <double>-5.000000000000000</double>
-                        </property>
-                        <property name="maximum">
-                         <double>5.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.100000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="0">
-                       <widget class="QLabel" name="xLabel">
-                        <property name="text">
-                         <string>X</string>
+                         <string>Rotate Y+</string>
                         </property>
                        </widget>
                       </item>
@@ -417,17 +370,10 @@
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="0">
-                       <widget class="QLabel" name="label_13">
+                      <item row="1" column="0">
+                       <widget class="QLabel" name="xLabel">
                         <property name="text">
-                         <string>Z</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="0">
-                       <widget class="QLabel" name="label_12">
-                        <property name="text">
-                         <string>Y</string>
+                         <string>X</string>
                         </property>
                        </widget>
                       </item>
@@ -438,10 +384,24 @@
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="0">
-                       <widget class="QPushButton" name="decXButton">
+                      <item row="5" column="0">
+                       <widget class="QCheckBox" name="localSettingButton">
                         <property name="text">
-                         <string>Rotate X-</string>
+                         <string>Local Translation</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="0">
+                       <widget class="QLabel" name="label_13">
+                        <property name="text">
+                         <string>Z</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="1">
+                       <widget class="QPushButton" name="incXButton">
+                        <property name="text">
+                         <string>Rotate X+</string>
                         </property>
                        </widget>
                       </item>
@@ -458,17 +418,76 @@
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="1">
-                       <widget class="QPushButton" name="incYButton">
+                      <item row="6" column="0">
+                       <widget class="QPushButton" name="decXButton">
                         <property name="text">
-                         <string>Rotate Y+</string>
+                         <string>Rotate X-</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="0">
-                       <widget class="QCheckBox" name="localSettingButton">
+                      <item row="3" column="0">
+                       <widget class="QLabel" name="label_12">
                         <property name="text">
-                         <string>Local Translation</string>
+                         <string>Y</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="0">
+                       <widget class="QPushButton" name="decYButton">
+                        <property name="text">
+                         <string>Rotate Y-</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QDoubleSpinBox" name="zField">
+                        <property name="minimum">
+                         <double>-5.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>5.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.100000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QDoubleSpinBox" name="yField">
+                        <property name="minimum">
+                         <double>-5.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>5.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.100000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QWidget" name="widget_14" native="true">
+                     <layout class="QVBoxLayout" name="verticalLayout_5">
+                      <item>
+                       <widget class="QLabel" name="label_30">
+                        <property name="font">
+                         <font>
+                          <pointsize>12</pointsize>
+                          <bold>true</bold>
+                         </font>
+                        </property>
+                        <property name="text">
+                         <string>Cut Alignment</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="label_29">
+                        <property name="text">
+                         <string>The robot can also auto-align by picking faces (of the sculpture)</string>
                         </property>
                        </widget>
                       </item>

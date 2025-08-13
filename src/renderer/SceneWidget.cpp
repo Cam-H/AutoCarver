@@ -382,7 +382,7 @@ void SceneWidget::render(const std::shared_ptr<Mesh> &mesh, const QMatrix4x4& tr
 
     // Handle rendering
     auto *program = m_programs[item.programIdx];
-    if (mesh->useBaseColor()) program = m_programs[0]; // Use a flat shader instead in case no colors are assigned
+    if (mesh->useOverrideColor()) program = m_programs[0]; // Use a flat shader instead in case no colors are assigned
     program->bind();
 
     // TODO manage uniforms better
@@ -392,7 +392,7 @@ void SceneWidget::render(const std::shared_ptr<Mesh> &mesh, const QMatrix4x4& tr
     program->setUniformValue("mvp_matrix", m_camera.getViewProjection() * transform);
     program->setUniformValue("n_matrix", transform.normalMatrix());
 
-    const glm::dvec3& color = mesh->baseColor();
+    const glm::dvec3& color = mesh->overrideColor();
     program->setUniformValue("out_color", QVector3D(color.r, color.g, color.b));
 
     // Draw mesh geometry

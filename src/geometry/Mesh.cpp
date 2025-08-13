@@ -75,8 +75,9 @@ Mesh::Mesh(uint32_t vertexCount, uint32_t faceCount, uint32_t indexCount)
     , m_vertices(vertexCount)
     , m_faces(faceCount, indexCount)
     , m_vertexNormals(0)
-    , m_colorOverride(false)
-    , m_baseColor(1.0f, 1.0f, 1.0f)
+    , m_colorOverrideEnable(false)
+    , m_overrideColor(1.0, 0.0, 0.0)
+    , m_baseColor(1.0, 1.0, 1.0)
     , m_adjacencyOK(false)
 {
 
@@ -106,8 +107,11 @@ bool Mesh::serialize(std::ofstream& file)
 {
     if (m_vertices.serialize(file) && m_faces.serialize(file)) {
 
-        Serializer::writeBool(file, m_colorOverride);
         Serializer::writeDVec3(file, m_baseColor);
+
+        Serializer::writeBool(file, m_colorOverrideEnable);
+        Serializer::writeDVec3(file, m_overrideColor);
+
         // TODO serialization
 //        if (vertexColorsAssigned()) return m_colors.serialize(file);
 
@@ -128,8 +132,11 @@ bool Mesh::deserialize(std::ifstream& file)
 
     if (m_vertices.vertexCount() > 0 && m_faces.faceCount() > 0) {
 
-        m_colorOverride = Serializer::readBool(file);
         m_baseColor = Serializer::readDVec3(file);
+
+        m_colorOverrideEnable = Serializer::readBool(file);
+        m_overrideColor = Serializer::readDVec3(file);
+
 //
 //        if (faceColors) {
 //            m_colors = VertexArray::deserialize(file);
@@ -292,14 +299,21 @@ double Mesh::zSpan() const
     return m_vertices.span({ 0, 0, 1 });
 }
 
-void Mesh::overrideColor(bool enable)
-{
-    m_colorOverride = enable;
-}
+
 
 void Mesh::setBaseColor(const glm::dvec3& color)
 {
     m_baseColor = color;
+}
+
+void Mesh::enableColorOverride(bool enable)
+{
+    m_colorOverrideEnable = enable;
+}
+
+void Mesh::setOverrideColor(const glm::dvec3& color)
+{
+    m_overrideColor = color;
 }
 
 void Mesh::setVertexColor(const glm::dvec3& color)
@@ -357,6 +371,11 @@ const glm::dvec3& Mesh::baseColor() const
     return m_baseColor;
 }
 
+const glm::dvec3& Mesh::overrideColor() const
+{
+    return m_overrideColor;
+}
+
 bool Mesh::colorsAssigned() const
 {
     return faceColorsAssigned() || vertexColorsAssigned();
@@ -371,9 +390,9 @@ bool Mesh::vertexColorsAssigned() const
     return !m_vertexColors.empty();
 }
 
-bool Mesh::useBaseColor() const
+bool Mesh::useOverrideColor() const
 {
-    return m_colorOverride || !colorsAssigned();
+    return m_colorOverrideEnable;
 }
 
 uint32_t Mesh::triangleCount() const

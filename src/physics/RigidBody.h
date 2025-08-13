@@ -43,12 +43,18 @@ public:
     void moved() override;
 
     void setType(Type type);
+    void setName(const std::string& name);
+
     void setAxisEnabled(bool enable);
 
     void setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate = false);
+    void setHull(const ConvexHull& hull);
 
-    void setLayer(uint32_t layer);
     void setMask(uint32_t mask);
+    void setLayer(uint32_t layer);
+
+    void resetMask();
+    void resetLayer();
 
     void setDensity(double density);
 
@@ -59,7 +65,8 @@ public:
     void updateColliders();
     void prepareColliderVisuals();
 
-    Type getType() const;
+    [[nodiscard]] Type getType() const;
+    [[nodiscard]] const std::string& getName() const;
 
     bool isAxisEnabled() const;
 
@@ -106,6 +113,9 @@ private:
 
     RigidBody();
 
+    void prepareColliders();
+
+
     void prepareHullVisual();
     void prepareSphereVisual();
 
@@ -122,6 +132,7 @@ private:
 protected:
 
     Type m_type;
+    std::string m_name;
 
     std::shared_ptr<Mesh> m_mesh;
 
@@ -130,8 +141,8 @@ protected:
 
     Sphere m_boundingSphere;
 
-    uint32_t m_layer;
     uint32_t m_mask;
+    uint32_t m_layer;
 
     std::shared_ptr<Mesh> m_hullMesh;
     std::shared_ptr<Mesh> m_sphereMesh;
@@ -154,7 +165,6 @@ protected:
 
     glm::dvec3 m_linearVelocity;
     glm::dvec3 m_angularVelocity;
-
 
 private:
 

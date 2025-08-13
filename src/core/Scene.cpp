@@ -17,6 +17,7 @@ Scene::Scene()
     , m_running(false)
     , m_paused(false)
     , m_timeScalar(1.0)
+    , m_colorCollisions(true)
 {
 
 }
@@ -78,6 +79,42 @@ void Scene::pause()
     m_paused = !m_paused;
 }
 
+// Check for robot collisions with the environment
+void Scene::colorCollision(const std::shared_ptr<Robot>& robot)
+{
+    for (const std::shared_ptr<RigidBody>& link: robot->links()) {
+        link->mesh()->enableColorOverride(test(link));
+    }
+
+    auto eoat = robot->getEOAT();
+    if (eoat != nullptr) eoat->mesh()->enableColorOverride(test(eoat));
+}
+
+bool Scene::test(const std::shared_ptr<Robot>& robot) const
+{
+    for (const std::shared_ptr<RigidBody>& link: robot->links()) {
+        if (test(link)) return true;
+    }
+
+    auto eoat = robot->getEOAT();
+    return (eoat != nullptr && test(eoat));
+}
+
+bool Scene::test(const std::shared_ptr<RigidBody>& body) const
+{
+    for (const std::shared_ptr<RigidBody>& collider : m_bodies) { // TODO use broadphase selection
+//        std::cout << "Check: " <<
+        if (body->collides(collider)) {
+//            std::cout << "Collision: \n";
+//            body->print();
+//            collider->print();
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void Scene::step(double delta)
 {
     delta *= m_timeScalar;
@@ -86,35 +123,46 @@ void Scene::step(double delta)
 //    for (const std::shared_ptr<Robot>& robot : m_robots) robot->step();
     for (const std::shared_ptr<Robot>& robot : m_robots) robot->step(delta);
 
-    return;
-
-    // Check for robot collisions with the environment
-    for (const std::shared_ptr<Robot>& robot : m_robots) {
-        for (const std::shared_ptr<RigidBody>& link: robot->links()) {
-            bool collision = false;
-            for (const std::shared_ptr<RigidBody>& body : m_bodies) {
-                collision |= link->collides(body);
-            }
-
-            link->mesh()->overrideColor(collision);
-        }
-    }
+//    return;
 
     // TODO broadphase selection narrowing
+    // Develop a list of required collision checks
     std::vector<std::pair<std::shared_ptr<RigidBody>, std::shared_ptr<RigidBody>>> couples;
     for (uint32_t i = 0; i < m_bodies.size(); i++) {
         if (m_bodies[i]->layer() == 0) continue;
-        if (m_bodies[i]->getType() == RigidBody::Type::DYNAMIC) {
+
+        // Only explicitly test bodies that have recently moved for collision
+        if (m_bodies[i]->checkMoveState()) {
+            switch(m_bodies[i]->getType()) {
+                case RigidBody::Type::DYNAMIC:
+
+                    // Capture any preceding couplings missed due to lack of motion
+                    for (uint32_t j = 0; j < i - 1; j++) {
+                        if (!m_bodies[j]->checkMoveState()) couples.emplace_back(m_bodies[i], m_bodies[j]);
+                    }
+
+                    // Capture all subsequent couplings (Ignores older bodies to avoid duplicates)
+                    for (uint32_t j = i + 1; j < m_bodies.size(); j++) {
+                        couples.emplace_back(m_bodies[i], m_bodies[j]);
+                    }
+
+                    break;
+                case RigidBody::Type::KINEMATIC:
+                case RigidBody::Type::STATIC:
+
+                    // Capture couplings between dynamic bodies and others that have been recently moved
+                    for (const std::shared_ptr<RigidBody>& body : m_bodies) {
+                        if (body->getType() == RigidBody::Type::DYNAMIC) couples.emplace_back(body, m_bodies[i]);
+                    }
+
+                    break;
+
+            }
 //            std::cout << "Speed: " << m_bodies[i]->getLinearVelocity().x << " " << m_bodies[i]->getLinearVelocity().y << " " << m_bodies[i]->getLinearVelocity().z << "\n";
-            for (uint32_t j = i + 1; j < m_bodies.size(); j++) {
-                couples.emplace_back(m_bodies[i], m_bodies[j]);
-            }
-        } else {
-            for (uint32_t j = i + 1; j < m_bodies.size(); j++) {
-                if (m_bodies[j]->getType() == RigidBody::Type::DYNAMIC) couples.emplace_back(m_bodies[j], m_bodies[i]);
-            }
         }
     }
+
+    for (const std::shared_ptr<RigidBody>& body : m_bodies) body->clearMoveState();
 
     // Check dynamic body collisions
     std::vector<Constraint> constraints;
@@ -135,9 +183,20 @@ void Scene::step(double delta)
 
     // Update bodies
     for (const std::shared_ptr<RigidBody>& body : m_bodies) body->step(delta);
+}
 
-    for (auto callback : callbacks) callback();
+void Scene::update()
+{
+    for (const std::shared_ptr<Robot>& robot : m_robots) robot->update();
 
+    if (m_colorCollisions) {
+        for (const std::shared_ptr<Robot>& robot : m_robots) {
+            if (robot->checkMoveState()) {
+                colorCollision(robot);
+                robot->clearMoveState();
+            }
+        }
+    }
 }
 
 void Scene::stop()
@@ -150,9 +209,10 @@ void Scene::setTimeScaling(double scalar)
     m_timeScalar = scalar;
 }
 
-void Scene::connect(void(*function)())
+// Specifies whether to override the color of robot links in case of collisions with scene objects
+void Scene::enableCollisionColoring(bool enable)
 {
-    callbacks.push_back(function);
+    m_colorCollisions = enable;
 }
 
 void Scene::run()
@@ -174,14 +234,6 @@ void Scene::run()
         // TODO Adapt sleep time based on target update rate
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-}
-
-void Scene::update()
-{
-    for (const std::shared_ptr<Robot>& robot : m_robots) robot->update();
-
-
-
 }
 
 //void Scene::update(double timestep)
@@ -259,6 +311,7 @@ void Scene::prepareBody(const std::shared_ptr<RigidBody>& body, uint8_t level)
 //    }
 //
 //    m_entities.push_back({body, prepareRender(body), level});
+    if (body->getName().empty()) body->setName("BODY" + std::to_string(m_bodies.size()));
     m_bodies.push_back(body);
 }
 
@@ -293,10 +346,14 @@ std::tuple<std::shared_ptr<RigidBody>, double> Scene::raycast(const Ray& ray) co
     return { nullptr, 0 };
 }
 
-//std::vector<const std::shared_ptr<Mesh>&> Scene::meshes()
-//{
-//    std::vector<const std::shared_ptr<Mesh>&> result;
-//    if (!m_entities.empty()) result.push_back(m_entities[0].body->mesh());
-//
-//    return result;
-//}
+
+void Scene::print() const
+{
+    std::cout << "[Scene] running: " << m_running << ", paused: " << m_paused << ", time-scaling: " << m_timeScalar << "\n";
+
+    std::cout << "Robots: \n";
+    for (const std::shared_ptr<Robot>& robot : m_robots) std::cout << robot->getName() << " (" << robot << ")\n";
+
+    std::cout << "Bodies: \n";
+    for (const std::shared_ptr<RigidBody>& body : m_bodies) std::cout << body->getName() << " [" << body->hull().isValid() << "] (" << body << ")\n";
+}

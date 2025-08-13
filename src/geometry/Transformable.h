@@ -14,6 +14,7 @@ public:
 
     void setPosition(const glm::dvec3& position);
     void setRotation(const glm::dvec3& euler);
+    void setRotation(const glm::dquat& quat);
 
     void translate(const glm::dvec3& translation);
     void rotate(const glm::dvec3& axis, double theta);
@@ -29,6 +30,8 @@ public:
     glm::dmat3 getRotation();
 
     virtual void moved();
+    bool checkMoveState() const;
+    void clearMoveState();
 
     [[nodiscard]] glm::dvec3 position() const;
     [[nodiscard]] glm::dvec3 up() const;
@@ -50,6 +53,7 @@ public:
 protected:
 
     glm::dmat4 m_transform;
+    bool m_moved;
 };
 
 

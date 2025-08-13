@@ -380,14 +380,14 @@ std::tuple<std::vector<bool>, bool> Collision::partition(const ConvexHull& hull,
     // Determine which vertices are above the cut plane
     const auto& vertices = hull.vertices();
     for (uint32_t i = 0; i < vertices.size(); i++) {
-        std::cout << glm::dot(plane.normal, vertices[i] - plane.origin) << "~\n";
+//        std::cout << glm::dot(plane.normal, vertices[i] - plane.origin) << "~\n";
         above[i] = glm::dot(plane.normal, vertices[i] - plane.origin) > -1e-12;
         sum += above[i];
     }
 
-    std::cout << "Partition " << sum << ":\n";
-    for (auto i : above) std::cout << i << " ";
-    std::cout << "\n";
+//    std::cout << "Partition " << sum << ":\n";
+//    for (auto i : above) std::cout << i << " ";
+//    std::cout << "\n";
 
     // Indicate spread of the vertices
     std::get<1>(out) = sum != 0 && sum != above.size();

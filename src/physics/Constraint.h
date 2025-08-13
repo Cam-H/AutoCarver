@@ -9,6 +9,8 @@
 
 #include <glm.hpp>
 
+#include "geometry/Axis3D.h"
+
 class RigidBody;
 class EPA;
 
@@ -29,7 +31,7 @@ public:
     void iterateNormal(double step);
     void iterateFriction();
 
-    double penetration() const;
+    [[nodiscard]] double penetration() const;
 
 protected:
 
@@ -41,8 +43,8 @@ protected:
 
     double calculateImpulse(const Jacobian& J, double bias);
 
-    double baumgarteContribution(double step) const;
-    double restitutionContribution() const;
+    [[nodiscard]] double baumgarteContribution(double step) const;
+    [[nodiscard]] double restitutionContribution() const;
 
     void apply(const Jacobian& J, double impulse);
 
@@ -54,11 +56,8 @@ protected:
     glm::dvec3 lra;
     glm::dvec3 lrb;
 
-    glm::dvec3 normal;
+    Axis3D system;
     double depth;
-
-    glm::dvec3 m_tangent1;
-    glm::dvec3 m_tangent2;
 
     double frictionCoefficient;
     double resitutionCoefficient;

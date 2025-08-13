@@ -18,6 +18,8 @@ public:
 
     void addTrajectory(const std::shared_ptr<Trajectory>& trajectory);
 
+    void clear();
+
     [[nodiscard]] Waypoint start() const override;
     [[nodiscard]] Waypoint end() const override;
 

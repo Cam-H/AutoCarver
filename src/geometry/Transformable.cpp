@@ -15,6 +15,7 @@
 
 Transformable::Transformable()
     : m_transform(1.0f)
+    , m_moved(true)
 {
 
 }
@@ -29,7 +30,12 @@ void Transformable::setPosition(const glm::dvec3& position)
 
 void Transformable::setRotation(const glm::dvec3& euler)
 {
-    auto rotation = glm::mat3_cast(glm::dquat(euler));
+    setRotation(glm::dquat(euler));
+}
+
+void Transformable::setRotation(const glm::dquat& quat)
+{
+    auto rotation = glm::mat3_cast(quat);
 
     m_transform[0][0] = rotation[0][0];
     m_transform[1][0] = rotation[1][0];
@@ -103,7 +109,17 @@ glm::dmat3 Transformable::getRotation()
 
 void Transformable::moved()
 {
+    m_moved = true;
+}
 
+bool Transformable::checkMoveState() const
+{
+    return m_moved;
+}
+
+void Transformable::clearMoveState()
+{
+    m_moved = false;
 }
 
 glm::dvec3 Transformable::position() const
