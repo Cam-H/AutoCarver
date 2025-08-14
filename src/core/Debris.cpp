@@ -12,14 +12,14 @@ Debris::Debris(const ConvexHull& hull)
     : CompositeBody({ hull })
     , m_connectionCounts(1, 0)
 {
-
+    applyCompositeColors(false);
 }
 
 Debris::Debris(const std::vector<ConvexHull>& hulls)
     : CompositeBody(hulls)
     , m_connectionCounts(hulls.size(), 0)
 {
-
+    applyCompositeColors(false);
 }
 
 // System [Local] - xAxis = direction of cut
@@ -40,8 +40,6 @@ void Debris::prepareCut(const Pose& system, double thickness)
         }
     }
 
-    std::cout << "PC " << initialCount << " " << hulls().size() << "\n";
-
     if (initialCount == hulls().size()) throw std::runtime_error("[Debris] Failed to prepare cut");
 
     glm::dvec3 origin;
@@ -61,17 +59,12 @@ void Debris::prepareCut(const Pose& system, double thickness)
             origin = hulls()[i].vertices()[minIndex];
             min = extents.back().first;
         }
-
-        std::cout << extents.back().first << " " << extents.back().second << " EXTENTS\n";
     }
 
     m_cuts.emplace_back(origin, axis);
 
     // Prepare sections
-    std::cout << min << " " << "WTF\n";
     for (uint32_t i = initialCount; i < hulls().size(); i++) {
-        double tf = extents[i - initialCount].second - min;
-
         m_cuts.back().sections.emplace_back(
                 sources[i - initialCount],
                 i,
@@ -79,13 +72,7 @@ void Debris::prepareCut(const Pose& system, double thickness)
                 extents[i - initialCount].second - min,
                 hulls()[sources[i - initialCount]].far(axis) - min
                 );
-
-        std::cout << "zzz " << (hulls()[sources[i - initialCount]].far(axis) - min) << " ";
-
-        std::cout << "PP: " << m_cuts.back().sections.back().srcIndex << " " << m_cuts.back().sections.back().cutIndex << " " << m_cuts.back().sections.back().ts << " " << m_cuts.back().sections.back().tf << " " << m_cuts.back().sections.back().depth << "\n";
-//        if (depth > m_cuts.back().sections.back().tf) throw std::runtime_error("[Debris] Invalid depth specified");
     }
-
 }
 
 // Shaves material from the next section (depth from the origin). Releases fragments as connections are removed
@@ -93,13 +80,10 @@ std::vector<std::shared_ptr<RigidBody>> Debris::removeMaterial(double depth)
 {
     std::vector<std::shared_ptr<RigidBody>> fragments;
 
-    std::cout << depth << " ";
-
     if (!m_cuts.empty()) {
         Plane cutPlane(m_cuts[0].origin + m_cuts[0].axis * depth, m_cuts[0].axis);
 
         for (uint32_t i = 0; i < m_cuts[0].sections.size(); i++) {
-            std::cout << "[" << i << " " << m_cuts[0].sections[i].ts << " " << m_cuts[0].sections[i].tf << "] ";
             if (m_cuts[0].sections[i].ts < depth) {
                 if (m_cuts[0].sections[i].depth <= depth + 1e-12) {
                     std::shared_ptr<RigidBody> fragment = tryFragmentRelease(m_cuts[0].sections[i]);
@@ -119,10 +103,8 @@ std::vector<std::shared_ptr<RigidBody>> Debris::removeMaterial(double depth)
 
         remesh();
 
-        std::cout << "\n";
         return fragments;
     }
-    std::cout << "\n";
 
     return {};
 }

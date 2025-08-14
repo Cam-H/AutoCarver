@@ -101,8 +101,6 @@ public:
     [[nodiscard]] uint32_t faceCount() const;
     [[nodiscard]] const FaceArray& faces() const;
 
-    [[nodiscard]] uint32_t matchFace(const glm::dvec3& axis);
-
     [[nodiscard]] std::vector<uint32_t> outline(const glm::dvec3& axis);
 
     [[nodiscard]] double surfaceArea() const;

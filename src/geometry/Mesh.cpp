@@ -415,11 +415,6 @@ const FaceArray& Mesh::faces() const
     return m_faces;
 }
 
-uint32_t Mesh::matchFace(const glm::dvec3& axis)
-{
-    return m_faces.matchFace(axis);
-}
-
 std::vector<uint32_t> Mesh::outline(const glm::dvec3& axis) // const TODO revert back to const
 {
     ScopedTimer timer("Mesh outline calculation");

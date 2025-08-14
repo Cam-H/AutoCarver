@@ -64,7 +64,7 @@ public:
 //    FaceArray triangulated();
 
     // Selects the face with the normal nearest to the specified axis
-    [[nodiscard]] uint32_t matchFace(const glm::dvec3& axis);
+    [[nodiscard]] uint32_t matchFace(const glm::dvec3& axis) const;
 
     [[nodiscard]] std::vector<std::vector<uint32_t>> edgeList() const;
     [[nodiscard]] std::vector<std::vector<uint32_t>> adjacencies() const;

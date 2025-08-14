@@ -30,7 +30,7 @@ public:
     void replace(const ConvexHull& hull, uint32_t index);
     void remove(uint32_t index);
 
-    void split(const Plane& plane);
+    std::vector<uint32_t> split(const Plane& plane);
 
     void applyCompositeColors(bool enable);
 

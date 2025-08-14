@@ -30,6 +30,8 @@ Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, double width, double he
     modelBody->setLayer(0);
     modelBody->setMask(0);
 
+    applyCompositeColors(false);
+
     std::cout << "Volume ratio: " << 100 * bulkUsageRatio() << "% material usage, " << 100 * remainderRatio() << "% Remaining\n";
 }
 
@@ -163,27 +165,33 @@ std::shared_ptr<Debris> Sculpture::applySection()
 
 std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
 {
-    std::cout << "PS\n";
-    if (!Collision::test(m_hull, plane)) return nullptr;
-    std::cout << "PS1\n";
+    // Remove any hulls outside the bounds
+    for (uint32_t i = 0; i < hulls().size(); i++) {
+        if (Collision::below(hulls()[i], plane)) {
+            remove(i);
+            i--;
+        }
+    }
 
-    auto fragments = Collision::fragments(m_hull, plane);
-    m_hull = fragments.first;
-    std::cout << "PS2\n";
+    const uint32_t initialCount = hulls().size();
+    const std::vector<uint32_t> sources = split(plane);
 
-    // TODO expand for multiple hulls
-    CompositeBody::restore();
+    if (initialCount < hulls().size()) {
 
-    remesh();
-    std::cout << "PS4\n";
-
-    // Highlight cut faces
-    m_mesh->setFaceColor(m_mesh->matchFace(plane.normal), m_highlightColor);
-    std::cout << "PS5\n";
-
-    if (!fragments.second.empty()) {
-        auto debris = std::make_shared<Debris>(fragments.second);
+        auto debris = std::make_shared<Debris>(std::vector<ConvexHull>(hulls().begin() + initialCount, hulls().end()));
         debris->setTransform(m_transform);
+
+        while (hulls().size() > initialCount) remove(hulls().size() - 1);
+
+        remesh();
+
+        // Provide styling to indicate freshly cut faces
+        for (uint32_t source : sources) {
+            uint32_t index = hulls()[source].faces().matchFace(plane.normal), faceCount = 0;
+            for (uint32_t i = 0; i < source; i++) faceCount += hulls()[i].facetCount();
+            m_mesh->setFaceColor(faceCount + index, m_highlightColor);
+        }
+
         return debris;
     }
 

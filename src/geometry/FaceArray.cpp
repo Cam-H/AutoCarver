@@ -397,7 +397,7 @@ double FaceArray::volume(const std::vector<glm::dvec3>& vertices) const
     return sum / 6.0f;
 }
 
-uint32_t FaceArray::matchFace(const glm::dvec3& axis)
+uint32_t FaceArray::matchFace(const glm::dvec3& axis) const
 {
     auto match = std::max_element(m_normals.begin(), m_normals.end(), [axis](const glm::dvec3& lhs, const glm::dvec3& rhs){
         return glm::dot(lhs, axis) > glm::dot(rhs, axis);

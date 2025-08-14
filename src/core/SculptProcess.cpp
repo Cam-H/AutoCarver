@@ -261,11 +261,24 @@ void SculptProcess::step(double delta)
 //                for (const std::shared_ptr<RigidBody>& fragment : fragments) prepareBody(fragment);
             }
 
-            if (action.cuts.empty()) removeDebris();
+            if (action.cuts.front().tf <= action.trajectory->t()) action.cuts.pop_front();
+
+            if (action.cuts.empty()) {
+                std::cout << "REM: " << m_debris->hulls().size() << "\n";
+                if (!m_debris->hulls().empty()) {
+                    for (const ConvexHull& hull : m_debris->hulls()) {
+                        std::cout << hull.isValid() << " " << hull.vertexCount() << "\n";
+                        if (hull.isValid()) m_sculpture->add(hull);
+                    }
+
+                    m_sculpture->remesh();
+                }
+
+                std::cout << "RMD\n";
+                removeDebris();
+            }
         }
     }
-
-
 }
 
 void SculptProcess::setSculptingRobot(const std::shared_ptr<Robot>& robot){

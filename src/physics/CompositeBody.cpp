@@ -234,12 +234,19 @@ void CompositeBody::remove(uint32_t index)
 }
 
 // Splits any hulls that pass through the plane in two, along the plane intersection
-void CompositeBody::split(const Plane& plane)
+// Returns original indices of split hulls (New hulls are appended to the end, respectively)
+std::vector<uint32_t> CompositeBody::split(const Plane& plane)
 {
-    uint32_t count = m_hulls.size();
-    for (uint32_t i = 0; i < count; i++) {
-        split(plane, i);
+    std::vector<uint32_t> sources;
+
+    if (Collision::test(m_hull, plane)) { // Only bother splitting if the plane might intersect children
+        uint32_t count = m_hulls.size();
+        for (uint32_t i = 0; i < count; i++) {
+            if (split(plane, i)) sources.push_back(i);
+        }
     }
+
+    return sources;
 }
 
 // Splits the specified hull on the intersection with the plane. Returns true if the plane intersects
