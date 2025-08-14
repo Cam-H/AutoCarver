@@ -368,6 +368,7 @@ void SceneWidget::paintGL()
             if (m_showAxes && m_axes != nullptr && body->isAxisEnabled()) {
                 render(m_axes, transform, true);
             }
+
         }
     }
 }

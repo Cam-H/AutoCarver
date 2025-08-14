@@ -21,7 +21,9 @@ public:
 
     [[nodiscard]] std::shared_ptr<CartesianTrajectory> reversed(const std::shared_ptr<Robot>& robot) const;
 
-    [[nodiscard]] bool validate(const std::shared_ptr<Robot>& robot, double dt) const override;
+    [[nodiscard]] double locate(double ratio) const;
+
+    [[nodiscard]] bool isValid() const override;
 
 private:
 
@@ -31,8 +33,11 @@ private:
 
 private:
 
+    std::shared_ptr<Robot> m_robot; // Robot for which this trajectory was prepared
+    Pose m_initialPose;
+
     Ray m_curve;
-    Axis3D m_axes;
+    double m_distance;
 
 };
 

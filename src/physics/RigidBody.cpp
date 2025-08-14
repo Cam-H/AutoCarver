@@ -110,7 +110,15 @@ void RigidBody::moved()
 
 void RigidBody::setType(Type type)
 {
-    if (m_type != type) m_massOK = m_inertiaTensorOK = false;
+    if (m_type != type) {
+        if (type == RigidBody::Type::DYNAMIC) { // Perform operations to prepare dynamic bodies for physics
+            zero();
+
+            // Calculate properties if they are out of date (Or were not prepared yet)
+            mass();
+            inertiaTensor();
+        }
+    }
     m_type = type;
 }
 
@@ -146,6 +154,11 @@ void RigidBody::setMask(uint32_t mask)
 void RigidBody::setLayer(uint32_t layer)
 {
     m_layer = layer;
+}
+
+void RigidBody::disableCollisions()
+{
+    m_mask = m_layer = 0;
 }
 
 void RigidBody::resetMask()
@@ -261,8 +274,14 @@ void RigidBody::zero()
     if (m_mesh == nullptr) return;
 
     glm::dvec3 centroid = m_mesh->centroid();
+
+    m_mesh->print();
+
     m_mesh->translate(-centroid);
-    globalTranslate(centroid);// TODO confirm
+    m_hull = ConvexHull(m_mesh->vertices()); // TODO could translate
+    translate(centroid);
+
+    m_mesh->print();
 
     m_inertiaTensorOK = false;
 }
@@ -452,6 +471,8 @@ std::tuple<bool, double> RigidBody::raycast(Ray ray, double tLim)
 
 std::tuple<bool, double, uint32_t> RigidBody::pickFace(Ray ray, double tLim)
 {
+    if (m_mesh == nullptr) return { false, 0, 0 };
+
     // Transform ray relative to the body
     ray = glm::inverse(m_transform) * ray;
 
@@ -469,5 +490,5 @@ void RigidBody::print() const
     auto pos = position();
 
     std::cout << "[RigidBody] " << m_name << ", position: (" << pos.x << ", " << pos.y << ", " << pos.z << "), layer: "
-              << m_layer << ", mask: " << m_mask << "\n";
+              << m_layer << ", mask: " << m_mask << "\nmass: " << m_mass << ", volume: " << m_volume << ", density: " << m_density << "\n";
 }

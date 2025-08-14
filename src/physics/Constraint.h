@@ -70,7 +70,12 @@ private:
 
     // Jacobian
     Jacobian m_JN, m_JT1, m_JT2;
-};
 
+public:
+
+    static double BETA;
+    static double DEPTH_SLOP;
+    static double RESTITUTION_SLOP;
+};
 
 #endif //AUTOCARVER_CONSTRAINT_H

@@ -68,8 +68,8 @@ public:
     [[nodiscard]] virtual Waypoint evaluate(double t) const = 0;
 
     // Verify that every position of the trajectory is reachable by the specified robot. Tests 1/dt equally spaced positions
-    [[nodiscard]] virtual bool validate(const std::shared_ptr<Robot>& robot, double dt) const;
-    [[nodiscard]] bool test(const Scene* scene, const std::shared_ptr<Robot>& robot, double dt) const;// TODO Also: scene collisions
+    [[nodiscard]] virtual bool isValid() const;
+    [[nodiscard]] virtual bool test(const Scene* scene, const std::shared_ptr<Robot>& robot, double dt) const;
 
 private:
 

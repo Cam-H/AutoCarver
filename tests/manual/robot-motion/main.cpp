@@ -307,6 +307,18 @@ int main(int argc, char *argv[])
     eoat->setName("BLADE");
 
     scene->setSculptingRobot(robot);
+
+    auto mesh = MeshHandler::loadAsMeshBody("../res/meshes/TurntableJ0.obj");
+    mesh->rotate({0, 0, 1}, M_PI);
+    mesh->scale(3);
+    auto hullTest = scene->createBody(mesh);
+    hullTest->prepareColliderVisuals();
+    hullTest->translate({ -5, 1, 0 });
+
+    auto collider = scene->createBody(MeshBuilder::box(0.4));
+    collider->translate({ 0, 4, 0});
+    collider->setType(RigidBody::Type::DYNAMIC);
+
     robot->update();
     sceneWidget->update();
 
@@ -556,7 +568,7 @@ int main(int argc, char *argv[])
         auto traj = std::make_shared<CartesianTrajectory>(robot, startPose, translation);
         traj->setLimits(vLims, aLims);
 
-        if (traj->validate(robot, 0.01)) test(traj);
+        if (traj->isValid()) test(traj);
         else std::cout << "Validation failed!\n";
     });
 
@@ -617,8 +629,9 @@ int main(int argc, char *argv[])
             scene->step(delta);
             rateTimer.reset();
 
+            sceneWidget->update();
+
             if (robot->inTransit()) {
-                sceneWidget->update();
 
                 stream(++xIdx, time += delta);
 

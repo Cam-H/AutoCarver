@@ -233,6 +233,27 @@ void CompositeBody::remove(uint32_t index)
     m_locations.pop_back();
 }
 
+// Splits any hulls that pass through the plane in two, along the plane intersection
+void CompositeBody::split(const Plane& plane)
+{
+    uint32_t count = m_hulls.size();
+    for (uint32_t i = 0; i < count; i++) {
+        split(plane, i);
+    }
+}
+
+// Splits the specified hull on the intersection with the plane. Returns true if the plane intersects
+bool CompositeBody::split(const Plane& plane, uint32_t hullIndex) {
+    auto fragments = Collision::fragments(m_hulls[hullIndex], plane);
+    if (fragments.first.isValid() && fragments.second.isValid()) { // There was an intersection
+        replace(fragments.first, hullIndex);
+        add(fragments.second);
+        return true;
+    }
+
+    return false;
+}
+
 void CompositeBody::queueTest(uint32_t hullIndex)
 {
     auto it = std::find(m_mergeTests.begin(), m_mergeTests.end(), hullIndex);
@@ -286,6 +307,7 @@ void CompositeBody::colorHulls()
 void CompositeBody::remesh()
 {
     m_mesh = MeshBuilder::composite(m_hulls);
+    if (m_mesh == nullptr) return;
 
     // Prepare styling for the hulls
     m_mesh->setFaceColor(m_baseColor);

@@ -42,6 +42,7 @@ public:
     void moveTo(const Waypoint& waypoint);
 
     void traverse(const std::shared_ptr<Trajectory>& trajectory);
+    void stop();
 
     void setLinkMesh(uint32_t index, const std::shared_ptr<Mesh>& mesh);
 

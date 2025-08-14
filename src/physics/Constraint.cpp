@@ -12,15 +12,15 @@
 #include "RigidBody.h"
 #include "geometry/collision/EPA.h"
 
-const double BETA = 0.001;
-const double DEPTH_SLOP = 0.01;
-const double RESTITUTION_SLOP = 0.1;
+double Constraint::BETA = 0.0005;
+double Constraint::DEPTH_SLOP = 0.01;
+double Constraint::RESTITUTION_SLOP = 0.1;
 
 Constraint::Constraint(const std::shared_ptr<RigidBody>& a, const std::shared_ptr<RigidBody>& b, const EPA& collision)
     : rb1(a)
     , rb2(b)
-    , lra(collision.colliderAClosestLocal() - a->centroid())
-    , lrb(collision.colliderBClosestLocal() - b->centroid())
+    , lra(collision.colliderAClosestLocal())
+    , lrb(collision.colliderBClosestLocal())
     , system(-glm::normalize(collision.overlap()))
     , depth(collision.distance())
     , m_JN(jacobian(system.zAxis))
@@ -98,7 +98,7 @@ double Constraint::calculateImpulse(const Jacobian& J, double bias)
 {
 
     double numerator = glm::dot(J.VA, rb1->getLinearVelocity()) + glm::dot(J.WA, rb1->getAngularVelocity())
-                    + glm::dot(J.VB, rb2->getLinearVelocity()) + glm::dot(J.WB, rb2->getAngularVelocity());
+                     + glm::dot(J.VB, rb2->getLinearVelocity()) + glm::dot(J.WB, rb2->getAngularVelocity());
 
 //    std::cout << bias << " " << numerator << " " << m_effectiveMass << "\n";
 //    std::cout << "T: " << glm::dot(m_JVA, rb1->getLinearVelocity()) << " " << glm::dot(m_JWA, rb1->getAngularVelocity())

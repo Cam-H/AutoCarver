@@ -31,7 +31,7 @@ public:
 
     [[nodiscard]] Waypoint evaluate(double t) const override;
 
-    [[nodiscard]] bool validate(const std::shared_ptr<Robot>& robot, double dt) const override;
+    [[nodiscard]] bool isValid() const override;
 
 protected:
 

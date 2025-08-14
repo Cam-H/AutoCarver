@@ -11,6 +11,7 @@
 #include "geometry/collision/EPA.h"
 #include "physics/Constraint.h"
 #include "geometry/collision/Collision.h"
+#include "Timer.h"
 
 Scene::Scene()
     : m_updateThread(nullptr)
@@ -168,7 +169,11 @@ void Scene::step(double delta)
     std::vector<Constraint> constraints;
     for (const std::pair<std::shared_ptr<RigidBody>, std::shared_ptr<RigidBody>>& couple : couples) {
         auto result = couple.first->collision(couple.second);
-        if (result.colliding()) constraints.emplace_back(couple.first, couple.second, result);
+        if (result.colliding()) {
+            constraints.emplace_back(couple.first, couple.second, result);
+//            std::cout << "Collision: " << couple.first->getName() << " " << couple.second->getName() << "\n";
+        }
+
     }
 
     for (uint32_t i = 0; i < 1; i++)
@@ -183,6 +188,13 @@ void Scene::step(double delta)
 
     // Update bodies
     for (const std::shared_ptr<RigidBody>& body : m_bodies) body->step(delta);
+
+    // Kill floor
+    for (uint32_t i = 0; i < m_bodies.size(); i++) {
+        if (m_bodies[i]->getType() == RigidBody::Type::DYNAMIC && m_bodies[i]->position().y < -10) {
+            m_bodies.erase(m_bodies.begin() + i);
+        }
+    }
 }
 
 void Scene::update()
@@ -217,22 +229,18 @@ void Scene::enableCollisionColoring(bool enable)
 
 void Scene::run()
 {
-    auto startTime = std::chrono::system_clock::now();
-
+    Timer rateTimer;
     while (m_running) {
-        auto endTime = std::chrono::system_clock::now();
-
         if (!m_paused) {
-            double delta = 1e-9f * (endTime - startTime).count(); // Calculate timestep in seconds
-//            std::cout << "Delta: " << delta << "\n";
+            double delta = rateTimer.getElapsedSeconds();
             step(delta);
             update();
         }
 
-        startTime = endTime;
+        rateTimer.reset();
 
         // TODO Adapt sleep time based on target update rate
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::microseconds(1000));
     }
 }
 

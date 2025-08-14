@@ -7,6 +7,8 @@
 #include "geometry/MeshBuilder.h"
 #include "geometry/collision/Collision.h"
 
+#include "core/Debris.h"
+
 
 Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, double width, double height)
     : CompositeBody(MeshBuilder::box())
@@ -14,7 +16,6 @@ Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, double width, double he
     , m_height(height)
     , m_rotation(0)
     , m_scalar(1.0)
-    , m_preserveDebris(false)
     , m_step(0)
     , m_formStep(0)
     , m_highlightColor(0.3, 0.3, 0.8)
@@ -77,12 +78,6 @@ void Sculpture::prepareBox()
     prepareTree();
 }
 
-void Sculpture::prepareFragment(const ConvexHull& hull)
-{
-    m_fragments.emplace_back(hull);
-    m_fragments[m_fragments.size() - 1].setType(RigidBody::Type::DYNAMIC);
-}
-
 void Sculpture::update()
 {
 
@@ -108,9 +103,16 @@ void Sculpture::moved()
     modelBody->setTransform(m_transform);
 }
 
-void Sculpture::queueSection(const glm::dvec3& origin, const glm::dvec3& normal)
+void Sculpture::reset()
 {
-    m_operations.emplace_back(origin, normal);
+    m_operations.clear();
+    m_step = 0;
+    m_formStep = 0;
+}
+
+void Sculpture::queueSection(const Plane& plane)
+{
+    m_operations.emplace_back(plane.origin, plane.normal);
 }
 
 void Sculpture::queueSection(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& normal, bool external)
@@ -143,46 +145,34 @@ void Sculpture::queueSection(const glm::dvec3& a, const glm::dvec3& b, const glm
 //    }
 //}
 
-bool Sculpture::applySection()
+std::shared_ptr<Debris> Sculpture::applySection()
 {
     if (m_step < m_operations.size()) {
         uint32_t step = m_step++;
 
         switch (m_operations[step].surfaces.size()) {
-            case 1:
-                planarSection(m_operations[step].surfaces[0]);
-                break;
-            case 2:
-                triangleSection(m_operations[step].surfaces[0], m_operations[step].surfaces[1], m_operations[step].limits);
-                break;
+            case 1: return planarSection(m_operations[step].surfaces[0]);
+            case 2: return triangleSection(m_operations[step].surfaces[0], m_operations[step].surfaces[1], m_operations[step].limits);
             default:
                 std::cout << "[Sculpture] Queued section not handled. Not currently supported\n";
         }
     }
 
-    return false;
+    return nullptr;
 }
 
-bool Sculpture::planarSection(const Plane& plane)
+std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
 {
     std::cout << "PS\n";
-    if (!Collision::test(m_hull, plane)) return false;
+    if (!Collision::test(m_hull, plane)) return nullptr;
     std::cout << "PS1\n";
 
+    auto fragments = Collision::fragments(m_hull, plane);
+    m_hull = fragments.first;
+    std::cout << "PS2\n";
+
     // TODO expand for multiple hulls
-    if (m_preserveDebris) {
-        auto fragments = Collision::fragments(m_hull, plane);
-        m_hull = fragments.first;
-
-        if (!fragments.second.empty()) prepareFragment(fragments.second);
-    } else {
-        std::cout << "PS2\n";
-
-        m_hull = Collision::fragment(m_hull, plane);
-        CompositeBody::restore();
-        std::cout << "PS3\n";
-
-    }
+    CompositeBody::restore();
 
     remesh();
     std::cout << "PS4\n";
@@ -191,7 +181,13 @@ bool Sculpture::planarSection(const Plane& plane)
     m_mesh->setFaceColor(m_mesh->matchFace(plane.normal), m_highlightColor);
     std::cout << "PS5\n";
 
-    return true;
+    if (!fragments.second.empty()) {
+        auto debris = std::make_shared<Debris>(fragments.second);
+        debris->setTransform(m_transform);
+        return debris;
+    }
+
+    return nullptr;
 }
 
 bool Sculpture::inLimit(const ConvexHull& hull, const Plane& limit)
@@ -208,7 +204,7 @@ bool Sculpture::inLimit(const ConvexHull& hull, const std::vector<Plane>& limits
     return true;
 }
 
-bool Sculpture::triangleSection(const Plane& planeA, const Plane& planeB, const std::vector<Plane>& limits)
+std::shared_ptr<Debris> Sculpture::triangleSection(const Plane& planeA, const Plane& planeB, const std::vector<Plane>& limits)
 {
     const auto& fragments = hulls();
     for (uint32_t i = 0; i < fragments.size(); i++) {
@@ -245,7 +241,7 @@ bool Sculpture::triangleSection(const Plane& planeA, const Plane& planeB, const 
     if (!tryMerge()) remesh();
 //    remesh();
 
-    return true;
+    return nullptr;
 }
 
 bool Sculpture::form()

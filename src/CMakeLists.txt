@@ -2,6 +2,7 @@
 add_library(AutoCarverLib
         core/Timer.cpp
         core/Sculpture.cpp
+        core/Debris.cpp
         core/Scene.cpp
 
         core/SculptProcess.cpp
@@ -41,7 +42,6 @@ add_library(AutoCarverLib
         robot/Joint.cpp
         robot/Robot.cpp
 
-        robot/trajectory/Trajectory.cpp
         robot/planning/PathPlanner.cpp
 
 
@@ -66,18 +66,28 @@ add_library(AutoCarverLib
 
         renderer/Colors.h
 
-
-        geometry/Axis3D.cpp
         geometry/curves/Interpolator.cpp
-        robot/trajectory/TOPPTrajectory.cpp
-        robot/trajectory/SimpleTrajectory.cpp
-        robot/trajectory/Waypoint.cpp
-        robot/Pose.cpp
-        robot/trajectory/CompositeTrajectory.cpp
+
         geometry/curves/CubicSpline.cpp
         geometry/curves/PiecewisePolyPath.cpp
+
+        geometry/Axis3D.cpp
+
+        robot/Pose.cpp
+
+        robot/trajectory/Waypoint.cpp
+
+        robot/trajectory/Trajectory.cpp
+        robot/trajectory/SimpleTrajectory.cpp
+        robot/trajectory/HoldPosition.cpp
+
         robot/trajectory/TOPP.cpp
+        robot/trajectory/TOPPTrajectory.cpp
+
         robot/trajectory/CartesianTrajectory.cpp
+
+        robot/trajectory/CompositeTrajectory.cpp
+
         )
 
 set_target_properties(AutoCarverLib PROPERTIES

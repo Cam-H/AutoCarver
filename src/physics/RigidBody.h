@@ -53,6 +53,8 @@ public:
     void setMask(uint32_t mask);
     void setLayer(uint32_t layer);
 
+    void disableCollisions();
+
     void resetMask();
     void resetLayer();
 

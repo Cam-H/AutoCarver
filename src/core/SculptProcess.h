@@ -8,12 +8,14 @@
 #include "Scene.h"
 
 #include <vector>
+#include <deque>
 
 #include "geometry/VertexArray.h"
 #include "geometry/Mesh.h"
 #include "core/Sculpture.h"
 
 #include "geometry/curves/Interpolator.h"
+#include "robot/Pose.h"
 #include "robot/trajectory/Waypoint.h"
 #include "robot/trajectory/CompositeTrajectory.h"
 
@@ -29,11 +31,21 @@ public:
         double materialHeight = 2.0f;
     };
 
+    enum class ConvexSliceOrder {
+        TOP_DOWN = 0, BOTTOM_UP
+    };
+
     explicit SculptProcess(const std::shared_ptr<Mesh>& model);
     ~SculptProcess();
 
     void enableConvexTrim(bool enable);
     void enableProcessCut(bool enable);
+
+    void setSlicingOrder(ConvexSliceOrder order);
+    void setActionLimit(uint32_t limit);
+    void enableActionLimit(bool enable);
+
+    void reset();
 
     void plan();
 
@@ -46,6 +58,9 @@ public:
     void setContinuous(bool enable);
 
     void alignToFace(uint32_t faceIdx);
+
+    uint32_t getActionLimit() const;
+    bool isActionLimitEnabled() const;
 
     bool simulationComplete() const;
     bool simulationIdle() const;
@@ -61,18 +76,27 @@ public:
 
 private:
 
+    struct Cut {
+        Cut(const Pose& pose, double ts, double tf, uint32_t index) : pose(pose), ts(ts), tf(tf), index(index) {}
+
+        Pose pose;
+        double ts;
+        double tf;
+        uint32_t index;
+    };
+
     struct Action {
         Action (const std::shared_ptr<Trajectory>& trajectory, const std::shared_ptr<Robot>& robot)
                 : trajectory(trajectory)
                 , target(robot)
-                , started(false)
-                , trigger(false) {}
+                , started(false) {}
 
 
         std::shared_ptr<Trajectory> trajectory;
         std::shared_ptr<Robot> target;
         bool started;
-        bool trigger;
+
+        std::deque<Cut> cuts;
     };
 
     void prepareTurntable();
@@ -89,6 +113,7 @@ private:
     [[nodiscard]] glm::dvec3 poseAdjustedVertex(const Axis3D& axes, const glm::dvec3& vertex) const;
 
     void planConvexTrim();
+    std::vector<Plane> orderConvexTrim(const std::vector<Plane>& cuts);
     bool planConvexTrim(const ConvexHull& hull, const Plane& plane);
 
     void planOutlineRefinement(double stepDg);
@@ -98,17 +123,19 @@ private:
 
     void planTurntableAlignment(double theta);
 
-    void planRoboticSection(const std::shared_ptr<Trajectory>& trajectory);
+    void planRoboticSection(const std::shared_ptr<CompositeTrajectory>& trajectory);
 
     std::shared_ptr<CompositeTrajectory> prepareApproach(const Waypoint& destination);
 
-    std::shared_ptr<Trajectory> preparePlanarTrajectory(const std::vector<glm::dvec3>& border, const glm::dvec3& normal);
-    std::shared_ptr<Trajectory> prepareThroughCut(const Pose& startPose, double depth, const glm::dvec3& off);
-    std::shared_ptr<Trajectory> prepareBlindCut(const Pose& pose, double depth);
+    std::shared_ptr<CompositeTrajectory> preparePlanarTrajectory(const std::vector<glm::dvec3>& border, const glm::dvec3& normal);
+    std::shared_ptr<CompositeTrajectory> prepareThroughCut(Pose startPose, double depth, double runup, const glm::dvec3& off);
+    std::shared_ptr<CompositeTrajectory> prepareBlindCut(const Pose& pose, double depth);
 
     void planRoboticSection(const std::vector<glm::dvec3>& border);
 
     void nextAction();
+
+    void removeDebris();
 
     [[nodiscard]] bool validateTrajectory(const std::shared_ptr<Trajectory>& trajectory, double dt);
 
@@ -120,6 +147,8 @@ private:
 
     std::shared_ptr<Mesh> model;
     std::shared_ptr<Sculpture> m_sculpture;
+
+    std::shared_ptr<Debris> m_debris;
 
     std::shared_ptr<Robot> m_turntable;
     glm::dvec3 m_ttOffset; // Offset to table surface
@@ -145,10 +174,16 @@ private:
     Interpolator::SolverType m_solver;
 
     std::vector<Action> m_actions;
+    std::deque<Cut> m_cuts; // Temporary container for cuts when preparing action
 
     bool m_planned;
     bool m_convexTrimEnable;
     bool m_processCutEnable;
+
+    ConvexSliceOrder m_sliceOrder;
+
+    uint32_t m_actionLimit;
+    bool m_actionLimitEnable;
 
     uint32_t m_step;
     bool m_continuous;

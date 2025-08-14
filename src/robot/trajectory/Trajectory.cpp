@@ -194,25 +194,19 @@ Waypoint Trajectory::timestep(double delta)
     else return evaluate(m_t += delta / m_duration);
 }
 
-bool Trajectory::validate(const std::shared_ptr<Robot>& robot, double dt) const
+bool Trajectory::isValid() const
 {
-    if (dt <= 1e-6) throw std::runtime_error("[Trajectory] Can not validate. Invalid dt provided");
-
-//    double t = dt;
-//    while (t < 1) {
-//        // TODO joint limits
-//        t += dt;
-//    }
-
     return m_dof > 0;
 }
 
 // Iterates through the trajectory at the specified rate (dt) to check for collisions with scene objects
 bool Trajectory::test(const Scene* scene, const std::shared_ptr<Robot>& robot, double dt) const
 {
+    if (scene == nullptr || robot == nullptr) throw std::runtime_error("[Trajectory] nullptr can not evaluate collision");
+
     const Waypoint initialWP = robot->getWaypoint();
 
-//    return false;
+    return false;
 
     double t = dt;
     while (t <= 1.0) {

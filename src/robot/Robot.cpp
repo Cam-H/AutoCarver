@@ -62,18 +62,20 @@ void Robot::prepareLinks()
             linkMesh->setFaceColor({ 1.0f, 1.0f, 0.0f });
             link = std::make_shared<RigidBody>(MeshBuilder::merge(mesh, linkMesh));
 
-            link->setLayer(level <<= 1);
-            link->setMask(linkMask(level));
-
-            link->prepareColliderVisuals();
 
         } else {
             link = std::make_shared<RigidBody>(mesh);
 
             // Ignore collisions on joints without a footprint
-            link->setMask(0);
-            link->setLayer(0);
+//            link->setMask(0);
+//            link->setLayer(0);
         }
+
+        link->setLayer(level <<= 1);
+        link->setMask(linkMask(level));
+
+        link->prepareColliderVisuals();
+
 
         m_links.push_back(link);
     }
@@ -192,6 +194,11 @@ void Robot::traverse(const std::shared_ptr<Trajectory>& trajectory)
 {
     if (m_kinematics == nullptr) throw std::runtime_error("[Robot] Can not traverse. The kinematic chain is undefined");
     m_currentTrajectory = trajectory;
+}
+
+void Robot::stop()
+{
+    m_currentTrajectory = nullptr;
 }
 
 void Robot::setLinkMesh(uint32_t index, const std::shared_ptr<Mesh>& mesh)

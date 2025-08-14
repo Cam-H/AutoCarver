@@ -7,10 +7,13 @@
 
 #include <vector>
 
+#include "geometry/primitives/Plane.h"
 #include "geometry/Mesh.h"
 #include "physics/CompositeBody.h"
 
 #include "geometry/primitives/Plane.h"
+
+class Debris;
 
 class Sculpture : public CompositeBody {
 public:
@@ -26,11 +29,13 @@ public:
     void restore() override;
     void restoreAsHull();
 
-    void queueSection(const glm::dvec3& origin, const glm::dvec3& normal);
+    void reset();
+
+    void queueSection(const Plane& plane);
     void queueSection(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& normal, bool external = false);
 //    void queueSection(const std::vector<glm::dvec3>& border, const glm::dvec3& normal);
 
-    bool applySection();
+    std::shared_ptr<Debris> applySection();
 
     bool form();
 
@@ -56,10 +61,9 @@ public:
 private:
 
     void prepareBox();
-    void prepareFragment(const ConvexHull& hull);
 
-    bool planarSection(const Plane& plane);
-    bool triangleSection(const Plane& planeA, const Plane& planeB, const std::vector<Plane>& limits);
+    std::shared_ptr<Debris> planarSection(const Plane& plane);
+    std::shared_ptr<Debris> triangleSection(const Plane& planeA, const Plane& planeB, const std::vector<Plane>& limits);
 
     inline static bool inLimit(const ConvexHull& hull, const Plane& limit);
     inline static bool inLimit(const ConvexHull& hull, const std::vector<Plane>& limits);
@@ -85,15 +89,11 @@ private:
 
     std::shared_ptr<RigidBody> modelBody;
 
-    std::vector<RigidBody> m_fragments;
-
     double m_width;
     double m_height;
     double m_rotation;
 
     double m_scalar;
-
-    bool m_preserveDebris;
 
     uint32_t m_step;
     std::vector<SectionOperation> m_operations;

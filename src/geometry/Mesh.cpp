@@ -208,9 +208,9 @@ void Mesh::print() const
                 << ", span-center: (" << sc.x << ", " << sc.y << ", " << sc.z << ")"
                 << "\nspan: (" << xSpan() << ", " << ySpan() << ", " << zSpan() << ")" << "\n";
 
-    m_vertices.print();
-
-    m_faces.print();
+//    m_vertices.print();
+//
+//    m_faces.print();
 
 }
 

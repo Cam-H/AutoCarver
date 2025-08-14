@@ -9,6 +9,8 @@
 
 #include <unordered_map>
 
+#include "geometry/primitives/Plane.h"
+
 class Mesh;
 class Octree;
 
@@ -28,6 +30,8 @@ public:
     void replace(const ConvexHull& hull, uint32_t index);
     void remove(uint32_t index);
 
+    void split(const Plane& plane);
+
     void applyCompositeColors(bool enable);
 
     virtual void remesh();
@@ -38,6 +42,8 @@ public:
 
 protected:
     void prepareTree();
+
+    bool split(const Plane& plane, uint32_t hullIndex);
 
 private:
 

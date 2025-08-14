@@ -6,6 +6,8 @@
 #include <QDoubleSpinBox>
 #include <QVBoxLayout>
 #include <QCheckBox>
+#include <QSpinBox>
+#include <QComboBox>
 
 #include <QFile>
 #include <QDir>
@@ -34,6 +36,8 @@ QCheckBox *contButton = nullptr;
 QDoubleSpinBox *timeField = nullptr;
 QPushButton *stepButton = nullptr, *skipButton = nullptr;
 
+QSpinBox* sliceLimitField = nullptr;
+
 static QWidget *loadUiFile(QWidget *parent)
 {
     QFile file("../tests/manual/mesh-carve-process/main.ui");
@@ -46,6 +50,14 @@ static QWidget *loadUiFile(QWidget *parent)
     file.close();
 
     return widget;
+}
+
+void setOrder(int index) {
+    switch (index) {
+        case 0: scene->setSlicingOrder(SculptProcess::ConvexSliceOrder::TOP_DOWN); break;
+        case 1: scene->setSlicingOrder(SculptProcess::ConvexSliceOrder::BOTTOM_UP); break;
+        default: std::cout << "Unhandled order\n";
+    }
 }
 
 int main(int argc, char *argv[])
@@ -64,6 +76,8 @@ int main(int argc, char *argv[])
     if (window == nullptr) return -1;
 
     std::string source = "../res/meshes/devil.obj";
+//    std::string source = "../res/meshes/teddy.obj";
+//    std::string source = "../res/meshes/bunny.obj";
     auto model = MeshHandler::loadAsMeshBody(source);
     model->setBaseColor({1, 0, 1});
 
@@ -143,6 +157,34 @@ int main(int argc, char *argv[])
         }
     });
 
+    auto resetButton = window->findChild<QPushButton*>("resetButton");
+    QObject::connect(resetButton, &QPushButton::clicked, [&]() {
+        scene->reset();
+        sceneWidget->update();
+    });
+
+    auto sliceOrderBox = window->findChild<QComboBox*>("sliceOrderBox");
+    setOrder(sliceOrderBox->currentIndex());
+    QObject::connect(sliceOrderBox, &QComboBox::activated, [&](int index) {
+        setOrder(index);
+    });
+
+    sliceLimitField = window->findChild<QSpinBox*>("sliceLimitField");
+    scene->setActionLimit(sliceLimitField->value());
+    std::cout << "SLF: " << sliceLimitField->value() << "\n";
+    QObject::connect(sliceLimitField, &QSpinBox::valueChanged, [&](int value) {
+        scene->setActionLimit(value);
+    });
+
+    auto sliceLimitButton = window->findChild<QCheckBox*>("sliceLimitButton");
+    scene->enableActionLimit(sliceLimitButton->isChecked());
+    QObject::connect(sliceLimitButton, &QCheckBox::clicked, [&](bool checked) {
+        sliceLimitField->setEnabled(checked);
+        scene->enableActionLimit(checked);
+    });
+
+
+
 //    scene->enableCollisionColoring(false);
     scene->start();
 
@@ -162,7 +204,7 @@ int main(int argc, char *argv[])
 
             idle = scene->simulationIdle();
 
-            std::this_thread::sleep_for(std::chrono::nanoseconds(80000000));
+            std::this_thread::sleep_for(std::chrono::nanoseconds(10000000));
         }
     });
 

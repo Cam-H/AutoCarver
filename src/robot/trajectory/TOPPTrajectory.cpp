@@ -90,9 +90,9 @@ Waypoint TOPPTrajectory::evaluate(double t) const
     return Waypoint(m_path.evaluate(s), m_inDg);
 }
 
-bool TOPPTrajectory::validate(const std::shared_ptr<Robot>& robot, double dt) const
+bool TOPPTrajectory::isValid() const
 {
-    return !m_path.empty() && Trajectory::validate(robot, dt);
+    return !m_path.empty() && Trajectory::isValid();
 }
 
 // Identifies the region based on t, returning s and dt, the time interval for the segment

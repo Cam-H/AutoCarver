@@ -431,6 +431,8 @@ std::shared_ptr<Mesh> MeshBuilder::merge(const std::vector<std::shared_ptr<Mesh>
 
 std::shared_ptr<Mesh> MeshBuilder::composite(const std::vector<ConvexHull>& hulls)
 {
+    if (hulls.empty()) return nullptr;
+
     // Count number of features to determine required mesh size
     uint32_t vertexCount = 0, faceCount = 0, indexCount = 0;
 

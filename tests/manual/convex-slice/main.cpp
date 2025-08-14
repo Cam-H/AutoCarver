@@ -27,6 +27,7 @@
 #include "robot/trajectory/Trajectory.h"
 #include "geometry/collision/Collision.h"
 #include "geometry/primitives/Plane.h"
+#include "physics/Constraint.h"
 
 #endif
 
@@ -150,7 +151,7 @@ int main(int argc, char *argv[])
             base->setMesh(std::make_shared<Mesh>(fragments.first), true);
 
             auto debris = scene->createBody(fragments.second, RigidBody::Type::DYNAMIC);
-//            debris->zero();
+            debris->print();
 //            debris->setVelocity({0, -0.1, 0});
         }
 
@@ -166,6 +167,24 @@ int main(int argc, char *argv[])
 //        sceneWidget->update();
     });
 
+    auto *betaField = widget->findChild<QDoubleSpinBox*>("betaField");
+    betaField->setValue(Constraint::BETA);
+    QObject::connect(betaField, &QDoubleSpinBox::valueChanged, [&](double value) {
+        Constraint::BETA = value;
+    });
+
+    auto *depthSlopField = widget->findChild<QDoubleSpinBox*>("depthSlopField");
+    depthSlopField->setValue(Constraint::DEPTH_SLOP);
+    QObject::connect(depthSlopField, &QDoubleSpinBox::valueChanged, [&](double value) {
+        Constraint::DEPTH_SLOP = value;
+    });
+
+    auto *restSlopField = widget->findChild<QDoubleSpinBox*>("restSlopField");
+    restSlopField->setValue(Constraint::RESTITUTION_SLOP);
+    QObject::connect(restSlopField, &QDoubleSpinBox::valueChanged, [&](double value) {
+        Constraint::RESTITUTION_SLOP = value;
+    });
+
     widget->show();
 
     scene->start();
@@ -177,7 +196,7 @@ int main(int argc, char *argv[])
         while (true) {
             sceneWidget->update();
 
-            std::this_thread::sleep_for(std::chrono::nanoseconds(20000000));
+            std::this_thread::sleep_for(std::chrono::nanoseconds(2000000));
         }
     });
 

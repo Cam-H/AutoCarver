@@ -55,6 +55,23 @@ void CompositeTrajectory::update()
     m_duration = std::max(m_duration, m_minDuration);
 }
 
+uint32_t CompositeTrajectory::segmentCount() const
+{
+    return m_trajectories.size();
+}
+std::tuple<double, double> CompositeTrajectory::tLimits(uint32_t subIndex) const
+{
+    if (subIndex >= m_trajectories.size()) return { 1.0, 1.0 };
+
+    double sum = 0;
+    for (uint32_t i = 0; i < subIndex; i++) {
+        sum += m_trajectories[i]->duration();
+    }
+
+    double t = sum / m_duration;
+    return { t, t + m_trajectories[subIndex]->duration() / m_duration };
+}
+
 Waypoint CompositeTrajectory::start() const
 {
     if (m_trajectories.empty()) throw std::runtime_error("[CompositeTrajectory] There are no trajectories. Can not return start point");
@@ -90,11 +107,11 @@ Waypoint CompositeTrajectory::evaluate(double t) const
     return m_trajectories[index]->evaluate(subT);
 }
 
-bool CompositeTrajectory::validate(const std::shared_ptr<Robot>& robot, double dt) const
+bool CompositeTrajectory::isValid() const
 {
-    if (m_valid && Trajectory::validate(robot, dt)) {
+    if (m_valid && Trajectory::isValid()) {
         for (const std::shared_ptr<Trajectory>& traj : m_trajectories) {
-            if (!traj->validate(robot, dt)) return false;
+            if (!traj->isValid()) return false;
         }
 
         return true;
