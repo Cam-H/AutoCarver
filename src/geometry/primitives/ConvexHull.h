@@ -60,7 +60,11 @@ public:
     [[nodiscard]] uint32_t walk(const glm::dvec3& axis) const;
     [[nodiscard]] uint32_t walk(const glm::dvec3& axis, uint32_t index) const;
 
+    std::tuple<uint32_t, uint32_t> extremes(const glm::dvec3& axis) const;
     void extents(const glm::dvec3& axis, double& near, double& far) const;
+
+    [[nodiscard]] double span(const glm::dvec3& axis) const;
+    [[nodiscard]] double far(const glm::dvec3& axis) const;
 
     [[nodiscard]] const std::vector<uint32_t>& neighbors(uint32_t index) const;
     [[nodiscard]] std::vector<glm::dvec3> border(const glm::dvec3& faceNormal) const;

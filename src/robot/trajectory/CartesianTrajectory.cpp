@@ -88,35 +88,35 @@ std::shared_ptr<CartesianTrajectory> CartesianTrajectory::reversed(const std::sh
 
 // Given ratio (% of path completed) returns a corresponding t
 // Applies a pseudo-binary search to find an approximate t
-double CartesianTrajectory::locate(double ratio) const
-{
-//    if (ratio < 0.0) return 0.0;
-//    if (ratio > 1.0) return 1.0;
-
-    auto target = m_initialPose.position + m_curve.axis * m_distance * ratio;
-    glm::dvec3 delta;
-
-    double t = 0.5, dt = 0.5 * t;
-    do {
-        delta = m_robot->getPose(TOPPTrajectory::evaluate(t)).position - target;
-        if (glm::dot(delta, m_curve.axis) > 0) { // Target is behind (less than t)
-            t -= dt;
-        } else { // Target is ahead (greater than t)
-            t += dt;
-        }
-
-        dt *= 0.5;
-
-        if (dt < 1e-12) {
-            std::cout << ratio << " " << dt << " " << t << " " << (glm::dot(delta, m_curve.axis) > 0) << " " << glm::dot(delta, delta) << "\n";
-            throw std::runtime_error("[CartesianTrajectory] Failed to locate a reasonable t");
-        }
-    } while (glm::dot(delta, delta) > 1e-3 * m_distance);
-
-    std::cout << "DELTA: " << glm::dot(delta, delta ) << " " << t << " " << dt << " " << delta.x << " " << delta.y << " " << delta.z << "\n";
-
-    return t;
-}
+//double CartesianTrajectory::locate(double ratio) const
+//{
+////    if (ratio < 0.0) return 0.0;
+////    if (ratio > 1.0) return 1.0;
+//
+//    auto target = m_initialPose.position + m_curve.axis * m_distance * ratio;
+//    glm::dvec3 delta;
+//
+//    double t = 0.5, dt = 0.5 * t;
+//    do {
+//        delta = m_robot->getPose(TOPPTrajectory::evaluate(t)).position - target;
+//        if (glm::dot(delta, m_curve.axis) > 0) { // Target is behind (less than t)
+//            t -= dt;
+//        } else { // Target is ahead (greater than t)
+//            t += dt;
+//        }
+//
+//        dt *= 0.5;
+//
+//        if (dt < 1e-12) {
+//            std::cout << ratio << " " << dt << " " << t << " " << (glm::dot(delta, m_curve.axis) > 0) << " " << glm::dot(delta, delta) << "\n";
+//            throw std::runtime_error("[CartesianTrajectory] Failed to locate a reasonable t");
+//        }
+//    } while (glm::dot(delta, delta) > 1e-3 * m_distance);
+//
+//    std::cout << "DELTA: " << glm::dot(delta, delta ) << " " << t << " " << dt << " " << delta.x << " " << delta.y << " " << delta.z << "\n";
+//
+//    return t;
+//}
 
 bool CartesianTrajectory::isValid() const
 {

@@ -27,6 +27,17 @@
 #include "geometry/collision/Collision.h"
 #include "fileIO/MeshHandler.h"
 
+static const std::array<double, 13> ATTEMPT_OFFSETS = { 0,
+                                                 -M_PI / 32, M_PI / 32
+                                                 -M_PI / 16, M_PI / 16,
+                                                 -M_PI / 8, M_PI / 8,
+                                                 -M_PI / 4, M_PI / 4,
+                                                 -M_PI / 3, M_PI / 3,
+                                                 -M_PI / 2, M_PI / 2 };
+
+//static const std::array<double, 1> attemptOffsets = { 0 };
+
+
 SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     : Scene()
     , model(model)
@@ -35,6 +46,7 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     , m_planned(false)
     , m_convexTrimEnable(true)
     , m_processCutEnable(true)
+    , m_collisionTestingEnable(true)
     , m_sliceOrder(ConvexSliceOrder::TOP_DOWN)
     , m_actionLimit(0xFFFFFFFF)
     , m_actionLimitEnable(false)
@@ -151,6 +163,11 @@ void SculptProcess::enableProcessCut(bool enable)
     m_processCutEnable = enable;
 }
 
+void SculptProcess::enableCollisionTesting(bool enable)
+{
+    m_collisionTestingEnable = enable;
+}
+
 void SculptProcess::setSlicingOrder(ConvexSliceOrder order)
 {
     m_sliceOrder = order;
@@ -213,19 +230,12 @@ void SculptProcess::skip()
         return;
     }
 
-
     std::cout << "SKIP| Next step: " << (m_step + 1) << " / " << m_actions.size() << " -> " << m_actions[m_step].target->getWaypoint() << "\n";
-
-    // Capture intermediary motions (In case turntable moves) while looking for trigger to indicate a stop
-    while (m_step < m_actions.size() && m_actions[m_step].cuts.empty()) {
-        m_actions[m_step].target->moveTo( m_actions[m_step].trajectory->end());
-        m_step++;
-    }
 
     // Jump robot to endpoint and apply process to the sculpture
     if (m_step < m_actions.size()) {
         m_actions[m_step].target->moveTo( m_actions[m_step].trajectory->end());
-        m_sculpture->applySection();
+        if (!m_actions[m_step].cuts.empty()) m_sculpture->applySection();
         m_step++;
     }
 }
@@ -242,14 +252,14 @@ void SculptProcess::step(double delta)
                 m_step++;
             } else if (m_continuous) nextAction();
         } else if (m_debris != nullptr && !action.cuts.empty() && action.cuts.front().ts < action.trajectory->t()){
-            double ratio = (action.trajectory->t() - action.cuts.front().ts) / (action.cuts.front().tf - action.cuts.front().ts);
-            std::cout << "N " << action.trajectory->t() << " " << ratio << " [" << action.cuts.front().ts << "]\n";
-            const auto& fragments = m_debris->removeMaterial(ratio);
+            double depth = glm::dot(m_robot->getPosition() - action.cuts[0].pose.position, action.cuts[0].pose.axes.xAxis);
+//            std::cout << "NR: " << depth << " " << 0.5 * m_bladeWidth << " -> ";
+            depth = std::max(0.0, depth + 0.5 * m_bladeWidth);
+
+            const auto& fragments = m_debris->removeMaterial(depth);
             if (!fragments.empty()) { // TODO enable
 //                for (const std::shared_ptr<RigidBody>& fragment : fragments) prepareBody(fragment);
             }
-
-            if (ratio >= 1) action.cuts.pop_front();
 
             if (action.cuts.empty()) removeDebris();
         }
@@ -464,6 +474,7 @@ std::vector<Plane> SculptProcess::orderConvexTrim(const std::vector<Plane>& cuts
 void SculptProcess::planConvexTrim()
 {
     std::vector<Plane> steps;
+    std::vector<Action> actions;
 
     ConvexHull hull = ConvexHull(model);
 
@@ -475,7 +486,7 @@ void SculptProcess::planConvexTrim()
     hull = m_sculpture->hull();
     for (Plane& step : steps) {
 
-        if (m_actionLimitEnable && m_actions.size() > m_actionLimit) {
+        if (m_actionLimitEnable && m_actions.size() + actions.size() > m_actionLimit) {
             std::cout << "\033[93m[SculptProcess] Action limit exceeded\033[0m\n";
             break;
         }
@@ -489,33 +500,41 @@ void SculptProcess::planConvexTrim()
         std::cout << "Step [" << (&step - &steps[0]) << ", vol: " << vol << "]:\n";
 
         // Try performing cut if the action would remove sufficient material
-        if ((m_minCutVolume == 0 || fragments.first.volume() > m_minCutVolume)
-            && planConvexTrim(hull, step)) hull = fragments.second;
-
+        if ((m_minCutVolume == 0 || fragments.first.volume() > m_minCutVolume)) {
+            auto nextActions = planConvexTrim(hull, step);
+            if (!nextActions.empty()) {
+                actions.insert(actions.end(), nextActions.begin(), nextActions.end());
+                hull = fragments.second;
+            }
+        }
     }
+
+    commitActions(actions);
+}
+
+// Develops trajectories between disjoint actions to motions are continuous before attaching them to the list
+void SculptProcess::commitActions(const std::vector<Action>& actions)
+{
+    for (uint32_t i = 0; i < actions.size(); i++) {
+        m_actions.push_back(actions[i]);
+    }
+
+    // Move to initial cut position
+//    auto trajectory = prepareApproach(cutTrajectory->start());
+//    if (trajectory == nullptr) return nullptr;
 }
 
 // Generates trajectory to perform a trim action. Returns true if successful
-bool SculptProcess::planConvexTrim(const ConvexHull& hull, const Plane& plane)
+std::vector<SculptProcess::Action> SculptProcess::planConvexTrim(const ConvexHull& hull, const Plane& plane)
 {
-    static std::array<double, 13> attemptOffsets = { 0,
-                                                     -M_PI / 32, M_PI / 32
-                                                     -M_PI / 16, M_PI / 16,
-                                                     -M_PI / 8, M_PI / 8,
-                                                     -M_PI / 4, M_PI / 4,
-                                                     -M_PI / 3, M_PI / 3,
-                                                     -M_PI / 2, M_PI / 2 };
-
-//    static std::array<double, 1> attemptOffsets = { 0 };
-
     auto border = Collision::intersection(hull, plane);
-    if (border.size() < 3) return false;
+    if (border.size() < 3) return {};
 
     std::shared_ptr<CompositeTrajectory> trajectory;
     double baseRotation = Ray::axialRotation(UP, plane.normal), theta; // m_latestTableCommand.values[0]
 
     // Try developing a trajectory that will allow the robot to complete the planar section
-    for (double offset : attemptOffsets) {
+    for (double offset : ATTEMPT_OFFSETS) {
         theta = baseRotation + offset;
 
         auto rotation = glm::angleAxis(theta, UP);
@@ -535,23 +554,16 @@ bool SculptProcess::planConvexTrim(const ConvexHull& hull, const Plane& plane)
     if (trajectory == nullptr) {
         std::cout << "\033[93m[SculptProcess] Failed to develop an appropriate trajectory\033[0m\n";
 //        throw std::runtime_error("[SculptProcess] Failed to develop an appropriate trajectory to perform planar cut");
-        return false;
+        return {};
     }
-
-    // Prepare local pose for cut operation
-    if (!m_cuts.empty()) {
-        m_cuts[0].pose = Pose(border[0], faceAlignedAxes(plane.normal, true));
-        if (glm::dot(UP, plane.normal) < 0) m_cuts[0].pose.axes.flipXZ();
-    }
-
-    // If a trajectory was found queue it
-    planTurntableAlignment(theta);
-    planRoboticSection(trajectory);
 
     // Record mesh manipulation operation for later application during carving process
     m_sculpture->queueSection(plane.inverted());
 
-    return true;
+    // Don't add new command if the TT is already in position
+    if (std::abs(m_latestTableCommand.values[0] - theta) < 1e-12) return { planRoboticSection(trajectory) };
+
+    return { planTurntableAlignment(theta), planRoboticSection(trajectory) };
 }
 
 void SculptProcess::planOutlineRefinement(double stepDg)
@@ -628,7 +640,7 @@ void SculptProcess::planOutlineRefinement(Profile& profile)
         auto border = profile.projected3D(indices);
         for(const glm::dvec3& v : border) std::cout << v.x << " " << v.y << " " << v.z << "\n";
 
-        planRoboticSection(border);
+//        planRoboticSection(border);
 
         if (border.size() == 3) {
             m_sculpture->queueSection(border[0], border[1], border[2], profile.normal(), external);
@@ -652,24 +664,23 @@ void SculptProcess::planFeatureRefinement()
     // Decompose model into patches and handle separately?
 }
 
-void SculptProcess::planTurntableAlignment(double theta)
+SculptProcess::Action SculptProcess::planTurntableAlignment(double theta)
 {
-    if (std::abs(m_latestTableCommand.values[0] - theta) < 1e-12) return; // Don't add new command if the TT is already in position
-
     auto trajectory = std::make_shared<SimpleTrajectory>(m_latestTableCommand, Waypoint({ theta}, false), m_solver);
     trajectory->setLimits({ M_PI / 2}, { M_PI });
     m_latestTableCommand = trajectory->end();
 
-    m_actions.emplace_back(trajectory, m_turntable);
+    return { trajectory, m_turntable };
 }
 
-void SculptProcess::planRoboticSection(const std::shared_ptr<CompositeTrajectory>& trajectory)
+SculptProcess::Action SculptProcess::planRoboticSection(const std::shared_ptr<CompositeTrajectory>& trajectory)
 {
     m_latestRobotCommand = trajectory->end();
 
-    m_actions.emplace_back(trajectory, m_robot);
-    m_actions[m_actions.size() - 1].cuts = m_cuts;
+    Action action(trajectory, m_robot);
+    action.cuts = m_cuts;
     m_cuts.clear();
+    return action;
 }
 
 // Sectioning step wherein the robot moves to remove all material above the specified plane
@@ -679,18 +690,12 @@ std::shared_ptr<CompositeTrajectory> SculptProcess::preparePlanarTrajectory(cons
 
     uint32_t minIndex, maxIndex;
     VertexArray::extremes(border, axes.xAxis, minIndex, maxIndex);
-    auto low = border[minIndex], high = border[maxIndex];
 
-    double runup = 0.1, length = glm::dot(high - low, axes.xAxis);
+    double runup = 0.1, length = glm::dot(border[maxIndex] - border[minIndex], axes.xAxis);
 
     if (glm::dot(UP, normal) > 0) { // Upwards-facing cut -> Can use through cut
-
-        low -= axes.zAxis * (0.5 * m_bladeLength + glm::dot(axes.zAxis, low - m_sculpture->position()));
-
-        return prepareThroughCut(Pose(low, axes), length + runup, runup + 0.5 * m_bladeWidth, 0.4 * axes.yAxis);
+        return prepareThroughCut(Pose(border[minIndex], axes), length + runup, runup + 0.5 * m_bladeWidth, 0.4 * axes.yAxis);
     }
-
-    high -= axes.zAxis * (0.5 * m_bladeLength + glm::dot(axes.zAxis, high - m_sculpture->position()));
 
     // Adjust length so it stops just before hitting the turntable
     length = -(length + runup) + 0.5 * m_bladeWidth
@@ -701,7 +706,13 @@ std::shared_ptr<CompositeTrajectory> SculptProcess::preparePlanarTrajectory(cons
     off *= -(0.4 * m_sculpture->width() + glm::dot(off, length * axes.xAxis)); // Margin + depth (along off) cut
 
     // Downwards-facing cut -> Through but limited -> Leverage departure to push debris away from the piece
-    return prepareThroughCut(Pose(high, axes), length, -runup, axes.localize(off));
+    return prepareThroughCut(Pose(border[maxIndex], axes), length, -runup, axes.localize(off));
+}
+
+glm::dvec3 SculptProcess::alignedToBlade(const Axis3D& axes, const glm::dvec3& vertex)
+{
+    return vertex - axes.zAxis * (0.5 * m_bladeLength + glm::dot(axes.zAxis, vertex - m_sculpture->position()))
+                  + axes.yAxis * 0.5 * m_bladeThickness;
 }
 
 // Tries to identify a path from the last position to the specified position
@@ -749,18 +760,20 @@ bool SculptProcess::validateTrajectory(const std::shared_ptr<Trajectory>& trajec
 // startPose - Initial position of the robot before beginning the cut
 // depth - The distance to travel along the x-direction of startPose
 // off - The direction & distance from which to leave the piece after the cut is complete
-std::shared_ptr<CompositeTrajectory> SculptProcess::prepareThroughCut(Pose startPose, double depth, double runup, const glm::dvec3& off)
+std::shared_ptr<CompositeTrajectory> SculptProcess::prepareThroughCut(Pose pose, double depth, double runup, const glm::dvec3& off)
 {
+    glm::dvec3 origin = pose.position;
+    pose.position = alignedToBlade(pose.axes, pose.position);
+
     // Try to generate a cartesian trajectory between the two points
-    startPose.localTranslate({ -runup, 0.5 * m_bladeThickness, 0 });
-    auto cutTrajectory = std::make_shared<CartesianTrajectory>(m_robot, startPose, glm::dvec3(depth, 0, 0));
+    pose.localTranslate({ -runup, 0, 0 });
+    auto cutTrajectory = std::make_shared<CartesianTrajectory>(m_robot, pose, glm::dvec3(depth, 0, 0));
 
     cutTrajectory->setLimits(m_slowVelocityLimits, m_baseAccelerationLimits);
     if (!cutTrajectory->isValid()) return nullptr;
 
-    // Move to initial cut position
-    auto trajectory = prepareApproach(cutTrajectory->start());
-    if (trajectory == nullptr) return nullptr;
+    auto trajectory = std::make_shared<CompositeTrajectory>(m_robot->dof());
+    trajectory->setLimits(m_baseVelocityLimits, m_baseAccelerationLimits);
 
     // Pass through the cut
     trajectory->addTrajectory(cutTrajectory);
@@ -780,19 +793,11 @@ std::shared_ptr<CompositeTrajectory> SculptProcess::prepareThroughCut(Pose start
     trajectory->update();
 
     if (trajectory->isValid()) {
-        auto [ts, tf] = trajectory->tLimits(2);
-        double dist = runup + depth;
-        std::cout << "T: " << ts << " " << tf << " | " << runup << " " << depth << " | " << dist << " " << (runup / dist) << "\n";
-        auto cts = cutTrajectory->locate(runup / (runup + depth));
-        std::cout << "-> " << cts << " || "
-            << glm::dot(startPose.axes.xAxis, m_robot->getPose(cutTrajectory->evaluate(cts)).position) << "\n";
+        auto [ts, tf] = trajectory->tLimits(0);
+        auto axes = pose.axes;
+        if (depth < 0) axes.flipXZ();
 
-
-        dist = tf - ts;
-        std::cout << "---> " << (ts + cts * dist) << " \n";
-//        startPose.globalTranslate(-m_sculpture->position());
-//        startPose.axes.rotate(-m_sculpture->getRotation());
-        m_cuts.emplace_back(Pose({}, {}), ts + cts * (tf - ts), tf, 2);
+        m_cuts.emplace_back(Pose(origin, axes), ts, tf, 0);
         return trajectory;
     }
 
@@ -829,22 +834,6 @@ std::shared_ptr<CompositeTrajectory> SculptProcess::prepareBlindCut(const Pose& 
     return nullptr;
 }
 
-void SculptProcess::planRoboticSection(const std::vector<glm::dvec3>& border)
-{
-    std::vector<Waypoint> waypoints = {
-            m_latestRobotCommand,
-            m_robot->getWaypoint()
-    };
-
-//    m_lastestCommandWaypoint = LAST POSITION
-
-//    auto trajectory = std::make_shared<Trajectory>(waypoints, TrajectorySolverType::CUBIC);
-//    trajectory->setMaxVelocity(M_PI / 2);
-//
-//    m_actions.emplace_back(trajectory, m_robot);
-//    m_actions[m_actions.size() - 1].trigger = true;
-}
-
 void SculptProcess::nextAction()
 {
     std::cout << "Step " << m_step << " / " << m_actions.size() << "\n";
@@ -853,14 +842,14 @@ void SculptProcess::nextAction()
     std::cout << "AS: " << action.cuts.size() << " " << action.target << " " << action.trajectory->start() << " | " << action.trajectory->end() << "\n";
 
     // Verify that the robot will not collide with the turntable when the TT turns
-    if (action.target == m_robot && m_step < m_actions.size() - 1 && m_actions[m_step + 1].target == m_turntable) {
-        m_robot->moveTo(action.trajectory->end());
-        if (m_actions[m_step + 1].trajectory->test(this, m_turntable, 0.05)) {
-            std::cout << "TT COLLISION\n";
-//                throw std::runtime_error("[SculptProcess] TT Collision!");
-        }
-        m_robot->moveTo(action.trajectory->start());
-    }
+//    if (action.target == m_robot && m_step < m_actions.size() - 1 && m_actions[m_step + 1].target == m_turntable) {
+//        m_robot->moveTo(action.trajectory->end());
+//        if (m_actions[m_step + 1].trajectory->test(this, m_turntable, 0.05)) {
+//            std::cout << "TT COLLISION\n";
+////                throw std::runtime_error("[SculptProcess] TT Collision!");
+//        }
+//        m_robot->moveTo(action.trajectory->start());
+//    }
 
     // Begin motion of the robot
     action.target->traverse(action.trajectory);
@@ -872,8 +861,13 @@ void SculptProcess::nextAction()
         m_debris = m_sculpture->applySection();
         m_debris->setName("ACTION" + std::to_string(m_step) + "-DEBRIS");
 
-        for (const Cut& cut : action.cuts) {
-            m_debris->prepareCut(cut.pose, m_bladeThickness);
+        auto rotation = glm::quat_cast(m_sculpture->getRotation());
+
+        for (Cut& cut : action.cuts) {
+            auto localPose = Pose((cut.pose.position - m_sculpture->position()) * rotation, cut.pose.axes);
+            localPose.axes.rotate(-rotation);
+
+            m_debris->prepareCut(localPose, m_bladeThickness);
         }
 
         m_debris->remesh();

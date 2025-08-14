@@ -22,10 +22,12 @@ Debris::Debris(const std::vector<ConvexHull>& hulls)
 
 }
 
-// System - xAxis = direction of cut
+// System [Local] - xAxis = direction of cut
 void Debris::prepareCut(const Pose& system, double thickness)
 {
     auto cutPlane = Plane(system.position + thickness * system.axes.yAxis, system.axes.yAxis);
+    auto axis = system.axes.xAxis;
+
     const uint32_t initialCount = hulls().size();
 
     std::vector<uint32_t> sources;
@@ -46,14 +48,13 @@ void Debris::prepareCut(const Pose& system, double thickness)
 
     // Evaluate extents and find origin for cutting
     std::vector<std::pair<double, double>> extents;
-    double min = std::numeric_limits<double>::max(), max = std::numeric_limits<double>::lowest();
+    double min = std::numeric_limits<double>::max();
 
     for (uint32_t i = initialCount; i < hulls().size(); i++) {
-        uint32_t minIndex, maxIndex;
-        VertexArray::extremes(hulls()[i].vertices(), system.axes.xAxis, minIndex, maxIndex);
+        auto [minIndex, maxIndex] = hulls()[i].extremes(axis);
         extents.emplace_back(
-                glm::dot(system.axes.xAxis, hulls()[i].vertices()[minIndex]),
-                glm::dot(system.axes.xAxis, hulls()[i].vertices()[maxIndex])
+                glm::dot(axis, hulls()[i].vertices()[minIndex]),
+                glm::dot(axis, hulls()[i].vertices()[maxIndex])
                 );
 
         if (extents.back().first < min) {
@@ -61,61 +62,67 @@ void Debris::prepareCut(const Pose& system, double thickness)
             min = extents.back().first;
         }
 
-        if (extents.back().second > max) max = extents.back().second;
-
         std::cout << extents.back().first << " " << extents.back().second << " EXTENTS\n";
     }
 
-    m_cuts.emplace_back(origin, system.axes.xAxis);
+    m_cuts.emplace_back(origin, axis);
 
     // Prepare sections
-    double dist = max - min;
-    std::cout << min << " " << max << " " << dist << "WTF\n";
+    std::cout << min << " " << "WTF\n";
     for (uint32_t i = initialCount; i < hulls().size(); i++) {
+        double tf = extents[i - initialCount].second - min;
+
         m_cuts.back().sections.emplace_back(
                 sources[i - initialCount],
                 i,
-                (extents[i - initialCount].first - min) / dist,
-                (extents[i - initialCount].second - min) / dist
+                extents[i - initialCount].first - min,
+                extents[i - initialCount].second - min,
+                hulls()[sources[i - initialCount]].far(axis) - min
                 );
 
-        std::cout << "PP: " << m_cuts.back().sections.back().srcIndex << " " << m_cuts.back().sections.back().cutIndex << " " << m_cuts.back().sections.back().ts << " " << m_cuts.back().sections.back().tf << "\n";
+        std::cout << "zzz " << (hulls()[sources[i - initialCount]].far(axis) - min) << " ";
+
+        std::cout << "PP: " << m_cuts.back().sections.back().srcIndex << " " << m_cuts.back().sections.back().cutIndex << " " << m_cuts.back().sections.back().ts << " " << m_cuts.back().sections.back().tf << " " << m_cuts.back().sections.back().depth << "\n";
+//        if (depth > m_cuts.back().sections.back().tf) throw std::runtime_error("[Debris] Invalid depth specified");
     }
 
-
-//    while (hulls().size() > count) {
-//        remove(hulls().size() - 1);
-//    }
 }
 
-// Shaves material from the next section at ratio [0-1]. Releases fragments as connections are removed
-std::vector<std::shared_ptr<RigidBody>> Debris::removeMaterial(double ratio)
+// Shaves material from the next section (depth from the origin). Releases fragments as connections are removed
+std::vector<std::shared_ptr<RigidBody>> Debris::removeMaterial(double depth)
 {
     std::vector<std::shared_ptr<RigidBody>> fragments;
 
-    if (!m_cuts.empty()) {
-        if (ratio >= 1) {
-            fragments = removeCut();
-        } else {
-            Plane cutPlane(m_cuts[0].origin + m_cuts[0].axis * ratio, m_cuts[0].axis);
+    std::cout << depth << " ";
 
-            for (uint32_t i = 0; i < m_cuts[0].sections.size(); i++) {
-                if (m_cuts[0].sections[i].ts < ratio) {
-                    if (m_cuts[0].sections[i].tf < ratio) { // To delete section
-                        std::shared_ptr<RigidBody> fragment = removeSection(i);
-                        if (fragment != nullptr) fragments.push_back(fragment);
-                    } else {
-                        auto remainder = Collision::fragment(hulls()[m_cuts[0].sections[i].cutIndex], cutPlane);
-                        if (remainder.isValid()) replace(remainder, m_cuts[0].sections[i].cutIndex);
-                    }
+    if (!m_cuts.empty()) {
+        Plane cutPlane(m_cuts[0].origin + m_cuts[0].axis * depth, m_cuts[0].axis);
+
+        for (uint32_t i = 0; i < m_cuts[0].sections.size(); i++) {
+            std::cout << "[" << i << " " << m_cuts[0].sections[i].ts << " " << m_cuts[0].sections[i].tf << "] ";
+            if (m_cuts[0].sections[i].ts < depth) {
+                if (m_cuts[0].sections[i].depth <= depth + 1e-12) {
+                    std::shared_ptr<RigidBody> fragment = tryFragmentRelease(m_cuts[0].sections[i]);
+                    if (fragment != nullptr) fragments.push_back(fragment);
+                }
+
+                if (m_cuts[0].sections[i].tf <= depth + 1e-12) { // To delete section
+                    removeSection(i); // Fragment must already have been released if reached
+                } else {
+                    auto remainder = Collision::fragment(hulls()[m_cuts[0].sections[i].cutIndex], cutPlane);
+                    if (remainder.isValid()) replace(remainder, m_cuts[0].sections[i].cutIndex);
                 }
             }
         }
 
+        if (m_cuts[0].sections.empty()) m_cuts.pop_front();
+
         remesh();
 
+        std::cout << "\n";
         return fragments;
     }
+    std::cout << "\n";
 
     return {};
 }
@@ -135,28 +142,43 @@ std::vector<std::shared_ptr<RigidBody>> Debris::removeCut()
 
 std::shared_ptr<RigidBody> Debris::removeSection(uint32_t index)
 {
-    uint32_t last = hulls().size() - 1, srcIndex = m_cuts[0].sections[index].srcIndex, cutIndex = m_cuts[0].sections[index].cutIndex;
+    auto fragment = tryFragmentRelease(m_cuts[0].sections[index]);
+
+    uint32_t last = hulls().size() - 1, cutIndex = m_cuts[0].sections[index].cutIndex;
 
     replaceIndex(last, cutIndex);
 
     remove(cutIndex);
     m_cuts[0].sections.erase(m_cuts[0].sections.begin() + index);
 
-    if (m_connectionCounts[srcIndex] == 0) throw std::runtime_error("[Debris] Unhandled connection");
-    m_connectionCounts[srcIndex]--;
+    return fragment;
+}
 
-    if (m_connectionCounts[srcIndex] == 0) { // All connections are removed -> release hull as a fragment
+std::shared_ptr<RigidBody> Debris::tryFragmentRelease(Section& section)
+{
+    // Confirm section is connected to a fragment (Can be released a bit earlier than the section is finished)
+    if (section.srcIndex != std::numeric_limits<uint32_t>::max()) {
+        uint32_t index = section.srcIndex;
 
-        replaceIndex(hulls().size() - 1, srcIndex);
+        if (m_connectionCounts[index] == 0) throw std::runtime_error("[Debris] Unhandled connection");
+        m_connectionCounts[index]--;
 
-        auto fragment = std::make_shared<RigidBody>(hulls()[srcIndex]);
-        fragment->setTransform(m_transform);
-        fragment->setType(RigidBody::Type::DYNAMIC);
+        section.srcIndex = std::numeric_limits<uint32_t>::max();
+
+        if (m_connectionCounts[index] == 0) { // All connections are removed -> release hull as a fragment
+
+            replaceIndex(hulls().size() - 1, index);
+
+            auto fragment = std::make_shared<RigidBody>(hulls()[index]);
+            fragment->setTransform(m_transform);
+            fragment->setType(RigidBody::Type::DYNAMIC);
 //        fragment->zero();
 //        fragment->disableCollisions();
 
-        remove(srcIndex);
-        return fragment;
+            remove(index);
+
+            return fragment;
+        }
     }
 
     return nullptr;

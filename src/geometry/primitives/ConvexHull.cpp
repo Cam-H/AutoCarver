@@ -268,6 +268,23 @@ uint32_t ConvexHull::walk(const glm::dvec3& axis, uint32_t index) const
     return index;
 }
 
+std::tuple<uint32_t, uint32_t> ConvexHull::extremes(const glm::dvec3& axis) const
+{
+    return { walk(-axis), walk(axis) };
+}
+
+double ConvexHull::span(const glm::dvec3& axis) const
+{
+    auto [min, max] = extremes(axis);
+    return glm::dot(axis, m_vertices[max] - m_vertices[min]);
+}
+
+double ConvexHull::far(const glm::dvec3& axis) const
+{
+    auto [idx, vertex] = extreme(axis);
+    return glm::dot(axis, vertex);
+}
+
 const glm::dvec3& ConvexHull::start() const
 {
     return m_vertices[m_walkStart];

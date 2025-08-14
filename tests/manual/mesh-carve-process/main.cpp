@@ -110,8 +110,8 @@ int main(int argc, char *argv[])
 
     auto sculptureButton = window->findChild<QCheckBox*>("sculptureButton");
     QObject::connect(sculptureButton, &QCheckBox::clicked, [&](bool checked) {
-        if (checked) sceneWidget->show(0, Scene::Model::ALL);
-        else sceneWidget->hide(0, Scene::Model::ALL);
+        if (checked) sceneWidget->show(0, Scene::Model::MESH);
+        else sceneWidget->hide(0, Scene::Model::MESH);
         sceneWidget->update();
     });
 
@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
 
 
 
-//    scene->enableCollisionColoring(false);
+    scene->enableCollisionColoring(false);
     scene->start();
 
     // Handle updating robot

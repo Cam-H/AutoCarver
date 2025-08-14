@@ -21,7 +21,7 @@ public:
 
     [[nodiscard]] std::shared_ptr<CartesianTrajectory> reversed(const std::shared_ptr<Robot>& robot) const;
 
-    [[nodiscard]] double locate(double ratio) const;
+//    [[nodiscard]] double locate(double ratio) const;
 
     [[nodiscard]] bool isValid() const override;
 

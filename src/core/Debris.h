@@ -19,25 +19,22 @@ public:
     explicit Debris(const ConvexHull& hull);
     explicit Debris(const std::vector<ConvexHull>& hulls);
 
-    void prepareCut(const Pose& worldSystem, double thickness);
+    void prepareCut(const Pose& system, double thickness);
 
-    std::vector<std::shared_ptr<RigidBody>> removeMaterial(double ratio);
+    std::vector<std::shared_ptr<RigidBody>> removeMaterial(double depth);
 
 private:
 
-    std::vector<std::shared_ptr<RigidBody>> removeCut();
-    std::shared_ptr<RigidBody> removeSection(uint32_t index);
-
-    void replaceIndex(uint32_t oldIndex, uint32_t newIndex);
-
     struct Section {
-        Section(uint32_t src, uint32_t cut, double ts, double tf) : srcIndex(src), cutIndex(cut), ts(ts), tf(tf) {}
+        Section(uint32_t src, uint32_t cut, double ts, double tf, double depth) : srcIndex(src), cutIndex(cut), ts(ts), tf(tf), depth(std::min(tf, depth)) {}
 
         uint32_t srcIndex;
         uint32_t cutIndex;
 
-        double ts;
-        double tf;
+        double ts; // Min distance from origin
+        double tf; // Max distance from origin
+
+        double depth; // Distance from origin to release fragment (Bit less than tf based on thickness)
     };
 
     struct Cut {
@@ -48,6 +45,13 @@ private:
 
         std::vector<Section> sections;
     };
+
+    std::vector<std::shared_ptr<RigidBody>> removeCut();
+    std::shared_ptr<RigidBody> removeSection(uint32_t index);
+
+    std::shared_ptr<RigidBody> tryFragmentRelease(Section& section);
+
+    void replaceIndex(uint32_t oldIndex, uint32_t newIndex);
 
 private:
 

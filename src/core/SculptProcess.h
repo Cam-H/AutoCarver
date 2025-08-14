@@ -41,6 +41,8 @@ public:
     void enableConvexTrim(bool enable);
     void enableProcessCut(bool enable);
 
+    void enableCollisionTesting(bool enable);
+
     void setSlicingOrder(ConvexSliceOrder order);
     void setActionLimit(uint32_t limit);
     void enableActionLimit(bool enable);
@@ -106,6 +108,8 @@ private:
     [[nodiscard]] Waypoint alignedToVertexWP(const Axis3D& axes, const glm::dvec3& vertex) const;
     [[nodiscard]] Waypoint alignedToVertexWP(const Axis3D& axes, const glm::dvec3& vertex, const glm::dvec3& tryAxis, double tryLimit) const;
 
+    [[nodiscard]] glm::dvec3 alignedToBlade(const Axis3D& axes, const glm::dvec3& vertex);
+
     static void toWorldSpace(glm::dvec3& normal, const glm::dquat& rotation);
     void toWorldSpace(std::vector<glm::dvec3>& border, const glm::dquat& rotation) const;
 
@@ -114,24 +118,23 @@ private:
 
     void planConvexTrim();
     std::vector<Plane> orderConvexTrim(const std::vector<Plane>& cuts);
-    bool planConvexTrim(const ConvexHull& hull, const Plane& plane);
+    std::vector<Action> planConvexTrim(const ConvexHull& hull, const Plane& plane);
 
     void planOutlineRefinement(double stepDg);
     void planOutlineRefinement(Profile& profile);
 
     void planFeatureRefinement();
 
-    void planTurntableAlignment(double theta);
-
-    void planRoboticSection(const std::shared_ptr<CompositeTrajectory>& trajectory);
+    Action planTurntableAlignment(double theta);
+    Action planRoboticSection(const std::shared_ptr<CompositeTrajectory>& trajectory);
 
     std::shared_ptr<CompositeTrajectory> prepareApproach(const Waypoint& destination);
 
     std::shared_ptr<CompositeTrajectory> preparePlanarTrajectory(const std::vector<glm::dvec3>& border, const glm::dvec3& normal);
-    std::shared_ptr<CompositeTrajectory> prepareThroughCut(Pose startPose, double depth, double runup, const glm::dvec3& off);
+    std::shared_ptr<CompositeTrajectory> prepareThroughCut(Pose pose, double depth, double runup, const glm::dvec3& off);
     std::shared_ptr<CompositeTrajectory> prepareBlindCut(const Pose& pose, double depth);
 
-    void planRoboticSection(const std::vector<glm::dvec3>& border);
+    void commitActions(const std::vector<Action>& actions);
 
     void nextAction();
 
@@ -173,12 +176,15 @@ private:
 
     Interpolator::SolverType m_solver;
 
-    std::vector<Action> m_actions;
     std::deque<Cut> m_cuts; // Temporary container for cuts when preparing action
+
+    std::vector<Action> m_actions;
 
     bool m_planned;
     bool m_convexTrimEnable;
     bool m_processCutEnable;
+
+    bool m_collisionTestingEnable;
 
     ConvexSliceOrder m_sliceOrder;
 
