@@ -111,9 +111,11 @@ public:
 
     void print() const;
 
-private:
+protected:
 
     RigidBody();
+
+private:
 
     void prepareColliders();
 

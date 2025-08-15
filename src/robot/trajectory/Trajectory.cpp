@@ -206,8 +206,6 @@ bool Trajectory::test(const Scene* scene, const std::shared_ptr<Robot>& robot, d
 
     const Waypoint initialWP = robot->getWaypoint();
 
-    return false;
-
     double t = dt;
     while (t <= 1.0) {
         robot->moveTo(evaluate(t));

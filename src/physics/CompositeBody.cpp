@@ -12,31 +12,44 @@
 
 #include <iostream>
 
-CompositeBody::CompositeBody(const std::shared_ptr<Mesh>& mesh)
-    : RigidBody(mesh)
-    , m_baseColor(0.7f, 0.7f, 0.7f)
+CompositeBody::CompositeBody()
+    : RigidBody()
+    , m_baseColor(0.7, 0.7, 0.7)
     , m_applyCompositeColor(true)
 {
+    // prepareTree() must be called somewhere during initialization
+}
 
+CompositeBody::CompositeBody(const std::shared_ptr<Mesh>& mesh)
+    : CompositeBody()
+{
+    setMesh(mesh, true);
+    prepareTree();
 }
 
 CompositeBody::CompositeBody(const std::vector<ConvexHull>& hulls)
-    : RigidBody(MeshBuilder::composite(hulls))
-    , m_hulls(hulls)
-    , m_tree(nullptr)
-    , m_baseColor(0.7f, 0.7f, 0.7f)
-    , m_applyCompositeColor(true)
+    : CompositeBody()
 {
-    prepareTree();
+    if (!hulls.empty()) {
+        setMesh(MeshBuilder::composite(hulls), true);
 
+        m_hulls = hulls;
+        prepareHulls();
+    }
+
+    prepareTree();
+}
+
+void CompositeBody::prepareHulls()
+{
     for (ConvexHull& hull : m_hulls) hull.evaluate();
 }
 
 void CompositeBody::prepareTree()
 {
-    auto bounds = AABB(m_hull);
+    auto bounds = m_hull.isValid() ? AABB(m_hull) : AABB(1.0);
 
-    m_tree = std::make_shared<Octree>(6, 1.01f * bounds.maxLength());
+    m_tree = std::make_shared<Octree>(6, 1.01 * bounds.maxLength());
     m_tree->translate(bounds.center());
 
     m_mergeTests = std::vector<uint32_t>(m_hulls.size());

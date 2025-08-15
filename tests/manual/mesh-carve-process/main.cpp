@@ -97,6 +97,7 @@ int main(int argc, char *argv[])
 
     auto eoatMesh = MeshHandler::loadAsMeshBody("../res/meshes/Blade.obj");
     auto eoat = scene->createBody(eoatMesh);
+    eoat->setName("BLADE");
     eoat->prepareColliderVisuals();
     robot->setEOAT(eoat, false);
 
@@ -163,6 +164,12 @@ int main(int argc, char *argv[])
         sceneWidget->update();
     });
 
+    auto testCollisionButton = window->findChild<QCheckBox*>("testCollisionButton");
+    scene->enableCollisionTesting(testCollisionButton->isChecked());
+    QObject::connect(testCollisionButton, &QCheckBox::clicked, [&](bool checked) {
+        scene->enableCollisionTesting(checked);
+    });
+
     auto sliceOrderBox = window->findChild<QComboBox*>("sliceOrderBox");
     setOrder(sliceOrderBox->currentIndex());
     QObject::connect(sliceOrderBox, &QComboBox::activated, [&](int index) {
@@ -185,7 +192,7 @@ int main(int argc, char *argv[])
 
 
 
-    scene->enableCollisionColoring(false);
+//    scene->enableCollisionColoring(false);
     scene->start();
 
     // Handle updating robot
@@ -195,6 +202,7 @@ int main(int argc, char *argv[])
         while (true) {
             if (scene->simulationActive() || (!idle && scene->simulationIdle()) || (!complete && scene->simulationComplete())) {
                 sceneWidget->update();
+//                std::cout << "Collision: " << scene->test(scene->getTurntable()->getEOAT()) << "\n";
 
                 complete = scene->simulationComplete();
             } else {

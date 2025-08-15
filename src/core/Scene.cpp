@@ -199,7 +199,7 @@ void Scene::step(double delta)
 
 void Scene::update()
 {
-    for (const std::shared_ptr<Robot>& robot : m_robots) robot->update();
+//    for (const std::shared_ptr<Robot>& robot : m_robots) robot->update();
 
     if (m_colorCollisions) {
         for (const std::shared_ptr<Robot>& robot : m_robots) {

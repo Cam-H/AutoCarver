@@ -41,7 +41,7 @@ void Robot::prepareLinks()
     m_links.push_back(std::make_shared<RigidBody>(baseMesh));
     m_links.back()->prepareColliderVisuals();
     m_links.back()->setMask(0); // Base is fixed so explicit collision tests are unnecessary
-    m_links.back()->setLayer(level <<= 1); // Prevent overlap with mask of previous robot
+    m_links.back()->setLayer(level); // Prevent overlap with mask of previous robot
 
     for (const Joint& joint : m_kinematics->getJoints()) {
 //        auto mesh = MeshBuilder::cylinder(0.25f, height, 8);
@@ -83,6 +83,8 @@ void Robot::prepareLinks()
     setName(m_name); // Set link names
 
     updateTransforms();
+
+    level <<= 3; // Ensure subsequent robot masks do not overlap
 }
 
 uint32_t Robot::linkMask(uint32_t level)
@@ -366,4 +368,11 @@ Waypoint Robot::preferredWaypoint(const Waypoint& optionA, const Waypoint& optio
 bool Robot::inTransit() const
 {
     return m_currentTrajectory != nullptr && !m_currentTrajectory->complete();
+}
+
+void Robot::print() const
+{
+    std::cout << "[Robot] name: " << m_name << ", dof: " << dof() << ", EOAT: " << m_eoat << ", in process: " << m_currentTrajectory << "\nlinks:\n";
+    for (const std::shared_ptr<RigidBody>& link : m_links) link->print();
+    if (m_eoat != nullptr) m_eoat->print();
 }

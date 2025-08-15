@@ -10,16 +10,26 @@
 
 Debris::Debris(const ConvexHull& hull)
     : CompositeBody({ hull })
-    , m_connectionCounts(1, 0)
 {
-    applyCompositeColors(false);
+
 }
 
 Debris::Debris(const std::vector<ConvexHull>& hulls)
     : CompositeBody(hulls)
-    , m_connectionCounts(hulls.size(), 0)
 {
+
+}
+
+// Deferred in case hulls are to be individually inserted
+void Debris::initialize()
+{
+    m_connectionCounts = std::vector<uint32_t>(hulls().size(), 0);
     applyCompositeColors(false);
+
+    prepareHulls();
+    prepareTree();
+
+    remesh();
 }
 
 // System [Local] - xAxis = direction of cut

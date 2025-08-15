@@ -98,6 +98,8 @@ private:
     uint32_t m_step;
     std::vector<SectionOperation> m_operations;
 
+    std::vector<uint32_t> m_newFaces; // Track indices of recently added faces
+
     uint32_t m_formStep;
 
     // Styling

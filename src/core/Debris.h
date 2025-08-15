@@ -19,6 +19,8 @@ public:
     explicit Debris(const ConvexHull& hull);
     explicit Debris(const std::vector<ConvexHull>& hulls);
 
+    void initialize();
+
     void prepareCut(const Pose& system, double thickness);
 
     std::vector<std::shared_ptr<RigidBody>> removeMaterial(double depth);

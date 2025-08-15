@@ -78,6 +78,7 @@ public:
 
     bool inTransit() const;
 
+    void print() const;
 
 
 protected:

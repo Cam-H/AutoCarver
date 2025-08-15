@@ -7,6 +7,14 @@
 #include "ConvexHull.h"
 #include "geometry/VertexArray.h"
 
+// Creates a cube, centered on the origin with the given side length
+AABB::AABB(double sideLength)
+    : min(-0.5 * sideLength, -0.5 * sideLength, -0.5 * sideLength)
+    , max( 0.5 * sideLength,  0.5 * sideLength,  0.5 * sideLength)
+{
+
+}
+
 AABB::AABB(const glm::dvec3& min, double sideLength)
     : AABB(min, min + glm::dvec3{ sideLength, sideLength, sideLength})
 {

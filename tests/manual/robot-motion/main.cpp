@@ -515,6 +515,16 @@ int main(int argc, char *argv[])
         saveWaypoint();
     });
 
+    auto spinTestButton = window->findChild<QPushButton*>("spinTestButton");
+    QObject::connect(spinTestButton, &QPushButton::clicked, [&]() {
+        auto traj = std::make_shared<SimpleTrajectory>(Waypoint({ 0 }, true), Waypoint({ 270 }, true), solver);
+        traj->setLimits({ 90 }, { 300 });
+        scene->getTurntable()->traverse(traj);
+//
+        bool result = traj->test(scene.get(), scene->getTurntable(), 0.05);
+        std::cout << "Collision test: " << result << "\n";
+    });
+
     wpStartField = window->findChild<QSpinBox*>("wpStartField");
     QObject::connect(wpStartField, &QSpinBox::valueChanged, [&](int value) {
         doControlEnable();
@@ -630,6 +640,8 @@ int main(int argc, char *argv[])
             rateTimer.reset();
 
             sceneWidget->update();
+
+            if (robot->inTransit() || scene->getTurntable()->inTransit()) scene->update();
 
             if (robot->inTransit()) {
 

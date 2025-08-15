@@ -192,6 +192,9 @@ void SculptProcess::plan()
         return;
     }
 
+    const Waypoint initialRobotCommand = m_latestRobotCommand = m_robot->getWaypoint();
+    const Waypoint initialTableCommand = m_latestTableCommand = m_turntable->getWaypoint();
+
     // Ready the sculpture by carving the convex hull of the model
     if (m_convexTrimEnable) planConvexTrim();
     else m_sculpture->restoreAsHull();
@@ -202,7 +205,13 @@ void SculptProcess::plan()
     // Capture model features with fine carving
 //    planFeatureRefinement();
 
-    // Reset the sculpture
+    // Return to the home position
+    commitActions({ Action(std::make_shared<HoldPosition>(m_robotHome), m_robot) });
+
+    // Restore initial configuration
+    m_robot->moveTo(initialRobotCommand);
+    m_turntable->moveTo(initialTableCommand);
+
     m_sculpture->restore();
     m_sculpture->setRotation(glm::angleAxis(0.0, UP));
 
@@ -487,7 +496,6 @@ std::vector<Plane> SculptProcess::orderConvexTrim(const std::vector<Plane>& cuts
 void SculptProcess::planConvexTrim()
 {
     std::vector<Plane> steps;
-    std::vector<Action> actions;
 
     ConvexHull hull = ConvexHull(model);
 
@@ -499,13 +507,12 @@ void SculptProcess::planConvexTrim()
     hull = m_sculpture->hull();
     for (Plane& step : steps) {
 
-        if (m_actionLimitEnable && m_actions.size() + actions.size() > m_actionLimit) {
+        if (m_actionLimitEnable && m_actions.size() >= m_actionLimit) {
             std::cout << "\033[93m[SculptProcess] Action limit exceeded\033[0m\n";
             break;
         }
 
         auto fragments = Collision::fragments(hull, step);
-        m_sculpture->setHull(fragments.second);
 
         if (m_minCutVolume > 0) fragments.first.evaluate();
 
@@ -514,27 +521,123 @@ void SculptProcess::planConvexTrim()
 
         // Try performing cut if the action would remove sufficient material
         if ((m_minCutVolume == 0 || fragments.first.volume() > m_minCutVolume)) {
-            auto nextActions = planConvexTrim(hull, step);
-            if (!nextActions.empty()) {
-                actions.insert(actions.end(), nextActions.begin(), nextActions.end());
+            auto actions = planConvexTrim(hull, step);
+            if (!actions.empty()) {
+                commitActions(actions);
                 hull = fragments.second;
+                m_sculpture->setHull(hull); // Important to record so commitActions() checks collisions against the latest hull
             }
         }
     }
-
-    commitActions(actions);
 }
 
 // Develops trajectories between disjoint actions to motions are continuous before attaching them to the list
 void SculptProcess::commitActions(const std::vector<Action>& actions)
 {
-    for (uint32_t i = 0; i < actions.size(); i++) {
-        m_actions.push_back(actions[i]);
-    }
+    if (m_collisionTestingEnable) {
+        for (const Action& action : actions) {
+
+            // Move robot away if it would collide with the TT when it moves
+            if (action.target == m_turntable) {
+                m_robot->moveTo(m_latestRobotCommand);
+
+                if (testTurntableCollision(action.trajectory)) {
+                    m_actions.push_back(planTurntableClearance());
+                }
+
+                m_latestTableCommand = action.trajectory->end();
+            }
+
+            // Prepare approach trajectories to connect the last pose and the initial pose for this action
+            if (action.target == m_robot) {
+                m_turntable->moveTo(m_latestTableCommand);
+
+                auto linkTrajectory = prepareApproach(action.trajectory->start());
+                if (linkTrajectory != nullptr) m_actions.emplace_back(linkTrajectory, m_robot);
+                else std::cout << "\033[93mFailed to link actions\033[0m\n";
+
+                m_latestRobotCommand = action.trajectory->end();
+            }
+
+            m_actions.push_back(action);
+        }
+
+    } else for (const Action& action : actions) m_actions.push_back(action);
+
+//    m_robot->print();
+//    m_turntable->print();
+//
+//    print();
+
+
+//    if (action.target == m_robot && m_step < m_actions.size() - 1 && m_actions[m_step + 1].target == m_turntable) {
+//        m_robot->moveTo(action.trajectory->end());
+//        if (m_actions[m_step + 1].trajectory->test(this, m_turntable, 0.05)) {
+//            std::cout << "TT COLLISION\n";
+////                throw std::runtime_error("[SculptProcess] TT Collision!");
+//        }
+//        m_robot->moveTo(action.trajectory->start());
+//    }
 
     // Move to initial cut position
 //    auto trajectory = prepareApproach(cutTrajectory->start());
 //    if (trajectory == nullptr) return nullptr;
+}
+
+bool SculptProcess::testTurntableCollision(const std::shared_ptr<Trajectory>& ttTrajectory)
+{
+    return ttTrajectory->test(this, m_turntable, 0.05);
+}
+
+// Develops an action to move the robot out of the way of the turntable
+SculptProcess::Action SculptProcess::planTurntableClearance()
+{
+    // TODO better motions than moving towards the neutral position
+    return planApproach(m_robotNeutral);
+}
+
+SculptProcess::Action SculptProcess::planApproach(const Waypoint& destination)
+{
+    auto trajectory = std::make_shared<SimpleTrajectory>(m_latestRobotCommand, destination, m_solver);
+    trajectory->setLimits(m_baseVelocityLimits, m_baseAccelerationLimits);
+
+    m_latestRobotCommand = destination;
+
+    return { trajectory, m_robot };
+}
+
+// Tries to identify a path from the last position to the specified position
+// TODO Could improve reliability with an actual path planning algorithm
+std::shared_ptr<Trajectory> SculptProcess::prepareApproach(const Waypoint& destination)
+{
+    const double dt = 0.1;
+
+    // Try the direct path first
+    auto directTrajectory = std::make_shared<SimpleTrajectory>(m_latestRobotCommand, destination, m_solver);
+    directTrajectory->setLimits(m_baseVelocityLimits, m_baseAccelerationLimits);
+    if (validateTrajectory(directTrajectory, dt)) return directTrajectory;
+
+
+    auto pose = m_robot->getPose(destination);
+    pose.localTranslate({ 0, 0.5, 0});
+
+    auto midpoint = m_robot->inverse(pose);
+    if (midpoint.isValid()) {
+        auto trajectory = std::make_shared<CompositeTrajectory>(m_robot->dof());
+        trajectory->setLimits(m_baseVelocityLimits, m_baseAccelerationLimits);
+        trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(m_latestRobotCommand, midpoint, m_solver));
+        trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(midpoint, destination, m_solver));
+        trajectory->update();
+
+        if (validateTrajectory(trajectory, dt)) return trajectory;
+    }
+
+    return nullptr;
+}
+
+bool SculptProcess::validateTrajectory(const std::shared_ptr<Trajectory>& trajectory, double dt)
+{
+    return trajectory->isValid() && !trajectory->test(this, m_robot, dt);
 }
 
 // Generates trajectory to perform a trim action. Returns true if successful
@@ -544,7 +647,9 @@ std::vector<SculptProcess::Action> SculptProcess::planConvexTrim(const ConvexHul
     if (border.size() < 3) return {};
 
     std::shared_ptr<CompositeTrajectory> trajectory;
-    double baseRotation = Ray::axialRotation(UP, plane.normal), theta; // m_latestTableCommand.values[0]
+    const double initialRotation = m_turntable->getJointValue(0);
+
+    double baseRotation = Ray::axialRotation(UP, plane.normal), theta;
 
     // Try developing a trajectory that will allow the robot to complete the planar section
     for (double offset : ATTEMPT_OFFSETS) {
@@ -558,7 +663,8 @@ std::vector<SculptProcess::Action> SculptProcess::planConvexTrim(const ConvexHul
         std::vector<glm::dvec3> wsBorder = border;
         toWorldSpace(wsBorder, rotation);
 
-        m_sculpture->setRotation(rotation);
+        m_turntable->setJointValue(0, theta);
+//        m_sculpture->setRotation(rotation);
 
         trajectory = preparePlanarTrajectory(wsBorder, wsNormal);
         if (trajectory != nullptr) break;
@@ -573,10 +679,11 @@ std::vector<SculptProcess::Action> SculptProcess::planConvexTrim(const ConvexHul
     // Record mesh manipulation operation for later application during carving process
     m_sculpture->queueSection(plane.inverted());
 
-    // Don't add new command if the TT is already in position
-    if (std::abs(m_latestTableCommand.values[0] - theta) < 1e-12) return { planRoboticSection(trajectory) };
 
-    return { planTurntableAlignment(theta), planRoboticSection(trajectory) };
+    // Don't add new command if the TT is already in position
+    if (std::abs(initialRotation - theta) < 1e-12) return { planRoboticSection(trajectory) };
+
+    return { planTurntableAlignment(initialRotation, theta), planRoboticSection(trajectory) };
 }
 
 void SculptProcess::planOutlineRefinement(double stepDg)
@@ -616,7 +723,7 @@ void SculptProcess::planOutlineRefinement(double stepDg)
         angle += stepDg;
 
         // Use the turntable to align the profile with the carving robot
-        planTurntableAlignment(m_sculpture->rotation() - angle * (double)M_PI / 180.0f + M_PI / 2);
+//        planTurntableAlignment(m_sculpture->rotation() - angle * (double)M_PI / 180.0f + M_PI / 2);
 
         std::cout << angle << " " << (angle * (double)M_PI / 180.0f) << " " << m_sculpture->rotation() << " RR\n";
 
@@ -677,19 +784,18 @@ void SculptProcess::planFeatureRefinement()
     // Decompose model into patches and handle separately?
 }
 
-SculptProcess::Action SculptProcess::planTurntableAlignment(double theta)
+SculptProcess::Action SculptProcess::planTurntableAlignment(double start, double end)
 {
-    auto trajectory = std::make_shared<SimpleTrajectory>(m_latestTableCommand, Waypoint({ theta}, false), m_solver);
+    auto trajectory = std::make_shared<SimpleTrajectory>(
+            Waypoint({ start }, false), Waypoint({ end }, false), m_solver);
+
     trajectory->setLimits({ M_PI / 2}, { M_PI });
-    m_latestTableCommand = trajectory->end();
 
     return { trajectory, m_turntable };
 }
 
 SculptProcess::Action SculptProcess::planRoboticSection(const std::shared_ptr<CompositeTrajectory>& trajectory)
 {
-    m_latestRobotCommand = trajectory->end();
-
     Action action(trajectory, m_robot);
     action.cuts = m_cuts;
     m_cuts.clear();
@@ -726,48 +832,6 @@ glm::dvec3 SculptProcess::alignedToBlade(const Axis3D& axes, const glm::dvec3& v
 {
     return vertex - axes.zAxis * (0.5 * m_bladeLength + glm::dot(axes.zAxis, vertex - m_sculpture->position()))
                   + axes.yAxis * 0.5 * m_bladeThickness;
-}
-
-// Tries to identify a path from the last position to the specified position
-// TODO Could improve reliability with an actual path planning algorithm
-std::shared_ptr<CompositeTrajectory> SculptProcess::prepareApproach(const Waypoint& destination)
-{
-    const double dt = 0.01;
-    double duration = 0;
-
-    auto trajectory = std::make_shared<CompositeTrajectory>(m_robot->dof());
-    trajectory->setLimits(m_baseVelocityLimits, m_baseAccelerationLimits);
-
-    // Try direct path
-//    auto nextTraj = std::make_shared<SimpleTrajectory>(m_latestRobotCommand, destination, m_solver);
-//    if (validateTrajectory(nextTraj, dt)) {
-//        trajectory->addTrajectory(nextTraj);
-//        std::cout << "A1\n";
-//        return trajectory;
-//    }
-
-    // Try passing through the neutral pose
-    auto nextTraj = std::make_shared<SimpleTrajectory>(m_latestRobotCommand, m_robotNeutral, m_solver);
-    if (validateTrajectory(nextTraj, dt)) {
-        trajectory->addTrajectory(nextTraj);
-//        duration += nextTraj->duration();
-
-        nextTraj = std::make_shared<SimpleTrajectory>(m_robotNeutral, destination, m_solver);
-        if (validateTrajectory(nextTraj, dt)) { // dt * (duration + nextTraj->duration()) / nextTraj->duration()
-            trajectory->addTrajectory(nextTraj);
-//            std::cout << "A2\n";
-            return trajectory;
-        }
-    }
-
-//    std::cout << "REJECT\n";
-
-    return nullptr;
-}
-
-bool SculptProcess::validateTrajectory(const std::shared_ptr<Trajectory>& trajectory, double dt)
-{
-    return trajectory->isValid() && !trajectory->test(this, m_robot, dt);
 }
 
 // startPose - Initial position of the robot before beginning the cut
@@ -853,16 +917,6 @@ void SculptProcess::nextAction()
     auto& action = m_actions[m_step];
 
     std::cout << "AS: " << action.cuts.size() << " " << action.target << " " << action.trajectory->start() << " | " << action.trajectory->end() << "\n";
-
-    // Verify that the robot will not collide with the turntable when the TT turns
-//    if (action.target == m_robot && m_step < m_actions.size() - 1 && m_actions[m_step + 1].target == m_turntable) {
-//        m_robot->moveTo(action.trajectory->end());
-//        if (m_actions[m_step + 1].trajectory->test(this, m_turntable, 0.05)) {
-//            std::cout << "TT COLLISION\n";
-////                throw std::runtime_error("[SculptProcess] TT Collision!");
-//        }
-//        m_robot->moveTo(action.trajectory->start());
-//    }
 
     // Begin motion of the robot
     action.target->traverse(action.trajectory);

@@ -125,10 +125,16 @@ private:
 
     void planFeatureRefinement();
 
-    Action planTurntableAlignment(double theta);
+    Action planTurntableAlignment(double start, double end);
     Action planRoboticSection(const std::shared_ptr<CompositeTrajectory>& trajectory);
 
-    std::shared_ptr<CompositeTrajectory> prepareApproach(const Waypoint& destination);
+    bool testTurntableCollision(const std::shared_ptr<Trajectory>& ttTrajectory);
+    Action planTurntableClearance();
+    Action planApproach(const Waypoint& destination);
+
+
+
+    std::shared_ptr<Trajectory> prepareApproach(const Waypoint& destination);
 
     std::shared_ptr<CompositeTrajectory> preparePlanarTrajectory(const std::vector<glm::dvec3>& border, const glm::dvec3& normal);
     std::shared_ptr<CompositeTrajectory> prepareThroughCut(Pose pose, double depth, double runup, const glm::dvec3& off);

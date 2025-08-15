@@ -56,9 +56,7 @@ RigidBody::RigidBody(const std::string& filename)
 RigidBody::RigidBody(const std::shared_ptr<Mesh>& mesh)
     : RigidBody()
 {
-    m_mesh = mesh;
-
-    updateColliders();
+    setMesh(mesh, true);
 }
 
 RigidBody::RigidBody(const ConvexHull& hull)

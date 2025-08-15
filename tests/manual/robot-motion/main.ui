@@ -45,9 +45,9 @@
          <property name="geometry">
           <rect>
            <x>0</x>
-           <y>-569</y>
+           <y>-1337</y>
            <width>433</width>
-           <height>1935</height>
+           <height>1965</height>
           </rect>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_6">
@@ -282,6 +282,24 @@
                       </font>
                      </property>
                      <layout class="QGridLayout" name="gridLayout_7">
+                      <item row="1" column="1">
+                       <widget class="QSpinBox" name="ttAngleField">
+                        <property name="font">
+                         <font>
+                          <pointsize>10</pointsize>
+                         </font>
+                        </property>
+                        <property name="minimum">
+                         <number>-720</number>
+                        </property>
+                        <property name="maximum">
+                         <number>720</number>
+                        </property>
+                        <property name="singleStep">
+                         <number>5</number>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="0" column="0">
                        <widget class="QLabel" name="label_27">
                         <property name="font">
@@ -301,25 +319,14 @@
                         </property>
                        </widget>
                       </item>
-                      <item row="1" column="1">
-                       <widget class="QSpinBox" name="ttAngleField">
-                        <property name="font">
-                         <font>
-                          <pointsize>10</pointsize>
-                         </font>
-                        </property>
-                        <property name="minimum">
-                         <number>-720</number>
-                        </property>
-                        <property name="maximum">
-                         <number>720</number>
-                        </property>
-                        <property name="singleStep">
-                         <number>5</number>
-                        </property>
-                       </widget>
-                      </item>
                      </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="spinTestButton">
+                     <property name="text">
+                      <string>Spin Test</string>
+                     </property>
                     </widget>
                    </item>
                   </layout>
@@ -1072,6 +1079,58 @@
    <container>1</container>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>showMeshButton</tabstop>
+  <tabstop>showSphereButton</tabstop>
+  <tabstop>showHullButton</tabstop>
+  <tabstop>showAxesButton</tabstop>
+  <tabstop>j0Field</tabstop>
+  <tabstop>j1Field</tabstop>
+  <tabstop>j2Field</tabstop>
+  <tabstop>j3Field</tabstop>
+  <tabstop>j4Field</tabstop>
+  <tabstop>j5Field</tabstop>
+  <tabstop>saveWaypointButton</tabstop>
+  <tabstop>ttAngleField</tabstop>
+  <tabstop>spinTestButton</tabstop>
+  <tabstop>xField</tabstop>
+  <tabstop>yField</tabstop>
+  <tabstop>zField</tabstop>
+  <tabstop>localSettingButton</tabstop>
+  <tabstop>decXButton</tabstop>
+  <tabstop>incXButton</tabstop>
+  <tabstop>decYButton</tabstop>
+  <tabstop>incYButton</tabstop>
+  <tabstop>decZButton</tabstop>
+  <tabstop>incZButton</tabstop>
+  <tabstop>treeWidget</tabstop>
+  <tabstop>velField</tabstop>
+  <tabstop>accField</tabstop>
+  <tabstop>wpStartField</tabstop>
+  <tabstop>wpEndField</tabstop>
+  <tabstop>linearButton</tabstop>
+  <tabstop>cubicButton</tabstop>
+  <tabstop>quinticButton</tabstop>
+  <tabstop>simpleTestButton</tabstop>
+  <tabstop>dxField</tabstop>
+  <tabstop>dyField</tabstop>
+  <tabstop>dzField</tabstop>
+  <tabstop>constrainedTestButton</tabstop>
+  <tabstop>compositeTestButton</tabstop>
+  <tabstop>j0PlotButton</tabstop>
+  <tabstop>j1PlotButton</tabstop>
+  <tabstop>j2PlotButton</tabstop>
+  <tabstop>j3PlotButton</tabstop>
+  <tabstop>j4PlotButton</tabstop>
+  <tabstop>j5PlotButton</tabstop>
+  <tabstop>posPlotButton</tabstop>
+  <tabstop>delPlotButton</tabstop>
+  <tabstop>remPlotButton</tabstop>
+  <tabstop>velPlotButton</tabstop>
+  <tabstop>accPlotButton</tabstop>
+  <tabstop>devPlotButton</tabstop>
+  <tabstop>scrollArea</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

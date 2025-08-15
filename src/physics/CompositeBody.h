@@ -41,6 +41,10 @@ public:
     const glm::dvec3& baseColor() const;
 
 protected:
+
+    CompositeBody();
+
+    void prepareHulls();
     void prepareTree();
 
     bool split(const Plane& plane, uint32_t hullIndex);

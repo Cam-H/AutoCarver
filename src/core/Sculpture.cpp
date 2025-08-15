@@ -165,32 +165,35 @@ std::shared_ptr<Debris> Sculpture::applySection()
 
 std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
 {
-    // Remove any hulls outside the bounds
+    m_newFaces.clear();
+
+    auto debris = std::make_shared<Debris>(std::vector<ConvexHull>());
+
     for (uint32_t i = 0; i < hulls().size(); i++) {
         if (Collision::below(hulls()[i], plane)) {
+//            debris->add(hulls()[i]);
             remove(i);
             i--;
         }
     }
 
-    const uint32_t initialCount = hulls().size();
-    const std::vector<uint32_t> sources = split(plane);
+    const std::vector<uint32_t>& sources = split(plane);
+    for (uint32_t source : sources) {
+        debris->add(hulls()[hulls().size() - 1]);
+        remove(hulls().size() - 1);
 
-    if (initialCount < hulls().size()) {
+        // Record index of newly introduced face
+        uint32_t index = hulls()[source].faces().matchFace(plane.normal), faceCount = 0;
+        for (uint32_t j = 0; j < source; j++) faceCount += hulls()[j].facetCount();
+        m_newFaces.emplace_back(faceCount + index);
+    }
 
-        auto debris = std::make_shared<Debris>(std::vector<ConvexHull>(hulls().begin() + initialCount, hulls().end()));
+    if (!debris->hulls().empty()) { // Action was taken to remove parts of the sculpture
         debris->setTransform(m_transform);
+        debris->initialize();
 
-        while (hulls().size() > initialCount) remove(hulls().size() - 1);
-
+        m_hull = hulls()[0]; // Ignores small off-cuts (Little effect on testing) & only works properly before triangular sectioning TODO
         remesh();
-
-        // Provide styling to indicate freshly cut faces
-        for (uint32_t source : sources) {
-            uint32_t index = hulls()[source].faces().matchFace(plane.normal), faceCount = 0;
-            for (uint32_t i = 0; i < source; i++) faceCount += hulls()[i].facetCount();
-            m_mesh->setFaceColor(faceCount + index, m_highlightColor);
-        }
 
         return debris;
     }
@@ -285,6 +288,11 @@ bool Sculpture::form()
 void Sculpture::remesh()
 {
     CompositeBody::remesh();
+
+    // Provide styling to indicate freshly cut faces
+    for (uint32_t face : m_newFaces) {
+        m_mesh->setFaceColor(face, m_highlightColor);
+    }
 }
 
 const std::shared_ptr<Mesh>& Sculpture::sculpture()

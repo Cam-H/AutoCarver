@@ -12,6 +12,7 @@ class ConvexHull;
 class AABB {
 public:
 
+    AABB(double sideLength);
     AABB(const glm::dvec3& min, double sideLength);
     AABB(const glm::dvec3& min, const glm::dvec3& max);
 
