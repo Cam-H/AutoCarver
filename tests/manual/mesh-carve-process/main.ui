@@ -25,15 +25,109 @@
     </widget>
    </item>
    <item>
-    <widget class="QWidget" name="widget" native="true">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
+    <widget class="QWidget" name="widget_3" native="true">
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_3">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="text">
+         <string>Process Behavior</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QCheckBox" name="testCollisionButton">
+        <property name="text">
+         <string>Test For Collisions</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QCheckBox" name="releaseButton">
+        <property name="text">
+         <string>Release Fragments</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QCheckBox" name="linkButton">
+        <property name="text">
+         <string>Link Actions</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="3">
+       <widget class="QSpinBox" name="sliceLimitField">
+        <property name="minimum">
+         <number>5</number>
+        </property>
+        <property name="maximum">
+         <number>10000</number>
+        </property>
+        <property name="singleStep">
+         <number>5</number>
+        </property>
+        <property name="value">
+         <number>20</number>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="3">
+       <widget class="QCheckBox" name="sliceLimitButton">
+        <property name="text">
+         <string>Limit Actions</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="3">
+       <widget class="QComboBox" name="sliceOrderBox">
+        <property name="currentIndex">
+         <number>1</number>
+        </property>
+        <item>
+         <property name="text">
+          <string>Top Down</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Bottom Up</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="1" column="3">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Convex Slicing order:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="2">
+       <widget class="QCheckBox" name="convexTrimButton">
+        <property name="text">
+         <string>Convex Trim</string>
+        </property>
+        <property name="checked">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
        <widget class="QCheckBox" name="sculptureButton">
         <property name="text">
          <string>Show Sculpture</string>
@@ -43,13 +137,74 @@
         </property>
        </widget>
       </item>
-      <item>
+      <item row="3" column="2">
+       <widget class="QCheckBox" name="outlineRefinementButton">
+        <property name="text">
+         <string>Silhouette Refinement</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="2">
+       <widget class="QCheckBox" name="featureRefinementButton">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Feature Refinement</string>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
        <widget class="QCheckBox" name="hullButton">
         <property name="text">
          <string>Show Hull</string>
         </property>
        </widget>
       </item>
+      <item row="1" column="1">
+       <widget class="QLabel" name="label_4">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="text">
+         <string>Visibility</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="QLabel" name="label_5">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="text">
+         <string>Strategy Enables</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="widget" native="true">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
        <widget class="QCheckBox" name="contButton">
         <property name="text">
@@ -107,13 +262,6 @@
         </property>
        </widget>
       </item>
-      <item>
-       <widget class="QPushButton" name="captureButton">
-        <property name="text">
-         <string>Render Capture</string>
-        </property>
-       </widget>
-      </item>
      </layout>
     </widget>
    </item>
@@ -121,62 +269,16 @@
     <widget class="QWidget" name="widget_2" native="true">
      <layout class="QHBoxLayout" name="horizontalLayout_2">
       <item>
-       <widget class="QCheckBox" name="testCollisionButton">
+       <widget class="QPushButton" name="newModelButton">
         <property name="text">
-         <string>Test For Collisions</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
+         <string>New Model</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="label_2">
+       <widget class="QPushButton" name="captureButton">
         <property name="text">
-         <string>Convex Slicing order:</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="sliceOrderBox">
-        <property name="currentIndex">
-         <number>1</number>
-        </property>
-        <item>
-         <property name="text">
-          <string>Top Down</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Bottom Up</string>
-         </property>
-        </item>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="sliceLimitButton">
-        <property name="text">
-         <string>Limit Actions</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QSpinBox" name="sliceLimitField">
-        <property name="minimum">
-         <number>5</number>
-        </property>
-        <property name="maximum">
-         <number>10000</number>
-        </property>
-        <property name="singleStep">
-         <number>5</number>
-        </property>
-        <property name="value">
-         <number>20</number>
+         <string>Render Capture</string>
         </property>
        </widget>
       </item>
@@ -192,6 +294,24 @@
    <header>scenewidget.h</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>linkButton</tabstop>
+  <tabstop>testCollisionButton</tabstop>
+  <tabstop>releaseButton</tabstop>
+  <tabstop>sculptureButton</tabstop>
+  <tabstop>hullButton</tabstop>
+  <tabstop>convexTrimButton</tabstop>
+  <tabstop>outlineRefinementButton</tabstop>
+  <tabstop>featureRefinementButton</tabstop>
+  <tabstop>sliceOrderBox</tabstop>
+  <tabstop>sliceLimitButton</tabstop>
+  <tabstop>sliceLimitField</tabstop>
+  <tabstop>contButton</tabstop>
+  <tabstop>timeField</tabstop>
+  <tabstop>stepButton</tabstop>
+  <tabstop>skipButton</tabstop>
+  <tabstop>resetButton</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

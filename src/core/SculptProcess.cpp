@@ -45,8 +45,11 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     , m_step(0)
     , m_planned(false)
     , m_convexTrimEnable(true)
+    , m_silhouetteRefinementEnable(true)
     , m_processCutEnable(true)
+    , m_linkActionEnable(true)
     , m_collisionTestingEnable(true)
+    , m_fragmentReleaseEnable(true)
     , m_sliceOrder(ConvexSliceOrder::TOP_DOWN)
     , m_actionLimit(0xFFFFFFFF)
     , m_actionLimitEnable(false)
@@ -61,22 +64,32 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     , m_latestRobotCommand()
     , m_solver(Interpolator::SolverType::QUINTIC)
 {
+    setTarget(model);
+
+    prepareTurntable();
+}
+
+void SculptProcess::setTarget(const std::shared_ptr<Mesh>& mesh)
+{
+    model = mesh;
     model->center();
     model->normalize();
 
+    bool firstTarget = m_sculpture == nullptr;
     m_sculpture = std::make_shared<Sculpture>(model, m_config.materialWidth, m_config.materialHeight);
     m_sculpture->setName("SCULPTURE");
 
-    prepareBody(m_sculpture, 1);
-    prepareBody(m_sculpture->model(), 1);
+    if (firstTarget) {
+        prepareBody(m_sculpture, 1);
+        prepareBody(m_sculpture->model(), 1);
+    } else { // Overwrite old sculpture if possible
+        m_bodies[0] = m_sculpture;
+        m_bodies[1] = m_sculpture->model();
 
-    prepareTurntable();
+        attachSculpture(); // Although already attached, adjusting transform is required
 
-    m_turntable->setEOAT(m_sculpture, false);
-    m_turntable->translateEOAT(m_ttOffset);
-
-
-    m_latestTableCommand = m_turntable->getWaypoint();
+        reset(); // Erase all prior progress
+    }
 }
 
 void SculptProcess::prepareTurntable()
@@ -106,11 +119,13 @@ void SculptProcess::prepareTurntable()
     ttj0Mesh->extents(axis, near, far);
     m_ttOffset = UP * far;
 
-//    std::cout << "NF: " << near << " " << far << "\n";
-//    auto c = ttj0Mesh->boundedOffset();
-//    std::cout << "CC " << c.x << " " << c.y << " " << c.z << "\n";
-//    c = ttBaseMesh->boundedOffset();
-//    std::cout << "CC2 " << c.x << " " << c.y << " " << c.z << "\n";
+    attachSculpture();
+}
+
+void SculptProcess::attachSculpture()
+{
+    m_turntable->setEOAT(m_sculpture, false);
+    m_turntable->translateEOAT(m_ttOffset);
 }
 
 SculptProcess::~SculptProcess()
@@ -158,15 +173,31 @@ void SculptProcess::enableConvexTrim(bool enable)
 {
     m_convexTrimEnable = enable;
 }
+void SculptProcess::enableSilhouetteRefinement(bool enable)
+{
+    m_silhouetteRefinementEnable = enable;
+}
+
 void SculptProcess::enableProcessCut(bool enable)
 {
     m_processCutEnable = enable;
+}
+
+void SculptProcess::enableActionLinking(bool enable)
+{
+    m_linkActionEnable = enable;
 }
 
 void SculptProcess::enableCollisionTesting(bool enable)
 {
     m_collisionTestingEnable = enable;
 }
+
+void SculptProcess::enableFragmentRelease(bool enable)
+{
+    m_fragmentReleaseEnable = enable;
+}
+
 
 void SculptProcess::setSlicingOrder(ConvexSliceOrder order)
 {
@@ -200,13 +231,14 @@ void SculptProcess::plan()
     else m_sculpture->restoreAsHull();
 
     // Repeatedly refined the sculpture by cutting to the outline of the model at discrete orientations
-//    planOutlineRefinement(90.0f);
+    if (m_silhouetteRefinementEnable) planOutlineRefinement(90.0);
 
     // Capture model features with fine carving
 //    planFeatureRefinement();
 
     // Return to the home position
-    commitActions({ Action(std::make_shared<HoldPosition>(m_robotHome), m_robot) });
+    if (std::abs(m_turntable->getJointValue(0)) > 1e-12) commitActions({ planTurntableAlignment(m_turntable->getJointValue(0), 0) });
+    commitActions({ Action(std::make_shared<HoldPosition>(m_robotHome, 0.1), m_robot) });
 
     // Restore initial configuration
     m_robot->moveTo(initialRobotCommand);
@@ -266,24 +298,23 @@ void SculptProcess::step(double delta)
             depth = std::max(0.0, depth + 0.5 * m_bladeWidth);
 
             const auto& fragments = m_debris->removeMaterial(depth);
-            if (!fragments.empty()) { // TODO enable
-//                for (const std::shared_ptr<RigidBody>& fragment : fragments) prepareBody(fragment);
+            if (m_fragmentReleaseEnable && !fragments.empty()) {
+                for (const std::shared_ptr<RigidBody>& fragment : fragments) prepareBody(fragment);
             }
 
             if (action.cuts.front().tf <= action.trajectory->t()) action.cuts.pop_front();
 
             if (action.cuts.empty()) {
-                std::cout << "REM: " << m_debris->hulls().size() << "\n";
+//                std::cout << "REM: " << m_debris->hulls().size() << "\n";
                 if (!m_debris->hulls().empty()) {
                     for (const ConvexHull& hull : m_debris->hulls()) {
-                        std::cout << hull.isValid() << " " << hull.vertexCount() << "\n";
+//                        std::cout << hull.isValid() << " " << hull.vertexCount() << "\n";
                         if (hull.isValid()) m_sculpture->add(hull);
                     }
 
                     m_sculpture->remesh();
                 }
 
-                std::cout << "RMD\n";
                 removeDebris();
             }
         }
@@ -359,7 +390,7 @@ void SculptProcess::toWorldSpace(std::vector<glm::dvec3>& border, const glm::dqu
     }
 }
 
-// Develop axes aligned a face by normal (x along cut direction, y normal to plane, z along blade)
+// Develop axes aligned to a face [by face normal] (x along cut direction, y normal to plane, z along blade)
 Axis3D SculptProcess::faceAlignedAxes(const glm::dvec3& normal, bool alignHorizontal)
 {
     Axis3D axes(normal);
@@ -534,15 +565,17 @@ void SculptProcess::planConvexTrim()
 // Develops trajectories between disjoint actions to motions are continuous before attaching them to the list
 void SculptProcess::commitActions(const std::vector<Action>& actions)
 {
-    if (m_collisionTestingEnable) {
+    if (m_linkActionEnable) {
         for (const Action& action : actions) {
 
             // Move robot away if it would collide with the TT when it moves
             if (action.target == m_turntable) {
-                m_robot->moveTo(m_latestRobotCommand);
+                if (m_collisionTestingEnable) {
+                    m_robot->moveTo(m_latestRobotCommand);
 
-                if (testTurntableCollision(action.trajectory)) {
-                    m_actions.push_back(planTurntableClearance());
+                    if (testTurntableCollision(action.trajectory)) {
+                        m_actions.push_back(planTurntableClearance());
+                    }
                 }
 
                 m_latestTableCommand = action.trajectory->end();
@@ -561,27 +594,12 @@ void SculptProcess::commitActions(const std::vector<Action>& actions)
 
             m_actions.push_back(action);
         }
-
     } else for (const Action& action : actions) m_actions.push_back(action);
 
 //    m_robot->print();
 //    m_turntable->print();
 //
 //    print();
-
-
-//    if (action.target == m_robot && m_step < m_actions.size() - 1 && m_actions[m_step + 1].target == m_turntable) {
-//        m_robot->moveTo(action.trajectory->end());
-//        if (m_actions[m_step + 1].trajectory->test(this, m_turntable, 0.05)) {
-//            std::cout << "TT COLLISION\n";
-////                throw std::runtime_error("[SculptProcess] TT Collision!");
-//        }
-//        m_robot->moveTo(action.trajectory->start());
-//    }
-
-    // Move to initial cut position
-//    auto trajectory = prepareApproach(cutTrajectory->start());
-//    if (trajectory == nullptr) return nullptr;
 }
 
 bool SculptProcess::testTurntableCollision(const std::shared_ptr<Trajectory>& ttTrajectory)
@@ -615,7 +633,7 @@ std::shared_ptr<Trajectory> SculptProcess::prepareApproach(const Waypoint& desti
     // Try the direct path first
     auto directTrajectory = std::make_shared<SimpleTrajectory>(m_latestRobotCommand, destination, m_solver);
     directTrajectory->setLimits(m_baseVelocityLimits, m_baseAccelerationLimits);
-    if (validateTrajectory(directTrajectory, dt)) return directTrajectory;
+    if (!m_collisionTestingEnable || validateTrajectory(directTrajectory, dt)) return directTrajectory;
 
 
     auto pose = m_robot->getPose(destination);
@@ -664,7 +682,6 @@ std::vector<SculptProcess::Action> SculptProcess::planConvexTrim(const ConvexHul
         toWorldSpace(wsBorder, rotation);
 
         m_turntable->setJointValue(0, theta);
-//        m_sculpture->setRotation(rotation);
 
         trajectory = preparePlanarTrajectory(wsBorder, wsNormal);
         if (trajectory != nullptr) break;
@@ -688,8 +705,9 @@ std::vector<SculptProcess::Action> SculptProcess::planConvexTrim(const ConvexHul
 
 void SculptProcess::planOutlineRefinement(double stepDg)
 {
-    uint32_t steps = std::floor(180.0f / stepDg);
-    double angle = 0;
+    uint32_t steps = std::floor(180.0 / stepDg);
+    const double initialRotation = m_turntable->getJointValue(0), baseRotation = -m_sculpture->rotation();
+    double step = 0;
 
     // Prepare a 3D render / edge detection system to find the profile of the model
     auto* detector = new EdgeDetect(model);
@@ -697,57 +715,63 @@ void SculptProcess::planOutlineRefinement(double stepDg)
     detector->setSize(1000);
     detector->setEpsilon(120.0f);
 
-    detector->capture()->camera().setViewingAngle(0, 0);
+    detector->capture()->camera().setViewingAngle(180 / M_PI * baseRotation, 0);
     detector->capture()->focus();
-
-//    detector->capture()->capture();
-//    detector->capture()->grabFramebuffer().save(QString("SPOutlineRefinementPrecheck.png"));
-
-    glm::dvec3 offset = -model->boundedOffset();
-    double scalar = m_sculpture->scalar();
-    std::cout << "OFFSET: " << offset.x << " " << offset.y << " " << offset.z << " " << scalar << "\n";
-
 
     for (uint32_t i = 0; i < steps; i++) {
 
         // Render and determine the profile of the result
         detector->update();
 
+        // Use the profile to prepare appropriate sculpting instructions for the robots
+        auto profile = detector->profile();
+        profile.setRefinementMethod(Profile::RefinementMethod::DELAUNEY);
+
+        m_turntable->setJointValue(0, -baseRotation + M_PI * step / 180);
+
+        auto actions = planOutlineRefinement(profile);
+        if (!actions.empty()) {
+
+            // Use the turntable to align the profile with the carving robot
+            commitActions({ planTurntableAlignment(initialRotation, m_turntable->getJointValue(0)) });
+            commitActions(actions);
+        }
+
         // Save the detection result for debugging purposes
-        std::string filename = "SPOutlineRefinement" + std::to_string(angle) + "dg.png";
-        detector->sink().save(QString(filename.c_str()));
+//        std::string filename = "SPOutlineRefinement" + std::to_string(step) + "dg.png";
+//        detector->sink().save(QString(filename.c_str()));
 
         // Move the camera for the next image (in dg)
         detector->capture()->camera().rotate(stepDg);
         detector->capture()->focus();
-        angle += stepDg;
+        step += stepDg;
 
-        // Use the turntable to align the profile with the carving robot
-//        planTurntableAlignment(m_sculpture->rotation() - angle * (double)M_PI / 180.0f + M_PI / 2);
-
-        std::cout << angle << " " << (angle * (double)M_PI / 180.0f) << " " << m_sculpture->rotation() << " RR\n";
-
-        // Use the profile to prepare appropriate sculpting instructions for the robots
-        auto profile = detector->profile();
-        profile.setRefinementMethod(Profile::RefinementMethod::DELAUNEY);
-        profile.rotateAbout({ 0, 1, 0 }, -m_sculpture->rotation());
-//        profile.centerScale(scalar);
-        profile.scale(scalar);
-        profile.translate(offset);
-//        profile.centerScale(scalar);
-//        profile.scale(scalar);
-        planOutlineRefinement(profile);
+        break;
     }
 }
 
-void SculptProcess::planOutlineRefinement(Profile& profile)
+std::vector<SculptProcess::Action> SculptProcess::planOutlineRefinement(Profile& profile)
 {
-//    auto mesh = MeshBuilder::extrude(profile.projected3D(), profile.normal(), 2.0f);
-//    mesh->translate(-profile.normal());
-//    mesh->setFaceColor({0, 0, 1});
-//    createBody(mesh);
+    auto rotation = glm::angleAxis(m_turntable->getJointValue(0), UP);
+
+    auto normal = profile.normal();
+    auto border = profile.projected3D();
+
+    auto wsNormal = normal;
+    toWorldSpace(wsNormal, rotation);
+
+    auto wsBorder = border;
+    toWorldSpace(wsBorder, rotation);
+
+    auto mesh = MeshBuilder::extrude(wsBorder, -wsNormal, 1.0f);
+    mesh->translate(0.5 * wsNormal);
+    mesh->setFaceColor({0, 0, 1});
+    auto body = createBody(mesh);
+    body->disableCollisions();
 
 //    profile.correctWinding();
+
+    std::vector<Action> actions;
 
     uint32_t count = 0;
     while (!profile.complete() && count < 3000) {
@@ -757,13 +781,27 @@ void SculptProcess::planOutlineRefinement(Profile& profile)
         std::cout << "IDX: ";
         for (auto i : indices) std::cout << i << " ";
         std::cout << "\n";
-        auto border = profile.projected3D(indices);
+//        auto border = profile.projected3D(indices);
         for(const glm::dvec3& v : border) std::cout << v.x << " " << v.y << " " << v.z << "\n";
 
 //        planRoboticSection(border);
 
-        if (border.size() == 3) {
-            m_sculpture->queueSection(border[0], border[1], border[2], profile.normal(), external);
+        if (indices.size() == 3) {
+//            glm::dvec3 vn = glm::normalize(glm::cross(wsNormal, wsBorder[indices[0]] - wsBorder[indices[1]]));
+//            Pose pose(wsBorder[indices[1]], faceAlignedAxes(vn, true));
+//            auto wp = m_robot->inverse(pose);
+//            if (wp.isValid()) actions.emplace_back(std::make_shared<HoldPosition>(wp), m_robot);
+
+            auto axes = faceAlignedAxes(glm::normalize(glm::cross(wsNormal, UP)), true);
+            auto wp = m_robot->inverse(Pose(wsBorder[indices[0]], axes));
+            if (wp.isValid()) actions.emplace_back(std::make_shared<HoldPosition>(wp), m_robot);
+
+            wp = m_robot->inverse(Pose(wsBorder[indices[1]], axes));
+            if (wp.isValid()) actions.emplace_back(std::make_shared<HoldPosition>(wp), m_robot);
+
+            wp = m_robot->inverse(Pose(wsBorder[indices[2]], axes));
+            if (wp.isValid()) actions.emplace_back(std::make_shared<HoldPosition>(wp), m_robot);
+//            m_sculpture->queueSection(border[0], border[1], border[2], profile.normal(), external);
         }
 
 //        std::cout << "Profile: " << border.size() << ": \n";
@@ -775,6 +813,7 @@ void SculptProcess::planOutlineRefinement(Profile& profile)
     std::cout << "Refinement iterations: " << count << ":\n";
     std::cout << m_sculpture->position().x << " " << m_sculpture->position().y << " " << m_sculpture->position().z << "\n";
 
+    return actions;
 }
 
 void SculptProcess::planFeatureRefinement()
@@ -856,7 +895,7 @@ std::shared_ptr<CompositeTrajectory> SculptProcess::prepareThroughCut(Pose pose,
     trajectory->addTrajectory(cutTrajectory);
 
     // Pause for a bit to allow fragments to move away
-    trajectory->addTrajectory(std::make_shared<HoldPosition>(cutTrajectory->end(), 1.0));
+    trajectory->addTrajectory(std::make_shared<HoldPosition>(cutTrajectory->end(), 0.5));
 
     // Move off the piece
     if (glm::dot(off, off) > 1e-6) {

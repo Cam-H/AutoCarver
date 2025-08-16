@@ -116,7 +116,7 @@ void updateImage()
 
 void updateBodyVisibility()
 {
-    if (showSculptureSetting->checkState() == Qt::CheckState::Checked) sceneWidget->show(0);
+    if (showSculptureSetting->isChecked()) sceneWidget->show(0, Scene::Model::MESH);
     else sceneWidget->hide(0);
 
     sceneWidget->update();
@@ -124,7 +124,7 @@ void updateBodyVisibility()
 
 void updateModelVisibility()
 {
-    if (showModelSetting->checkState() == Qt::CheckState::Checked) sceneWidget->show(1);
+    if (showModelSetting->isChecked()) sceneWidget->show(1, Scene::Model::MESH);
     else sceneWidget->hide(1);
 
     sceneWidget->update();
@@ -132,7 +132,7 @@ void updateModelVisibility()
 
 void updateColoring()
 {
-    body->applyCompositeColors(showHullSetting->checkState() == Qt::CheckState::Checked);
+    body->applyCompositeColors(showHullSetting->isChecked());
 
     sceneWidget->updateRenderGeometry(body->mesh());
     sceneWidget->update();
@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
 
     showSculptureSetting = window->findChild<QCheckBox*>("showSculptureSetting");
     QObject::connect(showSculptureSetting, &QCheckBox::clicked, [&]() {
-        if (showSculptureSetting->checkState() == Qt::CheckState::Unchecked) {
+        if (!showSculptureSetting->isChecked()) {
             showHullSetting->setCheckState(Qt::CheckState::Unchecked);
         }
 
@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
 
     showHullSetting = window->findChild<QCheckBox*>("showHullSetting");
     QObject::connect(showHullSetting, &QCheckBox::clicked, [&]() {
-        if (showHullSetting->checkState() == Qt::CheckState::Checked) {
+        if (showHullSetting->isChecked()) {
             showSculptureSetting->setCheckState(Qt::CheckState::Checked);
             updateBodyVisibility();
         }
@@ -271,7 +271,7 @@ int main(int argc, char *argv[])
             body = std::make_shared<Sculpture>(mesh, 1.0f, 1.0f);
             showModelSetting->setCheckState(Qt::CheckState::Checked);
             showSculptureSetting->setCheckState(Qt::CheckState::Checked);
-            body->applyCompositeColors(showHullSetting->checkState() == Qt::CheckState::Checked);
+            body->applyCompositeColors(showHullSetting->isChecked());
             scene->prepareBody(body);
             scene->prepareBody(body->model());
 

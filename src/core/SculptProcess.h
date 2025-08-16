@@ -38,10 +38,16 @@ public:
     explicit SculptProcess(const std::shared_ptr<Mesh>& model);
     ~SculptProcess();
 
+    void setTarget(const std::shared_ptr<Mesh>& mesh);
+
     void enableConvexTrim(bool enable);
+    void enableSilhouetteRefinement(bool enable);
+
     void enableProcessCut(bool enable);
 
+    void enableActionLinking(bool enable);
     void enableCollisionTesting(bool enable);
+    void enableFragmentRelease(bool enable);
 
     void setSlicingOrder(ConvexSliceOrder order);
     void setActionLimit(uint32_t limit);
@@ -102,6 +108,7 @@ private:
     };
 
     void prepareTurntable();
+    void attachSculpture();
 
     [[nodiscard]] Waypoint alignedToFaceWP(const std::vector<glm::dvec3>& border, const glm::dvec3& normal) const;
     [[nodiscard]] Waypoint alignedToFaceWP(const Axis3D& axes, const std::vector<glm::dvec3>& border) const;
@@ -121,7 +128,7 @@ private:
     std::vector<Action> planConvexTrim(const ConvexHull& hull, const Plane& plane);
 
     void planOutlineRefinement(double stepDg);
-    void planOutlineRefinement(Profile& profile);
+    std::vector<Action> planOutlineRefinement(Profile& profile);
 
     void planFeatureRefinement();
 
@@ -186,11 +193,17 @@ private:
 
     std::vector<Action> m_actions;
 
+    // Planning settings
+
     bool m_planned;
+
     bool m_convexTrimEnable;
+    bool m_silhouetteRefinementEnable;
     bool m_processCutEnable;
 
+    bool m_linkActionEnable;
     bool m_collisionTestingEnable;
+    bool m_fragmentReleaseEnable;
 
     ConvexSliceOrder m_sliceOrder;
 

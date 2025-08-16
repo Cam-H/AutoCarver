@@ -34,6 +34,7 @@ void Camera::setType(Type type)
     calculateViewProjectionMatrix();
 }
 
+// Defines the FOV of the camera [in degrees]
 void Camera::setFOV(double fov)
 {
     m_fov = fov;
@@ -95,6 +96,7 @@ void Camera::setRadius(double radius)
     calculateViewProjectionMatrix();
 }
 
+// Sets the yaw and pitch of the camera [in degrees]
 void Camera::setViewingAngle(double yaw, double pitch)
 {
     m_yaw = yaw;
@@ -110,6 +112,7 @@ void Camera::offset(const QVector3D& offset)
     calculateViewProjectionMatrix();
 }
 
+// Rotates the camera theta [degrees] about the y-axis (yaw)
 void Camera::rotate(double theta)
 {
     m_yaw += theta;
@@ -149,10 +152,13 @@ double Camera::getRadius() const
     return m_radius;
 }
 
+// Returns camera yaw [in degrees]
 double Camera::getYaw() const
 {
     return m_yaw;
 }
+
+// Returns camera pitch [in degrees]
 double Camera::getPitch() const
 {
     return m_pitch;
@@ -187,6 +193,7 @@ QMatrix4x4 Camera::getViewProjection() const
     return m_viewProjection;
 }
 
+// Returns a ray projected from the camera's origin through the view. position should be defined [-1, 1]
 Ray Camera::getRay(QPointF position) const
 {
     QVector3D fwd = forward(), horz = horizontal(), vert = vertical();

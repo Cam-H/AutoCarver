@@ -147,6 +147,21 @@ int main(int argc, char *argv[])
         sceneWidget->update();
     });
 
+    auto newModelButton = window->findChild<QPushButton*>("newModelButton");
+    QObject::connect(newModelButton, &QPushButton::clicked, [&]() {
+        const QString fileName = QFileDialog::getOpenFileName(nullptr, "Select Model",
+                                                              "../res/meshes", "Model Files (*.obj)");
+
+        if (!fileName.isEmpty()) {
+
+            auto mesh = MeshHandler::loadAsMeshBody(fileName.toStdString());
+            if (mesh != nullptr) {
+                scene->setTarget(mesh);
+                sceneWidget->clear();
+            } else std::cout << "Failed to load model. Can not set target\n";
+        }
+    });
+
     auto captureButton = window->findChild<QPushButton*>("captureButton");
     QObject::connect(captureButton, &QPushButton::clicked, [&]() {
 //        m_rc->capture();
@@ -164,10 +179,34 @@ int main(int argc, char *argv[])
         sceneWidget->update();
     });
 
+    auto linkButton = window->findChild<QCheckBox*>("linkButton");
+    scene->enableActionLinking(linkButton->isChecked());
+    QObject::connect(linkButton, &QCheckBox::clicked, [&](bool checked) {
+        scene->enableActionLinking(checked);
+    });
+
     auto testCollisionButton = window->findChild<QCheckBox*>("testCollisionButton");
     scene->enableCollisionTesting(testCollisionButton->isChecked());
     QObject::connect(testCollisionButton, &QCheckBox::clicked, [&](bool checked) {
         scene->enableCollisionTesting(checked);
+    });
+
+    auto releaseButton = window->findChild<QCheckBox*>("releaseButton");
+    scene->enableFragmentRelease(releaseButton->isChecked());
+    QObject::connect(releaseButton, &QCheckBox::clicked, [&](bool checked) {
+        scene->enableFragmentRelease(checked);
+    });
+
+    auto convexTrimButton = window->findChild<QCheckBox*>("convexTrimButton");
+    scene->enableConvexTrim(convexTrimButton->isChecked());
+    QObject::connect(convexTrimButton, &QCheckBox::clicked, [&](bool checked) {
+        scene->enableConvexTrim(checked);
+    });
+
+    auto outlineRefinementButton = window->findChild<QCheckBox*>("outlineRefinementButton");
+    scene->enableSilhouetteRefinement(outlineRefinementButton->isChecked());
+    QObject::connect(outlineRefinementButton, &QCheckBox::clicked, [&](bool checked) {
+        scene->enableSilhouetteRefinement(checked);
     });
 
     auto sliceOrderBox = window->findChild<QComboBox*>("sliceOrderBox");
