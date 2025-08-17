@@ -141,7 +141,7 @@ void updateColoring()
 void refine()
 {
     bool external = profile.isNextExternal();
-    auto indices = profile.refine();
+    auto indices = profile.next();
 
     std::cout << "RSTATE: " << external << " " << profile.complete() << " " << profile.vertexCount() << "\n";
     auto angles = profile.angles(indices), clearance = profile.clearance(indices);
@@ -159,6 +159,8 @@ void refine()
 //        extrude->setFaceColor({ 0, 1, 1 });
 //        scene->createBody(extrude);
     }
+
+    profile.refine();
 }
 
 int main(int argc, char *argv[])

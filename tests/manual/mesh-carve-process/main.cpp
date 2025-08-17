@@ -32,7 +32,7 @@ std::shared_ptr<Robot> robot = nullptr;
 std::shared_ptr<SculptProcess> scene = nullptr;
 SceneWidget* sceneWidget = nullptr;
 
-QCheckBox *contButton = nullptr;
+QCheckBox *contButton = nullptr, *releaseButton = nullptr;
 QDoubleSpinBox *timeField = nullptr;
 QPushButton *stepButton = nullptr, *skipButton = nullptr;
 
@@ -204,10 +204,18 @@ int main(int argc, char *argv[])
         scene->enableCollisionTesting(checked);
     });
 
-    auto releaseButton = window->findChild<QCheckBox*>("releaseButton");
+    releaseButton = window->findChild<QCheckBox*>("releaseButton");
     scene->enableFragmentRelease(releaseButton->isChecked());
     QObject::connect(releaseButton, &QCheckBox::clicked, [&](bool checked) {
         scene->enableFragmentRelease(checked);
+    });
+
+    auto simulateCutButton = window->findChild<QCheckBox*>("simulateCutButton");
+    scene->enableCutSimulation(simulateCutButton->isChecked());
+    releaseButton->setEnabled(simulateCutButton->isChecked());
+    QObject::connect(simulateCutButton, &QCheckBox::clicked, [&](bool checked) {
+        scene->enableCutSimulation(checked);
+        releaseButton->setEnabled(checked);
     });
 
     auto convexTrimButton = window->findChild<QCheckBox*>("convexTrimButton");

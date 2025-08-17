@@ -20,7 +20,7 @@ Profile::Profile(const std::vector<glm::dvec2>& contour, const glm::dvec3& norma
     , m_xAxis(xAxis)
     , m_yAxis(yAxis)
     , m_method(RefinementMethod::DIRECT)
-    , m_minimumArea(0.0001f)
+    , m_minimumArea(0.0002f)
 {
     initialize();
 }
@@ -231,16 +231,17 @@ void Profile::skip()
     }
 }
 
-TriIndex Profile::refine()
+void Profile::refine()
 {
-    if (!m_sections.empty()) {
-        auto section = m_sections.front();
-        m_sections.pop_front();
-        return section.triangle;
-    }
-
-    return { 0, 0, 0 };
+    m_sections.pop_front();
 }
+
+TriIndex Profile::next() const
+{
+    if (m_sections.empty()) return { 0, 0, 0 };
+    return m_sections[0].triangle;
+}
+
 
 uint32_t Profile::remainingSections() const
 {
@@ -262,6 +263,13 @@ bool Profile::isNextExternal() const
 {
     return !complete() && isVertexExternal(m_sections[0].triangle.I0)
                        && isVertexExternal(m_sections[0].triangle.I2);
+}
+
+// Returns the area of the next section
+double Profile::area() const
+{
+    if (m_sections.empty()) return 0;
+    return area(m_sections[0].triangle);
 }
 
 std::pair<double, double> Profile::angles() const
@@ -562,12 +570,17 @@ std::vector<glm::dvec2> Profile::sectionVertices(const std::vector<uint32_t>& in
 }
 
 // Project vertices into 3D space according to the defined axis system
-std::vector<glm::dvec3> Profile::projected3D(const glm::dvec3& offset)
+std::vector<glm::dvec3> Profile::projected3D(const glm::dvec3& offset) const
 {
     return Polygon::projected3D(m_xAxis, m_yAxis, offset);
 }
 
-std::vector<glm::dvec3> Profile::projected3D(const std::vector<uint32_t>& indices, const glm::dvec3& offset)
+std::vector<glm::dvec3> Profile::projected3D(const TriIndex& triangle, const glm::dvec3& offset) const
+{
+    return projected3D(std::vector<uint32_t>{ triangle.I0, triangle.I1, triangle.I2 }, offset);
+}
+
+std::vector<glm::dvec3> Profile::projected3D(const std::vector<uint32_t>& indices, const glm::dvec3& offset) const
 {
     std::vector<glm::dvec2> vertices;
     vertices.reserve(indices.size());

@@ -164,13 +164,6 @@
         </property>
        </widget>
       </item>
-      <item row="4" column="0">
-       <widget class="QCheckBox" name="releaseButton">
-        <property name="text">
-         <string>Release Fragments</string>
-        </property>
-       </widget>
-      </item>
       <item row="4" column="2">
        <widget class="QCheckBox" name="featureRefinementButton">
         <property name="enabled">
@@ -204,6 +197,23 @@
        <widget class="QCheckBox" name="collisionButton">
         <property name="text">
          <string>Indicate Collisions</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QCheckBox" name="releaseButton">
+        <property name="text">
+         <string>Release Fragments</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QCheckBox" name="simulateCutButton">
+        <property name="text">
+         <string>Simulate Cut</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
         </property>
        </widget>
       </item>
@@ -311,9 +321,12 @@
  <tabstops>
   <tabstop>linkButton</tabstop>
   <tabstop>testCollisionButton</tabstop>
+  <tabstop>simulateCutButton</tabstop>
   <tabstop>releaseButton</tabstop>
   <tabstop>sculptureButton</tabstop>
   <tabstop>hullButton</tabstop>
+  <tabstop>axesButton</tabstop>
+  <tabstop>collisionButton</tabstop>
   <tabstop>convexTrimButton</tabstop>
   <tabstop>outlineRefinementButton</tabstop>
   <tabstop>featureRefinementButton</tabstop>
@@ -325,6 +338,8 @@
   <tabstop>stepButton</tabstop>
   <tabstop>skipButton</tabstop>
   <tabstop>resetButton</tabstop>
+  <tabstop>newModelButton</tabstop>
+  <tabstop>captureButton</tabstop>
  </tabstops>
  <resources/>
  <connections/>

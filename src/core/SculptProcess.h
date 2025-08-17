@@ -47,6 +47,7 @@ public:
 
     void enableActionLinking(bool enable);
     void enableCollisionTesting(bool enable);
+    void enableCutSimulation(bool enable);
     void enableFragmentRelease(bool enable);
 
     void setSlicingOrder(ConvexSliceOrder order);
@@ -120,7 +121,7 @@ private:
     static void toWorldSpace(glm::dvec3& normal, const glm::dquat& rotation);
     void toWorldSpace(std::vector<glm::dvec3>& border, const glm::dquat& rotation) const;
 
-    [[nodiscard]] static Axis3D faceAlignedAxes(const glm::dvec3& normal, bool alignHorizontal);
+    [[nodiscard]] Axis3D faceAlignedAxes(const glm::dvec3& normal, bool alignHorizontal) const;
     [[nodiscard]] glm::dvec3 poseAdjustedVertex(const Axis3D& axes, const glm::dvec3& vertex) const;
 
     void planConvexTrim();
@@ -129,6 +130,9 @@ private:
 
     void planOutlineRefinement(double stepDg);
     std::vector<Action> planOutlineRefinement(Profile& profile);
+    Action planOutlineRefinement(const Profile& profile, const Triangle3D& wTri, const glm::dvec3& wNormal);
+
+    bool planBlindCut(const Pose& pose, double depth, Action& action);
 
     void planFeatureRefinement();
 
@@ -145,7 +149,7 @@ private:
 
     std::shared_ptr<CompositeTrajectory> preparePlanarTrajectory(const std::vector<glm::dvec3>& border, const glm::dvec3& normal);
     std::shared_ptr<CompositeTrajectory> prepareThroughCut(Pose pose, double depth, double runup, const glm::dvec3& off);
-    std::shared_ptr<CompositeTrajectory> prepareBlindCut(const Pose& pose, double depth);
+    std::shared_ptr<CompositeTrajectory> prepareBlindCut(Pose pose, double depth);
 
     void commitActions(const std::vector<Action>& actions);
 
@@ -153,6 +157,7 @@ private:
 
     void removeDebris();
 
+    [[nodiscard]] bool validatePose(const Pose& pose) const;
     [[nodiscard]] bool validateTrajectory(const std::shared_ptr<Trajectory>& trajectory, double dt);
 
     static uint32_t identifySculpture(const std::vector<std::shared_ptr<Mesh>>& fragments);
@@ -203,6 +208,7 @@ private:
 
     bool m_linkActionEnable;
     bool m_collisionTestingEnable;
+    bool m_cutSimulationEnable;
     bool m_fragmentReleaseEnable;
 
     ConvexSliceOrder m_sliceOrder;

@@ -32,6 +32,7 @@ public:
     void rotate(const glm::dvec3& axis, double theta);
     void rotate(const glm::dquat& rotation);
 
+    void flipXY();
     void flipXZ();
     void flipYZ();
 

@@ -104,6 +104,12 @@ void Axis3D::rotate(const glm::dquat& rotation)
     zAxis = zAxis * rotation;
 }
 
+void Axis3D::flipXY()
+{
+    xAxis = -xAxis;
+    yAxis = -yAxis;
+}
+
 void Axis3D::flipXZ()
 {
     xAxis = -xAxis;

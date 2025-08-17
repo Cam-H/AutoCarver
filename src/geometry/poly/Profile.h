@@ -40,13 +40,17 @@ public:
     void inverseWinding() override;
 
     void skip();
-    TriIndex refine();
+    void refine();
+
+    [[nodiscard]] TriIndex next() const;
 
     [[nodiscard]] uint32_t remainingSections() const;
     [[nodiscard]] bool complete() const;
 
     [[nodiscard]] bool isVertexExternal(uint32_t index) const;
     [[nodiscard]] bool isNextExternal() const;
+
+    [[nodiscard]] double area() const;
 
     [[nodiscard]] std::pair<double, double> angles() const;
     [[nodiscard]] std::pair<double, double> clearance() const;
@@ -57,8 +61,9 @@ public:
     [[nodiscard]] const glm::dvec3& normal() const;
 
 
-    [[nodiscard]] std::vector<glm::dvec3> projected3D(const glm::dvec3& offset = {});
-    [[nodiscard]] std::vector<glm::dvec3> projected3D(const std::vector<uint32_t>& indices, const glm::dvec3& offset = {});
+    [[nodiscard]] std::vector<glm::dvec3> projected3D(const glm::dvec3& offset = {}) const;
+    [[nodiscard]] std::vector<glm::dvec3> projected3D(const TriIndex& triangle, const glm::dvec3& offset = {}) const;
+    [[nodiscard]] std::vector<glm::dvec3> projected3D(const std::vector<uint32_t>& indices, const glm::dvec3& offset = {}) const;
 
     [[nodiscard]] std::vector<std::pair<glm::dvec2, glm::dvec2>> debugEdges() const override;
 
