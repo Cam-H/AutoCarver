@@ -335,32 +335,12 @@ void SceneWidget::paintGL()
 
 //    std::cout << m_geometries.size() << "\n";
     if (m_scene != nullptr) {
-        const std::vector<std::shared_ptr<RigidBody>>& bodies = m_scene->bodies();
-
-        for (const std::shared_ptr<RigidBody>& body : bodies) {
+        for (uint32_t i = 0; i < m_scene->bodies().size(); i++) {
+            const std::shared_ptr<RigidBody>& body = m_scene->bodies()[i];
             glm::dmat4x4 trans = body->getTransform();
 
             QMatrix4x4 transform;
-            for (int i = 0; i < 4; i++) transform.setColumn(i, QVector4D(trans[i][0], trans[i][1], trans[i][2], trans[i][3]));
-
-            // For robot - Wrong TODO
-//            for (int i = 0; i < 4; i++) transform.setRow(i, QVector4D(trans[i][0], trans[i][1], trans[i][2], trans[i][3]));
-
-//            std::cout << "QTransform:\n"
-//                    << transform.row(0)[0] << " " << transform.row(0)[1] << " " << transform.row(0)[2] << " " << transform.row(0)[3] << "\n"
-//                    << transform.row(1)[0] << " " << transform.row(1)[1] << " " << transform.row(1)[2] << " " << transform.row(1)[3] << "\n"
-//                    << transform.row(2)[0] << " " << transform.row(2)[1] << " " << transform.row(2)[2] << " " << transform.row(2)[3] << "\n"
-//                    << transform.row(3)[0] << " " << transform.row(3)[1] << " " << transform.row(3)[2] << " " << transform.row(3)[3] << "\n";
-
-//            std::cout << "GLM Transform:\n"
-//                    << trans[0][0] << " " << trans[0][1] << " " << trans[0][2] << " " << trans[0][3] << "\n"
-//                    << trans[1][0] << " " << trans[1][1] << " " << trans[1][2] << " " << trans[1][3] << "\n"
-//                    << trans[2][0] << " " << trans[2][1] << " " << trans[2][2] << " " << trans[2][3] << "\n"
-//                    << trans[3][0] << " " << trans[3][1] << " " << trans[3][2] << " " << trans[3][3] << "\n";
-//    transform.translate(0.0, 0.0, -5.0);
-//    transform.rotate(rotation);
-
-//            std::cout << body->mesh() << " " << body->hullMesh() << " " << body->bSphereMesh() << " RR]]\n";
+            for (int j = 0; j < 4; j++) transform.setColumn(j, QVector4D(trans[j][0], trans[j][1], trans[j][2], trans[j][3]));
 
             render(body->mesh(), transform, true);
             render(body->hullMesh(), transform, false);
@@ -368,8 +348,23 @@ void SceneWidget::paintGL()
             if (m_showAxes && m_axes != nullptr && body->isAxisEnabled()) {
                 render(m_axes, transform, true);
             }
-
         }
+//        const std::vector<std::shared_ptr<RigidBody>>& bodies = m_scene->bodies();
+//
+//        for (const std::shared_ptr<RigidBody>& body : bodies) {
+//            glm::dmat4x4 trans = body->getTransform();
+//
+//            QMatrix4x4 transform;
+//            for (int i = 0; i < 4; i++) transform.setColumn(i, QVector4D(trans[i][0], trans[i][1], trans[i][2], trans[i][3]));
+//
+//            render(body->mesh(), transform, true);
+//            render(body->hullMesh(), transform, false);
+//            render(body->bSphereMesh(), transform, false);
+//            if (m_showAxes && m_axes != nullptr && body->isAxisEnabled()) {
+//                render(m_axes, transform, true);
+//            }
+//
+//        }
     }
 }
 

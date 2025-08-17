@@ -192,6 +192,8 @@ std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
         debris->setTransform(m_transform);
         debris->initialize();
 
+//        debris->mesh()->setFaceColor(m_mesh->baseColor());
+
         m_hull = hulls()[0]; // Ignores small off-cuts (Little effect on testing) & only works properly before triangular sectioning TODO
         remesh();
 

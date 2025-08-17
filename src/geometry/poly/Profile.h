@@ -8,6 +8,8 @@
 #include "Polygon.h"
 #include "fileIO/Serializable.h"
 
+#include <deque>
+
 class Profile : public Polygon, public Serializable {
 public:
 
@@ -30,19 +32,29 @@ public:
     void setRefinementMethod(RefinementMethod method);
     void setMimimumArea(double area);
 
-    void translate(const glm::dvec2& translation);
+//    void translate(const glm::dvec2& translation);
     void translate(const glm::dvec3& translation);
 
     void rotateAbout(const glm::dvec3& axis, double theta);
 
     void inverseWinding() override;
 
-    std::vector<uint32_t> refine();
-    bool complete() const;
+    void skip();
+    TriIndex refine();
 
-    bool isNextExternal() const;
+    [[nodiscard]] uint32_t remainingSections() const;
+    [[nodiscard]] bool complete() const;
 
-    const glm::dvec3& normal() const;
+    [[nodiscard]] bool isVertexExternal(uint32_t index) const;
+    [[nodiscard]] bool isNextExternal() const;
+
+    [[nodiscard]] std::pair<double, double> angles() const;
+    [[nodiscard]] std::pair<double, double> clearance() const;
+
+    [[nodiscard]] std::pair<double, double> angles(const TriIndex& triangle) const;
+    [[nodiscard]] std::pair<double, double> clearance(const TriIndex& triangle) const;
+
+    [[nodiscard]] const glm::dvec3& normal() const;
 
 
     [[nodiscard]] std::vector<glm::dvec3> projected3D(const glm::dvec3& offset = {});
@@ -52,28 +64,52 @@ public:
 
 private:
 
+    struct Section {
+        Section(TriIndex triangle, uint32_t children) : triangle(triangle), children(children) {}
+
+        TriIndex triangle; // Indices to the vertices forming the section
+        uint32_t children; // Number of sections dependent on this one
+    };
+
     void initialize();
 
-    inline uint32_t offsetIndex(uint32_t idx, uint32_t offset = 1) const;
+    [[nodiscard]] inline uint32_t terminus(uint32_t step) const;
+    [[nodiscard]] inline uint32_t offsetIndex(uint32_t idx, uint32_t offset = 1) const;
 
     void emplaceRemainder(uint32_t start, uint32_t count);
     void insertRemainder(uint32_t index, uint32_t start, uint32_t count);
     uint32_t subdivide(const glm::dvec2& normal, uint32_t start, uint32_t count);
     glm::dvec2 edgeNormal(uint32_t start, uint32_t end);
 
-    std::vector<uint32_t> triangleRefinement();
-    std::vector<uint32_t> directRefinement();
-    std::vector<uint32_t> delauneyRefinement();
-    std::vector<uint32_t> testRefinement();
+    void addTriangle(uint32_t startIndex);
+    void directRefinement();
+    void delauneyRefinement();
+    void testRefinement();
 
-    bool isValidRefinement(const std::vector<uint32_t>& indices) const;
+    [[nodiscard]] double area(const TriIndex& triangle) const;
 
-    double area(const std::vector<uint32_t>& indices) const;
     inline static uint32_t difference(uint32_t a, uint32_t b, uint32_t max);
 
     inline std::vector<uint32_t> sectionIndices(const std::pair<uint32_t, uint32_t>& limits) const;
     inline std::vector<glm::dvec2> sectionVertices(const std::pair<uint32_t, uint32_t>& limits) const;
     inline std::vector<glm::dvec2> sectionVertices(const std::vector<uint32_t>& indices) const;
+
+    static std::vector<Section> prepareSections(std::vector<TriIndex>& triangles, const std::vector<uint32_t>& indexMap);
+    static std::tuple<bool, TriIndex> nextTriangle(std::vector<TriIndex>& triangles, uint32_t first, uint32_t last);
+
+    [[nodiscard]] double clearance(const glm::dvec2& axis, uint32_t vertexIndex) const;
+
+    static std::tuple<bool, double> intersection(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c, const glm::dvec2& d);
+
+    [[nodiscard]] std::pair<uint32_t, uint32_t> nextHullVertices(uint32_t vertexIndex) const;
+
+    [[nodiscard]] uint32_t prevVertex(uint32_t vertexIndex) const;
+    [[nodiscard]] uint32_t nextVertex(uint32_t vertexIndex) const;
+
+    static double angle(const glm::dvec2& a, const glm::dvec2& b);
+
+
+    void commitSections(const std::vector<Section>& sections);
 
 private:
 
@@ -83,9 +119,10 @@ private:
 
     RefinementMethod m_method;
 
-    std::vector<uint32_t> m_hull; // Indices of vertices that form the convex hull
+    std::vector<uint32_t> m_hull; // Indices of vertices that form the convex hull (Stored in ascending order)
     std::vector<std::pair<uint32_t, uint32_t>> m_remainder; // first (index), second (number of subsequent vertices)
-    uint32_t m_next;
+
+    std::deque<Section> m_sections;
 
     double m_minimumArea;
 };

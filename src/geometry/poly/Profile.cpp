@@ -20,7 +20,6 @@ Profile::Profile(const std::vector<glm::dvec2>& contour, const glm::dvec3& norma
     , m_xAxis(xAxis)
     , m_yAxis(yAxis)
     , m_method(RefinementMethod::DIRECT)
-    , m_next(0)
     , m_minimumArea(0.0001f)
 {
     initialize();
@@ -100,6 +99,15 @@ void Profile::initialize()
 //    std::cout << "Profile: " << isCCW() << " " << m_hull.size() << " " << m_vertices.size() << " " << m_remainder.size() << " " << "\n";
     for (auto& r : m_remainder) std::cout << r.first << " " << r.second << "\n";
 
+//    setRefinementMethod(m_method);
+
+}
+
+// Returns the index of the terminal vertex for the step
+uint32_t Profile::terminus(uint32_t step) const
+{
+    if (step >= m_remainder.size()) throw std::runtime_error("[Profile] Array index out of bounds");
+    return offsetIndex(m_remainder[step].first + m_remainder[step].second - 2);
 }
 
 uint32_t Profile::offsetIndex(uint32_t idx, uint32_t offset) const
@@ -163,16 +171,26 @@ glm::dvec2 Profile::edgeNormal(uint32_t start, uint32_t end)
 void Profile::setRefinementMethod(RefinementMethod method)
 {
     m_method = method;
+
+    if (m_remainder.empty()) return;
+
+    // More involved decomposition of concave for processing
+    switch (m_method) {
+//        case RefinementMethod::DIRECT: directRefinement(); break;
+        case RefinementMethod::DELAUNEY: delauneyRefinement(); break;
+//        case RefinementMethod::TEST: testRefinement(); break;
+        default: throw std::runtime_error("[Profile] Unrecognized refinement method");
+    }
 }
 
 void Profile::setMimimumArea(double area)
 {
     m_minimumArea = area;
 }
-void Profile::translate(const glm::dvec2& translation)
-{
-    Polygon::translate(translation);
-}
+//void Profile::translate(const glm::dvec2& translation)
+//{
+//    Polygon::translate(translation);
+//}
 
 void Profile::translate(const glm::dvec3& translation)
 {
@@ -204,36 +222,167 @@ void Profile::inverseWinding()//TODO update
     }
 }
 
-std::vector<uint32_t> Profile::refine()
+// Skips the next section along with any further sections dependent on it
+void Profile::skip()
 {
-    if (m_next < m_remainder.size()) {
-        if (m_remainder[m_next].second == 3) return triangleRefinement(); // Easy direct triangle cutout
+    if (!m_sections.empty()) {
+        const uint32_t count = 1 + m_sections[0].children;
+        for (uint32_t i = 0; i < count; i++) m_sections.pop_front();
+    }
+}
 
-        // More involved decomposition of concave for processing
-        switch (m_method) {
-            case RefinementMethod::DIRECT:
-                return directRefinement();
-            case RefinementMethod::DELAUNEY:
-                return delauneyRefinement();
-            case RefinementMethod::TEST:
-                return testRefinement();
-        }
+TriIndex Profile::refine()
+{
+    if (!m_sections.empty()) {
+        auto section = m_sections.front();
+        m_sections.pop_front();
+        return section.triangle;
     }
 
-    return {};
+    return { 0, 0, 0 };
+}
+
+uint32_t Profile::remainingSections() const
+{
+    return m_sections.size();
 }
 
 bool Profile::complete() const
 {
-    return m_next >= m_remainder.size();
+    return m_sections.empty();
+}
+
+bool Profile::isVertexExternal(uint32_t index) const
+{
+    if (index >= m_vertices.size()) return false;
+    return std::binary_search(m_hull.begin(), m_hull.end(), index);
 }
 
 bool Profile::isNextExternal() const
 {
-//    std::cout << "EXT Check: " << m_remainder[m_next].first << " " << offsetIndex(m_remainder[m_next].first + m_remainder[m_next].second - 2) << "\n";
-    return !complete()
-        && std::binary_search(m_hull.begin(), m_hull.end(), m_remainder[m_next].first)
-        && std::binary_search(m_hull.begin(), m_hull.end(), offsetIndex(m_remainder[m_next].first + m_remainder[m_next].second - 2));
+    return !complete() && isVertexExternal(m_sections[0].triangle.I0)
+                       && isVertexExternal(m_sections[0].triangle.I2);
+}
+
+std::pair<double, double> Profile::angles() const
+{
+    if (m_sections.empty()) return { 0, 0 };
+    return angles(m_sections[0].triangle);
+}
+std::pair<double, double> Profile::clearance() const
+{
+    if (m_sections.empty()) return { 0, 0 };
+    return clearance(m_sections[0].triangle);
+}
+
+// Returns the exterior angle formed between the cut and adjacent edges for both vertices [in radians]
+std::pair<double, double> Profile::angles(const TriIndex& triangle) const
+{
+    if (!triangle.isValid(m_vertices.size())) return { 0, 0 };
+
+    uint32_t prev = prevVertex(triangle.I0);
+    uint32_t next = nextVertex(triangle.I2);
+
+    return {
+        angle(m_vertices[prev] - m_vertices[triangle.I0], m_vertices[triangle.I1] - m_vertices[triangle.I0]),
+        angle(m_vertices[triangle.I1] - m_vertices[triangle.I2], m_vertices[next] - m_vertices[triangle.I2])
+    };
+}
+
+double Profile::angle(const glm::dvec2& a, const glm::dvec2& b)
+{
+    double value = atan2(b.y, b.x) - atan2(a.y, a.x);
+    return value + 2 * M_PI * (value < 0);
+}
+
+uint32_t Profile::prevVertex(uint32_t vertexIndex) const
+{
+    for (const Section& section : m_sections) {
+        if (section.triangle.I2 == vertexIndex) return section.triangle.I0;
+    }
+
+    return vertexIndex == 0 ? m_vertices.size() - 1 : vertexIndex - 1;
+}
+uint32_t Profile::nextVertex(uint32_t vertexIndex) const
+{
+    for (const Section& section : m_sections) {
+        if (section.triangle.I0 == vertexIndex) return section.triangle.I2;
+    }
+
+    return vertexIndex == m_vertices.size() - 1 ? 0 : vertexIndex + 1;
+}
+
+// Returns the clearance from either vertex before the first obstruction on the reversed cut direction (Margin for alignment)
+std::pair<double, double> Profile::clearance(const TriIndex& triangle) const
+{
+    if (!triangle.isValid(m_vertices.size())) return { 0, 0 };
+
+    auto theta = angles(triangle);
+
+    return {
+        theta.first  < M_PI ? 0 : clearance(-glm::normalize(m_vertices[triangle.I0] - m_vertices[triangle.I1]), triangle.I0),
+        theta.second < M_PI ? 0 : clearance(-glm::normalize(m_vertices[triangle.I2] - m_vertices[triangle.I1]), triangle.I2)
+    };
+}
+
+// Calculates clearance along the axis from the specified vertex
+// Always returns DOUBLE_MAX if the vertex is on the convex hull regardless of axis direction
+double Profile::clearance(const glm::dvec2& axis, uint32_t vertexIndex) const
+{
+    double t = std::numeric_limits<double>::max();
+
+    if (!isVertexExternal(vertexIndex)) {
+        glm::dvec2 dir = m_vertices[vertexIndex] - axis;
+
+        auto hv = nextHullVertices(vertexIndex);
+
+        uint32_t index = prevVertex(vertexIndex), prev = index;
+
+        // Find nearest intersection along the upper chain (skipping first edge)
+        while (prev != hv.first) {
+            index = prevVertex(index);
+
+            auto [hit, tIntersection] = intersection(m_vertices[vertexIndex], dir, m_vertices[prev], m_vertices[index]);
+            if (hit) t = std::min(t, tIntersection);
+            prev = index;
+        }
+
+        index = nextVertex(vertexIndex), prev = index;
+
+        // Find nearest intersection along the lower chain (skipping first edge)
+        while (prev != hv.second) {
+            index = nextVertex(index);
+
+            auto [hit, tIntersection] = intersection(m_vertices[vertexIndex], dir, m_vertices[prev], m_vertices[index]);
+            if (hit) t = std::min(t, tIntersection);
+            prev = index;
+        }
+    }
+
+    return t;
+}
+
+std::tuple<bool, double> Profile::intersection(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c, const glm::dvec2& d)
+{
+    double a1 = Triangle2D::signedArea(a, b, d), a2 = Triangle2D::signedArea(a, b, c);
+
+    if (a1 * a2 < 0) {
+        double a3 = Triangle2D::signedArea(c, d, a), a4 = a3 + a2 - a1;
+        if (a3 * a4 < 0) return { true, a3 / (a3 - a4) };
+    }
+
+    return { false, 0 };
+}
+
+std::pair<uint32_t, uint32_t> Profile::nextHullVertices(uint32_t vertexIndex) const
+{
+    auto lIt = std::lower_bound(m_hull.begin(), m_hull.end(), vertexIndex);
+    auto hIt = std::upper_bound(m_hull.begin(), m_hull.end(), vertexIndex);
+
+    return {
+        lIt == m_hull.begin() ? m_hull.back() : *(lIt - 1), // index is lowest  -> wrap to the last
+        hIt == m_hull.end() ? m_hull[0] : *hIt              // index is highest -> wrap to the start
+    };
 }
 
 const glm::dvec3& Profile::normal() const
@@ -241,100 +390,150 @@ const glm::dvec3& Profile::normal() const
     return m_normal;
 }
 
-std::vector<uint32_t> Profile::triangleRefinement()
+void Profile::addTriangle(uint32_t startIndex)
 {
-    auto indices = {
-            m_remainder[m_next].first,
-            offsetIndex(m_remainder[m_next].first, 1),
-            offsetIndex(m_remainder[m_next].first, 2)
+    auto tri = TriIndex(startIndex,offsetIndex(startIndex, 1),offsetIndex(startIndex, 2));
+    if (area(tri) > m_minimumArea) m_sections.emplace_back(tri, 0);
+}
+
+void Profile::directRefinement()
+{
+//    auto cut = m_remainder[m_next];
+//    auto indices = sectionIndices(cut);
+//
+//    if (isValidRefinement(indices)) {
+//        m_remainder.erase(m_remainder.begin() + m_next);
+//        return indices;
+//    } else m_next++;
+//
+//    return {};
+}
+
+
+void Profile::delauneyRefinement()
+{
+    for (const std::pair<uint32_t, uint32_t>& rem : m_remainder) {
+
+        // Easy direct triangle cutout
+        if (rem.second == 3) {
+            addTriangle(rem.first);
+            continue;
+        }
+
+        // Generate chain of just the vertices that need to be refined in this section
+        std::vector<uint32_t> indices = sectionIndices(rem);
+        std::vector<glm::dvec2> vertices = sectionVertices(indices);
+
+        // Find the Delauney triangulation of the section
+        auto rawTriangles = Polygon::triangulate(vertices);
+
+        std::vector<Section> sections = prepareSections(rawTriangles, indices);
+
+        commitSections(sections);
+    }
+}
+
+void Profile::commitSections(const std::vector<Section>& sections)
+{
+    for (uint32_t i = 0; i < sections.size(); i++) {
+        double sum = area(sections[i].triangle);
+        uint32_t j = sections[i].children * (sum == 0);
+
+        // For small, valid sections, sum area of children
+        while (sum < m_minimumArea && j < sections[i].children) {
+            sum += area(sections[i + j].triangle);
+        }
+
+        // Only commit valid sections of sufficient size TODO test
+        if (sum < m_minimumArea) {
+
+            // Adjust parent counts to remove impact of now removed sections
+            for (int k = (int)m_sections.size() - 1; k >= 0; k--) {
+                if (m_sections[k].children == 0) break;
+                m_sections[k].children -= sections[i].children;
+            }
+
+            i += sections[i].children;
+        } else m_sections.push_back(sections[i]);
+    }
+}
+
+std::vector<Profile::Section> Profile::prepareSections(std::vector<TriIndex>& triangles, const std::vector<uint32_t>& indexMap)
+{
+    std::vector<Section> sections;
+    sections.reserve(triangles.size());
+
+    struct Edge {
+        Edge(uint32_t first, uint32_t last, uint32_t depth) : first(first), last(last), depth(depth) {}
+        uint32_t first, last, depth;
     };
 
-    if (isValidRefinement(indices)) {
-        m_remainder.erase(m_remainder.begin() + m_next);
-        return indices;
-    } else m_next++;
+    std::vector<Edge> edges = { { 0, (uint32_t)indexMap.size() - 1, 0 } };
+    std::vector<uint32_t> dIndex; // Index of last section with depth == index of element in dIndex
 
-    return {};
+    // Select triangles from exterior to interior like a tree
+    while (!triangles.empty()) {
+        if (edges.empty()) throw std::runtime_error("[Profile] Failed to partition triangles");
+
+        auto [valid, nextTri] = nextTriangle(triangles, edges.back().first, edges.back().last);
+        uint32_t depth = edges.back().depth;
+        edges.pop_back();
+
+        if (valid) {
+
+            // Correct indexing while constructing sections
+            sections.emplace_back(TriIndex(indexMap[nextTri.I0], indexMap[nextTri.I1], indexMap[nextTri.I2]), 0);
+
+            edges.emplace_back(nextTri.I0, nextTri.I1, depth + 1);
+            edges.emplace_back(nextTri.I1, nextTri.I2, depth + 1);
+        }
+
+        // Calculate # of children whenever a similar or shallower depth is reached
+        while (depth < dIndex.size()) {
+            sections[dIndex.back()].children = sections.size() - dIndex.back() - 2;
+            dIndex.pop_back();
+        }
+
+        dIndex.emplace_back(sections.size() - 1);
+    }
+
+    // Capture remaining (Considers the last node at each depth)
+    while (!dIndex.empty()) {
+        sections[dIndex.back()].children = sections.size() - dIndex.back() - 1;
+        dIndex.pop_back();
+    }
+
+    return sections;
 }
 
-std::vector<uint32_t> Profile::directRefinement()
+
+// Selects the triangle connected to the given indices, returns its other vertex, and removes it from the pool
+std::tuple<bool, TriIndex> Profile::nextTriangle(std::vector<TriIndex>& triangles, uint32_t first, uint32_t last)
 {
-    auto cut = m_remainder[m_next];
-    auto indices = sectionIndices(cut);
+    for (uint32_t i = 0; i < triangles.size(); i++) {
+        if (triangles[i].has(first) && triangles[i].has(last)) {
+            uint32_t splitVertex = triangles[i].last(first, last);
 
-    if (isValidRefinement(indices)) {
-        m_remainder.erase(m_remainder.begin() + m_next);
-        return indices;
-    } else m_next++;
+            std::swap(triangles[i], triangles.back());
+            triangles.pop_back();
 
-    return {};
-}
-
-
-std::vector<uint32_t> Profile::delauneyRefinement()
-{
-    std::vector<uint32_t> indices = sectionIndices(m_remainder[m_next]), triangle;
-    std::vector<glm::dvec2> vertices = sectionVertices(indices);
-
-    // Find the Delauney triangulation of the remaining section
-    auto triangles = Polygon::triangulate(vertices);
-
-    // Select the triangle on the boundary (The only accessible tri)
-    for (const TriIndex& tri : triangles) {
-        if (tri.has(0) && tri.has(indices.size() - 1)) {
-            uint32_t splitVertex = tri.last(0, indices.size() - 1);
-            triangle = { indices[0], indices[splitVertex], indices[indices.size() - 1] };
-            break;
+            return { true, TriIndex(first, splitVertex, last) };
         }
     }
 
-    // If a viable triangular cut was found
-    if (isValidRefinement(triangle)) {
-        uint32_t d1 = difference(triangle[0], triangle[1], m_vertices.size()),
-                 d2 = difference(triangle[1], triangle[2], m_vertices.size());
-
-        // Create new boundaries based on the cut triangle (When borders are still concave)
-        if (d1 > 1) {
-            m_remainder[m_next] = { triangle[0], d1 + 1};
-            if (d2 > 1) insertRemainder(m_next + 1, triangle[1], d2 + 1);
-        } else if (d2 > 1) {
-            m_remainder[m_next] = { triangle[1], d2 + 1};
-        }
-
-//        std::cout << triangle[0] << " " << triangle[1] << " " << triangle[2] << " Tri\n";
-
-//        return { triangle[2], triangle[1], triangle[0] };
-        return triangle;
-    } else {
-        m_next++; // Skip over this section because it is unreachable
-    }
-
-    return {};
+    return { false, TriIndex(0, 0, 0) };
 }
 
-std::vector<uint32_t> Profile::testRefinement()
+void Profile::testRefinement()
 {
-    return {};
+
 }
 
-bool Profile::isValidRefinement(const std::vector<uint32_t>& indices) const
+double Profile::area(const TriIndex& triangle) const
 {
-//    std::cout << "VR: " << area(indices) << "\n";
-    if (area(indices) < m_minimumArea) {
-        std::cout << "Invalid refinement " << area(indices) << " ~ " << m_minimumArea << "\n";
-        for (auto i : indices) std::cout << i << "|" << m_vertices[i].x << " " << m_vertices[i].y << "\n";
-    }
-    return !indices.empty() && area(indices) > m_minimumArea;
-}
+    if (triangle.I0 == triangle.I1) return 0; // Indicates invalid triangle
 
-double Profile::area(const std::vector<uint32_t>& indices) const
-{
-    if (indices.size() < 3) {
-        std::cout << indices.size() << " XXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n";
-        return 0;
-    } else if (indices.size() == 3)
-        return std::abs(Triangle2D::area(m_vertices[indices[0]], m_vertices[indices[1]], m_vertices[indices[2]]));
-    else throw std::runtime_error("[Profile] Area calculation not yet developed");
+    return std::abs(Triangle2D::area(m_vertices[triangle.I0], m_vertices[triangle.I1], m_vertices[triangle.I2]));
 }
 
 uint32_t Profile::difference(uint32_t a, uint32_t b, uint32_t max)
@@ -384,18 +583,19 @@ std::vector<glm::dvec3> Profile::projected3D(const std::vector<uint32_t>& indice
 std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
     auto edges = Polygon::debugEdges();
 
-    for (const auto& edge : m_remainder)
-        edges.emplace_back(m_vertices[edge.first], m_vertices[(edge.first + edge.second - 1) % m_vertices.size()]);
+    // Only need to show one edge of each triangle (All except boundary are shared)
+    for (const Section& section: m_sections) {
+        edges.emplace_back(m_vertices[section.triangle.I0], m_vertices[section.triangle.I2]);
+    }
 
-    if (m_next < m_remainder.size()) {
-        std::vector<glm::dvec2> vertices = sectionVertices(m_remainder[m_next]);
-        auto triangles = Polygon::triangulate(vertices);
+    // Draw clearances
+    if (!m_sections.empty()) {
+        TriIndex tri = m_sections[0].triangle;
 
-        for (const TriIndex& tri: triangles) {
-            edges.emplace_back(vertices[tri.I0], vertices[tri.I1]);
-            edges.emplace_back(vertices[tri.I1], vertices[tri.I2]);
-            edges.emplace_back(vertices[tri.I2], vertices[tri.I0]);
-        }
+        auto margin = clearance();
+        if (margin.first  != 0) edges.emplace_back(m_vertices[tri.I0], m_vertices[tri.I0] + margin.first  * glm::normalize(m_vertices[tri.I0] - m_vertices[tri.I1]));
+        if (margin.second != 0) edges.emplace_back(m_vertices[tri.I2], m_vertices[tri.I2] + margin.second * glm::normalize(m_vertices[tri.I2] - m_vertices[tri.I1]));
+
     }
 
 

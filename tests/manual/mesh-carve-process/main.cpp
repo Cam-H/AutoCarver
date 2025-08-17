@@ -123,6 +123,19 @@ int main(int argc, char *argv[])
         sceneWidget->update();
     });
 
+    auto axesButton = window->findChild<QCheckBox*>("axesButton");
+    sceneWidget->enableAxes(axesButton->isChecked());
+    QObject::connect(axesButton, &QCheckBox::clicked, [&](bool checked) {
+        sceneWidget->enableAxes(checked);
+        sceneWidget->update();
+    });
+
+    auto collisionButton = window->findChild<QCheckBox*>("collisionButton");
+    scene->enableCollisionColoring(collisionButton->isChecked());
+    QObject::connect(collisionButton, &QCheckBox::clicked, [&](bool checked) {
+        scene->enableCollisionColoring(checked);
+    });
+
     contButton = window->findChild<QCheckBox*>("contButton");
     QObject::connect(contButton, &QCheckBox::clicked, [&](bool checked) {
         scene->setContinuous(checked);
@@ -230,8 +243,6 @@ int main(int argc, char *argv[])
     });
 
 
-
-//    scene->enableCollisionColoring(false);
     scene->start();
 
     // Handle updating robot

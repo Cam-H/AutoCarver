@@ -175,7 +175,14 @@
       <item>
        <widget class="QPushButton" name="stepButton">
         <property name="text">
-         <string>Step</string>
+         <string>Rotate</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="skipButton">
+        <property name="text">
+         <string>Skip</string>
         </property>
        </widget>
       </item>

@@ -21,10 +21,12 @@ public:
     uint32_t& operator[](uint32_t i);
 
     [[nodiscard]] bool isValid() const;
+    [[nodiscard]] bool isValid(uint32_t limit) const;
 
     [[nodiscard]] bool has(uint32_t i) const;
 
     [[nodiscard]] uint32_t last(uint32_t a, uint32_t b) const;
+
 
 //    friend std::ostream& operator<<(std::ostream& os, const Triangle& tri)
 //    {
@@ -82,6 +84,7 @@ class Triangle2D {
 public:
 
     static double area(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c);
+    static double signedArea(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c);
 
 };
 

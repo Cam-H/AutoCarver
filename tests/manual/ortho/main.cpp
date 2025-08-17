@@ -142,7 +142,13 @@ void refine()
 {
     bool external = profile.isNextExternal();
     auto indices = profile.refine();
-    auto border = profile.projected3D(indices);
+
+    std::cout << "RSTATE: " << external << " " << profile.complete() << " " << profile.vertexCount() << "\n";
+    auto angles = profile.angles(indices), clearance = profile.clearance(indices);
+    std::cout << "Angles: [" << (180/M_PI)*angles.first << " " << (180/M_PI)*angles.second << "], Clearance: ["
+    << " " << clearance.first << " " << clearance.second << "]\n";
+
+    auto border = profile.projected3D( std::vector<uint32_t>{ indices.I0, indices.I1, indices.I2 });
 
     if (!border.empty()) {
         body->queueSection(border[0], border[1], border[2], profile.normal(), external);
@@ -210,6 +216,12 @@ int main(int argc, char *argv[])
         detector->capture()->camera().rotate(5);
         detector->capture()->focus();
         updateImage();
+    });
+
+    auto skipButton = window->findChild<QPushButton*>("skipButton");
+    QObject::connect(skipButton, &QPushButton::clicked, [&]() {
+        profile.skip();
+        polygonWidget->repaint();
     });
 
     auto refineButton = window->findChild<QPushButton*>("refineButton");

@@ -58,6 +58,11 @@ bool TriIndex::isValid() const
     return I0 != I1 && I0 != I2 && I1 != I2;
 }
 
+bool TriIndex::isValid(uint32_t limit) const
+{
+    return isValid() && I0 < limit && I1 < limit && I2 < limit;
+}
+
 bool TriIndex::has(uint32_t i) const
 {
     return i == I0 || i == I1 || i == I2;
@@ -214,4 +219,9 @@ bool Triangle3D::encloses(const QVector2D& a, const QVector2D& b, const QVector2
 double Triangle2D::area(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c)
 {
     return 0.5f * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y));
+}
+
+double Triangle2D::signedArea(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c)
+{
+    return (a.x - c.x) * (b.y - c.y)  - (a.y - c.y) * (b.x - c.x);
 }

@@ -299,16 +299,19 @@ void SculptProcess::step(double delta)
 
             const auto& fragments = m_debris->removeMaterial(depth);
             if (m_fragmentReleaseEnable && !fragments.empty()) {
-                for (const std::shared_ptr<RigidBody>& fragment : fragments) prepareBody(fragment);
+                for (const std::shared_ptr<RigidBody>& fragment : fragments) {
+                    prepareBody(fragment);
+                    fragment->mesh()->setFaceColor(m_sculpture->baseColor());
+                }
             }
 
             if (action.cuts.front().tf <= action.trajectory->t()) action.cuts.pop_front();
 
             if (action.cuts.empty()) {
-//                std::cout << "REM: " << m_debris->hulls().size() << "\n";
+                std::cout << "REM: " << m_debris->hulls().size() << "\n";
                 if (!m_debris->hulls().empty()) {
                     for (const ConvexHull& hull : m_debris->hulls()) {
-//                        std::cout << hull.isValid() << " " << hull.vertexCount() << "\n";
+                        std::cout << hull.isValid() << " " << hull.vertexCount() << "\n";
                         if (hull.isValid()) m_sculpture->add(hull);
                     }
 
@@ -776,30 +779,32 @@ std::vector<SculptProcess::Action> SculptProcess::planOutlineRefinement(Profile&
     uint32_t count = 0;
     while (!profile.complete() && count < 3000) {
 
+        auto clearance = profile.clearance();
+        std::cout << "SS: " << profile.remainingSections() << " " << clearance.first << " " << clearance.second << "\n";
+
+        if (clearance.first == 0 || clearance.second == 0) { // TODO actually operate
+            profile.skip();
+            continue;
+        }
+
         bool external = profile.isNextExternal();
-        auto indices = profile.refine();
-        std::cout << "IDX: ";
-        for (auto i : indices) std::cout << i << " ";
-        std::cout << "\n";
-//        auto border = profile.projected3D(indices);
-        for(const glm::dvec3& v : border) std::cout << v.x << " " << v.y << " " << v.z << "\n";
+        auto tri = profile.refine();
+        std::cout << "IDX: " << tri.I0 << " " << tri.I1 << " " << tri.I2 << "\n";
 
-//        planRoboticSection(border);
-
-        if (indices.size() == 3) {
+        if (tri.I0 != tri.I1) { // Verify triangle is valid
 //            glm::dvec3 vn = glm::normalize(glm::cross(wsNormal, wsBorder[indices[0]] - wsBorder[indices[1]]));
 //            Pose pose(wsBorder[indices[1]], faceAlignedAxes(vn, true));
 //            auto wp = m_robot->inverse(pose);
 //            if (wp.isValid()) actions.emplace_back(std::make_shared<HoldPosition>(wp), m_robot);
 
             auto axes = faceAlignedAxes(glm::normalize(glm::cross(wsNormal, UP)), true);
-            auto wp = m_robot->inverse(Pose(wsBorder[indices[0]], axes));
+            auto wp = m_robot->inverse(Pose(wsBorder[tri.I0], axes));
             if (wp.isValid()) actions.emplace_back(std::make_shared<HoldPosition>(wp), m_robot);
 
-            wp = m_robot->inverse(Pose(wsBorder[indices[1]], axes));
+            wp = m_robot->inverse(Pose(wsBorder[tri.I1], axes));
             if (wp.isValid()) actions.emplace_back(std::make_shared<HoldPosition>(wp), m_robot);
 
-            wp = m_robot->inverse(Pose(wsBorder[indices[2]], axes));
+            wp = m_robot->inverse(Pose(wsBorder[tri.I2], axes));
             if (wp.isValid()) actions.emplace_back(std::make_shared<HoldPosition>(wp), m_robot);
 //            m_sculpture->queueSection(border[0], border[1], border[2], profile.normal(), external);
         }

@@ -27,33 +27,20 @@
    <item>
     <widget class="QWidget" name="widget_3" native="true">
      <layout class="QGridLayout" name="gridLayout">
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_3">
-        <property name="font">
-         <font>
-          <pointsize>10</pointsize>
-          <bold>true</bold>
-         </font>
-        </property>
+      <item row="2" column="2">
+       <widget class="QCheckBox" name="convexTrimButton">
         <property name="text">
-         <string>Process Behavior</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QCheckBox" name="testCollisionButton">
-        <property name="text">
-         <string>Test For Collisions</string>
+         <string>Convex Trim</string>
         </property>
         <property name="checked">
-         <bool>true</bool>
+         <bool>false</bool>
         </property>
        </widget>
       </item>
-      <item row="4" column="0">
-       <widget class="QCheckBox" name="releaseButton">
+      <item row="1" column="3">
+       <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>Release Fragments</string>
+         <string>Convex Slicing order:</string>
         </property>
        </widget>
       </item>
@@ -67,96 +54,26 @@
         </property>
        </widget>
       </item>
-      <item row="4" column="3">
-       <widget class="QSpinBox" name="sliceLimitField">
-        <property name="minimum">
-         <number>5</number>
-        </property>
-        <property name="maximum">
-         <number>10000</number>
-        </property>
-        <property name="singleStep">
-         <number>5</number>
-        </property>
-        <property name="value">
-         <number>20</number>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="3">
-       <widget class="QCheckBox" name="sliceLimitButton">
+      <item row="3" column="0">
+       <widget class="QCheckBox" name="testCollisionButton">
         <property name="text">
-         <string>Limit Actions</string>
+         <string>Test For Collisions</string>
         </property>
         <property name="checked">
          <bool>true</bool>
         </property>
        </widget>
       </item>
-      <item row="2" column="3">
-       <widget class="QComboBox" name="sliceOrderBox">
-        <property name="currentIndex">
-         <number>1</number>
-        </property>
-        <item>
-         <property name="text">
-          <string>Top Down</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Bottom Up</string>
-         </property>
-        </item>
-       </widget>
-      </item>
-      <item row="1" column="3">
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>Convex Slicing order:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="2">
-       <widget class="QCheckBox" name="convexTrimButton">
-        <property name="text">
-         <string>Convex Trim</string>
-        </property>
-        <property name="checked">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QCheckBox" name="sculptureButton">
-        <property name="text">
-         <string>Show Sculpture</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="2">
-       <widget class="QCheckBox" name="outlineRefinementButton">
-        <property name="text">
-         <string>Silhouette Refinement</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="2">
-       <widget class="QCheckBox" name="featureRefinementButton">
-        <property name="enabled">
-         <bool>false</bool>
+      <item row="1" column="2">
+       <widget class="QLabel" name="label_5">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+          <bold>true</bold>
+         </font>
         </property>
         <property name="text">
-         <string>Feature Refinement</string>
-        </property>
-        <property name="checkable">
-         <bool>true</bool>
+         <string>Strategy Enables</string>
         </property>
        </widget>
       </item>
@@ -180,8 +97,55 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="2">
-       <widget class="QLabel" name="label_5">
+      <item row="2" column="3">
+       <widget class="QComboBox" name="sliceOrderBox">
+        <property name="currentIndex">
+         <number>1</number>
+        </property>
+        <item>
+         <property name="text">
+          <string>Top Down</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Bottom Up</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="3" column="2">
+       <widget class="QCheckBox" name="outlineRefinementButton">
+        <property name="text">
+         <string>Silhouette Refinement</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QCheckBox" name="sculptureButton">
+        <property name="text">
+         <string>Show Sculpture</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="3">
+       <widget class="QCheckBox" name="sliceLimitButton">
+        <property name="text">
+         <string>Limit Actions</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_3">
         <property name="font">
          <font>
           <pointsize>10</pointsize>
@@ -189,7 +153,57 @@
          </font>
         </property>
         <property name="text">
-         <string>Strategy Enables</string>
+         <string>Process Behavior</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QCheckBox" name="axesButton">
+        <property name="text">
+         <string>Show Axes</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QCheckBox" name="releaseButton">
+        <property name="text">
+         <string>Release Fragments</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="2">
+       <widget class="QCheckBox" name="featureRefinementButton">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Feature Refinement</string>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="3">
+       <widget class="QSpinBox" name="sliceLimitField">
+        <property name="minimum">
+         <number>5</number>
+        </property>
+        <property name="maximum">
+         <number>10000</number>
+        </property>
+        <property name="singleStep">
+         <number>5</number>
+        </property>
+        <property name="value">
+         <number>20</number>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="QCheckBox" name="collisionButton">
+        <property name="text">
+         <string>Indicate Collisions</string>
         </property>
        </widget>
       </item>

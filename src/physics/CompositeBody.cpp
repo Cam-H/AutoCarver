@@ -326,12 +326,14 @@ void CompositeBody::colorHulls()
 
 void CompositeBody::remesh()
 {
-    m_mesh = MeshBuilder::composite(m_hulls);
-    if (m_mesh == nullptr) return;
+    auto mesh = MeshBuilder::composite(m_hulls);
+    if (mesh == nullptr) return;
 
     // Prepare styling for the hulls
-    m_mesh->setFaceColor(m_baseColor);
+    mesh->setFaceColor(m_baseColor);
     if (m_applyCompositeColor) colorHulls();
+
+    m_mesh = mesh;
 }
 
 const std::vector<ConvexHull>& CompositeBody::hulls() const
