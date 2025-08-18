@@ -17,6 +17,26 @@ public:
         DIRECT = 0, DELAUNEY, TEST
     };
 
+    struct Relief {
+
+        Relief(const glm::dvec2& start, const glm::dvec2& split, const glm::dvec2& end, const glm::dvec2& help, double width);
+
+        [[nodiscard]] std::vector<double> depths(double thickness) const;
+
+        [[nodiscard]] const glm::dvec2& apex();
+
+        glm::dvec2 start; // Initial position of cut
+        glm::dvec2 ext; // External edge of cut
+        glm::dvec2 normal; // Direction of intended cut
+        double length;
+        double theta; // Angle formed between the cut direction and the external cut surface
+        double phi; // Angle formed in the parallelogram
+
+        std::vector<glm::dvec2> edges; // (continuous) edges of the relief, excluding edges shared with the profile
+
+        bool valid;
+    };
+
     Profile();
     Profile(const std::vector<glm::dvec2>& contour, const glm::dvec3& normal, const glm::dvec3& xAxis, const glm::dvec3& yAxis);
 
@@ -57,6 +77,10 @@ public:
 
     [[nodiscard]] std::pair<double, double> angles(const TriIndex& triangle) const;
     [[nodiscard]] std::pair<double, double> clearance(const TriIndex& triangle) const;
+
+    [[nodiscard]] Relief prepareRelief(double bladeWidth, uint8_t edgeIndex) const;
+
+//    [[nodiscard]] std::tuple<bool, glm::
 
     [[nodiscard]] const glm::dvec3& normal() const;
 
@@ -104,6 +128,8 @@ private:
 
     [[nodiscard]] double clearance(const glm::dvec2& axis, uint32_t vertexIndex) const;
 
+    bool intersects(const glm::dvec2& a, const glm::dvec2& b, uint32_t start, uint32_t end) const;
+    void intersection(const glm::dvec2& a, const glm::dvec2& b, uint32_t start, uint32_t end, double& t) const;
     static std::tuple<bool, double> intersection(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c, const glm::dvec2& d);
 
     [[nodiscard]] std::pair<uint32_t, uint32_t> nextHullVertices(uint32_t vertexIndex) const;
@@ -113,6 +139,7 @@ private:
 
     static double angle(const glm::dvec2& a, const glm::dvec2& b);
 
+    [[nodiscard]] std::tuple<glm::dvec2, glm::dvec2, glm::dvec2> system(uint8_t edgeIndex) const;
 
     void commitSections(const std::vector<Section>& sections);
 
@@ -130,6 +157,7 @@ private:
     std::deque<Section> m_sections;
 
     double m_minimumArea;
+
 };
 
 

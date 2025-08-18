@@ -233,7 +233,7 @@ void Profile::skip()
 
 void Profile::refine()
 {
-    m_sections.pop_front();
+    if (!m_sections.empty()) m_sections.pop_front();
 }
 
 TriIndex Profile::next() const
@@ -343,31 +343,38 @@ double Profile::clearance(const glm::dvec2& axis, uint32_t vertexIndex) const
         glm::dvec2 dir = m_vertices[vertexIndex] - axis;
 
         auto hv = nextHullVertices(vertexIndex);
-
-        uint32_t index = prevVertex(vertexIndex), prev = index;
-
-        // Find nearest intersection along the upper chain (skipping first edge)
-        while (prev != hv.first) {
-            index = prevVertex(index);
-
-            auto [hit, tIntersection] = intersection(m_vertices[vertexIndex], dir, m_vertices[prev], m_vertices[index]);
-            if (hit) t = std::min(t, tIntersection);
-            prev = index;
-        }
-
-        index = nextVertex(vertexIndex), prev = index;
-
-        // Find nearest intersection along the lower chain (skipping first edge)
-        while (prev != hv.second) {
-            index = nextVertex(index);
-
-            auto [hit, tIntersection] = intersection(m_vertices[vertexIndex], dir, m_vertices[prev], m_vertices[index]);
-            if (hit) t = std::min(t, tIntersection);
-            prev = index;
-        }
+        intersection(m_vertices[vertexIndex], dir, hv.first, prevVertex(vertexIndex), t);
+        intersection(m_vertices[vertexIndex], dir, nextVertex(vertexIndex), hv.second, t);
     }
 
     return t;
+}
+
+bool Profile::intersects(const glm::dvec2& a, const glm::dvec2& b, uint32_t start, uint32_t end) const
+{
+    uint32_t index = start;
+    while (start != end) {
+        index = nextVertex(index);
+        auto [hit, tIntersection] = intersection(a, b, m_vertices[start], m_vertices[index]);
+        if (hit && 1e-12 < tIntersection && tIntersection < 1 - 1e-12) {
+//            std::cout << "Intersection: " << start << " " << end << " | " << index << " " << tIntersection << "\n";
+            return true;
+        }
+        start = index;
+    }
+
+    return false;
+}
+
+void Profile::intersection(const glm::dvec2& a, const glm::dvec2& b, uint32_t start, uint32_t end, double& t) const
+{
+    uint32_t index = start;
+    while (start != end) {
+        index = nextVertex(index);
+        auto [hit, tIntersection] = intersection(a, b, m_vertices[start], m_vertices[index]);
+        if (hit) t = std::min(t, tIntersection);
+        start = index;
+    }
 }
 
 std::tuple<bool, double> Profile::intersection(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c, const glm::dvec2& d)
@@ -376,6 +383,7 @@ std::tuple<bool, double> Profile::intersection(const glm::dvec2& a, const glm::d
 
     if (a1 * a2 < 0) {
         double a3 = Triangle2D::signedArea(c, d, a), a4 = a3 + a2 - a1;
+//        std::cout << "T: " << a3 / (a3-a4);
         if (a3 * a4 < 0) return { true, a3 / (a3 - a4) };
     }
 
@@ -601,16 +609,125 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
         edges.emplace_back(m_vertices[section.triangle.I0], m_vertices[section.triangle.I2]);
     }
 
-    // Draw clearances
+    // Show clearances
     if (!m_sections.empty()) {
         TriIndex tri = m_sections[0].triangle;
 
-        auto margin = clearance();
-        if (margin.first  != 0) edges.emplace_back(m_vertices[tri.I0], m_vertices[tri.I0] + margin.first  * glm::normalize(m_vertices[tri.I0] - m_vertices[tri.I1]));
-        if (margin.second != 0) edges.emplace_back(m_vertices[tri.I2], m_vertices[tri.I2] + margin.second * glm::normalize(m_vertices[tri.I2] - m_vertices[tri.I1]));
+        double width = 0.1, thickness = 0.01;
+        std::vector<uint8_t> checks;
 
+        auto margin = clearance();
+        if (margin.first  != 0) edges.emplace_back(m_vertices[tri.I0], m_vertices[tri.I0] + std::min(margin.first,  2.0) * glm::normalize(m_vertices[tri.I0] - m_vertices[tri.I1]));
+        else checks.emplace_back(0);
+
+        if (margin.second != 0) edges.emplace_back(m_vertices[tri.I2], m_vertices[tri.I2] + std::min(margin.second, 2.0) * glm::normalize(m_vertices[tri.I2] - m_vertices[tri.I1]));
+        else checks.emplace_back(1);
+
+        // Show reliefs, if appropriate
+        for (uint8_t check : checks) {
+            auto relief = prepareRelief(width, check);
+            if (relief.valid) {
+                for (uint32_t i = 1; i < relief.edges.size(); i++) edges.emplace_back(relief.edges[i - 1], relief.edges[i]);
+
+                auto depths = relief.depths(thickness);
+                glm::dvec2 pos = relief.start + relief.length * relief.ext;
+                for (double depth : depths) {
+                    edges.emplace_back(pos, pos - relief.normal * depth);
+                    pos -= thickness * relief.ext;
+                }
+
+            }
+
+            std::cout << "R" << (uint32_t)check << ": " << relief.valid << " " << relief.length << "\n";
+        }
     }
 
 
     return edges;
+}
+
+// Forms a parallelogram representing the required empty region to perform a relief cut
+Profile::Relief::Relief(const glm::dvec2& start, const glm::dvec2& split, const glm::dvec2& end, const glm::dvec2& help, double width)
+    : ext(glm::normalize(end - start))
+    , start(start)
+    , normal(help - start)
+    , valid(false)
+{
+    auto cut = split - start;
+
+    length = glm::length(cut);
+    cut /= length;
+
+    double normalLength = glm::length(normal);
+    normal /= normalLength;
+
+    theta = acos(glm::dot(cut, ext));
+    phi = acos(glm::dot(ext, normal));
+
+    length = std::min(length, width) * sin(M_PI - theta - phi) / sin(phi);
+
+    auto apex = start + ext * length + normal * width;
+
+    edges = {
+            apex - normal * width,
+            apex,
+            apex - ext * length
+    };
+
+    if (normalLength < width) edges.emplace_back(help);
+}
+
+std::vector<double> Profile::Relief::depths(double thickness) const
+{
+    double x = length, factor = sin(theta) / sin(M_PI - theta - phi);
+
+    std::vector<double> depth;
+    depth.reserve((size_t)std::floor(length / thickness) + 1);
+
+    while (x > 0) {
+        depth.emplace_back(x * factor);
+        x -= thickness;
+    }
+
+    return depth;
+}
+
+const glm::dvec2& Profile::Relief::apex()
+{
+    return edges[1];
+}
+
+// Tries to find a set of relief cuts to enable the cut
+// edgeIndex = 0 -> first edge, edgeIndex = 1 -> second edge
+// Checks collisions against a parallelogram of side lengths bladeWidth and depth (calculated) returning true
+// if there were no intersections (indicating the operation is accessible to the robot)
+// TODO Currently only tries forming a relief cut with the adjacent edge as a guide. There are more (infinitely many) options. Trying against the opposite face would also capture some situations
+Profile::Relief Profile::prepareRelief(double bladeWidth, uint8_t edgeIndex) const
+{
+    if (m_sections.empty() || edgeIndex > 1) throw std::runtime_error("[Profile] Can not evaluate relief");
+
+    uint32_t splitIndex = m_sections[0].triangle.I1;
+    auto hv = nextHullVertices(splitIndex);
+
+    auto [start, adj, help] = system(edgeIndex);
+    auto relief = Relief(start, m_vertices[splitIndex], adj, help, bladeWidth);
+
+    // Validate relief
+    relief.valid = true;
+    for (uint32_t i = 1; i < relief.edges.size(); i++) {
+        if (intersects(relief.edges[i - 1], relief.edges[i], hv.first, hv.second)) {
+            relief.valid = false;
+            break;
+        }
+    }
+
+    return relief;
+}
+
+std::tuple<glm::dvec2, glm::dvec2, glm::dvec2> Profile::system(uint8_t edgeIndex) const
+{
+    const TriIndex& tri = m_sections[0].triangle;
+
+    if (edgeIndex == 0) return { m_vertices[tri.I0], m_vertices[tri.I2], m_vertices[prevVertex(tri.I0)] };
+    return                     { m_vertices[tri.I2], m_vertices[tri.I0], m_vertices[nextVertex(tri.I2)] };
 }

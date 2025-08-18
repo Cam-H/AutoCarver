@@ -250,7 +250,9 @@ void SculptProcess::plan()
     m_robot->moveTo(initialRobotCommand);
     m_turntable->moveTo(initialTableCommand);
 
-    m_sculpture->restore();
+    if (m_convexTrimEnable) m_sculpture->restore();
+    else m_sculpture->restoreAsHull();
+
     m_sculpture->setRotation(glm::angleAxis(0.0, UP));
 
     m_planned = true;
@@ -828,17 +830,12 @@ SculptProcess::Action SculptProcess::planOutlineRefinement(const Profile& profil
     auto clearance = profile.clearance();
     std::cout << "SS: " << profile.remainingSections() << " " << clearance.first << " " << clearance.second << " " << profile.area() << "\n";
 
-//        if (clearance.first == 0 || clearance.second == 0) { // TODO actually operate
-//            profile.skip();
-//            continue;
-//        }
+    if (clearance.first < offset || clearance.second < offset) return { nullptr, nullptr }; // TODO try to handle these cases
 
     auto trajectory = std::make_shared<CompositeTrajectory>(6);
     trajectory->setLimits(m_baseVelocityLimits, m_baseAccelerationLimits);
 
     Action action(trajectory, m_robot);
-
-//            if (clearance.first < offset) TODO
 
     auto AB = wTri.a - wTri.b, BC = wTri.c - wTri.b;
     auto depthAB = glm::length(AB), depthBC = glm::length(BC);
@@ -898,6 +895,11 @@ bool SculptProcess::planBlindCut(const Pose& pose, double depth, Action& action)
 
     return true;
 }
+
+//bool SculptProcess::planReliefCuts(const Pose& pose, double depth, Action& action)
+//{
+//
+//}
 
 
 void SculptProcess::planFeatureRefinement()

@@ -192,8 +192,6 @@ std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
         debris->setTransform(m_transform);
         debris->initialize();
 
-//        debris->mesh()->setFaceColor(m_mesh->baseColor());
-
         m_hull = hulls()[0]; // Ignores small off-cuts (Little effect on testing) & only works properly before triangular sectioning TODO
         remesh();
 
@@ -219,17 +217,14 @@ bool Sculpture::inLimit(const ConvexHull& hull, const std::vector<Plane>& limits
 
 std::shared_ptr<Debris> Sculpture::triangleSection(const Plane& planeA, const Plane& planeB, const std::vector<Plane>& limits)
 {
+    auto debris = std::make_shared<Debris>(std::vector<ConvexHull>());
+
     const auto& fragments = hulls();
     for (uint32_t i = 0; i < fragments.size(); i++) {
 
         auto aFragments = Collision::fragments(fragments[i], { planeA.origin, -planeA.normal });
         auto bFragments = Collision::fragments(aFragments.second, { planeB.origin, -planeB.normal });
         if (bFragments.second.empty()) continue;
-
-//        std::cout << i << " " << limits.size() << " | "
-//        << inLimit(bFragments.second, limits)
-//        << " A: " << !aFragments.first.empty()
-//        << " B: " << !bFragments.first.empty() << "\n";
 
         if (inLimit(bFragments.second, limits)) {
             if (!aFragments.first.empty()) { // Intersection with plane A
@@ -246,13 +241,21 @@ std::shared_ptr<Debris> Sculpture::triangleSection(const Plane& planeA, const Pl
                 }
             }
         }
+
+        debris->add(bFragments.second);
     }
 
-//    std::cout << "R " << m_hulls.size() << "\n";
 
-    // Manually remesh only if no hulls were merged (If they are the superclass already remeshes)
-    if (!tryMerge()) remesh();
-//    remesh();
+
+    if (!debris->hulls().empty()) { // Action was taken to remove parts of the sculpture
+        debris->setTransform(m_transform);
+        debris->initialize();
+
+        // Manually remesh only if no hulls were merged (If they are the superclass already remeshes)
+        if (!tryMerge()) remesh();
+
+        return debris;
+    }
 
     return nullptr;
 }

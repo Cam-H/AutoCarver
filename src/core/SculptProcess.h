@@ -133,6 +133,7 @@ private:
     Action planOutlineRefinement(const Profile& profile, const Triangle3D& wTri, const glm::dvec3& wNormal);
 
     bool planBlindCut(const Pose& pose, double depth, Action& action);
+//    bool planReliefCuts(const Pose& pose, double depth, Action& action);
 
     void planFeatureRefinement();
 

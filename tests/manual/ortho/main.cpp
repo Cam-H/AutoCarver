@@ -143,7 +143,7 @@ void refine()
     bool external = profile.isNextExternal();
     auto indices = profile.next();
 
-    std::cout << "RSTATE: " << external << " " << profile.complete() << " " << profile.vertexCount() << "\n";
+//    std::cout << "RSTATE: " << external << " " << profile.complete() << " " << profile.vertexCount() << "\n";
     auto angles = profile.angles(indices), clearance = profile.clearance(indices);
     std::cout << "Angles: [" << (180/M_PI)*angles.first << " " << (180/M_PI)*angles.second << "], Clearance: ["
     << " " << clearance.first << " " << clearance.second << "]\n";
