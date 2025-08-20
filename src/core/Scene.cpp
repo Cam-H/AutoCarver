@@ -28,12 +28,7 @@ Scene::~Scene()
 
 }
 
-
-bool Scene::serialize(const std::string& filename)
-{
-    return Serializable::serialize(filename);
-}
-bool Scene::serialize(std::ofstream& file)
+bool Scene::serialize(std::ofstream& file) const
 {
 
     Serializer::writeUint(file, m_bodies.size());
@@ -44,10 +39,6 @@ bool Scene::serialize(std::ofstream& file)
     return true;
 }
 
-bool Scene::deserialize(const std::string& filename)
-{
-    return Serializable::deserialize(filename);
-}
 bool Scene::deserialize(std::ifstream& file)
 {
     m_bodies.clear();

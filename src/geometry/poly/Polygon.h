@@ -8,12 +8,20 @@
 #include <vector>
 #include <glm.hpp>
 
+#include "fileIO/Serializable.h"
+
 #include "geometry/primitives/Triangle.h"
 
-class Polygon {
+class Polygon : public Serializable {
 public:
 
     explicit Polygon(const std::vector<glm::dvec2> &border, bool enforceCCWWinding = true);
+
+    explicit Polygon(const std::string& filename);
+    explicit Polygon(std::ifstream& file);
+
+    bool serialize(std::ofstream& file) const override;
+    bool deserialize(std::ifstream& file) override;
 
     void removeVertex(uint32_t index);
 
@@ -50,6 +58,7 @@ public:
 
     std::vector<glm::dvec3> projected3D(const glm::dvec3& xAxis, const glm::dvec3& yAxis, const glm::dvec3& offset = {}) const;
     static std::vector<glm::dvec3> projected3D(const std::vector<glm::dvec2>& vertices, const glm::dvec3& xAxis, const glm::dvec3& yAxis, const glm::dvec3& offset = {});
+    static inline glm::dvec3 projected3D(const glm::dvec2& vertex, const glm::dvec3& xAxis, const glm::dvec3& yAxis, const glm::dvec3& offset) { return offset + xAxis * vertex.x + yAxis * vertex.y; };
 
     std::vector<uint32_t> hull() const;
     static std::vector<uint32_t> hull(const std::vector<glm::dvec2>& vertices);

@@ -28,10 +28,7 @@ public:
     explicit VertexArray(std::ifstream& file);
 
 
-    bool serialize(const std::string& filename) override;
-    bool serialize(std::ofstream& file) override;
-
-    bool deserialize(const std::string& filename) override;
+    bool serialize(std::ofstream& file) const override;
     bool deserialize(std::ifstream& file) override;
 
 //    static VertexArray deserialize(std::ifstream& file);

@@ -34,10 +34,7 @@ public:
     explicit RigidBody(const std::shared_ptr<Mesh>& mesh);
     explicit RigidBody(const ConvexHull& hull);
 
-    bool serialize(const std::string& filename) override;
-    bool serialize(std::ofstream& file) override;
-
-    bool deserialize(const std::string& filename) override;
+    bool serialize(std::ofstream& file) const override;
     bool deserialize(std::ifstream& file) override;
 
     void moved() override;

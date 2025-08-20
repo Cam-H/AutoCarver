@@ -180,7 +180,7 @@
       <item row="4" column="3">
        <widget class="QSpinBox" name="sliceLimitField">
         <property name="minimum">
-         <number>5</number>
+         <number>1</number>
         </property>
         <property name="maximum">
          <number>10000</number>

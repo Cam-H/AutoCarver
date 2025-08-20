@@ -22,6 +22,32 @@ Polygon::Polygon(const std::vector<glm::dvec2>& border, bool enforceCCWWinding)
     if (enforceCCWWinding) correctWinding();
 }
 
+Polygon::Polygon(const std::string& filename)
+        : Polygon(std::vector<glm::dvec2>{})
+{
+    Serializable::load(filename);
+}
+
+Polygon::Polygon(std::ifstream& file)
+        : Polygon(std::vector<glm::dvec2>{})
+{
+    if (!Polygon::deserialize(file)) std::cerr << "Failed to deserialize profile properly!\n";
+}
+
+bool Polygon::serialize(std::ofstream& file) const
+{
+    Serializer::writeVectorDVec2(file, m_vertices);
+
+    return true;
+}
+
+bool Polygon::deserialize(std::ifstream& file)
+{
+    m_vertices = Serializer::readVectorDVec2(file);
+
+    return true;
+}
+
 void Polygon::removeVertex(uint32_t index)
 {
     if (index >= m_vertices.size()) throw std::runtime_error("[Polygon] Index out of bounds error!");
@@ -176,7 +202,7 @@ std::vector<glm::dvec3> Polygon::projected3D(const std::vector<glm::dvec2>& vert
     projection.reserve(vertices.size());
 
     for (const glm::dvec2& vertex : vertices) {
-        projection.emplace_back(offset + xAxis * vertex.x + yAxis * vertex.y);
+        projection.emplace_back(projected3D(vertex, xAxis, yAxis, offset));
     }
 
     return projection;

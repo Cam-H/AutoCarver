@@ -16,11 +16,9 @@ Profile::Profile()
 
 Profile::Profile(const std::vector<glm::dvec2>& contour, const glm::dvec3& normal, const glm::dvec3& xAxis, const glm::dvec3& yAxis)
     : Polygon(contour, false)
-    , m_normal(normal)
-    , m_xAxis(xAxis)
-    , m_yAxis(yAxis)
+    , m_system(xAxis, yAxis,normal)
     , m_method(RefinementMethod::DIRECT)
-    , m_minimumArea(0.0002f)
+    , m_minimumArea(0.0002)
 {
     initialize();
 }
@@ -28,7 +26,7 @@ Profile::Profile(const std::vector<glm::dvec2>& contour, const glm::dvec3& norma
 Profile::Profile(const std::string& filename)
         : Profile()
 {
-    Serializable::deserialize(filename);
+    Serializable::load(filename);
 }
 
 Profile::Profile(std::ifstream& file)
@@ -37,30 +35,77 @@ Profile::Profile(std::ifstream& file)
     if (!Profile::deserialize(file)) std::cerr << "Failed to deserialize profile properly!\n";
 }
 
-bool Profile::serialize(const std::string& filename)
+bool Profile::serialize(std::ofstream& file) const
 {
-    return Serializable::serialize(filename);
-}
-bool Profile::serialize(std::ofstream& file)
-{
-    Serializer::writeVectorDVec2(file, m_vertices);
-    Serializer::writeDVec3(file, m_normal);
-    Serializer::writeDVec3(file, m_xAxis);
-    Serializer::writeDVec3(file, m_yAxis);
+    Polygon::serialize(file);
+
+    Serializer::writeDVec3(file, m_system.xAxis);
+    Serializer::writeDVec3(file, m_system.yAxis);
+    Serializer::writeDVec3(file, m_system.zAxis);
+
+    switch (m_method) {
+        case RefinementMethod::DIRECT:   Serializer::writeUint(file, 0); break;
+        case RefinementMethod::DELAUNEY: Serializer::writeUint(file, 1); break;
+        case RefinementMethod::TEST:     Serializer::writeUint(file, 2); break;
+    }
+
+    Serializer::writeUint(file, m_hull.size());
+    for (uint32_t idx : m_hull) Serializer::writeUint(file, idx);
+
+    Serializer::writeUint(file, m_remainder.size());
+    for (const auto& pair : m_remainder) {
+        Serializer::writeUint(file, pair.first);
+        Serializer::writeUint(file, pair.second);
+    }
+
+    Serializer::writeUint(file, m_sections.size());
+    for (const Section& section : m_sections) {
+        Serializer::writeUint(file, section.triangle.I0);
+        Serializer::writeUint(file, section.triangle.I1);
+        Serializer::writeUint(file, section.triangle.I2);
+        Serializer::writeUint(file, section.children);
+    }
+
+//    std::cout << "Serialize\n";
+//    print();
 
     return true;
 }
 
-bool Profile::deserialize(const std::string& filename)
-{
-    return Serializable::deserialize(filename);
-}
+// TODO safety checks
 bool Profile::deserialize(std::ifstream& file)
 {
-    m_vertices = Serializer::readVectorDVec2(file);
-    m_normal = Serializer::readDVec3(file);
-    m_xAxis = Serializer::readDVec3(file);
-    m_yAxis = Serializer::readDVec3(file);
+    Polygon::deserialize(file);
+
+    m_system.xAxis = Serializer::readDVec3(file);
+    m_system.yAxis = Serializer::readDVec3(file);
+    m_system.zAxis = Serializer::readDVec3(file);
+
+    // Don't call setter because internal state should not be recalculated (Loaded instead)
+    switch (Serializer::readUint(file)) {
+        case 0: m_method = RefinementMethod::DIRECT; break;
+        case 1: m_method = RefinementMethod::DELAUNEY; break;
+        case 2: m_method = RefinementMethod::TEST; break;
+    }
+
+    m_hull = std::vector<uint32_t>(Serializer::readUint(file));
+    for (uint32_t& idx : m_hull) idx = Serializer::readUint(file);
+
+    m_remainder = std::vector<std::pair<uint32_t, uint32_t>>(Serializer::readUint(file));
+    for (std::pair<uint32_t, uint32_t>& pair : m_remainder) {
+        pair.first = Serializer::readUint(file);
+        pair.second = Serializer::readUint(file);
+    }
+
+    m_sections.clear();
+    uint32_t size = Serializer::readUint(file);
+    for (uint32_t i = 0; i < size; i++) {
+        uint32_t I0 = Serializer::readUint(file), I1 = Serializer::readUint(file), I2 = Serializer::readUint(file);
+        m_sections.emplace_back(TriIndex(I0, I1, I2), Serializer::readUint(file));
+    }
+
+//    std::cout << "Deserialize\n";
+//    print();
 
     return true;
 }
@@ -85,21 +130,11 @@ void Profile::initialize()
         last = m_hull[i];
     }
 
-//    std::cout << "Border: ";
-//    for (uint32_t b : m_hull) std::cout << b << " ";
-//    std::cout << "\n";
-
-
     // Identify concave faces, noting boundaries with the convex hull
     for (uint32_t i = 0; i < m_hull.size(); i++) {
         uint32_t idx = (i + 1) % m_hull.size(), count = 1 + difference(m_hull[i], m_hull[idx], m_vertices.size());
         if (count > 2) emplaceRemainder(m_hull[i], count);
     }
-
-//    std::cout << "Profile: " << isCCW() << " " << m_hull.size() << " " << m_vertices.size() << " " << m_remainder.size() << " " << "\n";
-    for (auto& r : m_remainder) std::cout << r.first << " " << r.second << "\n";
-
-//    setRefinementMethod(m_method);
 
 }
 
@@ -170,16 +205,16 @@ glm::dvec2 Profile::edgeNormal(uint32_t start, uint32_t end)
 
 void Profile::setRefinementMethod(RefinementMethod method)
 {
-    m_method = method;
+    if (m_method != method && !m_remainder.empty()) {
+        m_method = method;
 
-    if (m_remainder.empty()) return;
-
-    // More involved decomposition of concave for processing
-    switch (m_method) {
+        // More involved decomposition of concave regions for processing
+        switch (m_method) {
 //        case RefinementMethod::DIRECT: directRefinement(); break;
-        case RefinementMethod::DELAUNEY: delauneyRefinement(); break;
+            case RefinementMethod::DELAUNEY: delauneyRefinement(); break;
 //        case RefinementMethod::TEST: testRefinement(); break;
-        default: throw std::runtime_error("[Profile] Unrecognized refinement method");
+            default: throw std::runtime_error("[Profile] Unrecognized refinement method");
+        }
     }
 }
 
@@ -195,17 +230,18 @@ void Profile::setMimimumArea(double area)
 void Profile::translate(const glm::dvec3& translation)
 {
     Polygon::translate({
-        glm::dot(translation, m_xAxis),
-        glm::dot(translation, m_yAxis)
+        glm::dot(translation, m_system.xAxis),
+        glm::dot(translation, m_system.yAxis)
     });
 }
 
 void Profile::rotateAbout(const glm::dvec3& axis, double theta)
 {
+    m_system.rotate(axis, theta);
     auto rotation = glm::angleAxis(theta, axis);
-    m_normal = rotation * m_normal;
-    m_xAxis = rotation * m_xAxis;
-    m_yAxis = rotation * m_yAxis;
+//    m_normal = rotation * m_normal;
+//    m_xAxis = rotation * m_xAxis;
+//    m_yAxis = rotation * m_yAxis;
 }
 
 void Profile::inverseWinding()//TODO update
@@ -403,7 +439,7 @@ std::pair<uint32_t, uint32_t> Profile::nextHullVertices(uint32_t vertexIndex) co
 
 const glm::dvec3& Profile::normal() const
 {
-    return m_normal;
+    return m_system.zAxis;
 }
 
 void Profile::addTriangle(uint32_t startIndex)
@@ -580,7 +616,7 @@ std::vector<glm::dvec2> Profile::sectionVertices(const std::vector<uint32_t>& in
 // Project vertices into 3D space according to the defined axis system
 std::vector<glm::dvec3> Profile::projected3D(const glm::dvec3& offset) const
 {
-    return Polygon::projected3D(m_xAxis, m_yAxis, offset);
+    return Polygon::projected3D(m_system.xAxis, m_system.yAxis, offset);
 }
 
 std::vector<glm::dvec3> Profile::projected3D(const TriIndex& triangle, const glm::dvec3& offset) const
@@ -598,7 +634,18 @@ std::vector<glm::dvec3> Profile::projected3D(const std::vector<uint32_t>& indice
         vertices.emplace_back(m_vertices[idx]);
     }
 
-    return Polygon::projected3D(vertices, m_xAxis, m_yAxis, offset);
+    return Polygon::projected3D(vertices, m_system.xAxis, m_system.yAxis, offset);
+}
+
+std::tuple<glm::dvec3, glm::dvec3, glm::dvec3> Profile::projected3D(const Profile::Relief& relief) const
+{
+    glm::dvec3 offset = {};
+
+    return {
+        Polygon::projected3D(relief.start,  m_system.xAxis, m_system.yAxis, offset),
+        Polygon::projected3D(relief.ext,    m_system.xAxis, m_system.yAxis, offset),
+        Polygon::projected3D(relief.normal, m_system.xAxis, m_system.yAxis, offset)
+    };
 }
 
 std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
@@ -613,7 +660,7 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
     if (!m_sections.empty()) {
         TriIndex tri = m_sections[0].triangle;
 
-        double width = 0.1, thickness = 0.01;
+        double width = 0.108, thickness = 0.01;
         std::vector<uint8_t> checks;
 
         auto margin = clearance();
@@ -646,6 +693,25 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
     return edges;
 }
 
+void Profile::print() const
+{
+    std::cout << "[Profile]\n";
+    m_system.print();
+
+    std::cout << "hull: [";
+    for (uint32_t idx : m_hull) std::cout << idx << " ";
+
+    std::cout << "]\nrem: [";
+    for (const auto& rem : m_remainder) std::cout << "(" << rem.first << ", " << rem.second << ") ";
+
+    std::cout << "]\nsections: \n";
+    for (const Section& section : m_sections) {
+        std::cout << section.triangle.I0 << " " << section.triangle.I1 << " " << section.triangle.I2 << " " << section.children << "\n";
+    }
+
+    std::cout << "\n";
+}
+
 // Forms a parallelogram representing the required empty region to perform a relief cut
 Profile::Relief::Relief(const glm::dvec2& start, const glm::dvec2& split, const glm::dvec2& end, const glm::dvec2& help, double width)
     : ext(glm::normalize(end - start))
@@ -666,6 +732,8 @@ Profile::Relief::Relief(const glm::dvec2& start, const glm::dvec2& split, const 
 
     length = std::min(length, width) * sin(M_PI - theta - phi) / sin(phi);
 
+    std::cout << "RELIEF: " << length << " " << width << " " << (180*theta/M_PI) << " " << (180*phi/M_PI) << " " << normalLength << "\n";
+
     auto apex = start + ext * length + normal * width;
 
     edges = {
@@ -679,6 +747,12 @@ Profile::Relief::Relief(const glm::dvec2& start, const glm::dvec2& split, const 
 
 std::vector<double> Profile::Relief::depths(double thickness) const
 {
+    if (length < 0) {
+//        throw std::runtime_error("[Profile::Relief] Can not evaluate depths. Relief improperly defined");
+        std::cout << "\033[93m[Profile::Relief] Can not evaluate depths. Relief improperly defined\033[0m\n";
+        return {};
+    }
+
     double x = length, factor = sin(theta) / sin(M_PI - theta - phi);
 
     std::vector<double> depth;

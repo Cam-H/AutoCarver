@@ -39,10 +39,7 @@ public:
 
     Mesh(uint32_t vertexCount, uint32_t faceCount, uint32_t indexCount);
 
-    bool serialize(const std::string& filename) override;
-    bool serialize(std::ofstream& file) override;
-
-    bool deserialize(const std::string& filename) override;
+    bool serialize(std::ofstream& file) const override;
     bool deserialize(std::ifstream& file) override;
 
     void scale(double scalar);

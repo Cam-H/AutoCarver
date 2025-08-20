@@ -6,11 +6,12 @@
 #define AUTOCARVER_PROFILE_H
 
 #include "Polygon.h"
-#include "fileIO/Serializable.h"
 
 #include <deque>
 
-class Profile : public Polygon, public Serializable {
+#include "geometry/Axis3D.h"
+
+class Profile : public Polygon {
 public:
 
     enum class RefinementMethod {
@@ -26,9 +27,9 @@ public:
         [[nodiscard]] const glm::dvec2& apex();
 
         glm::dvec2 start; // Initial position of cut
-        glm::dvec2 ext; // External edge of cut
+        glm::dvec2 ext; // Direction of external edge of cut
         glm::dvec2 normal; // Direction of intended cut
-        double length;
+        double length; // Depth along ext that needs to be cut
         double theta; // Angle formed between the cut direction and the external cut surface
         double phi; // Angle formed in the parallelogram
 
@@ -43,10 +44,7 @@ public:
     explicit Profile(const std::string& filename);
     explicit Profile(std::ifstream& file);
 
-    bool serialize(const std::string& filename) override;
-    bool serialize(std::ofstream& file) override;
-
-    bool deserialize(const std::string& filename) override;
+    bool serialize(std::ofstream& file) const override;
     bool deserialize(std::ifstream& file) override;
 
     void setRefinementMethod(RefinementMethod method);
@@ -88,8 +86,11 @@ public:
     [[nodiscard]] std::vector<glm::dvec3> projected3D(const glm::dvec3& offset = {}) const;
     [[nodiscard]] std::vector<glm::dvec3> projected3D(const TriIndex& triangle, const glm::dvec3& offset = {}) const;
     [[nodiscard]] std::vector<glm::dvec3> projected3D(const std::vector<uint32_t>& indices, const glm::dvec3& offset = {}) const;
+    [[nodiscard]] std::tuple<glm::dvec3, glm::dvec3, glm::dvec3> projected3D(const Profile::Relief& relief) const;
 
     [[nodiscard]] std::vector<std::pair<glm::dvec2, glm::dvec2>> debugEdges() const override;
+
+    void print() const;
 
 private:
 
@@ -145,9 +146,7 @@ private:
 
 private:
 
-    glm::dvec3 m_normal;
-    glm::dvec3 m_xAxis;
-    glm::dvec3 m_yAxis;
+    Axis3D m_system;
 
     RefinementMethod m_method;
 

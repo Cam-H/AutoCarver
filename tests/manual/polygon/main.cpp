@@ -15,8 +15,10 @@
 #ifndef QT_NO_OPENGL
 
 #include "geometry/poly/Polygon.h"
+#include "geometry/poly/Profile.h"
 #include "renderer/PolygonWidget.h"
 #include "renderer/UiLoader.h"
+#include "fileIO/Serializable.h"
 
 #endif
 
@@ -24,8 +26,10 @@
 QWidget *window = nullptr;
 
 PolygonWidget *displayWidget = nullptr;
+QLabel *countLabel = nullptr;
+QCheckBox *centerButton = nullptr;
 
-std::vector<Polygon> polygons;
+std::vector<Polygon*> polygons;
 uint32_t selection = 0;
 
 
@@ -41,6 +45,30 @@ static QWidget *loadUiFile(QWidget *parent)
     file.close();
 
     return widget;
+}
+
+void updateLabel()
+{
+    countLabel->setText(("Polygon " + std::to_string(selection + 1) + "/" + std::to_string(polygons.size())).c_str());
+}
+
+template<class T>
+void load(const QStringList& selectedFiles) {
+    uint32_t idx = polygons.size();
+
+    for (const QString& filename : selectedFiles) {
+        auto poly = new T(filename.toStdString());
+
+        polygons.push_back(poly);
+    }
+
+    centerButton->setChecked(true);
+    displayWidget->setCentered(true);
+
+    selection = idx;
+    displayWidget->setPolygon(polygons[selection]);
+    updateLabel();
+
 }
 
 int main(int argc, char *argv[])
@@ -61,20 +89,20 @@ int main(int argc, char *argv[])
 
     displayWidget = window->findChild<PolygonWidget*>("displayWidget");
 
-    polygons.emplace_back(std::vector<glm::dvec2>{
+    polygons.emplace_back(new Polygon(std::vector<glm::dvec2>{
             { 213.000000, 156.000000},{ 205.000000, 276.000000},{ 400.000000, 100.000000},{ 420.000000, 189.000000},{ 314.000000, 252.000000},{ 342.000000, 400.000000},{ 265.000000, 304.000000},{ 114.000000, 422.000000},{ 95.000000, 402.000000},{ 158.000000, 349.000000},{ 24.000000, 196.000000},{ 108.000000, 246.000000},{ 103.000000, 34.000000},{ 119.000000, 171.000000},{ 197.000000, 96.000000},{ 240.000000, 23.000000}
-    });
+    }));
 
-    polygons.emplace_back(std::vector<glm::dvec2>{
+    polygons.emplace_back(new Polygon(std::vector<glm::dvec2>{
             { 100.000000, 100.000000},{ 445.000000, 70.000000},{ 216.000000, 230.000000},{ 238.000000, 150.000000},{ 184.000000, 143.000000},{ 144.000000, 252.000000},{ 203.000000, 341.000000},{ 400.000000, 400.000000},{ 95.000000, 402.000000}
-    });
+    }));
 
-    polygons.emplace_back(std::vector<glm::dvec2>{
+    polygons.emplace_back(new Polygon(std::vector<glm::dvec2>{
             { 100.000000, 100.000000},{ 400.000000, 100.000000},{ 400.000000, 400.000000},{ 95.000000, 402.000000}
-    });
+    }));
 
 
-    polygons.emplace_back(std::vector<glm::dvec2>{
+    polygons.emplace_back(new Polygon(std::vector<glm::dvec2>{
             glm::vec2(100.0f, 100.0f),
             glm::vec2(400.0f, 100.0f),
             glm::vec2(400.0f, 400.0f),
@@ -84,7 +112,7 @@ int main(int argc, char *argv[])
             glm::vec2(32.0f, 279.0f),
             glm::vec2(28.0f, 185.0f),
             glm::vec2(63.0f, 62.0f)
-    });
+    }));
 
     auto test = std::vector<glm::dvec2>{
             {341.096,42.1527},
@@ -110,7 +138,10 @@ int main(int argc, char *argv[])
     };
 
 //    Polygon::cullCollinear(test);
-    polygons.emplace_back(test);
+    polygons.emplace_back(new Polygon(test));
+
+    countLabel = window->findChild<QLabel*>("countLabel");
+    updateLabel();
 
     auto polygonCheck = window->findChild<QCheckBox*>("polygonCheck");
     QObject::connect(polygonCheck, &QCheckBox::stateChanged, [&](int state) {
@@ -130,29 +161,31 @@ int main(int argc, char *argv[])
     auto prevButton = window->findChild<QPushButton*>("prevButton");
     QObject::connect(prevButton, &QPushButton::clicked, [&]() {
         if (selection > 0) selection--;
-        displayWidget->setPolygon(&polygons[selection]);
+        displayWidget->setPolygon(polygons[selection]);
+        updateLabel();
     });
 
     auto nextButton = window->findChild<QPushButton*>("nextButton");
     QObject::connect(nextButton, &QPushButton::clicked, [&]() {
         if (selection < polygons.size() - 1) selection++;
-        displayWidget->setPolygon(&polygons[selection]);
+        displayWidget->setPolygon(polygons[selection]);
+        updateLabel();
     });
 
     auto downScaleButton = window->findChild<QPushButton*>("downScaleButton");
     QObject::connect(downScaleButton, &QPushButton::clicked, [&]() {
-        polygons[selection].scale({ 250, 250}, 0.95f);
+        polygons[selection]->scale({ 250, 250}, 0.95f);
         displayWidget->update();
     });
 
-    auto centerButton = window->findChild<QCheckBox*>("centerButton");
+    centerButton = window->findChild<QCheckBox*>("centerButton");
     QObject::connect(centerButton, &QCheckBox::stateChanged, [&](int state) {
         displayWidget->setCentered(state == Qt::CheckState::Checked);
     });
 
     auto upScaleButton = window->findChild<QPushButton*>("upScaleButton");
     QObject::connect(upScaleButton, &QPushButton::clicked, [&]() {
-        polygons[selection].scale({ 250, 250}, 1.05f);
+        polygons[selection]->scale({ 250, 250}, 1.05f);
         displayWidget->update();
     });
 
@@ -171,7 +204,27 @@ int main(int argc, char *argv[])
         QGuiApplication::clipboard()->setText(QString(text.c_str()));
     });
 
-    displayWidget->setPolygon(&polygons[selection]);
+    auto saveButton = window->findChild<QPushButton*>("saveButton");
+    QObject::connect(saveButton, &QPushButton::clicked, [=]() {
+        std::string source = "../out/polygon.bin";
+        polygons[selection]->save(source);
+    });
+
+    auto loadPolygonButton = window->findChild<QPushButton*>("loadPolygonButton");
+    QObject::connect(loadPolygonButton, &QPushButton::clicked, [=]() {
+        const QStringList selectedFiles = QFileDialog::getOpenFileNames(nullptr, "Select Polygon",
+                                                              "../out", "Binary Files (*.bin)");
+        load<Polygon>(selectedFiles);
+    });
+
+    auto loadProfileButton = window->findChild<QPushButton*>("loadProfileButton");
+    QObject::connect(loadProfileButton, &QPushButton::clicked, [=]() {
+        const QStringList selectedFiles = QFileDialog::getOpenFileNames(nullptr, "Select Profile",
+                                                                        "../out", "Binary Files (*.bin)");
+        load<Profile>(selectedFiles);
+    });
+
+    displayWidget->setPolygon(polygons[selection]);
 
     window->show();
 

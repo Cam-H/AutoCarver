@@ -48,7 +48,7 @@ RigidBody::RigidBody()
 RigidBody::RigidBody(const std::string& filename)
         : RigidBody()
 {
-    Serializable::deserialize(filename);
+    Serializable::load(filename);
 
     updateColliders();
 }
@@ -68,11 +68,7 @@ RigidBody::RigidBody(const ConvexHull& hull)
     m_boundingSphere = Sphere::enclose(m_hull.vertices());
 }
 
-bool RigidBody::serialize(const std::string& filename)
-{
-    return Serializable::serialize(filename);
-}
-bool RigidBody::serialize(std::ofstream& file)
+bool RigidBody::serialize(std::ofstream& file) const
 {
     if (!m_mesh->serialize(file)) return false;
 
@@ -81,10 +77,6 @@ bool RigidBody::serialize(std::ofstream& file)
     return true;
 }
 
-bool RigidBody::deserialize(const std::string& filename)
-{
-    return Serializable::deserialize(filename);
-}
 bool RigidBody::deserialize(std::ifstream& file)
 {
     m_mesh = std::make_shared<Mesh>(file);// TODO develop method to share meshes

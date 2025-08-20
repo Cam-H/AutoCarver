@@ -273,6 +273,12 @@ int main(int argc, char *argv[])
         updateImage();
     });
 
+    auto saveButton = window->findChild<QPushButton*>("saveButton");
+    QObject::connect(saveButton, &QPushButton::clicked, [&]() {
+        profile.save("../out/orthoprof.bin");
+//        new Profile("../out/orthoprof.bin");
+    });
+
     auto *newMeshButton = window->findChild<QPushButton*>("newMeshButton");
     QObject::connect(newMeshButton, &QPushButton::clicked, [&]() {
         const QString fileName = QFileDialog::getOpenFileName(nullptr, "Select Model",

@@ -6,7 +6,7 @@
 
 #include <iostream>
 
-bool Serializable::serialize(const std::string& filename)
+bool Serializable::save(const std::string& filename) const
 {
     if (!Serializer::getInstance()->isOK()) {
         std::cerr << "Issues with serializer. Object serialization is not available\n";
@@ -29,7 +29,7 @@ bool Serializable::serialize(const std::string& filename)
     return success;
 }
 
-bool Serializable::deserialize(const std::string& filename)
+bool Serializable::load(const std::string& filename)
 {
     if (!Serializer::getInstance()->isOK()) {
         std::cerr << "Issues with serializer. Object deserialization is not available\n";

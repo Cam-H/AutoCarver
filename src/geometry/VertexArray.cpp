@@ -40,19 +40,14 @@ VertexArray::VertexArray(const std::vector<glm::dvec3>& vertices)
 
 VertexArray::VertexArray(const std::string& filename)
 {
-    Serializable::deserialize(filename);
+    Serializable::load(filename);
 }
 VertexArray::VertexArray(std::ifstream& file)
 {
     VertexArray::deserialize(file);
 }
 
-bool VertexArray::serialize(const std::string& filename)
-{
-    return Serializable::serialize(filename);
-
-}
-bool VertexArray::serialize(std::ofstream& file)
+bool VertexArray::serialize(std::ofstream& file) const
 {
     Serializer::writeUint(file, m_vertices.size());
 //    file.write(reinterpret_cast<const char*>(&m_vertexCount), sizeof(uint32_t));
@@ -61,10 +56,6 @@ bool VertexArray::serialize(std::ofstream& file)
     return true;
 }
 
-bool VertexArray::deserialize(const std::string& filename)
-{
-    return Serializable::deserialize(filename);
-}
 bool VertexArray::deserialize(std::ifstream& file)
 {
     // Read vertex count

@@ -20,7 +20,7 @@ public:
 
     explicit FaceArray(const std::vector<std::vector<uint32_t>>& indices);
 
-    bool serialize(std::ofstream& file);
+    bool serialize(std::ofstream& file) const;
     static FaceArray deserialize(std::ifstream& file);
 
     void addFace(std::vector<uint32_t> face);

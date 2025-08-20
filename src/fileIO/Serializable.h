@@ -13,12 +13,12 @@
 class Serializable {
 public:
 
-//    virtual ~Serializable() = default;
+    bool save(const std::string& filename) const;
+    bool load(const std::string& filename);
 
-    virtual bool serialize(const std::string& filename);
-    virtual bool serialize(std::ofstream& file) = 0;
+protected:
 
-    virtual bool deserialize(const std::string& filename);
+    virtual bool serialize(std::ofstream& file) const = 0;
     virtual bool deserialize(std::ifstream& file) = 0;
 };
 

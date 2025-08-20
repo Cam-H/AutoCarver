@@ -83,7 +83,7 @@ FaceArray::FaceArray(const std::vector<std::vector<uint32_t>>& indices)
     }
 }
 
-bool FaceArray::serialize(std::ofstream& file)
+bool FaceArray::serialize(std::ofstream& file) const
 {
     Serializer::writeUint(file, m_faceCount);
     Serializer::writeUint(file, m_indexCount);

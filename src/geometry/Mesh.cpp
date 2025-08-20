@@ -59,7 +59,7 @@ Mesh::Mesh(const std::vector<glm::dvec3>& vertices, const std::vector<TriIndex>&
 Mesh::Mesh(const std::string& filename)
     : Mesh()
 {
-    Serializable::deserialize(filename);
+    Serializable::load(filename);
     initialize();
 }
 
@@ -99,11 +99,7 @@ void Mesh::initialize()
     }
 }
 
-bool Mesh::serialize(const std::string& filename)
-{
-    return Serializable::serialize(filename);
-}
-bool Mesh::serialize(std::ofstream& file)
+bool Mesh::serialize(std::ofstream& file) const
 {
     if (m_vertices.serialize(file) && m_faces.serialize(file)) {
 
@@ -121,10 +117,6 @@ bool Mesh::serialize(std::ofstream& file)
     return false;
 }
 
-bool Mesh::deserialize(const std::string& filename)
-{
-    return Serializable::deserialize(filename);
-}
 bool Mesh::deserialize(std::ifstream& file)
 {
     m_vertices = VertexArray(file);
