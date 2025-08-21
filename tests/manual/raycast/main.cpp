@@ -102,6 +102,7 @@ int main(int argc, char *argv[])
 //        qDebug() << meta->method(i).methodSignature();
 //    }
 
+    scene->update();
     widget->show();
 
     return app.exec();

@@ -10,6 +10,7 @@
 
 ControlWidget::ControlWidget(const std::shared_ptr<Scene>& scene, QWidget* parent)
         : SceneWidget(scene, parent)
+        , m_scene(scene)
 {
 
     auto sphere = MeshBuilder::icosphere(0.08f);
@@ -68,6 +69,7 @@ void ControlWidget::keyPressEvent(QKeyEvent *e)
         if (theta != 0) m_scene->bodies()[idx1]->rotate(glm::dvec3{1, 0, 0}, theta);
 
         handleCollision(idx2);
+        m_scene->update();
     }
 }
 

@@ -258,7 +258,6 @@ int main(int argc, char *argv[])
 
     scene->start();
 
-    scene->connect(&sceneUpdate);
 //    sceneWidget->start();
 
     return app.exec();

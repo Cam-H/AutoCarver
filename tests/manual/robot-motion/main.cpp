@@ -437,25 +437,28 @@ int main(int argc, char *argv[])
 
     auto showMeshButton = window->findChild<QCheckBox*>("showMeshButton");
     QObject::connect(showMeshButton, &QCheckBox::clicked, [&](bool checked) {
-        if (checked) sceneWidget->show(0, Scene::Model::MESH);
-        else sceneWidget->hide(0, Scene::Model::MESH);
+        for (const std::shared_ptr<RigidBody>& link : robot->links()) {
+            sceneWidget->setVisibility(checked, link->getID(), Scene::Model::MESH);
+        }
     });
 
     auto showHullButton = window->findChild<QCheckBox*>("showHullButton");
+    sceneWidget->setVisibility(showHullButton->isChecked(), Scene::Model::HULL);
     QObject::connect(showHullButton, &QCheckBox::clicked, [&](bool checked) {
         if (checked) sceneWidget->showAll(Scene::Model::HULL);
         else sceneWidget->hideAll(Scene::Model::HULL);
     });
 
     auto showSphereButton = window->findChild<QCheckBox*>("showSphereButton");
+    sceneWidget->setVisibility(showSphereButton->isChecked(), Scene::Model::BOUNDING_SPHERE);
     QObject::connect(showSphereButton, &QCheckBox::clicked, [&](bool checked) {
-        if (checked) sceneWidget->showAll(Scene::Model::BOUNDING_SPHERE);
-        else sceneWidget->hideAll(Scene::Model::BOUNDING_SPHERE);
+        sceneWidget->setVisibility(checked, Scene::Model::BOUNDING_SPHERE);
     });
 
     auto showAxesButton = window->findChild<QCheckBox*>("showAxesButton");
+    sceneWidget->setVisibility(showAxesButton->isChecked(), eoat->getID(), Scene::Model::AXES);
     QObject::connect(showAxesButton, &QCheckBox::clicked, [&](bool checked) {
-        sceneWidget->enableAxes(checked);
+        sceneWidget->setVisibility(checked, eoat->getID(), Scene::Model::AXES);
         sceneWidget->update();
     });
 
@@ -627,6 +630,7 @@ int main(int argc, char *argv[])
 
     scene->print();
 
+    scene->update();
     window->show();
 
     updateThread = std::make_unique<std::thread>([](){

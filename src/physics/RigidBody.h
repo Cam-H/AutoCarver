@@ -40,9 +40,8 @@ public:
     void moved() override;
 
     void setType(Type type);
+    void setID(uint32_t ID);
     void setName(const std::string& name);
-
-    void setAxisEnabled(bool enable);
 
     void setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate = false);
     void setHull(const ConvexHull& hull);
@@ -65,6 +64,7 @@ public:
     void prepareColliderVisuals();
 
     [[nodiscard]] Type getType() const;
+    [[nodiscard]] uint32_t getID() const;
     [[nodiscard]] const std::string& getName() const;
 
     bool isAxisEnabled() const;
@@ -133,6 +133,8 @@ private:
 protected:
 
     Type m_type;
+
+    uint32_t m_ID;
     std::string m_name;
 
     std::shared_ptr<Mesh> m_mesh;
@@ -148,8 +150,6 @@ protected:
     std::shared_ptr<Mesh> m_hullMesh;
     std::shared_ptr<Mesh> m_sphereMesh;
     bool m_colliderVisualsEnable;
-
-    bool m_axisEnable;
 
     bool m_isManifold;
     double m_area;

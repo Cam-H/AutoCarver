@@ -9,9 +9,14 @@
 #include <cmath>
 #include <iostream>
 
+#include "renderer/RenderBuffer.h"
+#include "core/Scene.h"
+
+#include "renderer/RenderGeometry.h"
+
 
 SceneWidget::SceneWidget(QWidget* parent)
-    : m_scene(nullptr)
+    : m_buffer(std::make_shared<RenderBuffer>())
     , m_timer(nullptr)
     , m_interval(1000 / 60)
     , m_defaultProgramIdx(0)
@@ -22,8 +27,8 @@ SceneWidget::SceneWidget(QWidget* parent)
     , m_rotationSensitivity(0.4f)
     , m_zoomSensitivity(0.0005f)
     , m_zoomExponential(0.2f)
+    , m_sphere(MeshBuilder::icosphere(1.0, 3))
     , m_axes(MeshBuilder::axes(Axis3D()))
-    , m_showAxes(true)
     , QOpenGLWidget(parent)
 {
 }
@@ -31,7 +36,7 @@ SceneWidget::SceneWidget(QWidget* parent)
 SceneWidget::SceneWidget(const std::shared_ptr<Scene>& scene, QWidget* parent)
     : SceneWidget(parent)
 {
-    m_scene = scene;
+    scene->addRenderBuffer(m_buffer);
 }
 
 SceneWidget::~SceneWidget()
@@ -44,8 +49,9 @@ SceneWidget::~SceneWidget()
 
 void SceneWidget::setScene(const std::shared_ptr<Scene>& scene)
 {
-    if (m_scene != scene) clear();
-    m_scene = scene;
+    clear(); // TODO remove buffer from older scenes
+
+    scene->addRenderBuffer(m_buffer);
 
     update();
 }
@@ -118,13 +124,13 @@ void SceneWidget::initializeGL()
 }
 
 // WARNING: Will crash if a nullptr is passed as the mesh
-SceneWidget::RenderItem& SceneWidget::getRender(const std::shared_ptr<Mesh>& mesh, bool defaultVisibility)
+SceneWidget::RenderItem& SceneWidget::getGeometryBuffer(const std::shared_ptr<Mesh>& mesh)
 {
     auto it = m_renderMap.find(mesh);
     if (it == m_renderMap.end()) { // Mesh has not been processed yet
         if (!mesh->isInitialized()) throw std::runtime_error("[SceneWidget] Mesh not initialized. Can not prepare render");
 
-        auto item = RenderItem{ (uint32_t)m_geometries.size(),m_defaultProgramIdx + 1, defaultVisibility };
+        auto item = RenderItem{ (uint32_t)m_geometries.size(),m_defaultProgramIdx + 1 };
         m_renderMap[mesh] = item;
         if (!mesh->faceColorsAssigned()) mesh->setFaceColor(mesh->baseColor());
         m_geometries.push_back(new RenderGeometry(mesh, RenderGeometry::Format::VERTEX_NORMAL_COLOR ));
@@ -171,99 +177,74 @@ void SceneWidget::setDefaultShaderProgram(uint32_t idx)
     m_defaultProgramIdx = idx;
 }
 
-void SceneWidget::show(uint32_t idx, Scene::Model target)
+void SceneWidget::show(uint32_t ID, Scene::Model target)
 {
-    show(select(idx, target));
+    setVisibility(true, ID, target);
 }
 void SceneWidget::showAll(Scene::Model target)
 {
-    show(selectAll(target));
-}
-void SceneWidget::show(const std::vector<std::shared_ptr<Mesh>>& selection)
-{
-    for (const std::shared_ptr<Mesh>& mesh : selection) {
-        getRender(mesh).visible = true;
-    }
-
-    if (!selection.empty()) update();
+    setVisibility(true, target);
 }
 
-void SceneWidget::hide(uint32_t idx, Scene::Model target)
+void SceneWidget::hide(uint32_t ID, Scene::Model target)
 {
-    hide(select(idx, target));
+    setVisibility(false, ID, target);
 }
+
 void SceneWidget::hideAll(Scene::Model target)
 {
-    hide(selectAll(target));
-}
-void SceneWidget::hide(const std::vector<std::shared_ptr<Mesh>>& selection)
-{
-    for (const std::shared_ptr<Mesh>& mesh : selection) {
-        getRender(mesh).visible = false;
-    }
-
-    if (!selection.empty()) update();
+    setVisibility(false, target);
 }
 
-std::vector<std::shared_ptr<Mesh>> SceneWidget::select(uint32_t idx, Scene::Model target)
+void SceneWidget::setVisibility(bool visible, uint32_t ID, Scene::Model target)
 {
-    if (m_scene == nullptr || idx >= m_scene->bodyCount()) return {};
-
-    std::vector<std::shared_ptr<Mesh>> selection;
+    RenderSettings& settings = getSettings(ID);
 
     switch (target) {
         case Scene::Model::ALL:
-            selection.push_back(m_scene->bodies()[idx]->mesh());
-            if (m_scene->bodies()[idx]->hullMesh() != nullptr) selection.push_back(m_scene->bodies()[idx]->hullMesh());
+            settings.meshVisibility = settings.hullVisibility = settings.boundsVisibility = settings.axesVisibility = visible;
             break;
         case Scene::Model::MESH:
-            selection.push_back(m_scene->bodies()[idx]->mesh());
+            settings.meshVisibility = visible;
             break;
         case Scene::Model::HULL:
-            if (m_scene->bodies()[idx]->hullMesh() != nullptr) selection.push_back(m_scene->bodies()[idx]->hullMesh());
+            settings.hullVisibility = visible;
             break;
         case Scene::Model::BOUNDING_SPHERE:
-            if (m_scene->bodies()[idx]->bSphereMesh() != nullptr) selection.push_back(m_scene->bodies()[idx]->bSphereMesh());
+            settings.boundsVisibility = visible;
+            break;
+        case Scene::Model::AABB: // TODO
+            break;
+        case Scene::Model::AXES:
+            settings.axesVisibility = visible;
             break;
     }
-
-    return selection;
 }
 
-std::vector<std::shared_ptr<Mesh>> SceneWidget::selectAll(Scene::Model target)
+void SceneWidget::setVisibility(bool visible, Scene::Model target)
 {
-    if (m_scene == nullptr) return {};
-
-    std::vector<std::shared_ptr<Mesh>> selection;
-
     switch (target) {
         case Scene::Model::ALL:
-            for (const std::shared_ptr<RigidBody>& body : m_scene->bodies()) selection.push_back(body->mesh());
-            for (const std::shared_ptr<RigidBody>& body : m_scene->bodies()) {
-                if (body->hullMesh() != nullptr) selection.push_back(body->hullMesh());
-            }
+            for (RenderSettings& settings : m_settings)
+                settings.meshVisibility = settings.hullVisibility = settings.boundsVisibility = settings.axesVisibility = visible;
             break;
         case Scene::Model::MESH:
-            for (const std::shared_ptr<RigidBody>& body : m_scene->bodies()) selection.push_back(body->mesh());
+            for (RenderSettings& settings : m_settings) settings.meshVisibility = visible;
             break;
         case Scene::Model::HULL:
-            for (const std::shared_ptr<RigidBody>& body : m_scene->bodies()) {
-                if (body->hullMesh() != nullptr) selection.push_back(body->hullMesh());
-            }
+            for (RenderSettings& settings : m_settings) settings.hullVisibility = visible;
             break;
         case Scene::Model::BOUNDING_SPHERE:
-            for (const std::shared_ptr<RigidBody>& body : m_scene->bodies()) {
-                if (body->hullMesh() != nullptr) selection.push_back(body->bSphereMesh());
-            }
+            for (RenderSettings& settings : m_settings) settings.boundsVisibility = visible;
+            break;
+        case Scene::Model::AABB: // TODO
+            break;
+        case Scene::Model::AXES:
+            for (RenderSettings& settings : m_settings) settings.axesVisibility = visible;
             break;
     }
 
-    return selection;
-}
-
-void SceneWidget::enableAxes(bool enable)
-{
-    m_showAxes = enable;
+    update();
 }
 
 void SceneWidget::start()
@@ -307,7 +288,7 @@ void SceneWidget::clear()
 
 void SceneWidget::updateRenderGeometry(const std::shared_ptr<Mesh>& mesh)
 {
-    auto item = getRender(mesh);
+    auto item = getGeometryBuffer(mesh);
     // TODO properly delete
     m_geometries[item.geometryIdx] = new RenderGeometry(mesh, mesh->faceColorsAssigned() ? RenderGeometry::Format::VERTEX_NORMAL_COLOR : RenderGeometry::Format::VERTEX_NORMAL);
 
@@ -333,48 +314,39 @@ void SceneWidget::paintGL()
     // Enable back face culling
     glEnable(GL_CULL_FACE);
 
-//    std::cout << m_geometries.size() << "\n";
-    if (m_scene != nullptr) {
-        for (uint32_t i = 0; i < m_scene->bodies().size(); i++) {
-            const std::shared_ptr<RigidBody>& body = m_scene->bodies()[i];
-            glm::dmat4x4 trans = body->getTransform();
+    const std::vector<RenderBuffer::Item>& items = m_buffer->latest();
+    for (const RenderBuffer::Item& item : items) {
 
-            QMatrix4x4 transform;
-            for (int j = 0; j < 4; j++) transform.setColumn(j, QVector4D(trans[j][0], trans[j][1], trans[j][2], trans[j][3]));
-
-            render(body->mesh(), transform, true);
-            render(body->hullMesh(), transform, false);
-            render(body->bSphereMesh(), transform, false);
-            if (m_showAxes && m_axes != nullptr && body->isAxisEnabled()) {
-                render(m_axes, transform, true);
-            }
+        QMatrix4x4 transform;
+        for (int j = 0; j < 4; j++) {
+            transform.setColumn(j, QVector4D(item.transform[j][0], item.transform[j][1],
+                                                        item.transform[j][2], item.transform[j][3]));
         }
-//        const std::vector<std::shared_ptr<RigidBody>>& bodies = m_scene->bodies();
-//
-//        for (const std::shared_ptr<RigidBody>& body : bodies) {
-//            glm::dmat4x4 trans = body->getTransform();
-//
-//            QMatrix4x4 transform;
-//            for (int i = 0; i < 4; i++) transform.setColumn(i, QVector4D(trans[i][0], trans[i][1], trans[i][2], trans[i][3]));
-//
-//            render(body->mesh(), transform, true);
-//            render(body->hullMesh(), transform, false);
-//            render(body->bSphereMesh(), transform, false);
-//            if (m_showAxes && m_axes != nullptr && body->isAxisEnabled()) {
-//                render(m_axes, transform, true);
-//            }
-//
-//        }
+
+        auto settings = getSettings(item.ID);
+        if (settings.meshVisibility) render(item.mesh, transform);
+        if (settings.hullVisibility) render(item.hull, transform);
+        if (settings.axesVisibility) render(m_axes, transform);
+
+        transform.translate(item.bounds.center.x, item.bounds.center.y, item.bounds.center.z);
+        transform.scale(item.bounds.radius);
+        if (settings.boundsVisibility) render(m_sphere, transform);
     }
 }
 
-void SceneWidget::render(const std::shared_ptr<Mesh> &mesh, const QMatrix4x4& transform, bool defaultVisibility)
+// Based on the fact that IDs are calculated sequentially by Scene
+SceneWidget::RenderSettings& SceneWidget::getSettings(uint32_t ID)
+{
+    while (ID >= m_settings.size()) m_settings.push_back({ true, false, false, false });
+    return m_settings[ID];
+}
+
+void SceneWidget::render(const std::shared_ptr<Mesh> &mesh, const QMatrix4x4& transform)
 {
 
     // Identify proper settings to render the mesh
     if (mesh == nullptr) return;
-    auto item = getRender(mesh, defaultVisibility);
-    if (!item.visible) return;
+    auto item = getGeometryBuffer(mesh);
 
     // Handle rendering
     auto *program = m_programs[item.programIdx];

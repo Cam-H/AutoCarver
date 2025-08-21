@@ -30,6 +30,7 @@ std::unique_ptr<std::thread> updateThread;
 
 std::shared_ptr<Robot> robot = nullptr;
 std::shared_ptr<SculptProcess> scene = nullptr;
+std::shared_ptr<RigidBody> eoat = nullptr;
 SceneWidget* sceneWidget = nullptr;
 
 QCheckBox *contButton = nullptr, *releaseButton = nullptr;
@@ -96,7 +97,7 @@ int main(int argc, char *argv[])
     robot->setLinkMesh(6, MeshHandler::loadAsMeshBody(R"(..\res\meshes\BladeAttachment.obj)"));
 
     auto eoatMesh = MeshHandler::loadAsMeshBody("../res/meshes/Blade.obj");
-    auto eoat = scene->createBody(eoatMesh);
+    eoat = scene->createBody(eoatMesh);
     eoat->setName("BLADE");
     eoat->prepareColliderVisuals();
     robot->setEOAT(eoat, false);
@@ -111,8 +112,8 @@ int main(int argc, char *argv[])
 
     auto sculptureButton = window->findChild<QCheckBox*>("sculptureButton");
     QObject::connect(sculptureButton, &QCheckBox::clicked, [&](bool checked) {
-        if (checked) sceneWidget->show(0, Scene::Model::MESH);
-        else sceneWidget->hide(0, Scene::Model::MESH);
+        if (checked) sceneWidget->show(scene->getSculpture()->getID(), Scene::Model::MESH);
+        else sceneWidget->hide(scene->getSculpture()->getID(), Scene::Model::MESH);
         sceneWidget->update();
     });
 
@@ -124,9 +125,9 @@ int main(int argc, char *argv[])
     });
 
     auto axesButton = window->findChild<QCheckBox*>("axesButton");
-    sceneWidget->enableAxes(axesButton->isChecked());
+    sceneWidget->setVisibility(axesButton->isChecked(), eoat->getID(), Scene::Model::AXES);
     QObject::connect(axesButton, &QCheckBox::clicked, [&](bool checked) {
-        sceneWidget->enableAxes(checked);
+        sceneWidget->setVisibility(checked, eoat->getID(), Scene::Model::AXES);
         sceneWidget->update();
     });
 

@@ -19,6 +19,7 @@ const double HOLD_THRESHOLD = 1e-6;
 
 RigidBody::RigidBody()
     : m_type(Type::STATIC)
+    , m_ID(0)
     , m_name()
     , m_mesh(nullptr)
     , m_hullMesh(nullptr)
@@ -39,7 +40,6 @@ RigidBody::RigidBody()
     , m_massOK(false)
     , m_inertiaTensorOK(false)
     , m_colliderVisualsEnable(false)
-    , m_axisEnable(false)
     , Transformable()
 {
 
@@ -112,14 +112,14 @@ void RigidBody::setType(Type type)
     m_type = type;
 }
 
+void RigidBody::setID(uint32_t ID)
+{
+    m_ID = ID;
+}
+
 void RigidBody::setName(const std::string& name)
 {
     m_name = name;
-}
-
-void RigidBody::setAxisEnabled(bool enable)
-{
-    m_axisEnable = enable;
 }
 
 void RigidBody::setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate) {
@@ -325,14 +325,14 @@ RigidBody::Type RigidBody::getType() const
     return m_type;
 }
 
+uint32_t RigidBody::getID() const
+{
+    return m_ID;
+}
+
 const std::string& RigidBody::getName() const
 {
     return m_name;
-}
-
-bool RigidBody::isAxisEnabled() const
-{
-    return m_axisEnable;
 }
 
 bool RigidBody::isManifold()

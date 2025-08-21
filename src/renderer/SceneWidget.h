@@ -20,7 +20,7 @@
 #include "geometry/primitives/Ray.h"
 #include "core/Scene.h"
 
-#include "renderer/RenderGeometry.h"
+class RenderBuffer;
 class RenderGeometry;
 #include "Camera.h"
 
@@ -44,13 +44,13 @@ public:
     void createDefaultShaderProgram(const std::string& name);
     void setDefaultShaderProgram(uint32_t idx);
 
-    void show(uint32_t idx, Scene::Model target = Scene::Model::ALL);
-    void hide(uint32_t idx, Scene::Model target = Scene::Model::ALL);
+    void show(uint32_t ID, Scene::Model target = Scene::Model::ALL);
+    void hide(uint32_t ID, Scene::Model target = Scene::Model::ALL);
+    void setVisibility(bool visible, uint32_t ID, Scene::Model target = Scene::Model::ALL);
 
     void showAll(Scene::Model target = Scene::Model::ALL);
     void hideAll(Scene::Model target = Scene::Model::ALL);
-
-    void enableAxes(bool enable);
+    void setVisibility(bool visible, Scene::Model target = Scene::Model::ALL);
 
     void start();
     void pause();
@@ -66,10 +66,16 @@ public:
 
 protected:
 
+    struct RenderSettings {
+        bool meshVisibility;
+        bool hullVisibility;
+        bool boundsVisibility;
+        bool axesVisibility;
+    };
+
     struct RenderItem {
         uint32_t geometryIdx;
         uint32_t programIdx;
-        bool visible; // TODO separate if render items are reused for multiple bodies
     };
 
     void mousePressEvent(QMouseEvent *e) override;
@@ -85,19 +91,14 @@ private:
 
     void paint();
 
-    void render(const std::shared_ptr<Mesh>& mesh, const QMatrix4x4& transform, bool defaultVisibility);
+    void render(const std::shared_ptr<Mesh>& mesh, const QMatrix4x4& transform);
 
-    void show(const std::vector<std::shared_ptr<Mesh>>& selection);
-    void hide(const std::vector<std::shared_ptr<Mesh>>& selection);
-
-    std::vector<std::shared_ptr<Mesh>> select(uint32_t idx, Scene::Model target);
-    std::vector<std::shared_ptr<Mesh>> selectAll(Scene::Model target);
-
-    RenderItem& getRender(const std::shared_ptr<Mesh>& mesh, bool defaultVisibility = true);
+    RenderSettings& getSettings(uint32_t ID);
+    RenderItem& getGeometryBuffer(const std::shared_ptr<Mesh>& mesh);
 
 protected:
 
-    std::shared_ptr<Scene> m_scene;
+    std::shared_ptr<RenderBuffer> m_buffer;
 
 private:
 
@@ -105,14 +106,15 @@ private:
     std::chrono::milliseconds m_interval;
 
     std::unordered_map<std::shared_ptr<Mesh>, RenderItem> m_renderMap;
+    std::vector<RenderSettings> m_settings;
 
     std::vector<QOpenGLShaderProgram*> m_programs;
     uint32_t m_defaultProgramIdx;
 
     std::vector<RenderGeometry*> m_geometries;
 
+    std::shared_ptr<Mesh> m_sphere;
     std::shared_ptr<Mesh> m_axes;
-    bool m_showAxes;
 
     /* ******* CAMERA CONTROLS ******** */
 

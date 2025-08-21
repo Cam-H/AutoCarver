@@ -28,6 +28,8 @@ protected:
 
 private:
 
+    std::shared_ptr<Scene> m_scene;
+
 };
 
 

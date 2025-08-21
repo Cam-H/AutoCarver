@@ -117,7 +117,6 @@ void Robot::update()
 void Robot::setEOAT(const std::shared_ptr<RigidBody>& eoat, bool preserveTransform)
 {
     if (m_eoat != nullptr) { // Cleanup old EOAT
-        m_eoat->setAxisEnabled(false);
         m_eoat->resetMask();
         m_eoat->resetLayer();
 //        m_eoat->mesh()->transform(m_kinematics->inversion());
@@ -127,7 +126,6 @@ void Robot::setEOAT(const std::shared_ptr<RigidBody>& eoat, bool preserveTransfo
 
     if (m_eoat == nullptr || m_links.empty()) return;
 
-    m_eoat->setAxisEnabled(true);
 
     // Take the end layer (Should be last unless the end is not a collider)
     uint32_t layer = 0;

@@ -14,11 +14,13 @@
 #include "robot/Robot.h"
 #include "geometry/primitives/Ray.h"
 
+class RenderBuffer;
+
 class Scene : public Serializable {
 public:
 
     enum class Model {
-        ALL = 0, MESH, HULL, BOUNDING_SPHERE, AABB
+        ALL = 0, MESH, HULL, BOUNDING_SPHERE, AABB, AXES
     };
 
     Scene();
@@ -40,14 +42,17 @@ public:
 
     void clear(uint8_t level = 0);
 
+    void addRenderBuffer(const std::shared_ptr<RenderBuffer>& buffer);
+    void clearRenderBuffers();
+
     std::shared_ptr<RigidBody> createBody(const std::string &filepath, RigidBody::Type type = RigidBody::Type::STATIC);
     std::shared_ptr<RigidBody> createBody(const std::shared_ptr<Mesh>& mesh, RigidBody::Type type = RigidBody::Type::STATIC);
     std::shared_ptr<RigidBody> createBody(const ConvexHull& hull, RigidBody::Type type = RigidBody::Type::STATIC);
 
     std::shared_ptr<Robot> createRobot(const std::shared_ptr<KinematicChain>& kinematics);
 
-    const std::vector<std::shared_ptr<RigidBody>>& bodies();
-    uint32_t bodyCount();
+    [[nodiscard]] const std::vector<std::shared_ptr<RigidBody>>& bodies() const;
+    [[nodiscard]] uint32_t bodyCount() const;
 
 //    std::vector<const std::shared_ptr<Mesh>&> meshes();
     void prepareBody(const std::shared_ptr<RigidBody>& body, uint8_t level = 0);
@@ -59,12 +64,18 @@ public:
 
     void print() const;
 
+protected:
+
+    void post();
+
 private:
     void run();
 
     void colorCollision(const std::shared_ptr<Robot>& robot);
 
 protected:
+
+    uint32_t m_total;
 
     std::vector<std::shared_ptr<RigidBody>> m_bodies;
     std::vector<std::shared_ptr<Robot>> m_robots;
@@ -76,6 +87,8 @@ protected:
     double m_timeScalar;
 
     bool m_colorCollisions;
+
+    std::vector<std::shared_ptr<RenderBuffer>> m_buffers;
 
 };
 

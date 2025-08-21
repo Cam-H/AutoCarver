@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
     hControlLayout->addWidget(saveButton);
 
     QObject::connect(saveButton, &QPushButton::clicked, [&]() {
-        if (scene->serialize("../out/scene.bin")) std::cout << "Serialization complete!\n";
+        if (scene->save("../out/scene.bin")) std::cout << "Serialization complete!\n";
         else std::cout << "Serialization failed!\n";
 
         sceneWidget->update();
@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
     QObject::connect(restoreButton, &QPushButton::clicked, [&]() {
         sceneWidget->clear();
 
-        if (scene->deserialize("../out/scene.bin")) std::cout << "Deserialization complete!\n";
+        if (scene->load("../out/scene.bin")) std::cout << "Deserialization complete!\n";
         else std::cout << "Deserialization failed!\n";
 
         sceneWidget->handleCollision();
@@ -183,6 +183,7 @@ int main(int argc, char *argv[])
 
     std::cout << "x\n";
 
+    scene->update();
     window.show();
 
     return app.exec();

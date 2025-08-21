@@ -25,16 +25,16 @@ public:
     static std::shared_ptr<Mesh> plane(const Plane& obj, double width);
     static std::shared_ptr<Mesh> plane(const Axis3D& system, const glm::dvec3& origin, double length, double width);
 
-    static std::shared_ptr<Mesh> box(double sideLength = 1.0f);
+    static std::shared_ptr<Mesh> box(double sideLength = 1.0);
     static std::shared_ptr<Mesh> box(double length, double width, double height);
 
     static std::shared_ptr<Mesh> cylinder(double radius = 1.0, double height = 1.0, uint32_t segments = 6);
     static std::shared_ptr<Mesh> cylinder(const glm::dvec3& axis, double radius = 1.0, uint32_t segments = 6);
 
-    static std::shared_ptr<Mesh> extrude(const std::vector<glm::dvec3>& border, const glm::dvec3& normal, double depth = 1.0f);
+    static std::shared_ptr<Mesh> extrude(const std::vector<glm::dvec3>& border, const glm::dvec3& normal, double depth = 1.0);
 
-    static std::shared_ptr<Mesh> icosahedron(double radius = 1.0f);
-    static std::shared_ptr<Mesh> icosphere(double radius = 1.0f, uint8_t subdivisions = 1);
+    static std::shared_ptr<Mesh> icosahedron(double radius = 1.0);
+    static std::shared_ptr<Mesh> icosphere(double radius = 1.0, uint8_t subdivisions = 1);
 
     static std::shared_ptr<Mesh> axes(const Axis3D& system);
 

@@ -13,20 +13,20 @@
 #include "geometry/collision/Collision.h"
 #include "Timer.h"
 
+#include "renderer/RenderBuffer.h"
+
 Scene::Scene()
     : m_updateThread(nullptr)
     , m_running(false)
     , m_paused(false)
     , m_timeScalar(1.0)
+    , m_total(0)
     , m_colorCollisions(true)
 {
 
 }
 
-Scene::~Scene()
-{
-
-}
+Scene::~Scene() = default;
 
 bool Scene::serialize(std::ofstream& file) const
 {
@@ -200,6 +200,8 @@ void Scene::update()
             }
         }
     }
+
+    post();
 }
 
 void Scene::stop()
@@ -224,14 +226,27 @@ void Scene::run()
     while (m_running) {
         if (!m_paused) {
             double delta = rateTimer.getElapsedSeconds();
-            step(delta);
-            update();
+            try {
+                step(delta);
+                update();
+            } catch (std::exception& e) {
+                std::cout << "\033[91m" << e.what() << "\033[0m\n";
+                m_paused = true;
+                post();
+            }
         }
 
         rateTimer.reset();
 
         // TODO Adapt sleep time based on target update rate
         std::this_thread::sleep_for(std::chrono::microseconds(1000));
+    }
+}
+
+void Scene::post()
+{
+    for (const std::shared_ptr<RenderBuffer>& buffer : m_buffers) {
+        buffer->update(this);
     }
 }
 
@@ -258,6 +273,16 @@ void Scene::clear(uint8_t level)
 //    }
 //
 //    m_entities.erase(m_entities.begin() + count);
+}
+
+void Scene::addRenderBuffer(const std::shared_ptr<RenderBuffer>& buffer)
+{
+    m_buffers.push_back(buffer);
+}
+
+void Scene::clearRenderBuffers()
+{
+    m_buffers.clear();
 }
 
 std::shared_ptr<RigidBody> Scene::createBody(const std::string &filepath, RigidBody::Type type)
@@ -295,7 +320,7 @@ std::shared_ptr<Robot> Scene::createRobot(const std::shared_ptr<KinematicChain>&
     robot->prepareLinks();
 
     for (const auto& link : robot->links()) {
-        m_bodies.push_back(link);
+        prepareBody(link);
     }
 
     m_robots.push_back(robot);
@@ -310,16 +335,17 @@ void Scene::prepareBody(const std::shared_ptr<RigidBody>& body, uint8_t level)
 //    }
 //
 //    m_entities.push_back({body, prepareRender(body), level});
+    body->setID(m_total++);
     if (body->getName().empty()) body->setName("BODY" + std::to_string(m_bodies.size()));
     m_bodies.push_back(body);
 }
 
-const std::vector<std::shared_ptr<RigidBody>>& Scene::bodies()
+const std::vector<std::shared_ptr<RigidBody>>& Scene::bodies() const
 {
     return m_bodies;
 }
 
-uint32_t Scene::bodyCount()
+uint32_t Scene::bodyCount() const
 {
     return m_bodies.size();
 }

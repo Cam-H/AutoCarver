@@ -50,6 +50,7 @@ add_library(AutoCarverLib
         physics/Constraint.cpp
 
 
+        renderer/RenderBuffer.cpp
         renderer/SceneWidget.cpp
         renderer/LineChartWidget.cpp
 

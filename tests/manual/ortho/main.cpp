@@ -183,6 +183,7 @@ int main(int argc, char *argv[])
     QObject::connect(showModelSetting, &QCheckBox::clicked, [&]() {
         updateModelVisibility();
         sceneWidget->update();
+        scene->update();
     });
 
     showSculptureSetting = window->findChild<QCheckBox*>("showSculptureSetting");
@@ -192,6 +193,7 @@ int main(int argc, char *argv[])
         }
 
         updateBodyVisibility();
+        scene->update();
     });
 
     showHullSetting = window->findChild<QCheckBox*>("showHullSetting");
@@ -202,6 +204,7 @@ int main(int argc, char *argv[])
         }
 
         updateColoring();
+        scene->update();
     });
 
     auto resetButton = window->findChild<QPushButton*>("resetButton");
@@ -211,6 +214,7 @@ int main(int argc, char *argv[])
         updateBodyVisibility();
 
         updateImage();
+        scene->update();
     });
 
     stepButton = window->findChild<QPushButton*>("stepButton");
@@ -218,6 +222,7 @@ int main(int argc, char *argv[])
         detector->capture()->camera().rotate(5);
         detector->capture()->focus();
         updateImage();
+        scene->update();
     });
 
     auto skipButton = window->findChild<QPushButton*>("skipButton");
@@ -232,6 +237,7 @@ int main(int argc, char *argv[])
 
         updateBodyVisibility();
 
+        scene->update();
         sceneWidget->update();
         polygonWidget->repaint();
     });
@@ -244,6 +250,7 @@ int main(int argc, char *argv[])
 
         updateBodyVisibility();
 
+        scene->update();
         sceneWidget->update();
         polygonWidget->repaint();
     });
@@ -253,6 +260,8 @@ int main(int argc, char *argv[])
         if (body->tryMerge()) {
             std::cout << "Hulls merged!\n";
             updateBodyVisibility();
+            scene->update();
+
             sceneWidget->updateRenderGeometry(body->mesh());
             sceneWidget->update();
         }
@@ -262,6 +271,8 @@ int main(int argc, char *argv[])
     QObject::connect(formButton, &QPushButton::clicked, [&]() {
         if (body->form()) {
             updateBodyVisibility();
+            scene->update();
+
             sceneWidget->updateRenderGeometry(body->mesh());
             sceneWidget->update();
         }
@@ -294,6 +305,7 @@ int main(int argc, char *argv[])
             body->applyCompositeColors(showHullSetting->isChecked());
             scene->prepareBody(body);
             scene->prepareBody(body->model());
+            scene->update();
 
             body->print();
             body->model()->print();
@@ -341,6 +353,7 @@ int main(int argc, char *argv[])
     sceneWidget->camera().setPosition(QVector3D(5, 0, 0));
     sceneWidget->setScene(scene);
 
+    scene->update();
     window->show();
 
     updateImage();
