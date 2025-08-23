@@ -33,6 +33,8 @@ std::shared_ptr<SculptProcess> scene = nullptr;
 std::shared_ptr<RigidBody> eoat = nullptr;
 SceneWidget* sceneWidget = nullptr;
 
+QCheckBox *sculptureButton = nullptr, *modelButton = nullptr;
+
 QCheckBox *contButton = nullptr, *releaseButton = nullptr;
 QDoubleSpinBox *timeField = nullptr;
 QPushButton *stepButton = nullptr, *skipButton = nullptr;
@@ -110,10 +112,25 @@ int main(int argc, char *argv[])
     sceneWidget->setScene(scene);
 
 
-    auto sculptureButton = window->findChild<QCheckBox*>("sculptureButton");
+    sculptureButton = window->findChild<QCheckBox*>("sculptureButton");
     QObject::connect(sculptureButton, &QCheckBox::clicked, [&](bool checked) {
         if (checked) sceneWidget->show(scene->getSculpture()->getID(), Scene::Model::MESH);
         else sceneWidget->hide(scene->getSculpture()->getID(), Scene::Model::MESH);
+        sceneWidget->update();
+    });
+
+    modelButton = window->findChild<QCheckBox*>("modelButton");
+    sceneWidget->setVisibility(modelButton->isChecked(), scene->getModel()->getID(), Scene::Model::MESH);
+    QObject::connect(modelButton, &QCheckBox::clicked, [&](bool checked) {
+        sceneWidget->setVisibility(checked, scene->getModel()->getID(), Scene::Model::MESH);
+        sceneWidget->update();
+    });
+
+    auto decompButton = window->findChild<QCheckBox*>("decompButton");
+    scene->getSculpture()->applyCompositeColors(decompButton->isChecked());
+    QObject::connect(decompButton, &QCheckBox::clicked, [&](bool checked) {
+        scene->getSculpture()->applyCompositeColors(checked);
+        sceneWidget->updateRenderGeometry(scene->getSculpture()->mesh());
         sceneWidget->update();
     });
 
@@ -171,6 +188,9 @@ int main(int argc, char *argv[])
             auto mesh = MeshHandler::loadAsMeshBody(fileName.toStdString());
             if (mesh != nullptr) {
                 scene->setTarget(mesh);
+                sculptureButton->setChecked(true);
+                modelButton->setChecked(false);
+
                 sceneWidget->clear();
             } else std::cout << "Failed to load model. Can not set target\n";
         }
@@ -203,6 +223,12 @@ int main(int argc, char *argv[])
     scene->enableCollisionTesting(testCollisionButton->isChecked());
     QObject::connect(testCollisionButton, &QCheckBox::clicked, [&](bool checked) {
         scene->enableCollisionTesting(checked);
+    });
+
+    auto mergeButton = window->findChild<QCheckBox*>("mergeButton");
+    scene->getSculpture()->enableHullMerging(testCollisionButton->isChecked());
+    QObject::connect(mergeButton, &QCheckBox::clicked, [&](bool checked) {
+        scene->getSculpture()->enableHullMerging(checked);
     });
 
     releaseButton = window->findChild<QCheckBox*>("releaseButton");

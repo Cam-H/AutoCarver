@@ -19,9 +19,6 @@ const double HOLD_THRESHOLD = 1e-6;
 
 RigidBody::RigidBody()
     : m_type(Type::STATIC)
-    , m_ID(0)
-    , m_name()
-    , m_mesh(nullptr)
     , m_hullMesh(nullptr)
     , m_hullOK(false)
     , m_mask(0xFFFFFFFF)
@@ -32,15 +29,13 @@ RigidBody::RigidBody()
     , m_density(1000.0f)
     , m_mass(0)
     , m_inertiaTensor(0.0f)
-    , m_linearVelocity()
-    , m_angularVelocity()
     , m_isManifoldOK(false)
     , m_areaOK(false)
     , m_volumeOK(false)
     , m_massOK(false)
     , m_inertiaTensorOK(false)
     , m_colliderVisualsEnable(false)
-    , Transformable()
+    , Body()
 {
 
 }
@@ -70,22 +65,16 @@ RigidBody::RigidBody(const ConvexHull& hull)
 
 bool RigidBody::serialize(std::ofstream& file) const
 {
-    if (!m_mesh->serialize(file)) return false;
-
-    Serializer::writeTransform(file, m_transform);
+    if (!Body::serialize(file)) return false;
 
     return true;
 }
 
 bool RigidBody::deserialize(std::ifstream& file)
 {
-    m_mesh = std::make_shared<Mesh>(file);// TODO develop method to share meshes
-
-    if (m_mesh != nullptr && m_mesh->vertexCount() > 0 && m_mesh->faceCount() > 0) {
+    if (Body::deserialize(file)) {
 
         updateColliders();
-
-        setTransform(Serializer::readTransform(file));
 
         return true;
     }
@@ -95,7 +84,7 @@ bool RigidBody::deserialize(std::ifstream& file)
 
 void RigidBody::moved()
 {
-    Transformable::moved();
+    Body::moved();
 }
 
 void RigidBody::setType(Type type)
@@ -110,16 +99,6 @@ void RigidBody::setType(Type type)
         }
     }
     m_type = type;
-}
-
-void RigidBody::setID(uint32_t ID)
-{
-    m_ID = ID;
-}
-
-void RigidBody::setName(const std::string& name)
-{
-    m_name = name;
 }
 
 void RigidBody::setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate) {
@@ -248,9 +227,7 @@ void RigidBody::step(double delta)
         glm::dvec3 acceleration = m_linearVelocity + m_angularVelocity;
 //        std::cout << "ACCL: " << glm::dot(acceleration, acceleration) << "\n";
         if (glm::dot(acceleration, acceleration) > HOLD_THRESHOLD) {
-            globalTranslate(m_linearVelocity * delta);
-            rotate(m_angularVelocity * delta);
-//            m_moved = true;
+            Body::step(delta);
         }
     }
 
@@ -325,16 +302,6 @@ RigidBody::Type RigidBody::getType() const
     return m_type;
 }
 
-uint32_t RigidBody::getID() const
-{
-    return m_ID;
-}
-
-const std::string& RigidBody::getName() const
-{
-    return m_name;
-}
-
 bool RigidBody::isManifold()
 {
     if (!m_isManifoldOK) evaluateManifold();
@@ -374,30 +341,6 @@ glm::dmat3 RigidBody::inertiaTensor()
 {
     if (!m_inertiaTensorOK) calculateInertiaTensor();
     return m_inertiaTensor;
-}
-
-void RigidBody::setLinearVelocity(glm::dvec3 velocity)
-{
-    m_linearVelocity = velocity;
-}
-
-const glm::dvec3& RigidBody::getLinearVelocity() const
-{
-    return m_linearVelocity;
-}
-
-void RigidBody::setAngularVelocity(glm::dvec3 velocity)
-{
-    m_angularVelocity = velocity;
-}
-const glm::dvec3& RigidBody::getAngularVelocity() const
-{
-    return m_angularVelocity;
-}
-
-const std::shared_ptr<Mesh>& RigidBody::mesh()
-{
-    return m_mesh;
 }
 
 const ConvexHull& RigidBody::hull() const

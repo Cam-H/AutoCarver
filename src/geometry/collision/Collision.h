@@ -114,8 +114,8 @@ private:
     template<class T1, class T2>
     static glm::dvec3 initialAxis(const T1& bodyA, const T2& bodyB);
 
-    static std::vector<glm::dvec3> intersection(const ConvexHull& hull, const Plane& plane, const std::vector<bool>& partition);
-    static std::tuple<std::vector<bool>, bool> partition(const ConvexHull& hull, const Plane& plane);
+    static std::vector<glm::dvec3> intersection(const ConvexHull& hull, const Plane& plane, const std::vector<uint8_t>& partition);
+    static std::vector<uint8_t> partition(const ConvexHull& hull, const Plane& plane);
 
 };
 

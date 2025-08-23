@@ -23,6 +23,8 @@ public:
     void globalTranslate(const glm::dvec3& translation);
     void globalRotate(const glm::dvec3& axis, double theta);
 
+    void scale(double scalar);
+
     void transform(const glm::dmat4x4& transform);
 
     void setTransform(glm::dmat4x4 transform);

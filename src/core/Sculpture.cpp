@@ -18,6 +18,7 @@ Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, double width, double he
     , m_scalar(1.0)
     , m_step(0)
     , m_formStep(0)
+    , m_mergeEnable(true)
     , m_highlightColor(0.3, 0.3, 0.8)
 {
 
@@ -119,6 +120,12 @@ void Sculpture::queueSection(const Plane& plane)
 
 void Sculpture::queueSection(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& normal, bool external)
 {
+    std::cout << external << " QS\n";
+    std::cout << a.x << " " << a.y << " " << a.z << "\n";
+    std::cout << b.x << " " << b.y << " " << b.z << "\n";
+    std::cout << c.x << " " << c.y << " " << c.z << "\n";
+    std::cout << normal.x << " " << normal.y << " " << normal.z << "\n";
+
     m_operations.emplace_back();
 
     auto &operation = m_operations[m_operations.size() - 1];
@@ -171,7 +178,7 @@ std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
 
     for (uint32_t i = 0; i < hulls().size(); i++) {
         if (Collision::below(hulls()[i], plane)) {
-//            debris->add(hulls()[i]);
+            debris->add(hulls()[i]);
             remove(i);
             i--;
         }
@@ -217,16 +224,17 @@ bool Sculpture::inLimit(const ConvexHull& hull, const std::vector<Plane>& limits
 
 std::shared_ptr<Debris> Sculpture::triangleSection(const Plane& planeA, const Plane& planeB, const std::vector<Plane>& limits)
 {
+    m_newFaces.clear();
+
     auto debris = std::make_shared<Debris>(std::vector<ConvexHull>());
 
     const auto& fragments = hulls();
     for (uint32_t i = 0; i < fragments.size(); i++) {
 
-        auto aFragments = Collision::fragments(fragments[i], { planeA.origin, -planeA.normal });
-        auto bFragments = Collision::fragments(aFragments.second, { planeB.origin, -planeB.normal });
-        if (bFragments.second.empty()) continue;
+        auto aFragments = Collision::fragments(fragments[i], planeA.inverted());
+        auto bFragments = Collision::fragments(aFragments.second, planeB.inverted());
 
-        if (inLimit(bFragments.second, limits)) {
+        if (!bFragments.second.empty() && inLimit(bFragments.second, limits)) { // Verify body is within bounds of the cut
             if (!aFragments.first.empty()) { // Intersection with plane A
                 replace(aFragments.first, i);
 
@@ -240,9 +248,9 @@ std::shared_ptr<Debris> Sculpture::triangleSection(const Plane& planeA, const Pl
                     i--;
                 }
             }
-        }
 
-        debris->add(bFragments.second);
+            debris->add(bFragments.second);
+        }
     }
 
 
@@ -251,8 +259,9 @@ std::shared_ptr<Debris> Sculpture::triangleSection(const Plane& planeA, const Pl
         debris->setTransform(m_transform);
         debris->initialize();
 
-        // Manually remesh only if no hulls were merged (If they are the superclass already remeshes)
-        if (!tryMerge()) remesh();
+        // Manually remesh only if no hulls are merged (If they are CompositeBody would remesh)
+        if (!m_mergeEnable || !tryMerge()) remesh();
+//        remesh();
 
         return debris;
     }
@@ -288,6 +297,11 @@ bool Sculpture::form()
 //    }
 
     return false;
+}
+
+void Sculpture::enableHullMerging(bool enable)
+{
+    m_mergeEnable = enable;
 }
 
 void Sculpture::remesh()

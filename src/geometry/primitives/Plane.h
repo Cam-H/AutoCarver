@@ -20,6 +20,9 @@ public:
 
     [[nodiscard]] bool isValid() const;
 
+    [[nodiscard]] inline bool isAbove(const glm::dvec3& vertex) const { return glm::dot(vertex - origin, normal) >  1e-12; }
+    [[nodiscard]] inline bool isBelow(const glm::dvec3& vertex) const { return glm::dot(vertex - origin, normal) < -1e-12; }
+
     [[nodiscard]] Plane rotated(const glm::dvec3& axis, double theta) const;
     [[nodiscard]] Plane rotated(const glm::dquat& rotation) const;
 

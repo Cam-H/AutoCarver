@@ -44,7 +44,7 @@ add_library(AutoCarverLib
 
         robot/planning/PathPlanner.cpp
 
-
+        physics/Body.cpp
         physics/RigidBody.cpp
         physics/CompositeBody.cpp
         physics/Constraint.cpp

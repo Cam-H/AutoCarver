@@ -85,6 +85,11 @@ void Transformable::globalRotate(const glm::dvec3& axis, double theta)
     moved();
 }
 
+void Transformable::scale(double scalar)
+{
+    m_transform = glm::scale(m_transform, glm::dvec3(scalar));
+}
+
 void Transformable::transform(const glm::dmat4x4& transform)
 {
     m_transform = m_transform * transform;

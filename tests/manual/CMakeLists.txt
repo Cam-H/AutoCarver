@@ -1,5 +1,6 @@
 
 add_subdirectory(collision)
+add_subdirectory(convex-hull)
 add_subdirectory(convex-slice)
 add_subdirectory(mesh-carve-process)
 add_subdirectory(octree)

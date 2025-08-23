@@ -406,6 +406,7 @@ uint32_t FaceArray::matchFace(const glm::dvec3& axis) const
     return std::distance(m_normals.begin(), match);
 }
 
+// Warning: If the array was formed with duplicate vertices the edges will not link together properly
 std::vector<std::vector<uint32_t>> FaceArray::edgeList() const
 {
     std::vector<uint64_t> pairs;

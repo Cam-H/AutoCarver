@@ -12,18 +12,17 @@
 #include <vector>
 #include "glm.hpp"
 
-#include "fileIO/Serializable.h"
+#include "physics/Body.h"
 
 #include "geometry/Mesh.h"
 #include "geometry/primitives/ConvexHull.h"
 #include "geometry/primitives/Sphere.h"
 #include "geometry/primitives/Ray.h"
 
-#include "geometry/Transformable.h"
 #include "geometry/collision/EPA.h"
 
 
-class RigidBody : public Serializable, public Transformable {
+class RigidBody : public Body {
 public:
 
     enum class Type {
@@ -40,8 +39,6 @@ public:
     void moved() override;
 
     void setType(Type type);
-    void setID(uint32_t ID);
-    void setName(const std::string& name);
 
     void setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate = false);
     void setHull(const ConvexHull& hull);
@@ -56,7 +53,7 @@ public:
 
     void setDensity(double density);
 
-    void step(double delta);
+    void step(double delta) override;
 
     void zero();
 
@@ -64,10 +61,6 @@ public:
     void prepareColliderVisuals();
 
     [[nodiscard]] Type getType() const;
-    [[nodiscard]] uint32_t getID() const;
-    [[nodiscard]] const std::string& getName() const;
-
-    bool isAxisEnabled() const;
 
     bool isManifold();
     double area();
@@ -77,13 +70,6 @@ public:
     double mass();
     glm::dvec3 centroid();
     glm::dmat3 inertiaTensor();
-
-    void setLinearVelocity(glm::dvec3 velocity);
-    [[nodiscard]] const glm::dvec3& getLinearVelocity() const;
-    void setAngularVelocity(glm::dvec3 velocity);
-    [[nodiscard]] const glm::dvec3& getAngularVelocity() const;
-
-    const std::shared_ptr<Mesh>& mesh();
 
     const ConvexHull &hull() const;
     const Sphere& boundingSphere() const;
@@ -134,11 +120,6 @@ protected:
 
     Type m_type;
 
-    uint32_t m_ID;
-    std::string m_name;
-
-    std::shared_ptr<Mesh> m_mesh;
-
     ConvexHull m_hull;
     bool m_hullOK;
 
@@ -163,9 +144,6 @@ protected:
     bool m_volumeOK;
     bool m_massOK;
     bool m_inertiaTensorOK;
-
-    glm::dvec3 m_linearVelocity;
-    glm::dvec3 m_angularVelocity;
 
 private:
 

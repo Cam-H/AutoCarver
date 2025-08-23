@@ -331,21 +331,29 @@ std::vector<glm::dvec3> Collision::intersection(const ConvexHull& hull, const Pl
 {
     if (hull.vertexCount() < 4) return {}; // Early exit when the hull is poorly formed
 
-    const auto& [above, divided] = partition(hull, plane);
-    std::cout << above[0] << " " << above[1] << " " << divided << "STATE\n";
-    if (!divided) return {}; // Early exit when intersection is impossible (hull does not pass through the plane)
+    const auto& state = partition(hull, plane);
+//    std::cout << (uint32_t)state[0] << " " << (uint32_t)state[1] << " " << (uint32_t)state.back() << "STATE\n";
+    if (state.back() != 0) return {}; // Early exit when intersection is impossible (hull does not pass through the plane)
 
-    return intersection(hull, plane, above);
+    return intersection(hull, plane, state);
 }
 
-std::vector<glm::dvec3> Collision::intersection(const ConvexHull& hull, const Plane& plane, const std::vector<bool>& partition)
+// Returns a list of vertices formed from the intersection of edges and the plane (Vertices are not sequential)
+std::vector<glm::dvec3> Collision::intersection(const ConvexHull& hull, const Plane& plane, const std::vector<uint8_t>& partition)
 {
     double d = plane.d();
 
     // Find vertices on the cut plane
     std::vector<glm::dvec3> intersection;
     for (uint32_t i = 0; i < hull.vertexCount(); i++) {
+        if (partition[i] == 0) { // Vertex is on the plane
+            intersection.push_back(hull.vertices()[i]);
+            continue;
+        }
+
         for (uint32_t j : hull.neighbors(i)) {
+            if (partition[j] == 0) continue;
+
             if (i < j && partition[i] != partition[j]) { // Skip repeated edges, edges that do not cross the plane
                 glm::dvec3 vertex = hull.vertices()[i], edge = hull.vertices()[j] - vertex;
                 double t = (d - glm::dot(plane.normal, vertex)) / glm::dot(plane.normal, edge);
@@ -359,59 +367,56 @@ std::vector<glm::dvec3> Collision::intersection(const ConvexHull& hull, const Pl
 
 bool Collision::above(const ConvexHull& hull, const Plane& plane)
 {
-    const auto& [above, divided] = partition(hull, plane);
-    return !divided && above[0];
+    return partition(hull, plane).back() == 1;
 }
 bool Collision::below(const ConvexHull& hull, const Plane& plane)
 {
-    const auto& [below, divided] = partition(hull, { plane.origin, -plane.normal });
-    return !divided && below[0];
+    return partition(hull, plane).back() == 2;
 }
 
-// Indicates whether each vertex is above or below the plane in the returned vector
-// Returns false if all vertices are either above or below the plane
-std::tuple<std::vector<bool>, bool> Collision::partition(const ConvexHull& hull, const Plane& plane)
+// Indicates where vertices are in relation to the plane (0 = on, 1 = above, 2 = below)
+// Last element indicates overall state (0 = divided, 1 = entirely above, 2 = entirely below)
+std::vector<uint8_t> Collision::partition(const ConvexHull& hull, const Plane& plane)
 {
-    uint32_t sum = 0;
-
-    std::tuple<std::vector<bool>, bool> out = { std::vector<bool>(hull.vertexCount()), false };
-    auto& above = std::get<0>(out);
+    std::vector<uint8_t> state(hull.vertexCount() + 1);
 
     // Determine which vertices are above the cut plane
+    bool appearance[3] = { false, false, false }; // Track which positions have shown up
     const auto& vertices = hull.vertices();
     for (uint32_t i = 0; i < vertices.size(); i++) {
 //        std::cout << glm::dot(plane.normal, vertices[i] - plane.origin) << "~\n";
-        above[i] = glm::dot(plane.normal, vertices[i] - plane.origin) > -1e-12;
-        sum += above[i];
+        double dot = glm::dot(plane.normal, vertices[i] - plane.origin);
+        state[i] = (dot > 1e-12) + 2 * (dot < -1e-12);
+        appearance[state[i]] = true;
     }
 
-//    std::cout << "Partition " << sum << ":\n";
-//    for (auto i : above) std::cout << i << " ";
+    // Indicate spread of the vertices
+    state.back() = 3 - 2 * appearance[1] - appearance[2];
+
+//    std::cout << "Partition:\n";
+//    for (auto i : state) std::cout << (uint32_t)i << " ";
 //    std::cout << "\n";
 
-    // Indicate spread of the vertices
-    std::get<1>(out) = sum != 0 && sum != above.size();
-
-    return out;
+    return state;
 }
 
 ConvexHull Collision::fragment(const ConvexHull& hull, const Plane& plane)
 {
     if (hull.empty()) return {};
 
-    const auto& [above, divided] = partition(hull, plane);
-    if (!divided) {
+    const auto& state = partition(hull, plane);
+    if (state.back() != 0) {
 
         // Exit if no edges intersect with the plane
-        if (above[0]) return hull;
+        if (state.back() == 1) return hull;
         else return {};
     }
 
     // Find vertex intersections of hull with plane
-    std::vector<glm::dvec3> set = intersection(hull, plane, above);
+    std::vector<glm::dvec3> set = intersection(hull, plane, state);
 
     // Attach vertices on the positive side of the plane
-    for (uint32_t i = 0; i < above.size(); i++) if (above[i]) set.push_back(hull.vertices()[i]);
+    for (uint32_t i = 0; i < state.size() - 1; i++) if (state[i] == 1) set.push_back(hull.vertices()[i]);
 
     return ConvexHull(set);
 //    return ConvexHull(VertexArray::clean(set));
@@ -420,23 +425,23 @@ std::pair<ConvexHull, ConvexHull> Collision::fragments(const ConvexHull& hull, c
 {
     if (hull.empty()) return {};
 
-    const auto& [above, divided] = partition(hull, plane);
-    if (!divided) {
+    const auto& state = partition(hull, plane);
+    if (state.back() != 0) {
 
         // Exit if no edges intersect with the plane
-        if (above[0]) return { hull, {} };
+        if (state.back() == 1) return { hull, {} };
         else return { {}, hull };
     }
 
-    std::vector<glm::dvec3> setA = intersection(hull, plane, above);
+    std::vector<glm::dvec3> setA = intersection(hull, plane, state);
 
     // Duplicate intersection vertices in other set
     std::vector<glm::dvec3> setB = setA;
 
     // Attach original vertices to respective fragments
-    for (uint32_t i = 0; i < above.size(); i++) {
-        if (above[i]) setA.push_back(hull.vertices()[i]);
-        else setB.push_back(hull.vertices()[i]);
+    for (uint32_t i = 0; i < state.size(); i++) {
+        if (state[i] == 1) setA.push_back(hull.vertices()[i]);
+        else if (state[i] == 2) setB.push_back(hull.vertices()[i]);
     }
 
     return { ConvexHull(setA), ConvexHull(setB) };

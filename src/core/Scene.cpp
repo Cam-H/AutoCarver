@@ -180,6 +180,9 @@ void Scene::step(double delta)
     // Update bodies
     for (const std::shared_ptr<RigidBody>& body : m_bodies) body->step(delta);
 
+    // Update visual body positions
+    for (const std::shared_ptr<Body>& body : m_vis) body->step(delta);
+
     // Kill floor
     for (uint32_t i = 0; i < m_bodies.size(); i++) {
         if (m_bodies[i]->getType() == RigidBody::Type::DYNAMIC && m_bodies[i]->position().y < -10) {
@@ -261,6 +264,9 @@ void Scene::clear(uint8_t level)
 
     m_bodies.clear();
     m_robots.clear();
+
+    m_vis.clear();
+
 //    for (uint32_t i = 0; i < m_entities.size(); i++) {
 //        if (m_entities[i].level <= level) {
 //            if (m_entities[i].body->physicsBody() != nullptr) delete m_entities[i].body;
@@ -283,6 +289,12 @@ void Scene::addRenderBuffer(const std::shared_ptr<RenderBuffer>& buffer)
 void Scene::clearRenderBuffers()
 {
     m_buffers.clear();
+}
+
+std::shared_ptr<Body> Scene::createVisual(const std::shared_ptr<Mesh>& mesh)
+{
+    m_vis.push_back(std::make_shared<Body>(mesh));
+    return m_vis.back();
 }
 
 std::shared_ptr<RigidBody> Scene::createBody(const std::string &filepath, RigidBody::Type type)
@@ -343,6 +355,11 @@ void Scene::prepareBody(const std::shared_ptr<RigidBody>& body, uint8_t level)
 const std::vector<std::shared_ptr<RigidBody>>& Scene::bodies() const
 {
     return m_bodies;
+}
+
+const std::vector<std::shared_ptr<Body>>& Scene::visualBodies() const
+{
+    return m_vis;
 }
 
 uint32_t Scene::bodyCount() const

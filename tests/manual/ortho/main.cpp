@@ -43,6 +43,7 @@ QPushButton *stepButton = nullptr;
 
 std::shared_ptr<Sculpture> body = nullptr;
 std::shared_ptr<RigidBody> silhouette = nullptr;
+std::shared_ptr<RigidBody> cut = nullptr;
 
 std::shared_ptr<Mesh> mesh = nullptr;
 //std::shared_ptr<Mesh> hull = nullptr;
@@ -140,6 +141,8 @@ void updateColoring()
 
 void refine()
 {
+    if (profile.complete()) return;
+
     bool external = profile.isNextExternal();
     auto indices = profile.next();
 
@@ -154,10 +157,11 @@ void refine()
         body->queueSection(border[0], border[1], border[2], profile.normal(), external);
         body->applySection();
 
-//        auto extrude = MeshBuilder::extrude(border, profile.normal(), 1);
-//        extrude->translate(0.5f * -profile.normal());
-//        extrude->setFaceColor({ 0, 1, 1 });
-//        scene->createBody(extrude);
+        auto extrude = MeshBuilder::extrude(border, profile.normal(), 1);
+        extrude->translate(0.5 * -profile.normal());
+        extrude->setFaceColor({ 0, 1, 1 });
+        if (cut == nullptr) cut = scene->createBody(extrude);
+        else cut->setMesh(extrude);
     }
 
     profile.refine();
@@ -327,12 +331,10 @@ int main(int argc, char *argv[])
     mesh = MeshHandler::loadAsMeshBody(R"(..\res\meshes\devil.obj)");
     mesh->center();
 
-
     scene = std::make_shared<Scene>();
-    body = std::make_shared<Sculpture>(mesh, 1.0f, 1.0f);
+    body = std::make_shared<Sculpture>(mesh, 1.0, 2.0);
     scene->prepareBody(body);
     scene->prepareBody(body->model());
-
 
     detector = new EdgeDetect(mesh);
 
@@ -352,6 +354,8 @@ int main(int argc, char *argv[])
     sceneWidget = window->findChild<SceneWidget*>("sceneWidget");
     sceneWidget->camera().setPosition(QVector3D(5, 0, 0));
     sceneWidget->setScene(scene);
+
+    body->applyCompositeColors(showHullSetting->isChecked());
 
     scene->update();
     window->show();

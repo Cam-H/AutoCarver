@@ -17,6 +17,8 @@
 class Mesh;
 class Plane;
 
+class HullBuilder;
+
 class ConvexHull {
 public:
 
@@ -27,10 +29,8 @@ public:
 
     explicit ConvexHull(const std::vector<glm::dvec3>& cloud);
 
-
     ConvexHull(const ConvexHull& rhs) = default;
 
-    void calculateNormals();
     void evaluate();
 
     void setWalkStart(uint32_t startIndex);
@@ -79,44 +79,20 @@ public:
 
     void print() const;
 
+    friend class HullBuilder;
+
 private:
 
-    struct Facet {
-        TriIndex triangle;
-        glm::dvec3 normal;
-        std::vector<uint32_t> outside;
-        std::vector<uint32_t> neighbors;
-        bool onHull;
-
-//        ~Facet() { delete[] normal; }
-    };
-
+    void build(HullBuilder& builder);
     void initialize();
-
-    std::vector<TriIndex> initialApproximation();
-//    glm::dvec3 wNormal(const Triangle& triangle);
 
     [[nodiscard]] uint32_t step(const glm::dvec3& normal, const glm::dvec3& axis, uint32_t index) const;
 
-    void prepareFacets(const std::vector<TriIndex>& triangles);
-    void prepareFacets(const std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
-    void sortCloud(std::vector<uint32_t>& free, Facet& facet);
-    void calculateHorizon(const glm::dvec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
-
-    void prepareFaces();
-    void purgeOrphans(std::vector<std::vector<uint32_t>>& faces);
-
 private:
-
-    std::vector<glm::dvec3> m_cloud;
 
     std::vector<glm::dvec3> m_vertices;
 
     FaceArray m_faces;
-
-//    std::vector<glm::dvec3> w_vertices;
-    std::vector<Facet> facets;
-
 
     glm::dvec3 m_center;
     std::vector<std::vector<uint32_t>> m_walks;
@@ -126,6 +102,60 @@ private:
     double m_volume;
 
     const static uint8_t STRIDE = 3;
+
+};
+
+class HullBuilder {
+public:
+
+    explicit HullBuilder(const std::vector<glm::dvec3>& cloud);
+
+    void clean();
+
+    void initialize();
+
+    void step();
+    void solve();
+
+    [[nodiscard]] uint32_t getIteration() const;
+    [[nodiscard]] bool finished() const;
+
+    [[nodiscard]] FaceArray getFaces() const;
+    [[nodiscard]] std::vector<glm::dvec3> getVertices() const;
+
+    [[nodiscard]] ConvexHull getHull() const;
+
+
+private:
+
+    struct Facet {
+        TriIndex triangle;
+        glm::dvec3 normal;
+        std::vector<uint32_t> outside;
+        std::vector<uint32_t> neighbors;
+        bool onHull;
+    };
+
+    inline void iterate();
+
+    std::vector<TriIndex> initialApproximation();
+
+    void prepareFacets(const std::vector<TriIndex>& triangles);
+    void prepareFacets(const std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
+    void sortCloud(std::vector<uint32_t>& free, Facet& facet);
+    void calculateHorizon(const glm::dvec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon, std::vector<uint32_t>& set);
+
+//    void purgeOrphans(std::vector<std::vector<uint32_t>>& faces);
+
+private:
+
+    std::vector<glm::dvec3> m_cloud;
+    std::vector<Facet> m_facets;
+
+    bool m_initialized;
+    uint32_t m_iteration;
+
+    std::vector<glm::dvec3> m_vertices;
 
 };
 

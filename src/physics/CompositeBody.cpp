@@ -313,7 +313,7 @@ void CompositeBody::applyCompositeColors(bool enable)
 
 void CompositeBody::colorHulls()
 {
-    if (!m_hulls.empty()) {
+    if (m_mesh != nullptr && !m_hulls.empty()) {
         uint32_t faceIdx = 0, hullIdx = 0;
         for (const ConvexHull& hull : m_hulls) {
             const glm::dvec3& color = BRIGHT_SET[hullIdx];
@@ -326,14 +326,12 @@ void CompositeBody::colorHulls()
 
 void CompositeBody::remesh()
 {
-    auto mesh = MeshBuilder::composite(m_hulls);
-    if (mesh == nullptr) return;
+    m_mesh = MeshBuilder::composite(m_hulls);
+    if (m_mesh == nullptr) return;
 
     // Prepare styling for the hulls
-    mesh->setFaceColor(m_baseColor);
+    m_mesh->setFaceColor(m_baseColor);
     if (m_applyCompositeColor) colorHulls();
-
-    m_mesh = mesh;
 }
 
 const std::vector<ConvexHull>& CompositeBody::hulls() const

@@ -39,6 +39,8 @@ public:
 
     bool form();
 
+    void enableHullMerging(bool enable);
+
     void remesh() override;
 
     const std::shared_ptr<Mesh>& sculpture();
@@ -101,6 +103,8 @@ private:
     std::vector<uint32_t> m_newFaces; // Track indices of recently added faces
 
     uint32_t m_formStep;
+
+    bool m_mergeEnable;
 
     // Styling
     glm::dvec3 m_highlightColor;

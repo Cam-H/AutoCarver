@@ -216,6 +216,8 @@ void Profile::setRefinementMethod(RefinementMethod method)
             default: throw std::runtime_error("[Profile] Unrecognized refinement method");
         }
     }
+
+    print();
 }
 
 void Profile::setMimimumArea(double area)
@@ -700,6 +702,8 @@ void Profile::print() const
 
     std::cout << "hull: [";
     for (uint32_t idx : m_hull) std::cout << idx << " ";
+
+    for (uint32_t idx : m_hull) std::cout << "(" << m_vertices[idx].x << ", " << m_vertices[idx].y << ")\n";
 
     std::cout << "]\nrem: [";
     for (const auto& rem : m_remainder) std::cout << "(" << rem.first << ", " << rem.second << ") ";

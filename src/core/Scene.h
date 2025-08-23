@@ -45,6 +45,8 @@ public:
     void addRenderBuffer(const std::shared_ptr<RenderBuffer>& buffer);
     void clearRenderBuffers();
 
+    std::shared_ptr<Body> createVisual(const std::shared_ptr<Mesh>& mesh);
+
     std::shared_ptr<RigidBody> createBody(const std::string &filepath, RigidBody::Type type = RigidBody::Type::STATIC);
     std::shared_ptr<RigidBody> createBody(const std::shared_ptr<Mesh>& mesh, RigidBody::Type type = RigidBody::Type::STATIC);
     std::shared_ptr<RigidBody> createBody(const ConvexHull& hull, RigidBody::Type type = RigidBody::Type::STATIC);
@@ -52,6 +54,7 @@ public:
     std::shared_ptr<Robot> createRobot(const std::shared_ptr<KinematicChain>& kinematics);
 
     [[nodiscard]] const std::vector<std::shared_ptr<RigidBody>>& bodies() const;
+    [[nodiscard]] const std::vector<std::shared_ptr<Body>>& visualBodies() const;
     [[nodiscard]] uint32_t bodyCount() const;
 
 //    std::vector<const std::shared_ptr<Mesh>&> meshes();
@@ -79,6 +82,8 @@ protected:
 
     std::vector<std::shared_ptr<RigidBody>> m_bodies;
     std::vector<std::shared_ptr<Robot>> m_robots;
+
+    std::vector<std::shared_ptr<Body>> m_vis;
 
     std::unique_ptr<std::thread> m_updateThread;
     bool m_running;

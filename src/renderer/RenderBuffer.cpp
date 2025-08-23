@@ -30,6 +30,16 @@ void RenderBuffer::update(const Scene* scene)
         });
     }
 
+    for (const std::shared_ptr<Body>& body : scene->visualBodies()) {
+        m_buffer[idx].push_back(Item{
+                body->getID(),
+                body->getTransform(),
+                body->mesh(),
+                nullptr,
+                Sphere()
+        });
+    }
+
     m_mutex.lock();
 
     m_latest = idx;
