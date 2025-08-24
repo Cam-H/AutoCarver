@@ -27,8 +27,8 @@ class SculptProcess : public Scene {
 public:
 
     struct Configuration {
-        double materialWidth = 1.0f;
-        double materialHeight = 2.0f;
+        double materialWidth = 1.0;
+        double materialHeight = 2.0;
     };
 
     enum class ConvexSliceOrder {
@@ -49,6 +49,8 @@ public:
     void enableCollisionTesting(bool enable);
     void enableCutSimulation(bool enable);
     void enableFragmentRelease(bool enable);
+
+    void enableDebrisColoring(bool enable);
 
     void setSlicingOrder(ConvexSliceOrder order);
     void setActionLimit(uint32_t limit);
@@ -76,6 +78,7 @@ public:
     bool simulationActive() const;
 
     const std::shared_ptr<Sculpture>& getSculpture() const;
+    const std::shared_ptr<RigidBody>& getModel() const;
 
     const std::shared_ptr<Robot>& getSculptor() const;
     const std::shared_ptr<Robot>& getTurntable() const;
@@ -111,6 +114,8 @@ private:
     void prepareTurntable();
     void attachSculpture();
 
+    [[nodiscard]] bool withinActionLimit() const;
+
     [[nodiscard]] Waypoint alignedToFaceWP(const std::vector<glm::dvec3>& border, const glm::dvec3& normal) const;
     [[nodiscard]] Waypoint alignedToFaceWP(const Axis3D& axes, const std::vector<glm::dvec3>& border) const;
     [[nodiscard]] Waypoint alignedToVertexWP(const Axis3D& axes, const glm::dvec3& vertex) const;
@@ -132,7 +137,9 @@ private:
     std::vector<Action> planOutlineRefinement(Profile& profile);
     Action planOutlineRefinement(const Profile& profile, const Triangle3D& wTri, const glm::dvec3& wNormal);
 
+    bool planReliefCuts(const Profile& profile, const glm::dvec3& wNormal, uint8_t edgeIndex, Action& action);
     bool planBlindCut(const Pose& pose, double depth, Action& action);
+    bool planMill(const Pose& pose, const glm::dvec3& axis, double depth, Action& action);
 //    bool planReliefCuts(const Pose& pose, double depth, Action& action);
 
     void planFeatureRefinement();
@@ -211,6 +218,8 @@ private:
     bool m_collisionTestingEnable;
     bool m_cutSimulationEnable;
     bool m_fragmentReleaseEnable;
+
+    bool m_debrisColoringEnable;
 
     ConvexSliceOrder m_sliceOrder;
 

@@ -90,6 +90,8 @@ private:
 
 private:
 
+    bool m_initialized;
+
     std::vector<glm::dvec3> m_vertices;
 
     FaceArray m_faces;

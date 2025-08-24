@@ -409,6 +409,8 @@ uint32_t FaceArray::matchFace(const glm::dvec3& axis) const
 // Warning: If the array was formed with duplicate vertices the edges will not link together properly
 std::vector<std::vector<uint32_t>> FaceArray::edgeList() const
 {
+    if (m_faces.empty()) return {};
+
     std::vector<uint64_t> pairs;
 
     const uint32_t *ptr = &m_faces[0];

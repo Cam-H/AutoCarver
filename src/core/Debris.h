@@ -21,14 +21,22 @@ public:
 
     void initialize();
 
-    void prepareCut(const Pose& system, double thickness);
+    void queueCut(const Pose& system, double thickness);
+    void beginCut();
+    void completeCut();
+
+    [[nodiscard]] bool inProcess() const;
 
     std::vector<std::shared_ptr<RigidBody>> removeMaterial(double depth);
 
 private:
 
-    struct Section {
-        Section(uint32_t src, uint32_t cut, double ts, double tf, double depth) : srcIndex(src), cutIndex(cut), ts(ts), tf(tf), depth(std::min(tf, depth)) {}
+    struct Connection {
+        std::vector<glm::dvec3> border;
+    };
+
+    struct Kerf {
+        Kerf(uint32_t src, uint32_t cut, double ts, double tf, double depth) : srcIndex(src), cutIndex(cut), ts(ts), tf(tf), depth(std::min(tf, depth)) {}
 
         uint32_t srcIndex;
         uint32_t cutIndex;
@@ -39,26 +47,30 @@ private:
         double depth; // Distance from origin to release fragment (Bit less than tf based on thickness)
     };
 
-    struct Cut {
-        Cut(const glm::dvec3& origin, const glm::dvec3& axis) : origin(origin), axis(axis) {}
+    struct CutOperation {
+        CutOperation(const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& axis, double thickness) : origin(origin), normal(normal), axis(axis), thickness(thickness) {}
 
         glm::dvec3 origin;
-        glm::dvec3 axis;
+        glm::dvec3 normal;
 
-        std::vector<Section> sections;
+        glm::dvec3 axis;
+        double thickness;
+
+        std::vector<Kerf> sections;
     };
 
     std::vector<std::shared_ptr<RigidBody>> removeCut();
-    std::shared_ptr<RigidBody> removeSection(uint32_t index);
+    std::shared_ptr<RigidBody> removeKerf(uint32_t index);
 
-    std::shared_ptr<RigidBody> tryFragmentRelease(Section& section);
+    std::shared_ptr<RigidBody> tryFragmentRelease(Kerf& section);
 
     void replaceIndex(uint32_t oldIndex, uint32_t newIndex);
 
 private:
 
-    std::vector<uint32_t> m_connectionCounts;
-    std::deque<Cut> m_cuts;
+    std::vector<Plane> m_fixedPlanes; // Retains any hulls in contact (even indirect) with any plane
+    std::deque<CutOperation> m_cuts; // Record of remaining operations to be conducted
+    bool m_inProcess;
 
 };
 

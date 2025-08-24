@@ -19,6 +19,7 @@ public:
     [[nodiscard]] double sEnd() const;
 
     [[nodiscard]] bool empty() const;
+    [[nodiscard]] uint32_t segments() const;
 
     [[nodiscard]] std::vector<double> evaluate(double s) const;
     [[nodiscard]] std::vector<double> evaluateFirstDerivative(double s) const;

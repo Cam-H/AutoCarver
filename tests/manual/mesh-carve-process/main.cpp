@@ -126,11 +126,18 @@ int main(int argc, char *argv[])
         sceneWidget->update();
     });
 
-    auto decompButton = window->findChild<QCheckBox*>("decompButton");
-    scene->getSculpture()->applyCompositeColors(decompButton->isChecked());
-    QObject::connect(decompButton, &QCheckBox::clicked, [&](bool checked) {
+    auto sculptureDecompButton = window->findChild<QCheckBox*>("sculptureDecompButton");
+    scene->getSculpture()->applyCompositeColors(sculptureDecompButton->isChecked());
+    QObject::connect(sculptureDecompButton, &QCheckBox::clicked, [&](bool checked) {
         scene->getSculpture()->applyCompositeColors(checked);
         sceneWidget->updateRenderGeometry(scene->getSculpture()->mesh());
+        sceneWidget->update();
+    });
+
+    auto debrisDecompButton = window->findChild<QCheckBox*>("debrisDecompButton");
+    scene->enableDebrisColoring(debrisDecompButton->isChecked());
+    QObject::connect(debrisDecompButton, &QCheckBox::clicked, [&](bool checked) {
+        scene->enableDebrisColoring(checked);
         sceneWidget->update();
     });
 

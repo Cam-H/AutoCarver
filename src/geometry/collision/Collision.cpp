@@ -419,7 +419,6 @@ ConvexHull Collision::fragment(const ConvexHull& hull, const Plane& plane)
     for (uint32_t i = 0; i < state.size() - 1; i++) if (state[i] == 1) set.push_back(hull.vertices()[i]);
 
     return ConvexHull(set);
-//    return ConvexHull(VertexArray::clean(set));
 }
 std::pair<ConvexHull, ConvexHull> Collision::fragments(const ConvexHull& hull, const Plane& plane)
 {

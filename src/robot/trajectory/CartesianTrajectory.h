@@ -17,7 +17,10 @@ class Robot;
 
 class CartesianTrajectory : public TOPPTrajectory {
 public:
-    CartesianTrajectory(const std::shared_ptr<Robot>& robot, const Pose& initialPose, const glm::dvec3& translation);
+    CartesianTrajectory(const std::shared_ptr<Robot>& robot, const Pose& initialPose, const glm::dvec3& translation, uint32_t steps);
+//    CartesianTrajectory(const std::shared_ptr<Robot>& robot, const Pose& initialPose, const glm::dvec3& translation, double tolerance);
+
+    void resolve(uint32_t steps);
 
     [[nodiscard]] std::shared_ptr<CartesianTrajectory> reversed(const std::shared_ptr<Robot>& robot) const;
 

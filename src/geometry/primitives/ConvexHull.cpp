@@ -17,7 +17,8 @@
 #include <iostream>
 
 ConvexHull::ConvexHull()
-    : m_center()
+    : m_initialized(false)
+    , m_center()
     , m_faces(0, 0)
     , m_volume(-1.0)
     , m_walkStart(0)
@@ -58,6 +59,7 @@ void ConvexHull::build(HullBuilder& builder)
     builder.solve();
 
     m_vertices = builder.getVertices();
+
     m_faces = builder.getFaces();
 
     initialize();
@@ -65,6 +67,8 @@ void ConvexHull::build(HullBuilder& builder)
 
 void ConvexHull::initialize()
 {
+    if (m_vertices.empty() || m_faces.empty()) return;
+
     // Calculate convex hull center
     for (const glm::dvec3& vertex : m_vertices) {
         m_center += vertex;
@@ -80,6 +84,8 @@ void ConvexHull::initialize()
             break;
         }
     }
+
+    m_initialized = true;
 }
 
 // Calculate additional information like volume that is normally skipped to save time
@@ -105,7 +111,7 @@ bool ConvexHull::getWalkStart() const
 
 bool ConvexHull::isValid() const
 {
-    return !m_vertices.empty();
+    return m_initialized && !m_vertices.empty();
 }
 
 uint32_t ConvexHull::vertexCount() const
@@ -396,7 +402,7 @@ HullBuilder::HullBuilder(const std::vector<glm::dvec3>& cloud)
         , m_initialized(false)
         , m_iteration(0)
 {
-
+    assert(!cloud.empty());
 }
 
 void HullBuilder::clean()
@@ -696,7 +702,6 @@ ConvexHull HullBuilder::getHull() const
     auto hull = ConvexHull();
     hull.m_vertices = getVertices();
     hull.m_faces = getFaces();
-
     hull.initialize();
 
     return hull;

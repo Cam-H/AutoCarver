@@ -65,6 +65,11 @@ bool PiecewisePolyPath::empty() const
     return m_splines.empty() || m_breakpoints.empty();
 }
 
+uint32_t PiecewisePolyPath::segments() const
+{
+    return m_breakpoints.size();
+}
+
 std::vector<double> PiecewisePolyPath::evaluate(double s) const
 {
     std::vector<double> position;

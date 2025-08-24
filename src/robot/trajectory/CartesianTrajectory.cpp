@@ -6,8 +6,8 @@
 
 
 // translation - in units local to the axes defined in initialPose
-CartesianTrajectory::CartesianTrajectory(const std::shared_ptr<Robot>& robot, const Pose& initialPose, const glm::dvec3& translation)
-    : TOPPTrajectory(cartesianWaypoints(robot, initialPose, translation))
+CartesianTrajectory::CartesianTrajectory(const std::shared_ptr<Robot>& robot, const Pose& initialPose, const glm::dvec3& translation, uint32_t steps)
+    : TOPPTrajectory({robot == nullptr ? std::vector<Waypoint>() : std::vector<Waypoint>{ robot->inverse(initialPose) }})
     , m_robot(robot)
     , m_initialPose(initialPose)
 {
@@ -17,6 +17,31 @@ CartesianTrajectory::CartesianTrajectory(const std::shared_ptr<Robot>& robot, co
     m_curve = Ray(initialPose.position, finalPose.position - initialPose.position);
     m_distance = glm::length(m_curve.axis);
     m_curve.axis /= m_distance;
+
+    resolve(steps);
+}
+
+void CartesianTrajectory::resolve(uint32_t steps)
+{
+    Pose pose = m_initialPose;
+    std::vector<Waypoint> waypoints;
+    waypoints.reserve(steps);
+
+    glm::dvec3 dt = (m_distance / steps) * m_curve.axis;
+    for (uint32_t i = 0; i < steps; i++) {
+        waypoints.emplace_back(m_robot->inverse(pose));
+        if (!waypoints.back().isValid()) {
+            std::cout << "FAILED to resolve cartesian trajectory: " << i << " " << steps << "\n";
+            waypoints.clear();
+            break;
+        }
+
+        pose.position += dt;
+    }
+
+    m_path = PiecewisePolyPath(waypoints);
+
+    update();
 }
 
 std::vector<Waypoint> CartesianTrajectory::cartesianWaypoints(const std::shared_ptr<Robot>& robot,
@@ -83,7 +108,7 @@ std::shared_ptr<CartesianTrajectory> CartesianTrajectory::reversed(const std::sh
 
     glm::dvec3 delta = finalPose.position - initialPose.position;
 
-    return std::make_shared<CartesianTrajectory>(robot, initialPose, initialPose.axes.localize(delta));
+    return std::make_shared<CartesianTrajectory>(robot, initialPose, initialPose.axes.localize(delta), m_path.segments());
 }
 
 // Given ratio (% of path completed) returns a corresponding t

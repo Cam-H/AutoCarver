@@ -51,6 +51,7 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     , m_collisionTestingEnable(true)
     , m_cutSimulationEnable(true)
     , m_fragmentReleaseEnable(true)
+    , m_debrisColoringEnable(true)
     , m_sliceOrder(ConvexSliceOrder::TOP_DOWN)
     , m_actionLimit(0xFFFFFFFF)
     , m_actionLimitEnable(false)
@@ -74,7 +75,6 @@ void SculptProcess::setTarget(const std::shared_ptr<Mesh>& mesh)
 {
     model = mesh;
     model->center();
-    model->normalize();
 
     bool firstTarget = m_sculpture == nullptr;
     m_sculpture = std::make_shared<Sculpture>(model, m_config.materialWidth, m_config.materialHeight);
@@ -84,6 +84,9 @@ void SculptProcess::setTarget(const std::shared_ptr<Mesh>& mesh)
         prepareBody(m_sculpture, 1);
         prepareBody(m_sculpture->model(), 1);
     } else { // Overwrite old sculpture if possible
+        m_sculpture->setID(m_bodies[0]->getID());
+        m_sculpture->model()->setID(m_bodies[1]->getID());
+
         m_bodies[0] = m_sculpture;
         m_bodies[1] = m_sculpture->model();
 
@@ -204,6 +207,11 @@ void SculptProcess::enableFragmentRelease(bool enable)
     m_fragmentReleaseEnable = enable;
 }
 
+void SculptProcess::enableDebrisColoring(bool enable)
+{
+    if (m_debrisColoringEnable != enable && m_debris != nullptr) m_debris->applyCompositeColors(enable);
+    m_debrisColoringEnable = enable;
+}
 
 void SculptProcess::setSlicingOrder(ConvexSliceOrder order)
 {
@@ -287,6 +295,8 @@ void SculptProcess::skip()
         if (!m_actions[m_step].cuts.empty()) m_sculpture->applySection();
         m_step++;
     }
+
+    update();
 }
 
 void SculptProcess::step(double delta)
@@ -301,9 +311,17 @@ void SculptProcess::step(double delta)
                 m_step++;
             } else if (m_continuous) nextAction();
         } else if (m_debris != nullptr && !action.cuts.empty() && action.cuts.front().ts < action.trajectory->t()){
+            if (!m_debris->inProcess()) m_debris->beginCut();
+
             double depth = glm::dot(m_robot->getPosition() - action.cuts[0].pose.position, action.cuts[0].pose.axes.xAxis);
 //            std::cout << "NR: " << depth << " " << 0.5 * m_bladeWidth << " -> ";
             depth = std::max(0.0, depth + 0.5 * m_bladeWidth);
+            static double ttt = 0;
+            if (std::abs(depth - ttt) > 0.01) {
+                std::cout << "Depth: " << depth << "(" << glm::dot(m_robot->getPosition() - action.cuts[0].pose.position, action.cuts[0].pose.axes.xAxis) << "), "
+                << m_debris->inProcess() << " " << action.cuts.size() << " " << action.cuts.front().ts << " " << action.cuts.front().tf << " " << action.trajectory->t() << "\n";
+                ttt = depth;
+            }
 
             const auto& fragments = m_debris->removeMaterial(depth);
             if (m_fragmentReleaseEnable && !fragments.empty()) {
@@ -313,17 +331,21 @@ void SculptProcess::step(double delta)
                 }
             }
 
-            if (action.cuts.front().tf <= action.trajectory->t()) action.cuts.pop_front();
+            if (action.cuts.front().tf <= action.trajectory->t()) {
+                std::cout << "REMOVAL: " << action.cuts.size() << " " << action.cuts.front().tf << " " << action.trajectory->t() <<"\n";
+                m_debris->completeCut();
+                action.cuts.pop_front();
+            }
 
             if (action.cuts.empty()) {
                 std::cout << "REM: " << m_debris->hulls().size() << "\n";
                 if (!m_debris->hulls().empty()) {
                     for (const ConvexHull& hull : m_debris->hulls()) {
                         std::cout << hull.isValid() << " " << hull.vertexCount() << "\n";
-                        if (hull.isValid()) m_sculpture->add(hull);
+//                        if (hull.isValid()) m_sculpture->add(hull);
                     }
 
-                    m_sculpture->remesh();
+//                    m_sculpture->remesh();
                 }
 
                 removeDebris();
@@ -419,6 +441,16 @@ Axis3D SculptProcess::faceAlignedAxes(const glm::dvec3& normal, bool alignHorizo
     return axes;
 }
 
+bool SculptProcess::withinActionLimit() const
+{
+    if (m_actionLimitEnable && m_actions.size() >= m_actionLimit) {
+        std::cout << "\033[93m[SculptProcess] Action limit exceeded\033[0m\n";
+        return false;
+    }
+
+    return true;
+}
+
 Waypoint SculptProcess::alignedToFaceWP(const std::vector<glm::dvec3>& border, const glm::dvec3& normal) const
 {
     auto axes = faceAlignedAxes(normal, false);
@@ -511,6 +543,11 @@ const std::shared_ptr<Sculpture>& SculptProcess::getSculpture() const
     return m_sculpture;
 }
 
+const std::shared_ptr<RigidBody>& SculptProcess::getModel() const
+{
+    return m_bodies[1];
+}
+
 const std::shared_ptr<Robot>& SculptProcess::getSculptor() const
 {
     return m_robot;
@@ -551,11 +588,7 @@ void SculptProcess::planConvexTrim()
     // Process all the cuts preemptively
     hull = m_sculpture->hull();
     for (Plane& step : steps) {
-
-        if (m_actionLimitEnable && m_actions.size() >= m_actionLimit) {
-            std::cout << "\033[93m[SculptProcess] Action limit exceeded\033[0m\n";
-            break;
-        }
+        if (!withinActionLimit()) break;
 
         auto fragments = Collision::fragments(hull, step);
 
@@ -732,7 +765,7 @@ std::vector<SculptProcess::Action> SculptProcess::planConvexTrim(const ConvexHul
 void SculptProcess::planOutlineRefinement(double stepDg)
 {
     uint32_t steps = std::floor(180.0 / stepDg);
-    const double initialRotation = m_turntable->getJointValue(0), baseRotation = -m_sculpture->rotation();
+    const double initialRotation = m_turntable->getJointValue(0), baseRotation = m_sculpture->rotation();
     double step = 0;
 
     // Prepare a 3D render / edge detection system to find the profile of the model
@@ -741,13 +774,14 @@ void SculptProcess::planOutlineRefinement(double stepDg)
 //    detector->setSize(1000);
 //    detector->setEpsilon(120.0);
 
-    detector->capture()->camera().setViewingAngle(180 / M_PI * baseRotation, 0);
+    detector->capture()->camera().setViewingAngle(180 / M_PI * -baseRotation, 0);
     detector->capture()->focus();
 
     // Block collision checks between blade and sculpture (Expected but should be ignored)
     m_robot->getEOAT()->setMask(m_robot->getEOAT()->mask() & ~m_sculpture->layer());
 
     for (uint32_t i = 0; i < steps; i++) {
+        if (!withinActionLimit()) break;
 
         // Render and determine the profile of the result
         detector->update();
@@ -756,7 +790,8 @@ void SculptProcess::planOutlineRefinement(double stepDg)
         auto profile = detector->profile();
         profile.setRefinementMethod(Profile::RefinementMethod::DELAUNEY);
 
-        m_turntable->setJointValue(0, -baseRotation + M_PI * step / 180);
+        m_turntable->setJointValue(0, M_PI * step / 180);
+//        m_turntable->setJointValue(0, baseRotation + M_PI * step / 180);
 
         auto actions = planOutlineRefinement(profile);
         if (!actions.empty()) {
@@ -805,6 +840,7 @@ std::vector<SculptProcess::Action> SculptProcess::planOutlineRefinement(Profile&
     std::vector<Action> actions;
 
     while (!profile.complete()) {
+        if (!withinActionLimit()) break;
 
         auto tri = profile.next();
 //        std::cout << "IDX: " << tri.I0 << " " << tri.I1 << " " << tri.I2 << "\n";
@@ -828,9 +864,7 @@ SculptProcess::Action SculptProcess::planOutlineRefinement(const Profile& profil
     const double runup = 0.02, offset = runup + 0.5 * m_bladeWidth;
 
     auto clearance = profile.clearance();
-    std::cout << "SS: " << profile.remainingSections() << " " << clearance.first << " " << clearance.second << " " << profile.area() << "\n";
-
-    if (clearance.first < offset || clearance.second < offset) return { nullptr, nullptr }; // TODO try to handle these cases
+//    std::cout << "SS: " << profile.remainingSections() << " " << clearance.first << " " << clearance.second << " " << profile.area() << "\n";
 
     auto trajectory = std::make_shared<CompositeTrajectory>(6);
     trajectory->setLimits(m_baseVelocityLimits, m_baseAccelerationLimits);
@@ -846,15 +880,31 @@ SculptProcess::Action SculptProcess::planOutlineRefinement(const Profile& profil
     depthAB  -= reduc;
     depthBC -= reduc;
 
-    std::cout << "INTERNAL ANGLE: " << 180 * theta / M_PI << ", REDUC: " << reduc << "\n";
+//    std::cout << "INTERNAL ANGLE: " << 180 * theta / M_PI << ", REDUC: " << reduc << "\n";
 
-    auto axes = faceAlignedAxes(glm::normalize(glm::cross(AB, wNormal)), true);
-    auto pose = Pose(wTri.a - axes.xAxis * offset, axes);
-    if (!planBlindCut(pose, depthAB + runup, action)) return { nullptr, nullptr };
+    static uint32_t iteration = 0;
+    if (clearance.first < offset || clearance.second < offset) {
+//        profile.save("../out/spprof" + std::to_string(iteration++) + ".bin");
+    }
 
-    axes = faceAlignedAxes(glm::normalize(glm::cross(wNormal, BC)), true);
-    pose = Pose(wTri.c + axes.xAxis * offset, axes);
-    if (!planBlindCut(pose, -(depthBC + runup), action)) return { nullptr, nullptr };
+
+    if (clearance.first < offset) {
+        if (!planReliefCuts(profile, wNormal, 0, action)) return { nullptr, nullptr };
+    } else {
+        auto axes = faceAlignedAxes(glm::normalize(glm::cross(AB, wNormal)), true);
+        auto pose = Pose(wTri.a - axes.xAxis * offset, axes);
+        if (!planBlindCut(pose, depthAB + runup, action)) return { nullptr, nullptr };
+    }
+
+    if (clearance.second < offset) {
+        if (!planReliefCuts(profile, -wNormal, 1, action)) return { nullptr, nullptr };
+    } else {
+        auto axes = faceAlignedAxes(glm::normalize(glm::cross(wNormal, BC)), true);
+        auto pose = Pose(wTri.c + axes.xAxis * offset, axes);
+        if (!planBlindCut(pose, -(depthBC + runup), action)) return { nullptr, nullptr };
+    }
+
+
 
     //
     trajectory->update();
@@ -862,6 +912,8 @@ SculptProcess::Action SculptProcess::planOutlineRefinement(const Profile& profil
         auto [ts, tf] = trajectory->tLimits(cut.index);
         cut.ts = ts;
         cut.tf = tf;
+
+//        std::cout << "T " << cut.index << " " << ts << " " << tf << "\n";
     }
 
     auto lv = profile.projected3D(profile.next());
@@ -870,11 +922,61 @@ SculptProcess::Action SculptProcess::planOutlineRefinement(const Profile& profil
     return action;
 }
 
+bool SculptProcess::planReliefCuts(const Profile& profile, const glm::dvec3& wNormal, uint8_t edgeIndex, Action& action)
+{
+    const double margin = 0.01, offset = margin + 0.5 * m_bladeWidth;
+
+    auto relief = profile.prepareRelief(m_bladeWidth + margin, m_bladeThickness, edgeIndex);
+    if (relief.valid) {
+        auto rotation = glm::angleAxis(m_turntable->getJointValue(0), UP);
+        auto [start, internal, external, normal] = profile.projected3D(relief);
+
+        toWorldSpace(start, rotation);
+        start += m_sculpture->position();
+
+        toWorldSpace(internal, rotation);
+        toWorldSpace(external, rotation);
+        toWorldSpace(normal, rotation);
+
+        auto step = relief.step(); // Scalar projection of thickness across external
+        auto position = start + external * (relief.extLength - 0.5 * step) + normal * offset;
+
+        auto axes = faceAlignedAxes(glm::normalize(glm::cross(normal, wNormal)), true);
+
+        std::vector<double> depths = relief.depths();
+
+        for (double depth : depths) {
+            auto pose = Pose(position, axes);
+            if (!planBlindCut(pose, depth + margin, action)) return false;
+            position -= step * external;
+        }
+
+        if (!depths.empty()) {
+            auto pose = Pose(start + 0.5 * m_bladeWidth * normal, axes);
+
+            if (planMill(pose, internal, relief.extLength, action)) {
+//                auto pose = Pose(start + offset * internal, faceAlignedAxes(glm::normalize(glm::cross(internal, wNormal)), true));
+
+                return true;
+            }
+//            auto trajectory = std::static_pointer_cast<CompositeTrajectory>(action.trajectory);
+////            if (!planBlindCut(pose, ))
+//            auto wp = m_robot->inverse(pose);
+//            if (!wp.isValid()) return false;
+//
+//            trajectory->addTrajectory(std::make_shared<HoldPosition>(wp, 1.0));
+//            return true;
+        }
+    }
+
+    return false;
+}
+
 bool SculptProcess::planBlindCut(const Pose& pose, double depth, Action& action)
 {
     auto initialPose = Pose(alignedToBlade(pose.axes, pose.position), pose.axes);
 
-    auto cutTrajectory = std::make_shared<CartesianTrajectory>(m_robot, initialPose, glm::dvec3(depth, 0, 0));
+    auto cutTrajectory = std::make_shared<CartesianTrajectory>(m_robot, initialPose, glm::dvec3(depth, 0, 0), 20);
     cutTrajectory->setLimits(m_slowVelocityLimits, m_baseAccelerationLimits);
     if (!cutTrajectory->isValid()) return false;
 
@@ -896,11 +998,22 @@ bool SculptProcess::planBlindCut(const Pose& pose, double depth, Action& action)
     return true;
 }
 
-//bool SculptProcess::planReliefCuts(const Pose& pose, double depth, Action& action)
-//{
-//
-//}
+bool SculptProcess::planMill(const Pose& pose, const glm::dvec3& axis, double depth, Action& action)
+{
+    auto initialPose = Pose(alignedToBlade(pose.axes, pose.position), pose.axes);
 
+    auto millTrajectory = std::make_shared<CartesianTrajectory>(m_robot, initialPose, pose.axes.localize(axis * depth), 20);
+    millTrajectory->setLimits(m_slowVelocityLimits, m_baseAccelerationLimits);
+    if (!millTrajectory->isValid()) return false;
+
+    // Action must (is known to) only be called on actions formed with composite trajectories
+    auto trajectory = std::static_pointer_cast<CompositeTrajectory>(action.trajectory);
+
+    // Commit motions to action
+    trajectory->addTrajectory(millTrajectory);
+
+    return true;
+}
 
 void SculptProcess::planFeatureRefinement()
 {
@@ -969,7 +1082,7 @@ std::shared_ptr<CompositeTrajectory> SculptProcess::prepareThroughCut(Pose pose,
 
     // Try to generate a cartesian trajectory between the two points
     pose.localTranslate({ -runup, 0, 0 });
-    auto cutTrajectory = std::make_shared<CartesianTrajectory>(m_robot, pose, glm::dvec3(depth, 0, 0));
+    auto cutTrajectory = std::make_shared<CartesianTrajectory>(m_robot, pose, glm::dvec3(depth, 0, 0), 20);
 
     cutTrajectory->setLimits(m_slowVelocityLimits, m_baseAccelerationLimits);
     if (!cutTrajectory->isValid()) return nullptr;
@@ -987,7 +1100,7 @@ std::shared_ptr<CompositeTrajectory> SculptProcess::prepareThroughCut(Pose pose,
     if (glm::dot(off, off) > 1e-6) {
         auto endPose = m_robot->getPose(cutTrajectory->end());
 
-        auto offTrajectory = std::make_shared<CartesianTrajectory>(m_robot, endPose, off);
+        auto offTrajectory = std::make_shared<CartesianTrajectory>(m_robot, endPose, off, 20);
         if (!offTrajectory->isValid()) return nullptr;
         trajectory->addTrajectory(offTrajectory);
     }
@@ -1012,7 +1125,7 @@ std::shared_ptr<CompositeTrajectory> SculptProcess::prepareBlindCut(Pose pose, d
     glm::dvec3 origin = pose.position;
     pose.position = alignedToBlade(pose.axes, pose.position);
 
-    auto cutTrajectory = std::make_shared<CartesianTrajectory>(m_robot, pose, glm::dvec3(depth, 0, 0));
+    auto cutTrajectory = std::make_shared<CartesianTrajectory>(m_robot, pose, glm::dvec3(depth, 0, 0), 20);
     cutTrajectory->setLimits(m_slowVelocityLimits, m_baseAccelerationLimits);
     if (!cutTrajectory->isValid()) return nullptr;
 
@@ -1049,6 +1162,7 @@ void SculptProcess::nextAction()
         if (m_cutSimulationEnable) {
             m_debris = m_sculpture->applySection();
             m_debris->setName("ACTION" + std::to_string(m_step) + "-DEBRIS");
+            m_debris->applyCompositeColors(m_debrisColoringEnable);
 
             auto rotation = glm::quat_cast(m_sculpture->getRotation());
 
@@ -1056,7 +1170,7 @@ void SculptProcess::nextAction()
                 auto localPose = Pose((cut.pose.position - m_sculpture->position()) * rotation, cut.pose.axes);
                 localPose.axes.rotate(-rotation);
 
-                m_debris->prepareCut(localPose, m_bladeThickness);
+                m_debris->queueCut(localPose, m_bladeThickness);
             }
 
             m_debris->remesh();
