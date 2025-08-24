@@ -273,3 +273,8 @@ void PolygonWidget::keyPressEvent(QKeyEvent *event)
         }
     }
 }
+
+void PolygonWidget::resizeEvent(QResizeEvent* event)
+{
+    if (m_centered) center();
+}

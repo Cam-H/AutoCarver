@@ -43,6 +43,8 @@ protected:
 
     void keyPressEvent(QKeyEvent *event) override;
 
+    void resizeEvent(QResizeEvent* event) override;
+
 private:
 
     glm::vec2 transformed(const glm::vec2& vertex) const;

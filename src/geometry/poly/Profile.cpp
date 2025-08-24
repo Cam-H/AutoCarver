@@ -639,14 +639,15 @@ std::vector<glm::dvec3> Profile::projected3D(const std::vector<uint32_t>& indice
     return Polygon::projected3D(vertices, m_system.xAxis, m_system.yAxis, offset);
 }
 
-std::tuple<glm::dvec3, glm::dvec3, glm::dvec3> Profile::projected3D(const Profile::Relief& relief) const
+std::tuple<glm::dvec3, glm::dvec3, glm::dvec3, glm::dvec3> Profile::projected3D(const Profile::Relief& relief) const
 {
     glm::dvec3 offset = {};
 
     return {
-        Polygon::projected3D(relief.start,  m_system.xAxis, m_system.yAxis, offset),
-        Polygon::projected3D(relief.ext,    m_system.xAxis, m_system.yAxis, offset),
-        Polygon::projected3D(relief.normal, m_system.xAxis, m_system.yAxis, offset)
+        Polygon::projected3D(relief.start,    m_system.xAxis, m_system.yAxis, offset),
+        Polygon::projected3D(relief.internal, m_system.xAxis, m_system.yAxis, offset),
+        Polygon::projected3D(relief.external, m_system.xAxis, m_system.yAxis, offset),
+        Polygon::projected3D(relief.normal,   m_system.xAxis, m_system.yAxis, offset)
     };
 }
 
@@ -662,7 +663,7 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
     if (!m_sections.empty()) {
         TriIndex tri = m_sections[0].triangle;
 
-        double width = 0.108, thickness = 0.01;
+        double width = 0.108, thickness = 0.02;
         std::vector<uint8_t> checks;
 
         auto margin = clearance();
@@ -674,20 +675,27 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
 
         // Show reliefs, if appropriate
         for (uint8_t check : checks) {
-            auto relief = prepareRelief(width, check);
+            auto relief = prepareRelief(width, thickness, check);
             if (relief.valid) {
                 for (uint32_t i = 1; i < relief.edges.size(); i++) edges.emplace_back(relief.edges[i - 1], relief.edges[i]);
 
-                auto depths = relief.depths(thickness);
-                glm::dvec2 pos = relief.start + relief.length * relief.ext;
+                auto step = relief.step();
+                auto depths = relief.depths();
+                glm::dvec2 pos = relief.start + relief.extLength * relief.external, normal = { relief.normal.y, -relief.normal.x };
+                if (check == 1) normal = -normal;
                 for (double depth : depths) {
-                    edges.emplace_back(pos, pos - relief.normal * depth);
-                    pos -= thickness * relief.ext;
+                    glm::dvec2 terminus = pos - relief.normal * depth;
+                    edges.emplace_back(pos, terminus);
+                    edges.emplace_back(terminus, terminus + normal * thickness);
+                    pos -= step * relief.external;
+                    edges.emplace_back(terminus + normal * thickness, pos);
                 }
-
             }
 
-            std::cout << "R" << (uint32_t)check << ": " << relief.valid << " " << relief.length << "\n";
+            // Indicate desired end point
+            edges.emplace_back(relief.start + relief.internal * width, relief.start + relief.internal * width + glm::dvec2{ 0, -0.2 });
+
+            std::cout << "R" << (uint32_t)check << ": " << relief.valid << " " << relief.cutLength << " " << relief.extLength << "\n";
         }
     }
 
@@ -717,56 +725,74 @@ void Profile::print() const
 }
 
 // Forms a parallelogram representing the required empty region to perform a relief cut
-Profile::Relief::Relief(const glm::dvec2& start, const glm::dvec2& split, const glm::dvec2& end, const glm::dvec2& help, double width)
-    : ext(glm::normalize(end - start))
-    , start(start)
+Profile::Relief::Relief(const glm::dvec2& start, const glm::dvec2& split, const glm::dvec2& end, const glm::dvec2& help, double width, double thickness)
+    : start(start)
+    , internal(split - start)
+    , external(glm::normalize(end - start))
     , normal(help - start)
+    , thickness(thickness)
+    , sink(0)
     , valid(false)
 {
-    auto cut = split - start;
 
-    length = glm::length(cut);
-    cut /= length;
+    cutLength = glm::length(internal);
+    internal /= cutLength;
 
     double normalLength = glm::length(normal);
     normal /= normalLength;
 
-    theta = acos(glm::dot(cut, ext));
-    phi = acos(glm::dot(ext, normal));
+    theta = acos(glm::dot(internal, external));
+    phi = acos(glm::dot(external, normal));
 
-    length = std::min(length, width) * sin(M_PI - theta - phi) / sin(phi);
+    double del = step(), fi = sin(M_PI - theta - phi) / sin(phi);
+    extLength = std::min(cutLength, width) * fi + del;
 
-    std::cout << "RELIEF: " << length << " " << width << " " << (180*theta/M_PI) << " " << (180*phi/M_PI) << " " << normalLength << "\n";
+//    std::cout << "RELIEF: " << cutLength << " -> " << extLength << " " << width << " " << (180*theta/M_PI) << " " << (180*phi/M_PI) << " " << normalLength << "\n";
 
-    auto apex = start + ext * length + normal * width;
+    // TODO calculate sink
+//    auto psi = acos(glm::dot(-normal, glm::normalize(end - split)));
+//    firstDepth = extLength * del / fi - std::max(0.0, thickness / tan(psi));
+
+    auto apex = start + external * extLength + normal * width;
 
     edges = {
             apex - normal * width,
             apex,
-            apex - ext * length
+            apex - external * extLength
     };
 
     if (normalLength < width) edges.emplace_back(help);
 }
 
-std::vector<double> Profile::Relief::depths(double thickness) const
+double Profile::Relief::step() const
 {
-    if (length < 0) {
+    return thickness / cos(0.5 * M_PI - phi);
+}
+
+double Profile::Relief::reduction() const
+{
+    return std::max(0.0, thickness / tan(M_PI - theta - phi));
+}
+
+std::vector<double> Profile::Relief::depths() const
+{
+    if (extLength < 0) {
 //        throw std::runtime_error("[Profile::Relief] Can not evaluate depths. Relief improperly defined");
         std::cout << "\033[93m[Profile::Relief] Can not evaluate depths. Relief improperly defined\033[0m\n";
         return {};
     }
 
-    double x = length, factor = sin(theta) / sin(M_PI - theta - phi);
+    double x = extLength, del = step(), reduc = reduction(), factor = sin(theta) / sin(M_PI - theta - phi);
 
     std::vector<double> depth;
-    depth.reserve((size_t)std::floor(length / thickness) + 1);
+    depth.reserve((size_t)std::floor(extLength / del));
 
-    while (x > 0) {
-        depth.emplace_back(x * factor);
-        x -= thickness;
+    while (x > del) {
+        depth.emplace_back(x * factor - reduc);
+        x -= del;
     }
 
+    depth[0] += sink;
     return depth;
 }
 
@@ -780,7 +806,7 @@ const glm::dvec2& Profile::Relief::apex()
 // Checks collisions against a parallelogram of side lengths bladeWidth and depth (calculated) returning true
 // if there were no intersections (indicating the operation is accessible to the robot)
 // TODO Currently only tries forming a relief cut with the adjacent edge as a guide. There are more (infinitely many) options. Trying against the opposite face would also capture some situations
-Profile::Relief Profile::prepareRelief(double bladeWidth, uint8_t edgeIndex) const
+Profile::Relief Profile::prepareRelief(double bladeWidth, double bladeThickness, uint8_t edgeIndex) const
 {
     if (m_sections.empty() || edgeIndex > 1) throw std::runtime_error("[Profile] Can not evaluate relief");
 
@@ -788,7 +814,7 @@ Profile::Relief Profile::prepareRelief(double bladeWidth, uint8_t edgeIndex) con
     auto hv = nextHullVertices(splitIndex);
 
     auto [start, adj, help] = system(edgeIndex);
-    auto relief = Relief(start, m_vertices[splitIndex], adj, help, bladeWidth);
+    auto relief = Relief(start, m_vertices[splitIndex], adj, help, bladeWidth, bladeThickness);
 
     // Validate relief
     relief.valid = true;
