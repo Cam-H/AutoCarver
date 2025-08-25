@@ -33,9 +33,9 @@ void Debris::initialize()
 }
 
 // System [Local] - xAxis = direction of cut
-void Debris::queueCut(const Pose& system, double thickness)
+void Debris::queueCut(const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& axis, double thickness)
 {
-    m_cuts.emplace_back(system.position, system.axes.yAxis, system.axes.xAxis, thickness);
+    m_cuts.emplace_back(origin, normal, axis, thickness);
 }
 
 void Debris::beginCut()
@@ -45,13 +45,14 @@ void Debris::beginCut()
     CutOperation& cut = m_cuts[0];
     std::cout << "Cut: " << hulls().size() << " " << m_cuts.size() << " " << cut.axis.x << " " << cut.axis.y << " " << cut.axis.z << " | " << cut.normal.x << " " << cut.normal.y << " " << cut.normal.z << " " << "\n";
 
+    double ht = 0.5 * cut.thickness;
 
-    auto cutPlane = Plane(cut.origin + cut.thickness * cut.normal, cut.normal);
-    auto invPlane = Plane(cut.origin, -cut.normal);
+    auto fwdPlane = Plane(cut.origin + ht * cut.normal, cut.normal);
+    auto revPlane = Plane(cut.origin - ht * cut.normal, -cut.normal);
 
     std::vector<uint32_t> kerfs;
 
-    // Split any hulls that pass through the plane
+    // Split any hulls that pass through the cutting planes to limit effect to kerfs
     const uint32_t initialCount = hulls().size();
     for (uint32_t i = 0; i < initialCount; i++) {
         auto [min, max] = hulls()[i].extremes(cut.normal);
@@ -59,42 +60,27 @@ void Debris::beginCut()
         double far = glm::dot(cut.normal, hulls()[i].vertices()[max] - cut.origin);
         std::cout << "H" << i << ": " << glm::dot(-cut.normal, hulls()[i].vertices()[min] - cut.origin) << " " << glm::dot(cut.normal, hulls()[i].vertices()[max] - cut.origin) << "\n";
 
+        bool nearPass = near < -ht - 1e-12, farPass = far > ht + 1e-12;
+
         uint32_t idx = i, count = hulls().size();
 
-        // Try splitting against the far cut plane
-        if (far > cut.thickness) {
-            if (split(cutPlane, idx)) idx = hulls().size() - 1;
+        // Try splitting against the near cut plane
+        if (nearPass) {
+            if (split(revPlane, idx)) idx = hulls().size() - 1;
         }
 
-        // Try splitting against the near cut plane
-        if (near < 0) {
-            if (split(invPlane, idx)) idx = hulls().size() - 1;
+        // Try splitting against the far cut plane
+        if (farPass) {
+            if (split(fwdPlane, idx)) idx = hulls().size() - 1;
         }
 
         // If splits were made (Normal kerf) OR thin-hull case (Entire hull fits inside kerf)
-        if (count < hulls().size() || far < cut.thickness) {
+        if (count < hulls().size() || !(nearPass || farPass)) {
             kerfs.emplace_back(idx);
         }
     }
 
     if (kerfs.empty()) throw std::runtime_error("[Debris] Failed to prepare cut");
-
-    // Evaluate extents and find origin for cutting
-//    std::vector<std::pair<double, double>> extents;
-//    double min = std::numeric_limits<double>::max();
-//
-//    for (const std::pair<uint32_t, uint32_t> kerf : kerfs) {
-//        auto [minIndex, maxIndex] = hulls()[kerf.second].extremes(cut.axis);
-//        extents.emplace_back(
-//                glm::dot(cut.axis, hulls()[kerf.second].vertices()[minIndex]),
-//                glm::dot(cut.axis, hulls()[kerf.second].vertices()[maxIndex])
-//                );
-//
-//        if (extents.back().first < min) {
-//            cut.origin = hulls()[kerf.second].vertices()[minIndex];
-//            min = extents.back().first;
-//        }
-//    }
 
     // Prepare sections
     for (uint32_t kerf : kerfs) {
@@ -127,13 +113,13 @@ bool Debris::inProcess() const
 }
 
 // Shaves material from the next section (depth from the origin). Releases fragments as connections are removed
-std::vector<std::shared_ptr<RigidBody>> Debris::removeMaterial(double depth)
+std::vector<std::shared_ptr<RigidBody>> Debris::removeMaterial(const glm::dvec3& normal, double depth)
 {
     std::vector<std::shared_ptr<RigidBody>> fragments;
 //    std::cout << "RM " << depth << "\n";
 
     if (!m_cuts.empty()) {
-        Plane cutPlane(m_cuts[0].origin + m_cuts[0].axis * depth, m_cuts[0].axis);
+        Plane cutPlane(m_cuts[0].origin + m_cuts[0].axis * depth, normal); // m_cuts[0].axis
 
         for (uint32_t i = 0; i < m_cuts[0].sections.size(); i++) {
             if (m_cuts[0].sections[i].ts < depth) {
@@ -143,12 +129,16 @@ std::vector<std::shared_ptr<RigidBody>> Debris::removeMaterial(double depth)
 //                }
 
 //                std::cout << "S" << i << ": " << m_cuts[0].sections[i].ts << " " << m_cuts[0].sections[i].tf << " " << (m_cuts[0].sections[i].tf <= depth + 1e-12) << "\n";
-                if (m_cuts[0].sections[i].tf <= depth + 1e-12) { // To delete section
-                    removeKerf(i); // Fragment must already have been released if reached
-                } else {
+//                if (m_cuts[0].sections[i].tf <= depth + 1e-12) { // To delete section
+//                    removeKerf(i); // Fragment must already have been released if reached
+//                } else {
                     auto remainder = Collision::fragment(hulls()[m_cuts[0].sections[i].cutIndex], cutPlane);
                     if (remainder.isValid()) replace(remainder, m_cuts[0].sections[i].cutIndex);
-                }
+                    else {
+                        removeKerf(i);
+                        i--;
+                    }
+//                }
             }
         }
 

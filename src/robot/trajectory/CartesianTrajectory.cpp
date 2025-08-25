@@ -27,11 +27,11 @@ void CartesianTrajectory::resolve(uint32_t steps)
     std::vector<Waypoint> waypoints;
     waypoints.reserve(steps);
 
-    glm::dvec3 dt = (m_distance / steps) * m_curve.axis;
+    glm::dvec3 dt = (m_distance / (steps - 1)) * m_curve.axis;
     for (uint32_t i = 0; i < steps; i++) {
         waypoints.emplace_back(m_robot->inverse(pose));
         if (!waypoints.back().isValid()) {
-            std::cout << "FAILED to resolve cartesian trajectory: " << i << " " << steps << "\n";
+            std::cout << "\033[93mFAILED to resolve cartesian trajectory: " << i << " " << steps << "\n\033[0m";
             waypoints.clear();
             break;
         }
@@ -41,7 +41,8 @@ void CartesianTrajectory::resolve(uint32_t steps)
 
     m_path = PiecewisePolyPath(waypoints);
 
-    update();
+    if (TOPPTrajectory::testValidity()) update();
+//    testValidity();
 }
 
 std::vector<Waypoint> CartesianTrajectory::cartesianWaypoints(const std::shared_ptr<Robot>& robot,
@@ -143,18 +144,16 @@ std::shared_ptr<CartesianTrajectory> CartesianTrajectory::reversed(const std::sh
 //    return t;
 //}
 
-bool CartesianTrajectory::isValid() const
+bool CartesianTrajectory::testValidity()
 {
-    if (TOPPTrajectory::isValid()) {
+    if (TOPPTrajectory::testValidity()) {
         double dt = 0.01, t = dt;
         while (t < 1.0) {
             auto pose = m_robot->getPose(TOPPTrajectory::evaluate(t));
-            if (m_curve.squareDistance(pose.position) > 1e-3 || !pose.oriented(m_initialPose.axes, 1e-3)) return false;
+            if (m_curve.squareDistance(pose.position) > 1e-3 || !pose.oriented(m_initialPose.axes, 1e-3)) return m_valid = false;
             t += dt;
         }
-
-        return true;
     }
 
-    return false;
+    return m_valid;
 }

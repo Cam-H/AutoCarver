@@ -33,7 +33,9 @@ public:
 
     [[nodiscard]] Waypoint evaluate(double t) const override;
 
-    [[nodiscard]] bool isValid() const override;
+protected:
+
+    [[nodiscard]] bool testValidity();
 
 private:
 
@@ -42,7 +44,7 @@ private:
 private:
 
     std::vector<std::shared_ptr<Trajectory>> m_trajectories;
-    bool m_valid;
+    bool m_error;
 };
 
 

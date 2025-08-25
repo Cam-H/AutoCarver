@@ -68,17 +68,22 @@ public:
     [[nodiscard]] virtual Waypoint evaluate(double t) const = 0;
 
     // Verify that every position of the trajectory is reachable by the specified robot. Tests 1/dt equally spaced positions
-    [[nodiscard]] virtual bool isValid() const;
+    [[nodiscard]] bool isValid() const;
     [[nodiscard]] virtual bool test(const Scene* scene, const std::shared_ptr<Robot>& robot, double dt) const;
+
+protected:
+
+    [[nodiscard]] virtual bool testValidity();
 
 private:
 
-    static void assignLimits(std::vector<double>& limits, const std::vector<double>& newLimits);
-    static bool applyLimits(std::vector<double>& limits, const std::vector<double>& additionalLimits);
+    bool assignLimits(std::vector<double>& limits, const std::vector<double>& newLimits) const;
+    bool applyLimits(std::vector<double>& limits, const std::vector<double>& additionalLimits) const;
 
 protected:
 
     uint32_t m_dof;
+    bool m_valid;
 
     double m_t;
     double m_tStep;

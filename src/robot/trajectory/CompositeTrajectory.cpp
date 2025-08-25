@@ -8,7 +8,7 @@
 
 CompositeTrajectory::CompositeTrajectory(uint32_t dof)
     : Trajectory(dof)
-    , m_valid(true)
+    , m_error(false)
 {
 
 }
@@ -21,18 +21,20 @@ void CompositeTrajectory::addTrajectory(const std::shared_ptr<Trajectory>& traje
         // TODO ensure all same units [dg or rad]
     } else {
         std::cout << "Failed to add trajectory. The trajectory provided is invalid\n";
-        m_valid = false;
+        m_error = true;
     }
 }
 
 void CompositeTrajectory::clear()
 {
     m_trajectories.clear();
-    m_valid = true;
+    m_error = false;
 }
 
 void CompositeTrajectory::update()
 {
+    testValidity();
+
     // Make sure parent limits are passed to children, if assigned
     if (!m_velocityLimits.empty() || !m_accelerationLimits.empty()) {
         for (const std::shared_ptr<Trajectory>& traj : m_trajectories) {
@@ -107,17 +109,15 @@ Waypoint CompositeTrajectory::evaluate(double t) const
     return m_trajectories[index]->evaluate(subT);
 }
 
-bool CompositeTrajectory::isValid() const
+bool CompositeTrajectory::testValidity()
 {
-    if (m_valid && Trajectory::isValid()) {
+    if (!m_error && Trajectory::testValidity()) {
         for (const std::shared_ptr<Trajectory>& traj : m_trajectories) {
-            if (!traj->isValid()) return false;
+            if (!traj->isValid()) return m_valid = false;
         }
-
-        return true;
     }
 
-    return false;
+    return m_valid && !m_error;
 }
 
 // Identify the appropriate section based on t, and transform to match

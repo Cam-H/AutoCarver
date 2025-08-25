@@ -663,7 +663,7 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
     if (!m_sections.empty()) {
         TriIndex tri = m_sections[0].triangle;
 
-        double width = 0.108, thickness = 0.02;
+        double width = 0.108, thickness = 0.011; // Test values
         std::vector<uint8_t> checks;
 
         auto margin = clearance();
@@ -682,13 +682,18 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
                 auto step = relief.step();
                 auto depths = relief.depths();
                 glm::dvec2 pos = relief.start + relief.extLength * relief.external, normal = { relief.normal.y, -relief.normal.x };
+                glm::dvec2 in = { relief.internal.y, -relief.internal.x };
                 if (check == 1) normal = -normal;
                 for (double depth : depths) {
-                    glm::dvec2 terminus = pos - relief.normal * depth;
+                    glm::dvec2 terminus = pos - relief.normal * depth, corner = terminus + normal * thickness;
+                    std::cout << "ERR: " << glm::dot(in, terminus - relief.start) << "(" << (100.0 * glm::dot(in, terminus - relief.start) / depth) << "%)"
+                            << " " << glm::dot(in, 0.5 * (corner + terminus) - relief.start) << " "
+                            << " " << glm::dot(in, corner - relief.start) << "(" << (100.0 * glm::dot(in, corner - relief.start) / depth) << "%)" << "\n";
+
                     edges.emplace_back(pos, terminus);
-                    edges.emplace_back(terminus, terminus + normal * thickness);
+                    edges.emplace_back(terminus, corner);
                     pos -= step * relief.external;
-                    edges.emplace_back(terminus + normal * thickness, pos);
+                    edges.emplace_back(corner, pos);
                 }
             }
 

@@ -31,7 +31,9 @@ public:
 
     [[nodiscard]] Waypoint evaluate(double t) const override;
 
-    [[nodiscard]] bool isValid() const override;
+protected:
+
+    [[nodiscard]] bool testValidity();
 
 protected:
 

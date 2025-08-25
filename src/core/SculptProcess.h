@@ -60,6 +60,9 @@ public:
 
     void plan();
 
+    void blind(const Pose& pose, double depth);
+    void mill(const Pose& pose, const glm::dvec3& normal, const glm::dvec3& travel, double depth);
+
     void proceed();
     void skip();
 
@@ -83,15 +86,34 @@ public:
     const std::shared_ptr<Robot>& getSculptor() const;
     const std::shared_ptr<Robot>& getTurntable() const;
 
+    [[nodiscard]] Axis3D faceAlignedAxes(const glm::dvec3& normal, bool alignHorizontal) const;
 
 //    std::shared_ptr<Mesh> sculpture();
 
 private:
 
     struct Cut {
-        Cut(const Pose& pose, double ts, double tf, uint32_t index) : pose(pose), ts(ts), tf(tf), index(index) {}
+        Cut(const Pose& pose, double effectiveThickness, double ts, double tf, uint32_t index)
+            : origin(pose.position)
+            , normal(pose.axes.yAxis)
+            , axis(pose.axes.xAxis)
+            , thickness(effectiveThickness)
+            , ts(ts)
+            , tf(tf)
+            , index(index) {}
+        Cut(const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& axis, double effectiveThickness, double ts, double tf, uint32_t index)
+            : origin(origin)
+            , normal(normal)
+            , axis(axis)
+            , thickness(effectiveThickness)
+            , ts(ts)
+            , tf(tf)
+            , index(index) {}
 
-        Pose pose;
+        glm::dvec3 origin; // Initial position before beginning cut
+        glm::dvec3 normal; // Normal to the cutting direction
+        glm::dvec3 axis; // Axis of travel
+        double thickness; // Distance between cutting planes (Reduced from full blade thickness when axis is not perpendicular to normal)
         double ts;
         double tf;
         uint32_t index;
@@ -123,11 +145,14 @@ private:
 
     [[nodiscard]] glm::dvec3 alignedToBlade(const Axis3D& axes, const glm::dvec3& vertex);
 
+    [[nodiscard]] inline glm::dvec3 bladeCenterOffset(const Axis3D& axes, const glm::dvec3& vertex) const;
+    [[nodiscard]] inline glm::dvec3 bladeThicknessOffset(const Axis3D& axes) const;
+
     static void toWorldSpace(glm::dvec3& normal, const glm::dquat& rotation);
     void toWorldSpace(std::vector<glm::dvec3>& border, const glm::dquat& rotation) const;
 
-    [[nodiscard]] Axis3D faceAlignedAxes(const glm::dvec3& normal, bool alignHorizontal) const;
     [[nodiscard]] glm::dvec3 poseAdjustedVertex(const Axis3D& axes, const glm::dvec3& vertex) const;
+
 
     void planConvexTrim();
     std::vector<Plane> orderConvexTrim(const std::vector<Plane>& cuts);
@@ -139,7 +164,7 @@ private:
 
     bool planReliefCuts(const Profile& profile, const glm::dvec3& wNormal, uint8_t edgeIndex, Action& action);
     bool planBlindCut(const Pose& pose, double depth, Action& action);
-    bool planMill(const Pose& pose, const glm::dvec3& axis, double depth, Action& action);
+    bool planMill(const Pose& pose, const glm::dvec3& normal, const glm::dvec3& travel, double depth, Action& action);
 //    bool planReliefCuts(const Pose& pose, double depth, Action& action);
 
     void planFeatureRefinement();

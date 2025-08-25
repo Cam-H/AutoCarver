@@ -26,7 +26,9 @@ public:
 
 //    [[nodiscard]] double locate(double ratio) const;
 
-    [[nodiscard]] bool isValid() const override;
+protected:
+
+    [[nodiscard]] bool testValidity();
 
 private:
 

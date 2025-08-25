@@ -10,6 +10,7 @@
 
 Trajectory::Trajectory(uint32_t dof)
     : m_dof(dof)
+    , m_valid(dof > 0)
     , m_t(0.0)
     , m_tStep(0.05)
     , m_duration(0.0)
@@ -59,37 +60,33 @@ void Trajectory::resetLimits()
 // Set velocity limits
 void Trajectory::setVelocityLimits(const std::vector<double>& vLims)
 {
-    assignLimits(m_velocityLimits, vLims);
-    update();
+    if (assignLimits(m_velocityLimits, vLims)) update();
 }
 
 // Set acceleration limit
 void Trajectory::setAccelerationLimits(const std::vector<double>& aLims)
 {
-    assignLimits(m_accelerationLimits, aLims);
-    update();
+    if (assignLimits(m_accelerationLimits, aLims)) update();
 }
 
 // Set velocity and acceleration limits
 void Trajectory::setLimits(const std::vector<double>& vLims, const std::vector<double>& aLims)
 {
-    assignLimits(m_velocityLimits, vLims);
-    assignLimits(m_accelerationLimits, aLims);
-    update();
+    bool modified = assignLimits(m_velocityLimits, vLims);
+    modified = assignLimits(m_accelerationLimits, aLims) || modified;
+    if (modified) update();
 }
 
 // Apply joint velocity limits, if they more strict
 void Trajectory::limitVelocity(const std::vector<double>& vLims)
 {
-    bool modified = applyLimits(m_velocityLimits, vLims);
-    if (modified) update();
+    if (applyLimits(m_velocityLimits, vLims)) update();
 }
 
 // Apply joint acceleration limits, if they more strict
 void Trajectory::limitAcceleration(const std::vector<double>& vLims)
 {
-    bool modified = applyLimits(m_accelerationLimits, vLims);
-    if (modified) update();
+    if (applyLimits(m_accelerationLimits, vLims)) update();
 }
 
 // Apply joint velocity and acceleration limits, if they more strict
@@ -100,16 +97,22 @@ void Trajectory::limit(const std::vector<double>& vLims, const std::vector<doubl
     if (modified) update();
 }
 
-void Trajectory::assignLimits(std::vector<double>& limits, const std::vector<double>& newLimits)
+bool Trajectory::assignLimits(std::vector<double>& limits, const std::vector<double>& newLimits) const
 {
+    if (!m_valid) return false;
+
     assert(limits.size() == newLimits.size());
     limits = newLimits;
 
     // Ensure that all limits are positive
     for (double& lim : limits) lim = std::abs(lim);
+
+    return true;
 }
-bool Trajectory::applyLimits(std::vector<double>& limits, const std::vector<double>& additionalLimits)
+bool Trajectory::applyLimits(std::vector<double>& limits, const std::vector<double>& additionalLimits) const
 {
+    if (!m_valid) return false;
+
     assert(limits.size() == additionalLimits.size());
 
     bool modified = false;
@@ -196,7 +199,12 @@ Waypoint Trajectory::timestep(double delta)
 
 bool Trajectory::isValid() const
 {
-    return m_dof > 0;
+    return m_valid;
+}
+
+bool Trajectory::testValidity()
+{
+    return m_valid = (m_dof > 0);
 }
 
 // Iterates through the trajectory at the specified rate (dt) to check for collisions with scene objects

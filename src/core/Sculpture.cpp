@@ -175,7 +175,6 @@ std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
     m_newFaces.clear();
 
     auto debris = std::make_shared<Debris>(std::vector<ConvexHull>());
-
     for (uint32_t i = 0; i < hulls().size(); i++) {
         if (Collision::below(hulls()[i], plane)) {
             debris->add(hulls()[i]);
@@ -199,6 +198,7 @@ std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
         debris->setTransform(m_transform);
         debris->initialize();
 
+        if (hulls().empty()) throw std::runtime_error("[Sculpture] Empty sculpture");
         m_hull = hulls()[0]; // Ignores small off-cuts (Little effect on testing) & only works properly before triangular sectioning TODO
         remesh();
 

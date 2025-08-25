@@ -40,6 +40,7 @@ QDoubleSpinBox *timeField = nullptr;
 QPushButton *stepButton = nullptr, *skipButton = nullptr;
 
 QSpinBox* sliceLimitField = nullptr;
+glm::dvec3 tpos;
 
 static QWidget *loadUiFile(QWidget *parent)
 {
@@ -61,6 +62,22 @@ void setOrder(int index) {
         case 1: scene->setSlicingOrder(SculptProcess::ConvexSliceOrder::BOTTOM_UP); break;
         default: std::cout << "Unhandled order\n";
     }
+}
+
+Pose testPose()
+{
+    glm::vec3 normal = glm::normalize(glm::dvec3{ 0, 2, 1 });
+    auto axes = scene->faceAlignedAxes(normal, true);
+
+    double theta = acos(glm::dot({ 0, 1, 0 }, axes.yAxis));
+    double dy = 0.011 * sin(M_PI / 2 - theta);
+
+    std::cout << "T" << theta << " " << dy << "\n";
+
+    auto pos = scene->getSculpture()->position() + tpos;
+    tpos -= glm::dvec3{ 0, dy, 0 };
+
+    return { pos, axes };
 }
 
 int main(int argc, char *argv[])
@@ -284,6 +301,20 @@ int main(int argc, char *argv[])
         scene->enableActionLimit(checked);
     });
 
+    auto testButton1 = window->findChild<QPushButton*>("testButton1");
+    QObject::connect(testButton1, &QCheckBox::clicked, [&](bool checked) {
+        scene->blind(testPose(), 0.4);
+        scene->proceed();
+    });
+
+    auto testButton2 = window->findChild<QPushButton*>("testButton2");
+    QObject::connect(testButton2, &QCheckBox::clicked, [&](bool checked) {
+        scene->mill(testPose(), { 0, 1, 0 }, glm::normalize(glm::dvec3{0, 0, 1}), 0.4);
+        scene->proceed();
+    });
+
+    auto [idx, peak] = scene->getSculpture()->hulls()[0].extreme({ 0, 1, 0});
+    tpos = peak - glm::dvec3(0, 0, 0.1);
 
     scene->start();
 

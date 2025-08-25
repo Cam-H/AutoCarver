@@ -90,9 +90,13 @@ Waypoint TOPPTrajectory::evaluate(double t) const
     return Waypoint(m_path.evaluate(s), m_inDg);
 }
 
-bool TOPPTrajectory::isValid() const
+bool TOPPTrajectory::testValidity()
 {
-    return !m_path.empty() && Trajectory::isValid();
+    if (Trajectory::testValidity()) {
+        m_valid = !m_path.empty();
+    }
+
+    return m_valid;
 }
 
 // Identifies the region based on t, returning s and dt, the time interval for the segment
