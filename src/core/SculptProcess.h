@@ -20,6 +20,7 @@
 #include "robot/trajectory/CompositeTrajectory.h"
 
 class Profile;
+class SectionOperation;
 
 const static glm::dvec3 UP = { 0, 1, 0};
 
@@ -160,9 +161,8 @@ private:
 
     void planOutlineRefinement(double stepDg);
     std::vector<Action> planOutlineRefinement(Profile& profile);
-    Action planOutlineRefinement(const Profile& profile, const Triangle3D& wTri, const glm::dvec3& wNormal);
+    Action planOutlineRefinement(const Profile& profile, const SectionOperation& operation);
 
-    bool planReliefCuts(const Profile& profile, const glm::dvec3& wNormal, uint8_t edgeIndex, Action& action);
     bool planBlindCut(const Pose& pose, double depth, Action& action);
     bool planMill(const Pose& pose, const glm::dvec3& normal, const glm::dvec3& travel, double depth, Action& action);
 //    bool planReliefCuts(const Pose& pose, double depth, Action& action);

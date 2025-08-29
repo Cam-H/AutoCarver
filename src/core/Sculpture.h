@@ -32,7 +32,7 @@ public:
     void reset();
 
     void queueSection(const Plane& plane);
-    void queueSection(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& normal, bool external = false);
+    void queueSection(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& normal);
 //    void queueSection(const std::vector<glm::dvec3>& border, const glm::dvec3& normal);
 
     std::shared_ptr<Debris> applySection();
@@ -65,10 +65,9 @@ private:
     void prepareBox();
 
     std::shared_ptr<Debris> planarSection(const Plane& plane);
-    std::shared_ptr<Debris> triangleSection(const Plane& planeA, const Plane& planeB, const std::vector<Plane>& limits);
+    std::shared_ptr<Debris> triangleSection(const Plane& planeA, const Plane& planeB, const Plane& limit);
 
-    inline static bool inLimit(const ConvexHull& hull, const Plane& limit);
-    inline static bool inLimit(const ConvexHull& hull, const std::vector<Plane>& limits);
+    uint32_t attach(const ConvexHull& hull, uint32_t index);
 
     struct SectionOperation {
         std::vector<Plane> surfaces;

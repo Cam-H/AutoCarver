@@ -58,11 +58,13 @@ void Debris::beginCut()
         auto [min, max] = hulls()[i].extremes(cut.normal);
         double near = glm::dot(cut.normal, hulls()[i].vertices()[min] - cut.origin);
         double far = glm::dot(cut.normal, hulls()[i].vertices()[max] - cut.origin);
-        std::cout << "H" << i << ": " << glm::dot(-cut.normal, hulls()[i].vertices()[min] - cut.origin) << " " << glm::dot(cut.normal, hulls()[i].vertices()[max] - cut.origin) << "\n";
+        std::cout << "H" << i << ": " << near << " " << far << " | " << ht << " ";
 
-        bool nearPass = near < -ht - 1e-12, farPass = far > ht + 1e-12;
+        bool nearPass = near < -ht - 1e-6, farPass = far > ht + 1e-6;
 
         uint32_t idx = i, count = hulls().size();
+
+        std::cout << nearPass << " " << farPass << " ";
 
         // Try splitting against the near cut plane
         if (nearPass) {
@@ -78,8 +80,11 @@ void Debris::beginCut()
         if (count < hulls().size() || !(nearPass || farPass)) {
             kerfs.emplace_back(idx);
         }
+
+        std::cout << count << " " << hulls().size() << "\n";
     }
 
+    std::cout << "KERFS: " << kerfs.size() << "\n";
     if (kerfs.empty()) throw std::runtime_error("[Debris] Failed to prepare cut");
 
     // Prepare sections

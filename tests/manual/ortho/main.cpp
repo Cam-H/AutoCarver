@@ -143,18 +143,28 @@ void refine()
 {
     if (profile.complete()) return;
 
-    bool external = profile.isNextExternal();
-    auto indices = profile.next();
+    auto operation = profile.next(0.108, 0.011);
+    if (operation.valid) {
 
-//    std::cout << "RSTATE: " << external << " " << profile.complete() << " " << profile.vertexCount() << "\n";
-    auto angles = profile.angles(indices), clearance = profile.clearance(indices);
-    std::cout << "Angles: [" << (180/M_PI)*angles.first << " " << (180/M_PI)*angles.second << "], Clearance: ["
-    << " " << clearance.first << " " << clearance.second << "]\n";
+        auto lVertices = std::vector<glm::dvec2>{
+                operation.start,
+                operation.splitVertex(),
+                operation.end
+        };
 
-    auto border = profile.projected3D( std::vector<uint32_t>{ indices.I0, indices.I1, indices.I2 });
+        auto margin = profile.clearance();
+        if (margin.first > 10 && margin.second > 10) {
+            lVertices[0] += operation.BA * 2.0;
+            lVertices[2] += operation.BC * 2.0;
+        }
 
-    if (!border.empty()) {
-        body->queueSection(border[0], border[1], border[2], profile.normal(), external);
+        auto border = std::vector<glm::dvec3>{
+                profile.projected3D(lVertices[0]),
+                profile.projected3D(lVertices[1]),
+                profile.projected3D(lVertices[2])
+        };
+
+        body->queueSection(border[0], border[1], border[2], profile.normal());
         body->applySection();
 
         auto extrude = MeshBuilder::extrude(border, profile.normal(), 1);
@@ -162,9 +172,13 @@ void refine()
         extrude->setFaceColor({ 0, 1, 1 });
         if (cut == nullptr) cut = scene->createBody(extrude);
         else cut->setMesh(extrude);
+
+        profile.refine();
+    } else {
+        std::cout << "Invalid operation!\n";
+        profile.skip();
     }
 
-    profile.refine();
 }
 
 int main(int argc, char *argv[])

@@ -10,42 +10,13 @@
 #include <deque>
 
 #include "geometry/Axis3D.h"
+#include "SectionOperation.h"
 
 class Profile : public Polygon {
 public:
 
     enum class RefinementMethod {
         DIRECT = 0, DELAUNEY, TEST
-    };
-
-    struct Relief {
-
-        Relief(const glm::dvec2& start, const glm::dvec2& split, const glm::dvec2& end, const glm::dvec2& help, double width, double thickness);
-
-        [[nodiscard]] double step() const;
-        [[nodiscard]] double reduction() const;
-
-        [[nodiscard]] std::vector<double> depths() const;
-
-        [[nodiscard]] const glm::dvec2& apex();
-
-        glm::dvec2 start; // Initial position of cut
-
-        glm::dvec2 internal; // Direction of internal edge of cut
-        glm::dvec2 external; // Direction of external edge of cut
-        glm::dvec2 normal; // Direction of intended cut
-
-        double thickness; // Thickness of relief cuts
-        double cutLength; // Distance along internal to cut
-        double extLength; // Distance along external that needs to be cut with reliefs
-        double theta; // Angle formed between the cut direction and the external cut surface
-        double phi; // Angle formed in the parallelogram
-
-        double sink; // Record offset for first depth (For collisions with opposing edge)
-
-        std::vector<glm::dvec2> edges; // (continuous) edges of the relief, excluding edges shared with the profile
-
-        bool valid;
     };
 
     Profile();
@@ -71,6 +42,7 @@ public:
     void refine();
 
     [[nodiscard]] TriIndex next() const;
+    [[nodiscard]] SectionOperation next(double bladeWidth, double bladeThickness) const;
 
     [[nodiscard]] uint32_t remainingSections() const;
     [[nodiscard]] bool complete() const;
@@ -86,17 +58,17 @@ public:
     [[nodiscard]] std::pair<double, double> angles(const TriIndex& triangle) const;
     [[nodiscard]] std::pair<double, double> clearance(const TriIndex& triangle) const;
 
-    [[nodiscard]] Relief prepareRelief(double bladeWidth, double bladeThickness, uint8_t edgeIndex) const;
-
 //    [[nodiscard]] std::tuple<bool, glm::
+
+    [[nodiscard]] bool validate(const SectionOperation::Relief& relief) const;
 
     [[nodiscard]] const glm::dvec3& normal() const;
 
+    [[nodiscard]] inline glm::dvec3 projected3D(const glm::dvec2& vertex) const { return Polygon::projected3D(vertex, m_system.xAxis, m_system.yAxis, {}); }
 
-    [[nodiscard]] std::vector<glm::dvec3> projected3D(const glm::dvec3& offset = {}) const;
+    [[nodiscard]] std::vector<glm::dvec3> projected3D() const;
     [[nodiscard]] std::vector<glm::dvec3> projected3D(const TriIndex& triangle, const glm::dvec3& offset = {}) const;
     [[nodiscard]] std::vector<glm::dvec3> projected3D(const std::vector<uint32_t>& indices, const glm::dvec3& offset = {}) const;
-    [[nodiscard]] std::tuple<glm::dvec3, glm::dvec3, glm::dvec3, glm::dvec3> projected3D(const Profile::Relief& relief) const;
 
     [[nodiscard]] std::vector<std::pair<glm::dvec2, glm::dvec2>> debugEdges() const override;
 
@@ -149,8 +121,6 @@ private:
     [[nodiscard]] uint32_t nextVertex(uint32_t vertexIndex) const;
 
     static double angle(const glm::dvec2& a, const glm::dvec2& b);
-
-    [[nodiscard]] std::tuple<glm::dvec2, glm::dvec2, glm::dvec2> system(uint8_t edgeIndex) const;
 
     void commitSections(const std::vector<Section>& sections);
 

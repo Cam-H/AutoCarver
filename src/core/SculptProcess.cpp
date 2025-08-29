@@ -14,6 +14,8 @@
 #include "Debris.h"
 
 #include "geometry/poly/Profile.h"
+#include "geometry/poly/SectionOperation.h"
+
 #include "renderer/EdgeDetect.h"
 #include "renderer/RenderCapture.h"
 
@@ -887,177 +889,81 @@ void SculptProcess::planOutlineRefinement(double stepDg)
 
 std::vector<SculptProcess::Action> SculptProcess::planOutlineRefinement(Profile& profile)
 {
-    auto rotation = glm::angleAxis(m_turntable->getJointValue(0), UP);
-
-    auto normal = profile.normal();
-    auto border = profile.projected3D();
-
-    auto wsNormal = normal;
-    toWorldSpace(wsNormal, rotation);
-
-    auto wsBorder = border;
-    toWorldSpace(wsBorder, rotation);
-
-//    auto mesh = MeshBuilder::extrude(wsBorder, -wsNormal, 1.0f);
-//    mesh->translate(0.5 * wsNormal);
-//    mesh->setFaceColor({0, 0, 1});
-//    auto body = createBody(mesh);
-//    body->disableCollisions();
-
     std::vector<Action> actions;
 
     while (!profile.complete()) {
         if (!withinActionLimit()) break;
 
-        auto tri = profile.next();
+        auto operation = profile.next(m_bladeWidth, m_bladeThickness);
+
 //        std::cout << "IDX: " << tri.I0 << " " << tri.I1 << " " << tri.I2 << "\n";
-        if (tri.I0 != tri.I1) { // Verify triangle is valid
-            actions.emplace_back(planOutlineRefinement(profile, Triangle3D(wsBorder[tri.I0], wsBorder[tri.I1], wsBorder[tri.I2]), wsNormal));
+        if (operation.valid) { // Confirm the operation is possible before attempting
+            actions.emplace_back(planOutlineRefinement(profile, operation));
             if (actions.back().cuts.empty()) { // No cuts were possible - do nothing and do not proceed through tree
                 std::cout << "\033[93mFailed to generate trajectory\033[0m\n";
                 actions.pop_back();
                 profile.skip();
-            } else {
-                profile.refine();
-            }
+            } else profile.refine();
         } else profile.skip();
     }
 
     return actions;
 }
 
-SculptProcess::Action SculptProcess::planOutlineRefinement(const Profile& profile, const Triangle3D& wTri, const glm::dvec3& wNormal)
+SculptProcess::Action SculptProcess::planOutlineRefinement(const Profile& profile, const SectionOperation& operation)
 {
-    const double runup = 0.02, offset = runup + 0.5 * m_bladeWidth;
+    auto rotation = glm::angleAxis(m_turntable->getJointValue(0), UP);
 
-    auto clearance = profile.clearance();
-//    std::cout << "SS: " << profile.remainingSections() << " " << clearance.first << " " << clearance.second << " " << profile.area() << "\n";
+    auto pNormal = profile.normal();
+    toWorldSpace(pNormal, rotation);
+
+    const double offset = 0.5 * m_bladeWidth;
 
     auto trajectory = std::make_shared<CompositeTrajectory>(6);
     trajectory->setLimits(m_baseVelocityLimits, m_baseAccelerationLimits);
 
     Action action(trajectory, m_robot);
 
-    auto AB = wTri.a - wTri.b, BC = wTri.c - wTri.b;
-    auto depthAB = glm::length(AB), depthBC = glm::length(BC);
+    const std::vector<SectionOperation::Set>& cuts = operation.cuts();
+    for (const SectionOperation::Set& cut : cuts) {
 
-    auto reduc = glm::dot(AB, BC);
-    auto theta = acos(reduc / (depthAB * depthBC)); // Internal angle of triangle
-    reduc = reduc < 0 ? 0 : m_bladeThickness / tan(theta); // Depth reduction due to thickness (to prevent overrun)
-    depthAB  -= reduc;
-    depthBC -= reduc;
+        auto axis = profile.projected3D(cut.axis);
+        auto normal = profile.projected3D(cut.normal);
+        auto travel = profile.projected3D(cut.travel);
 
-//    std::cout << "INTERNAL ANGLE: " << 180 * theta / M_PI << ", REDUC: " << reduc << "\n";
+        toWorldSpace(axis, rotation);
+        toWorldSpace(normal, rotation);
+        toWorldSpace(travel, rotation);
 
-    static uint32_t iteration = 0;
-    if (clearance.first < offset || clearance.second < offset) {
-//        profile.save("../out/spprof" + std::to_string(iteration++) + ".bin");
+        auto axes = faceAlignedAxes(normal, true);
+        double direction = 1 - 2 * (glm::dot(axis, axes.xAxis) < 0);
+        auto delta = -axis * offset;
+
+        for (const std::pair<glm::dvec2, double>& motion : cut.motions) {
+            auto pos = rotation * profile.projected3D(motion.first) + m_sculpture->position() + delta;
+            auto pose = Pose(alignedToBlade(axes, pos), axes);
+            if (std::abs(glm::dot(travel, axis)) >= 1 - 1e-6) {
+                if (!planBlindCut(pose, direction * motion.second, action)) return { nullptr, nullptr };
+            } else {
+                auto cutNormal = glm::normalize(glm::cross(pNormal, axis));
+                if (!planMill(pose, cutNormal, travel, motion.second, action)) return { nullptr, nullptr };
+            }
+        }
     }
 
-
-    if (clearance.first < offset) {
-        if (!planReliefCuts(profile, wNormal, 0, action)) return { nullptr, nullptr };
-    } else {
-        auto axes = faceAlignedAxes(glm::normalize(glm::cross(AB, wNormal)), true);
-        auto pose = Pose(wTri.a - axes.xAxis * offset, axes);
-        pose.position = alignedToBlade(pose.axes, pose.position);
-
-        if (!planBlindCut(pose, depthAB + runup, action)) return { nullptr, nullptr };
-    }
-
-    if (clearance.second < offset) {
-        if (!planReliefCuts(profile, -wNormal, 1, action)) return { nullptr, nullptr };
-    } else {
-        auto axes = faceAlignedAxes(glm::normalize(glm::cross(wNormal, BC)), true);
-        auto pose = Pose(wTri.c + axes.xAxis * offset, axes);
-        pose.position = alignedToBlade(pose.axes, pose.position);
-
-        if (!planBlindCut(pose, -(depthBC + runup), action)) return { nullptr, nullptr };
-    }
-
-
-
-    //
     trajectory->update();
     for (Cut& cut : action.cuts) {
         auto [ts, tf] = trajectory->tLimits(cut.index);
         cut.ts = ts;
         cut.tf = tf;
-
-//        std::cout << "T " << cut.index << " " << ts << " " << tf << "\n";
     }
 
-    auto lv = profile.projected3D(profile.next());
-    m_sculpture->queueSection(lv[0], lv[1], lv[2], profile.normal(), profile.isNextExternal());
+    m_sculpture->queueSection(profile.projected3D(operation.startVertex(offset)),
+                              profile.projected3D(operation.splitVertex()),
+                              profile.projected3D(operation.endVertex(offset)),
+                              profile.normal());
 
     return action;
-}
-
-bool SculptProcess::planReliefCuts(const Profile& profile, const glm::dvec3& wNormal, uint8_t edgeIndex, Action& action)
-{
-    const double margin = 0.00, offset = margin + 0.5 * m_bladeWidth;
-
-    auto relief = profile.prepareRelief(m_bladeWidth + margin, m_bladeThickness, edgeIndex);
-    if (relief.valid) {
-        auto rotation = glm::angleAxis(m_turntable->getJointValue(0), UP);
-        auto [start, internal, external, normal] = profile.projected3D(relief);
-
-        toWorldSpace(start, rotation);
-        start += m_sculpture->position();
-
-        toWorldSpace(internal, rotation);
-        toWorldSpace(external, rotation);
-        toWorldSpace(normal, rotation);
-
-        auto step = relief.step(); // Scalar projection of thickness across external
-        auto position = start + external * (relief.extLength - 0.5 * step) + normal * offset;
-//        bladeCenterOffset(axes, position);
-
-        auto axes = faceAlignedAxes(glm::normalize(glm::cross(normal, wNormal)), true);
-        double direction = 1 - 2 * (glm::dot(axes.xAxis, internal) < 0);
-
-        std::cout << "SPR: " << glm::dot(external, axes.xAxis) << "\n";
-
-        std::vector<double> depths = relief.depths();
-
-        auto trajectory = std::static_pointer_cast<CompositeTrajectory>(action.trajectory);
-
-        for (double depth : depths) {
-            auto pose = Pose(position, axes);
-//            pose.localTranslate({ direction * depth, 0, 0 });
-//            auto wp = m_robot->inverse(pose);
-//            if (!wp.isValid()) return false;
-//            trajectory->addTrajectory(std::make_shared<HoldPosition>(wp, 0.1));
-            if (!planBlindCut(pose, direction * (depth + margin), action)) return false;
-            position -= step * external;
-        }
-
-        if (!depths.empty()) {
-            auto pose = Pose(start + 0.5 * m_bladeWidth * normal, axes);
-            pose.position = alignedToBlade(pose.axes, pose.position);
-            double millDistance = std::min(relief.cutLength, m_bladeWidth);
-            auto cutNormal = glm::normalize(glm::cross(wNormal, internal));
-            if (planMill(pose, cutNormal, internal, millDistance, action)) { // Slide across surface to remove relief corners
-                if (relief.cutLength > millDistance) { // Cut along desired surface (If long enough that relief would not cover)
-                    pose = Pose(start + offset * internal, faceAlignedAxes(cutNormal, true));
-                    pose.position = alignedToBlade(pose.axes, pose.position);
-
-                    if (!planBlindCut(pose, direction * (relief.cutLength - margin - m_bladeWidth), action)) return false;
-                }
-
-                return true;
-            }
-//            auto trajectory = std::static_pointer_cast<CompositeTrajectory>(action.trajectory);
-////            if (!planBlindCut(pose, ))
-//            auto wp = m_robot->inverse(pose);
-//            if (!wp.isValid()) return false;
-//
-//            trajectory->addTrajectory(std::make_shared<HoldPosition>(wp, 1.0));
-//            return true;
-        }
-    }
-
-    return false;
 }
 
 bool SculptProcess::planBlindCut(const Pose& pose, double depth, Action& action)
@@ -1099,9 +1005,9 @@ bool SculptProcess::planMill(const Pose& pose, const glm::dvec3& normal, const g
 
     double direction = 1 - 2 * (glm::dot(pose.axes.xAxis, travel) < 0);
     glm::dvec3 origin = pose.position + 0.5 * m_bladeWidth * direction * pose.axes.xAxis;
-    double teff = m_bladeThickness * glm::dot(normal, pose.axes.yAxis);
-    std::cout << "PMT: " << depth << " " << m_bladeThickness << " " << teff << " " << normal.x << " " << normal.y << " " << normal.z << "\n";
-    if (teff < 0) throw std::runtime_error("[SculptProcess] Failed to calculate effective thickness");
+    double teff = direction * m_bladeThickness * glm::dot(normal, pose.axes.yAxis);
+    std::cout << "PMT: " << depth << " " << m_bladeThickness << " " << teff << " " << teff * direction << " " << direction << " | " << " " << normal.x << " " << normal.y << " " << normal.z << "\n";
+//    if (teff < 0) throw std::runtime_error("[SculptProcess] Failed to calculate effective thickness");
 
     action.cuts.emplace_back(origin, normal, travel, teff, 0, 0, trajectory->segmentCount() - 1);
 

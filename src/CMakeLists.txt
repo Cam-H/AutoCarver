@@ -14,6 +14,7 @@ add_library(AutoCarverLib
 
         geometry/poly/Polygon.cpp
         geometry/poly/Profile.cpp
+        geometry/poly/SectionOperation.cpp
 
         geometry/primitives/AABB.cpp
         geometry/primitives/Circle.cpp

@@ -118,14 +118,8 @@ void Sculpture::queueSection(const Plane& plane)
     m_operations.emplace_back(plane.origin, plane.normal);
 }
 
-void Sculpture::queueSection(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& normal, bool external)
+void Sculpture::queueSection(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& normal)
 {
-    std::cout << external << " QS\n";
-    std::cout << a.x << " " << a.y << " " << a.z << "\n";
-    std::cout << b.x << " " << b.y << " " << b.z << "\n";
-    std::cout << c.x << " " << c.y << " " << c.z << "\n";
-    std::cout << normal.x << " " << normal.y << " " << normal.z << "\n";
-
     m_operations.emplace_back();
 
     auto &operation = m_operations[m_operations.size() - 1];
@@ -135,24 +129,8 @@ void Sculpture::queueSection(const glm::dvec3& a, const glm::dvec3& b, const glm
     operation.surfaces.emplace_back(a, glm::normalize(glm::cross(normal, b - a)));
     operation.surfaces.emplace_back(b, glm::normalize(glm::cross(normal, c - b)));
 
-    if (!external) {
-        operation.limits.emplace_back(c, glm::normalize(glm::cross(normal, a - c)));
-//        operation.limits.emplace_back(b, -operation.limits[0].second);
-
-    }
-//    operation.limits.emplace_back(a, glm::normalize(b - a));
-//    operation.limits.emplace_back(c, glm::normalize(b - c));
-
+    operation.limits.emplace_back(c, glm::normalize(glm::cross(normal, a - c)));
 }
-
-//void Sculpture::queueSection(const std::vector<glm::dvec3>& border, const glm::dvec3& normal)
-//{
-//    if (border.size() < 3) return;
-//    else if (border.size() == 3) queueSection(border[0], border[1], border[2], normal);
-//    else {
-//        throw std::runtime_error("[Sculpture] Sections more complicated than triangles have yet to be developed!");
-//    }
-//}
 
 std::shared_ptr<Debris> Sculpture::applySection()
 {
@@ -161,7 +139,7 @@ std::shared_ptr<Debris> Sculpture::applySection()
 
         switch (m_operations[step].surfaces.size()) {
             case 1: return planarSection(m_operations[step].surfaces[0]);
-            case 2: return triangleSection(m_operations[step].surfaces[0], m_operations[step].surfaces[1], m_operations[step].limits);
+            case 2: return triangleSection(m_operations[step].surfaces[0], m_operations[step].surfaces[1], m_operations[step].limits[0]);
             default:
                 std::cout << "[Sculpture] Queued section not handled. Not currently supported\n";
         }
@@ -208,21 +186,7 @@ std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
     return nullptr;
 }
 
-bool Sculpture::inLimit(const ConvexHull& hull, const Plane& limit)
-{
-    return !Collision::below(hull, limit);
-}
-
-bool Sculpture::inLimit(const ConvexHull& hull, const std::vector<Plane>& limits)
-{
-    for (const auto& limit : limits) {
-        if (!inLimit(hull, limit)) return false;
-    }
-
-    return true;
-}
-
-std::shared_ptr<Debris> Sculpture::triangleSection(const Plane& planeA, const Plane& planeB, const std::vector<Plane>& limits)
+std::shared_ptr<Debris> Sculpture::triangleSection(const Plane& planeA, const Plane& planeB, const Plane& limit)
 {
     m_newFaces.clear();
 
@@ -231,29 +195,28 @@ std::shared_ptr<Debris> Sculpture::triangleSection(const Plane& planeA, const Pl
     const auto& fragments = hulls();
     for (uint32_t i = 0; i < fragments.size(); i++) {
 
-        auto aFragments = Collision::fragments(fragments[i], planeA.inverted());
+        auto lFragments = Collision::fragments(fragments[i], limit.inverted());
+
+        auto aFragments = Collision::fragments(lFragments.second, planeA.inverted());
         auto bFragments = Collision::fragments(aFragments.second, planeB.inverted());
 
-        if (!bFragments.second.empty() && inLimit(bFragments.second, limits)) { // Verify body is within bounds of the cut
-            if (!aFragments.first.empty()) { // Intersection with plane A
-                replace(aFragments.first, i);
+        if (!bFragments.second.empty()) { // Body is within bounds of cut
+            uint32_t idx = i;
 
-                if (!bFragments.first.empty()) add(bFragments.first); // Intersection with plane B
+            // Attach fragments (outside the triangle) from the cuts back
+            if (!lFragments.first.empty()) idx = attach(lFragments.first, idx);
+            if (!aFragments.first.empty()) idx = attach(aFragments.first, idx);
+            if (!bFragments.first.empty()) idx = attach(bFragments.first, idx);
 
-            } else { // Entirely beyond plane A
-
-                if (!bFragments.first.empty()) replace(bFragments.first, i); // Intersection with plane B
-                else { // Hull entirely within the cut - to be deleted
-                    remove(i);
-                    i--;
-                }
+            // Hull is entirely within the cut - No hull to be replaced, must be removed outright
+            if (idx == i) {
+                remove(i);
+                i--;
             }
 
             debris->add(bFragments.second);
         }
     }
-
-
 
     if (!debris->hulls().empty()) { // Action was taken to remove parts of the sculpture
         debris->setTransform(m_transform);
@@ -268,6 +231,15 @@ std::shared_ptr<Debris> Sculpture::triangleSection(const Plane& planeA, const Pl
 
     return nullptr;
 }
+
+uint32_t Sculpture::attach(const ConvexHull& hull, uint32_t index)
+{
+    if (index >= hulls().size()) add(hull);
+    else replace(hull, index);
+
+    return hulls().size();
+}
+
 
 bool Sculpture::form()
 {
