@@ -77,10 +77,11 @@ public:
 private:
 
     struct Section {
-        Section(TriIndex triangle, uint32_t children) : triangle(triangle), children(children) {}
+        Section(TriIndex triangle, uint32_t children) : triangle(triangle), children(children), skipped(false) {}
 
         TriIndex triangle; // Indices to the vertices forming the section
         uint32_t children; // Number of sections dependent on this one
+        bool skipped; // Track if section has previously been skipped
     };
 
     void initialize();

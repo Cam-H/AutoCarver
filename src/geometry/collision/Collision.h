@@ -89,6 +89,10 @@ public:
     static bool encloses(const ConvexHull& bodyA, const AABB& bodyB);
 //    static bool encloses(const ConvexHull& bodyA, const ConvexHull& bodyB);
 
+    // Determine the minimum distance from the hull to the plane
+    static double distance(const ConvexHull& hull, const Plane& plane);
+    static double distance(const ConvexHull& hullA, const ConvexHull& hullB);
+
     // Determine the intersection between the specified bodies
     static std::tuple<bool, double, glm::dvec3> intersection(const AABB& body, const Ray& ray);
 

@@ -376,7 +376,11 @@ void SculptProcess::step(double delta)
         } else if (m_debris != nullptr && !action.cuts.empty() && action.cuts.front().ts < action.trajectory->t()){
             if (!m_debris->inProcess()) m_debris->beginCut();
 
-            Pose pose = m_robot->getPose();
+            // Make sure to take the final pose before completing a cut
+            Pose pose = action.cuts.front().tf <= action.trajectory->t()
+                    ? m_robot->getPose(action.trajectory->evaluate(action.cuts.front().tf))
+                    : m_robot->getPose();
+
             glm::dvec3 normal = (1.0 - 2.0 * (glm::dot(action.cuts[0].axis, pose.axes.xAxis) < 0)) * pose.axes.xAxis; // Direction to front of blade
             glm::dvec3 reference = pose.position + normal * 0.5 * m_bladeWidth; // Center of front-edge of the blade
 
@@ -402,6 +406,7 @@ void SculptProcess::step(double delta)
 
             if (action.cuts.front().tf <= action.trajectory->t()) {
                 std::cout << "REMOVAL: " << action.cuts.size() << " " << action.cuts.front().tf << " " << action.trajectory->t() <<"\n";
+//                m_debris->print();
                 m_debris->completeCut();
                 action.cuts.pop_front();
             }
@@ -410,11 +415,11 @@ void SculptProcess::step(double delta)
                 std::cout << "REM: " << m_debris->hulls().size() << "\n";
                 if (!m_debris->hulls().empty()) {
                     for (const ConvexHull& hull : m_debris->hulls()) {
-                        std::cout << hull.isValid() << " " << hull.vertexCount() << "\n";
-//                        if (hull.isValid()) m_sculpture->add(hull);
+                        std::cout << hull.isValid() << " " << hull.vertexCount() << " NH\n";
+                        if (hull.isValid()) m_sculpture->add(hull);
                     }
 
-//                    m_sculpture->remesh();
+                    m_sculpture->remesh();
                 }
 
                 removeDebris();
@@ -859,8 +864,8 @@ void SculptProcess::planOutlineRefinement(double stepDg)
         auto profile = detector->profile();
         profile.setRefinementMethod(Profile::RefinementMethod::DELAUNEY);
 
-        m_turntable->setJointValue(0, M_PI * step / 180);
-//        m_turntable->setJointValue(0, baseRotation + M_PI * step / 180);
+//        m_turntable->setJointValue(0, M_PI * step / 180);
+        m_turntable->setJointValue(0, baseRotation + M_PI * step / 180);
 
         auto actions = planOutlineRefinement(profile);
         if (!actions.empty()) {
@@ -945,7 +950,7 @@ SculptProcess::Action SculptProcess::planOutlineRefinement(const Profile& profil
             if (std::abs(glm::dot(travel, axis)) >= 1 - 1e-6) {
                 if (!planBlindCut(pose, direction * motion.second, action)) return { nullptr, nullptr };
             } else {
-                auto cutNormal = glm::normalize(glm::cross(pNormal, axis));
+                auto cutNormal = glm::normalize(glm::cross(pNormal, travel));
                 if (!planMill(pose, cutNormal, travel, motion.second, action)) return { nullptr, nullptr };
             }
         }
@@ -985,7 +990,7 @@ bool SculptProcess::planBlindCut(const Pose& pose, double depth, Action& action)
     auto axes = pose.axes;
     if (depth < 0) axes.flipXZ();
 
-    action.cuts.emplace_back(Pose(pose.position + pose.axes.xAxis * 0.5 * m_bladeWidth, axes), m_bladeThickness, 0, 0, trajectory->segmentCount() - 2);
+    action.cuts.emplace_back(Pose(pose.position + 0.5 * m_bladeWidth * pose.axes.xAxis, axes), m_bladeThickness, 0, 0, trajectory->segmentCount() - 2);
 
     return true;
 }
@@ -1005,11 +1010,11 @@ bool SculptProcess::planMill(const Pose& pose, const glm::dvec3& normal, const g
 
     double direction = 1 - 2 * (glm::dot(pose.axes.xAxis, travel) < 0);
     glm::dvec3 origin = pose.position + 0.5 * m_bladeWidth * direction * pose.axes.xAxis;
-    double teff = direction * m_bladeThickness * glm::dot(normal, pose.axes.yAxis);
-    std::cout << "PMT: " << depth << " " << m_bladeThickness << " " << teff << " " << teff * direction << " " << direction << " | " << " " << normal.x << " " << normal.y << " " << normal.z << "\n";
+    double teff = std::abs(m_bladeThickness * glm::dot(normal, pose.axes.yAxis));
+//    std::cout << "PMT: " << depth << " " << m_bladeThickness << " " << teff << " " << teff * direction << " " << direction << " | " << " " << normal.x << " " << normal.y << " " << normal.z << "\n";
 //    if (teff < 0) throw std::runtime_error("[SculptProcess] Failed to calculate effective thickness");
 
-    action.cuts.emplace_back(origin, normal, travel, teff, 0, 0, trajectory->segmentCount() - 1);
+    action.cuts.emplace_back(origin, normal, travel, teff + 1e-6, 0, 0, trajectory->segmentCount() - 1);
 
     return true;
 }
@@ -1047,7 +1052,7 @@ std::shared_ptr<CompositeTrajectory> SculptProcess::preparePlanarTrajectory(cons
     uint32_t minIndex, maxIndex;
     VertexArray::extremes(border, axes.xAxis, minIndex, maxIndex);
 
-    double runup = 0.1, length = glm::dot(border[maxIndex] - border[minIndex], axes.xAxis);
+    double runup = 0.1, length = glm::dot(border[maxIndex] - border[minIndex], axes.xAxis) + 1e-3; // 1e-3 to go a bit further (So debris is disconnected properly (Avoid vertex touch))
 
     if (glm::dot(UP, normal) > 0) { // Upwards-facing cut -> Can use through cut
         return prepareThroughCut(Pose(border[minIndex], axes), length + runup, runup + 0.5 * m_bladeWidth, 0.4 * axes.yAxis);
@@ -1087,7 +1092,6 @@ glm::dvec3 SculptProcess::bladeThicknessOffset(const Axis3D& axes) const
 // off - The direction & distance from which to leave the piece after the cut is complete
 std::shared_ptr<CompositeTrajectory> SculptProcess::prepareThroughCut(Pose pose, double depth, double runup, const glm::dvec3& off)
 {
-    glm::dvec3 origin = pose.position;
     pose.position = alignedToBlade(pose.axes, pose.position);
 
     // Try to generate a cartesian trajectory between the two points
@@ -1122,36 +1126,10 @@ std::shared_ptr<CompositeTrajectory> SculptProcess::prepareThroughCut(Pose pose,
         auto axes = pose.axes;
         if (depth < 0) axes.flipXZ();
 
-        m_cuts.emplace_back(Pose(origin, axes), m_bladeThickness, ts, tf, 0);
+        m_cuts.emplace_back(Pose(pose.position, axes), m_bladeThickness, ts, tf, 0);
         return trajectory;
     }
 
-    return nullptr;
-}
-
-std::shared_ptr<CompositeTrajectory> SculptProcess::prepareBlindCut(Pose pose, double depth)
-{
-    std::cout << "BLINDCUT\n";
-    glm::dvec3 origin = pose.position;
-    pose.position = alignedToBlade(pose.axes, pose.position);
-
-    auto cutTrajectory = std::make_shared<CartesianTrajectory>(m_robot, pose, glm::dvec3(depth, 0, 0), 20);
-    cutTrajectory->setLimits(m_slowVelocityLimits, m_baseAccelerationLimits);
-    if (!cutTrajectory->isValid()) return nullptr;
-
-    auto retractTrajectory = cutTrajectory->reversed(m_robot);
-    if (!retractTrajectory->isValid()) return nullptr;
-
-    auto trajectory = std::make_shared<CompositeTrajectory>(m_robot->dof());
-    trajectory->setLimits(m_baseVelocityLimits, m_baseAccelerationLimits);
-
-    // Perform blind cut
-    trajectory->addTrajectory(cutTrajectory);
-    trajectory->addTrajectory(retractTrajectory);
-
-    trajectory->update();
-
-    if (trajectory->isValid()) return trajectory;
     return nullptr;
 }
 

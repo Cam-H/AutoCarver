@@ -95,13 +95,13 @@ std::vector<SectionOperation::Set> SectionOperation::cuts() const
         if (m_cutBA) { // Direct blind cut, if no relief operation is required on edge AB
             cuts.emplace_back( -BA, glm::dvec2(BA.y, -BA.x));
             if (glm::dot(cuts.back().normal, BC) < 0) cuts.back().normal = -cuts.back().normal;
-            cuts.back().motions.emplace_back(startVertex(), lBA + RUN_UP);
+            cuts.back().motions.emplace_back(startVertex(), lBA + RUN_UP - reduction);
         }
 
         if (m_cutBC) { // Direct blind cut, if no relief operation is required on edge BC
             cuts.emplace_back( -BC, glm::dvec2(BC.y, -BC.x));
             if (glm::dot(cuts.back().normal, BA) < 0) cuts.back().normal = -cuts.back().normal;
-            cuts.back().motions.emplace_back(endVertex(), lBC + RUN_UP);
+            cuts.back().motions.emplace_back(endVertex(), lBC + RUN_UP - reduction);
         }
 
         // Perform any required reliefs
@@ -119,13 +119,20 @@ std::vector<SectionOperation::Set> SectionOperation::cuts() const
                 position -= step * relief.external;
             }
 
-            // Add a milling operation to clean up surface
+//            double direction = 1 - 2 * (glm::dot(pose.axes.xAxis, travel) < 0);
+//            glm::dvec3 origin = pose.position + 0.5 * m_bladeWidth * direction * pose.axes.xAxis;
+//            double teff = std::abs(m_bladeThickness * glm::dot(normal, pose.axes.yAxis));
+
+            // Add a milling operation to clean up surface (Two passes)
             double millDistance = relief.projection(thickness);
+            double teff = 0.5 * std::abs(thickness * glm::dot(-relief.normal, relief.internal));
             cuts.emplace_back(-relief.normal, -cuts.back().normal, relief.internal);
+            cuts.back().motions.emplace_back(relief.start + teff * relief.normal, millDistance);
+            cuts.emplace_back(-relief.normal, cuts.back().normal, relief.internal);
             cuts.back().motions.emplace_back(relief.start, millDistance);
 
             // Perform a blind cut against the newly accessible surface, if the milling did not entirely clear it
-            if (millDistance < relief.length) {
+            if (millDistance < relief.length && width < millDistance) {
                 cuts.emplace_back( relief.internal, glm::dvec2(relief.internal.y, -relief.internal.x));
                 if (glm::dot(cuts.back().normal, relief.external) < 0) cuts.back().normal = -cuts.back().normal;
                 cuts.back().motions.emplace_back(relief.start + relief.internal * width, relief.length - width);

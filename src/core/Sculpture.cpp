@@ -176,6 +176,8 @@ std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
         debris->setTransform(m_transform);
         debris->initialize();
 
+        debris->addFixedPlane(plane);
+
         if (hulls().empty()) throw std::runtime_error("[Sculpture] Empty sculpture");
         m_hull = hulls()[0]; // Ignores small off-cuts (Little effect on testing) & only works properly before triangular sectioning TODO
         remesh();
@@ -221,6 +223,9 @@ std::shared_ptr<Debris> Sculpture::triangleSection(const Plane& planeA, const Pl
     if (!debris->hulls().empty()) { // Action was taken to remove parts of the sculpture
         debris->setTransform(m_transform);
         debris->initialize();
+
+        debris->addFixedPlane(planeA);
+        debris->addFixedPlane(planeB);
 
         // Manually remesh only if no hulls are merged (If they are CompositeBody would remesh)
         if (!m_mergeEnable || !tryMerge()) remesh();

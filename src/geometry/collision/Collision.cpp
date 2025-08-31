@@ -319,6 +319,23 @@ bool Collision::encloses(const ConvexHull& bodyA, const AABB& bodyB)
         && encloses(bodyA, bodyB.vertex(6));
 }
 
+double Collision::distance(const ConvexHull& hull, const Plane& plane)
+{
+    auto [minIndex, maxIndex] = hull.extremes(plane.normal);
+    double min = plane.distance(hull.vertices()[minIndex]), max = plane.distance(hull.vertices()[maxIndex]);
+
+    if (min * max < 0) return 0;
+
+    return std::min(std::abs(min), std::abs(max));
+}
+
+double Collision::distance(const ConvexHull& hullA, const ConvexHull& hullB)
+{
+    EPA epa = intersection(hullA, hullB, { 0, 0 });
+    return glm::length(epa.offset());
+}
+
+
 std::tuple<bool, double, glm::dvec3> Collision::intersection(const AABB& body, const Ray& ray)
 {
     auto [hit, t] = raycast(body, ray);

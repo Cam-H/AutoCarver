@@ -367,6 +367,11 @@ uint32_t Scene::bodyCount() const
     return m_bodies.size();
 }
 
+bool Scene::isPaused() const
+{
+    return m_paused;
+}
+
 std::tuple<std::shared_ptr<RigidBody>, double> Scene::raycast(const Ray& ray) const
 {
     // TODO potential optimization: prepass or sort bodies relative to ray before evaluating

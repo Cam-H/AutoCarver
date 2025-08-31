@@ -21,6 +21,8 @@ public:
 
     void initialize();
 
+    void addFixedPlane(const Plane& plane);
+
     void queueCut(const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& axis, double thickness);
     void beginCut();
     void completeCut();
@@ -29,22 +31,25 @@ public:
 
     std::vector<std::shared_ptr<RigidBody>> removeMaterial(const glm::dvec3& normal, double depth);
 
+    void print() const;
+
 private:
 
     struct Connection {
-        std::vector<glm::dvec3> border;
+        Connection() : anchors(0), anchor(false), tested(false) {}
+
+        std::vector<uint32_t> contacts;
+        uint32_t anchors; // Number of anchors in direct contact with the hull
+        bool anchor; // Whether the hull itself is an anchor
+        bool tested; // Whether connectivity should be tested after a recent change
     };
 
     struct Kerf {
-        Kerf(uint32_t src, uint32_t cut, double ts, double tf, double depth) : srcIndex(src), cutIndex(cut), ts(ts), tf(tf), depth(std::min(tf, depth)) {}
+        Kerf(uint32_t cut, double ts) : cutIndex(cut), ts(ts) {}
 
-        uint32_t srcIndex;
         uint32_t cutIndex;
 
         double ts; // Min distance from origin
-        double tf; // Max distance from origin
-
-        double depth; // Distance from origin to release fragment (Bit less than tf based on thickness)
     };
 
     struct CutOperation {
@@ -59,16 +64,34 @@ private:
         std::vector<Kerf> sections;
     };
 
-    std::vector<std::shared_ptr<RigidBody>> removeCut();
-    std::shared_ptr<RigidBody> removeKerf(uint32_t index);
+    void updateConnections();
+    void updateConnection(uint32_t index);
 
-    std::shared_ptr<RigidBody> tryFragmentRelease(Kerf& section);
+    void removeKerf(uint32_t index);
 
-    void replaceIndex(uint32_t oldIndex, uint32_t newIndex);
+    void removeConnection(uint32_t index);
+    void removeLink(uint32_t index, uint32_t link);
+    void removeAnchor(uint32_t anchor, uint32_t link);
+
+    void removeIndexed(uint32_t index);
+
+    [[nodiscard]] bool isAnchor(const ConvexHull& hull) const;
+    [[nodiscard]] bool isAnchored(uint32_t idx) const;
+    [[nodiscard]] bool isAnchored(const std::vector<uint32_t>& connections) const;
+
+    [[nodiscard]] bool testContact(uint32_t I0, uint32_t I1) const;
+
+    [[nodiscard]] std::vector<uint32_t> connections(uint32_t idx) const;
+
+    std::vector<std::shared_ptr<RigidBody>> tryFragmentRelease();
+    std::shared_ptr<RigidBody> prepareFragment(const std::vector<uint32_t>& connected);
+
 
 private:
 
     std::vector<Plane> m_fixedPlanes; // Retains any hulls in contact (even indirect) with any plane
+    std::vector<Connection> m_connections; // List of hulls and their contacts
+
     std::deque<CutOperation> m_cuts; // Record of remaining operations to be conducted
     bool m_inProcess;
 

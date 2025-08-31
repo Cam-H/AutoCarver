@@ -260,12 +260,22 @@ void Profile::inverseWinding()//TODO update
     }
 }
 
-// Skips the next section along with any further sections dependent on it
+// Skips the next section along with any further sections dependent on it, moving them to the back of the queue
 void Profile::skip()
 {
     if (!m_sections.empty()) {
         const uint32_t count = 1 + m_sections[0].children;
-        for (uint32_t i = 0; i < count; i++) m_sections.pop_front();
+        if (count < m_sections.size()) {
+            if (m_sections[0].skipped) { // Delete section if it has already been skipped once
+                for (uint32_t i = 0; i < count; i++) m_sections.pop_front();
+            } else { // Move section to the back of the queue, if it has not been seen before
+                m_sections[0].skipped = true;
+                for (uint32_t i = 0; i < count; i++) {
+                    m_sections.push_back(m_sections[0]);
+                    m_sections.pop_front();
+                }
+            }
+        } else if (m_sections[0].skipped) m_sections.clear(); // Clear when the only remaining sections have been skipped
     }
 }
 

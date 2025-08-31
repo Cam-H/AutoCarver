@@ -182,7 +182,6 @@ private:
 
     std::shared_ptr<CompositeTrajectory> preparePlanarTrajectory(const std::vector<glm::dvec3>& border, const glm::dvec3& normal);
     std::shared_ptr<CompositeTrajectory> prepareThroughCut(Pose pose, double depth, double runup, const glm::dvec3& off);
-    std::shared_ptr<CompositeTrajectory> prepareBlindCut(Pose pose, double depth);
 
     void commitActions(const std::vector<Action>& actions);
 

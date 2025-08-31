@@ -60,6 +60,8 @@ public:
 //    std::vector<const std::shared_ptr<Mesh>&> meshes();
     void prepareBody(const std::shared_ptr<RigidBody>& body, uint8_t level = 0);
 
+    [[nodiscard]] bool isPaused() const;
+
     [[nodiscard]] std::tuple<std::shared_ptr<RigidBody>, double> raycast(const Ray& ray) const;
 
     [[nodiscard]] bool test(const std::shared_ptr<Robot>& robot) const;

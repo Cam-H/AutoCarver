@@ -297,6 +297,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="pauseButton">
+        <property name="text">
+         <string>Pause</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QLabel" name="label">
         <property name="layoutDirection">
          <enum>Qt::LayoutDirection::LeftToRight</enum>

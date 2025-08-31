@@ -95,7 +95,7 @@ public:
         std::vector<T> cleaned;
         cleaned.reserve(vertices.size());
 
-        double tolerance = 1e-3, factor = 1 / tolerance; // TODO validate such high tolerance
+        double tolerance = 1e-6, factor = 1 / tolerance; // TODO validate such high tolerance
         std::unordered_map<size_t, uint32_t> vertexMap;
 
         // Only attach non-coincident vertices

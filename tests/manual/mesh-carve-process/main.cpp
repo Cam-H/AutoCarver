@@ -183,6 +183,11 @@ int main(int argc, char *argv[])
         scene->setContinuous(checked);
     });
 
+    auto pauseButton = window->findChild<QCheckBox*>("pauseButton");
+    QObject::connect(pauseButton, &QCheckBox::clicked, [&](bool checked) {
+        if (checked != scene->isPaused()) scene->pause();
+    });
+
     timeField = window->findChild<QDoubleSpinBox*>("timeField");
     QObject::connect(timeField, &QDoubleSpinBox::valueChanged, [&](double value) {
         scene->setTimeScaling(value);

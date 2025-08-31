@@ -32,6 +32,11 @@ void Debris::initialize()
     remesh();
 }
 
+void Debris::addFixedPlane(const Plane& plane)
+{
+    m_fixedPlanes.emplace_back(plane);
+}
+
 // System [Local] - xAxis = direction of cut
 void Debris::queueCut(const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& axis, double thickness)
 {
@@ -89,22 +94,120 @@ void Debris::beginCut()
 
     // Prepare sections
     for (uint32_t kerf : kerfs) {
-        auto [minIndex, maxIndex] = hulls()[kerf].extremes(cut.axis);
+        auto [idx, vertex] = hulls()[kerf].extreme(-cut.axis);
 
         cut.sections.emplace_back(
-                std::numeric_limits<uint32_t>::max(),
                 kerf,
-                glm::dot(cut.axis, hulls()[kerf].vertices()[minIndex] - cut.origin),
-                glm::dot(cut.axis, hulls()[kerf].vertices()[maxIndex] - cut.origin),
-                10.0 // hulls()[sources[i - initialCount]].far(cut.axis) - min
+                glm::dot(cut.axis, vertex - cut.origin)
                 );
 
-        std::cout << "CS " << cut.sections.back().ts << " " << cut.sections.back().tf << " " << cut.sections.back().depth << " " << cut.sections.back().srcIndex << " " << cut.sections.back().cutIndex << "\n";
+        std::cout << "CS " << cut.sections.back().ts << " " << cut.sections.back().cutIndex << "\n";
     }
 
-
+    updateConnections();
     m_inProcess = true;
 }
+
+void Debris::updateConnections()
+{
+    m_connections = std::vector<Connection>(hulls().size());
+
+    // Identify anchored hulls
+    for (uint32_t i = 0; i < m_connections.size(); i++) m_connections[i].anchor = isAnchor(hulls()[i]);
+
+    // Identify hull contacts
+    for (uint32_t i = 0; i < m_connections.size(); i++) {
+        for (uint32_t j = i + 1; j < m_connections.size(); j++) {
+            if (testContact(i, j)) {
+                m_connections[i].contacts.emplace_back(j);
+                m_connections[j].contacts.emplace_back(i);
+            }
+        }
+    }
+
+    // Count the number of anchors directly in contact to each hull
+    for (Connection& con : m_connections) {
+        for (uint32_t idx : con.contacts) {
+            con.anchors += m_connections[idx].anchor;
+        }
+    }
+}
+
+void Debris::updateConnection(uint32_t index)
+{
+    // Revert anchors when they lose contact with the fixed planes
+    if (m_connections[index].anchor && !isAnchor(hulls()[index])) {
+        for (uint32_t link : m_connections[index].contacts) removeAnchor(index, link);
+        m_connections[index].anchor = false;
+        m_connections[index].tested = m_connections[index].anchors > 0;
+    }
+
+    // Remove contact links between newly separated hulls
+    for (uint32_t i = 0; i < m_connections[index].contacts.size(); i++) {
+        uint32_t link = m_connections[index].contacts[i];
+        if (!testContact(index, link)) {
+
+            removeLink(index, link);
+
+            removeAnchor(link, index);
+            m_connections[index].contacts.erase(m_connections[index].contacts.begin() + i);
+
+            i--;
+        }
+    }
+}
+
+// Identify if the hull is directly in contact with the sculpture (Fixed planes used as a proxy)
+bool Debris::isAnchor(const ConvexHull& hull) const
+{
+    for (const Plane& plane : m_fixedPlanes) {
+        if (Collision::distance(hull, plane) < 1e-12) return true;
+    }
+
+    return false;
+}
+
+// Identify if the hull is indirectly in contact with an anchor
+bool Debris::isAnchored(uint32_t idx) const
+{
+    return isAnchored(connections(idx));
+}
+
+// Identify if the hull is indirectly in contact with an anchor
+bool Debris::isAnchored(const std::vector<uint32_t>& connections) const
+{
+    for (uint32_t idx : connections) {
+        if (m_connections[idx].anchor || m_connections[idx].anchors > 0) return true;
+    }
+
+    return false;
+}
+
+bool Debris::testContact(uint32_t I0, uint32_t I1) const
+{
+    return Collision::distance(hulls()[I0], hulls()[I1]) < 1e-6;
+}
+
+std::vector<uint32_t> Debris::connections(uint32_t idx) const
+{
+    std::vector<uint32_t> connected = { idx };
+
+    // Tracking visits to avoide backtracking
+    auto visits = std::vector<bool>(m_connections.size(), false);
+    visits[idx] = true;
+
+    for (uint32_t i = 0; i < connected.size(); i++) {
+        for (uint32_t j : m_connections[connected[i]].contacts) {
+            if (!visits[j]) {
+                connected.emplace_back(j);
+                visits[j] = true;
+            }
+        }
+    }
+
+    return connected;
+}
+
 
 void Debris::completeCut()
 {
@@ -120,32 +223,27 @@ bool Debris::inProcess() const
 // Shaves material from the next section (depth from the origin). Releases fragments as connections are removed
 std::vector<std::shared_ptr<RigidBody>> Debris::removeMaterial(const glm::dvec3& normal, double depth)
 {
-    std::vector<std::shared_ptr<RigidBody>> fragments;
-//    std::cout << "RM " << depth << "\n";
-
     if (!m_cuts.empty()) {
+
+        assert(m_connections.size() == hulls().size());
+
         Plane cutPlane(m_cuts[0].origin + m_cuts[0].axis * depth, normal); // m_cuts[0].axis
 
+        // Remove material from all relevant kerfs and update connections
         for (uint32_t i = 0; i < m_cuts[0].sections.size(); i++) {
             if (m_cuts[0].sections[i].ts < depth) {
-//                if (m_cuts[0].sections[i].depth <= depth + 1e-12) {
-//                    std::shared_ptr<RigidBody> fragment = tryFragmentRelease(m_cuts[0].sections[i]);
-//                    if (fragment != nullptr) fragments.push_back(fragment);
-//                }
-
-//                std::cout << "S" << i << ": " << m_cuts[0].sections[i].ts << " " << m_cuts[0].sections[i].tf << " " << (m_cuts[0].sections[i].tf <= depth + 1e-12) << "\n";
-//                if (m_cuts[0].sections[i].tf <= depth + 1e-12) { // To delete section
-//                    removeKerf(i); // Fragment must already have been released if reached
-//                } else {
-                    auto remainder = Collision::fragment(hulls()[m_cuts[0].sections[i].cutIndex], cutPlane);
-                    if (remainder.isValid()) replace(remainder, m_cuts[0].sections[i].cutIndex);
-                    else {
-                        removeKerf(i);
-                        i--;
-                    }
-//                }
+                auto remainder = Collision::fragment(hulls()[m_cuts[0].sections[i].cutIndex], cutPlane);
+                if (remainder.isValid()) {
+                    replace(remainder, m_cuts[0].sections[i].cutIndex);
+                    updateConnection(m_cuts[0].sections[i].cutIndex);
+                } else {
+                    removeKerf(i);
+                    i--;
+                }
             }
         }
+
+        auto fragments = tryFragmentRelease();
 
         remesh();
 
@@ -155,71 +253,137 @@ std::vector<std::shared_ptr<RigidBody>> Debris::removeMaterial(const glm::dvec3&
     return {};
 }
 
-//std::vector<std::shared_ptr<RigidBody>> Debris::removeCut()
-//{
-//    std::vector<std::shared_ptr<RigidBody>> fragments;
-//
-//    for (uint32_t i = 0; i < m_cuts[0].sections.size(); i++) {
-//        std::shared_ptr<RigidBody> fragment = removeKerf(i);
-//        if (fragment != nullptr) fragments.push_back(fragment);
-//    }
-//
-//    m_cuts.pop_front();
-//    return fragments;
-//}
-
-std::shared_ptr<RigidBody> Debris::removeKerf(uint32_t index)
+void Debris::removeKerf(uint32_t index)
 {
-    auto fragment = tryFragmentRelease(m_cuts[0].sections[index]);
+    index = m_cuts[0].sections[index].cutIndex;
+    removeConnection(index);
+    removeIndexed(index);
+}
 
-    uint32_t last = hulls().size() - 1, cutIndex = m_cuts[0].sections[index].cutIndex;
+// Cleanly removes connection - Connected
+void Debris::removeConnection(uint32_t index)
+{
+    uint32_t last = hulls().size() - 1;
 
-    replaceIndex(last, cutIndex);
+    // Remove remaining connections to the element
+    for (uint32_t idx : m_connections[index].contacts) removeLink(index, idx);
 
-    remove(cutIndex);
-    m_cuts[0].sections.erase(m_cuts[0].sections.begin() + index);
+    // Correct indexing due to swap before removal
+    if (index < last) {
+        m_connections[index] = m_connections[last];
+
+        for (uint32_t idx : m_connections[index].contacts){
+            auto loc = std::find(m_connections[idx].contacts.begin(), m_connections[idx].contacts.end(), last);
+            assert(loc != m_connections[idx].contacts.end());
+            *loc = index;
+        }
+    }
+
+    m_connections.pop_back();
+}
+
+void Debris::removeLink(uint32_t index, uint32_t link)
+{
+    auto loc = std::find(m_connections[link].contacts.begin(), m_connections[link].contacts.end(), index);
+    assert(loc != m_connections[link].contacts.end());
+    m_connections[link].contacts.erase(loc);
+    removeAnchor(index, link);
+}
+
+// Remove the connection [anchor] from link. Marks for testing if it is not directly anchored
+void Debris::removeAnchor(uint32_t anchor, uint32_t link)
+{
+    if (m_connections[anchor].anchor) m_connections[link].anchors--;
+    m_connections[link].tested = m_connections[link].anchors > 0;
+}
+
+// Update section (cut) indices if it is not the last hull before removing the hull from the body
+void Debris::removeIndexed(uint32_t index)
+{
+    uint32_t last = hulls().size() - 1;
+
+    // Remove kerf associated with the hull (If it exists)
+    for (uint32_t i = 0; i < m_cuts[0].sections.size(); i++) {
+        if (m_cuts[0].sections[i].cutIndex == index) {
+            m_cuts[0].sections.erase(m_cuts[0].sections.begin() + i);
+            break;
+        }
+    }
+
+    // CompositeBody swaps index & last hull prior to removal - Adjust index given that fact
+    if (index < last) {
+        for (CutOperation& cut : m_cuts) {
+            for (Kerf& sec : cut.sections) {
+                if (sec.cutIndex == last) sec.cutIndex = index;
+            }
+        }
+    }
+
+    remove(index);
+}
+
+std::vector<std::shared_ptr<RigidBody>> Debris::tryFragmentRelease()
+{
+    std::vector<std::shared_ptr<RigidBody>> fragments;
+
+    for (uint32_t i = 0; i < m_connections.size(); i++) {
+        if (!m_connections[i].tested) { // Only check hulls that might be released (Recent total loss of direct contact with anchors)
+            m_connections[i].tested = true;
+
+            auto connected = connections(i);
+
+            if (!isAnchored(connected)) {
+
+                // Sort in descending order so that hull removal is index-consistent
+                std::sort(connected.begin(), connected.end(), [](uint32_t a, uint32_t b) {
+                    return a > b;
+                });
+
+                fragments.emplace_back(prepareFragment(connected));
+
+                // Remove released hulls
+                for (uint32_t idx : connected) {
+                    removeConnection(idx);
+                    removeIndexed(idx);
+                }
+            } else { // Block retests for connected hulls (In case they were also triggered)
+                for (uint32_t idx : connected) m_connections[idx].tested = true;
+            }
+        }
+    }
+
+    return fragments;
+}
+
+// Prepare fragment, attaching all connected hulls together for each
+std::shared_ptr<RigidBody> Debris::prepareFragment(const std::vector<uint32_t>& connected)
+{
+    std::shared_ptr<RigidBody> fragment = nullptr;
+    if (connected.size() == 1) fragment = std::make_shared<RigidBody>(hulls()[connected[0]]);
+    else {
+        std::vector<ConvexHull> set;
+        set.reserve(connected.size());
+
+        for (uint32_t idx : connected) if (hulls()[idx].isValid()) set.push_back(hulls()[idx]);
+        fragment = std::make_shared<CompositeBody>(set);
+    }
+
+    fragment->setTransform(getTransform());
+    fragment->setType(RigidBody::Type::DYNAMIC);
 
     return fragment;
 }
 
-std::shared_ptr<RigidBody> Debris::tryFragmentRelease(Kerf& section)
+void Debris::print() const
 {
-    // Confirm section is connected to a fragment (Can be released a bit earlier than the section is finished)
-    if (section.srcIndex != std::numeric_limits<uint32_t>::max()) {
-        uint32_t index = section.srcIndex;
+    std::cout << "[Debris] hulls: " << hulls().size() << " (" << m_connections.size() << "), cuts: " << m_cuts.size() << ", sections: " << m_cuts[0].sections.size() << "\n";
 
-//        if (m_connectionCounts[index] == 0) throw std::runtime_error("[Debris] Unhandled connection");
-//        m_connectionCounts[index]--;
+    for (uint32_t i = 0; i < m_connections.size(); i++) {
+        std::cout << "CON" << i << ": ( anchors: " << m_connections[i].anchor << ", " << m_connections[i].anchors
+                  << ", anchored: " << (m_connections[i].anchor || isAnchored(i))
+                  << ", tested: " << m_connections[i].tested  << "): ";
 
-//        section.srcIndex = std::numeric_limits<uint32_t>::max();
-
-//        if (m_connectionCounts[index] == 0) { // All connections are removed -> release hull as a fragment
-//
-//            replaceIndex(hulls().size() - 1, index);
-//
-//            auto fragment = std::make_shared<RigidBody>(hulls()[index]);
-//            fragment->setTransform(m_transform);
-//            fragment->setType(RigidBody::Type::DYNAMIC);
-////        fragment->zero();
-////        fragment->disableCollisions();
-//
-//            remove(index);
-//
-//            return fragment;
-//        }
-    }
-
-    return nullptr;
-}
-
-// Update section (cut) indices if it is not the last hull
-void Debris::replaceIndex(uint32_t oldIndex, uint32_t newIndex)
-{
-    if (newIndex < oldIndex) {
-        for (CutOperation& cut : m_cuts) {
-            for (Kerf& sec : cut.sections) {
-                if (sec.cutIndex == oldIndex) sec.cutIndex = newIndex; // CompositeBody swaps index & last hull prior to removal - Adjust index given that fact
-            }
-        }
+        for (uint32_t j : m_connections[i].contacts) std::cout << j << " ";
+        std::cout << "\n";
     }
 }
