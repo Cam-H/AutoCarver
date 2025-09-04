@@ -19,11 +19,7 @@ public:
     SectionOperation(const glm::dvec2& start, const glm::dvec2& split, const glm::dvec2& end,
                      double width, double thickness);
 
-    SectionOperation(const glm::dvec2& start, const glm::dvec2& split, const glm::dvec2& end,
-                     const glm::dvec2& pre, const glm::dvec2& post,
-                     const std::pair<double, double>& clearance,
-                     const Profile* profile,
-                     double width, double thickness);
+    void prepareReliefs(const Profile* profile);
 
 
     struct Set {
@@ -43,7 +39,8 @@ public:
     struct Relief {
 
         Relief(const glm::dvec2& start,
-               const glm::dvec2& internal, const glm::dvec2& external, const glm::dvec2& help,
+               const glm::dvec2& internal, const glm::dvec2& external, const glm::dvec2& opposite,
+               const glm::dvec2& normal,
                double length, double width, double thickness);
 
         [[nodiscard]] double step(double t) const;
@@ -81,10 +78,17 @@ public:
     [[nodiscard]] std::vector<Set> cuts() const;
 
     static double RUN_UP;
+    static uint8_t ITERATIONS;
 
 private:
 
-    bool prepareRelief();
+    [[nodiscard]] bool checkFloor(const glm::dvec2& initial, const glm::dvec2& normal, const Profile* profile) const;
+
+    bool prepareRelief(const glm::dvec2& initial,
+                       const glm::dvec2& internal, const glm::dvec2& external, const glm::dvec2& opposite,
+                       const glm::dvec2& normal,
+                       double length,
+                       const Profile* profile);
 
 public:
 

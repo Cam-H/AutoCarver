@@ -34,6 +34,8 @@ public:
 //    void translate(const glm::dvec2& translation);
     void translate(const glm::dvec3& translation);
 
+    void positionVertex(uint32_t index, const glm::dvec2& position) override;
+
     void rotateAbout(const glm::dvec3& axis, double theta);
 
     void inverseWinding() override;
@@ -52,6 +54,8 @@ public:
 
     [[nodiscard]] double area() const;
 
+    [[nodiscard]] double floor() const;
+
     [[nodiscard]] std::pair<double, double> angles() const;
     [[nodiscard]] std::pair<double, double> clearance() const;
 
@@ -69,6 +73,9 @@ public:
     [[nodiscard]] std::vector<glm::dvec3> projected3D() const;
     [[nodiscard]] std::vector<glm::dvec3> projected3D(const TriIndex& triangle, const glm::dvec3& offset = {}) const;
     [[nodiscard]] std::vector<glm::dvec3> projected3D(const std::vector<uint32_t>& indices, const glm::dvec3& offset = {}) const;
+
+    [[nodiscard]] uint32_t prevVertex(uint32_t vertexIndex) const;
+    [[nodiscard]] uint32_t nextVertex(uint32_t vertexIndex) const;
 
     [[nodiscard]] std::vector<std::pair<glm::dvec2, glm::dvec2>> debugEdges() const override;
 
@@ -99,6 +106,8 @@ private:
     void delauneyRefinement();
     void testRefinement();
 
+    void findFloor();
+
     [[nodiscard]] double area(const TriIndex& triangle) const;
 
     inline static uint32_t difference(uint32_t a, uint32_t b, uint32_t max);
@@ -118,9 +127,6 @@ private:
 
     [[nodiscard]] std::pair<uint32_t, uint32_t> nextHullVertices(uint32_t vertexIndex) const;
 
-    [[nodiscard]] uint32_t prevVertex(uint32_t vertexIndex) const;
-    [[nodiscard]] uint32_t nextVertex(uint32_t vertexIndex) const;
-
     static double angle(const glm::dvec2& a, const glm::dvec2& b);
 
     void commitSections(const std::vector<Section>& sections);
@@ -138,6 +144,7 @@ private:
 
     double m_minimumArea;
 
+    uint32_t m_floorIndex;
 };
 
 

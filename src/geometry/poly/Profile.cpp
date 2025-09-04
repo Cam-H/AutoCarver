@@ -19,6 +19,7 @@ Profile::Profile(const std::vector<glm::dvec2>& contour, const glm::dvec3& norma
     , m_system(xAxis, yAxis,normal)
     , m_method(RefinementMethod::DIRECT)
     , m_minimumArea(0.0002)
+    , m_floorIndex(0)
 {
     initialize();
 }
@@ -136,6 +137,7 @@ void Profile::initialize()
         if (count > 2) emplaceRemainder(m_hull[i], count);
     }
 
+    findFloor();
 }
 
 // Returns the index of the terminal vertex for the step
@@ -237,6 +239,12 @@ void Profile::translate(const glm::dvec3& translation)
     });
 }
 
+void Profile::positionVertex(uint32_t index, const glm::dvec2& position)
+{
+    Polygon::positionVertex(index, position);
+    findFloor();
+}
+
 void Profile::rotateAbout(const glm::dvec3& axis, double theta)
 {
     m_system.rotate(axis, theta);
@@ -265,7 +273,7 @@ void Profile::skip()
 {
     if (!m_sections.empty()) {
         const uint32_t count = 1 + m_sections[0].children;
-        if (count < m_sections.size()) {
+        if (count <= m_sections.size()) {
             if (m_sections[0].skipped) { // Delete section if it has already been skipped once
                 for (uint32_t i = 0; i < count; i++) m_sections.pop_front();
             } else { // Move section to the back of the queue, if it has not been seen before
@@ -295,24 +303,7 @@ SectionOperation Profile::next(double bladeWidth, double bladeThickness) const
     if (m_sections.empty()) return {};
 
     const TriIndex& tri = m_sections[0].triangle;
-
-    auto margin = clearance();
-    if (margin.first < bladeWidth || margin.second < bladeWidth) { // More complicated case - reliefs required due to lack of access
-        return {
-                m_vertices[tri.I0],
-                m_vertices[tri.I1],
-                m_vertices[tri.I2],
-                m_vertices[prevVertex(tri.I0)],
-                m_vertices[nextVertex(tri.I2)],
-                margin,
-                this,
-                bladeWidth,
-                bladeThickness
-        };
-    }
-
-    // Simple case - Can be handled with a couple direct cuts
-    return {
+    auto operation = SectionOperation {
             m_vertices[tri.I0],
             m_vertices[tri.I1],
             m_vertices[tri.I2],
@@ -320,7 +311,9 @@ SectionOperation Profile::next(double bladeWidth, double bladeThickness) const
             bladeThickness
     };
 
-//    return m_sections[0].triangle;
+    operation.prepareReliefs(this);
+
+    return operation;
 }
 
 
@@ -351,6 +344,12 @@ double Profile::area() const
 {
     if (m_sections.empty()) return 0;
     return area(m_sections[0].triangle);
+}
+
+double Profile::floor() const
+{
+    if (m_floorIndex >= m_vertices.size()) return 0;
+    return m_vertices[m_floorIndex].y;
 }
 
 std::pair<double, double> Profile::angles() const
@@ -642,6 +641,17 @@ void Profile::testRefinement()
 
 }
 
+void Profile::findFloor()
+{
+    double min = std::numeric_limits<double>::max();
+    for (uint32_t i = 0; i < m_vertices.size(); i++) {
+        if (m_vertices[i].y < min) {
+            min = m_vertices[i].y;
+            m_floorIndex = i;
+        }
+    }
+}
+
 double Profile::area(const TriIndex& triangle) const
 {
     if (triangle.I0 == triangle.I1) return 0; // Indicates invalid triangle
@@ -713,12 +723,12 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
         double width = 0.108, thickness = 0.011; // Test values
         std::vector<uint8_t> checks;
 
-        auto margin = clearance();
-        if (margin.first  != 0) edges.emplace_back(m_vertices[tri.I0], m_vertices[tri.I0] + std::min(margin.first,  2.0) * glm::normalize(m_vertices[tri.I0] - m_vertices[tri.I1]));
-        else checks.emplace_back(0);
-
-        if (margin.second != 0) edges.emplace_back(m_vertices[tri.I2], m_vertices[tri.I2] + std::min(margin.second, 2.0) * glm::normalize(m_vertices[tri.I2] - m_vertices[tri.I1]));
-        else checks.emplace_back(1);
+//        auto margin = clearance();
+//        if (margin.first  != 0) edges.emplace_back(m_vertices[tri.I0], m_vertices[tri.I0] + std::min(margin.first,  2.0) * glm::normalize(m_vertices[tri.I0] - m_vertices[tri.I1]));
+//        else checks.emplace_back(0);
+//
+//        if (margin.second != 0) edges.emplace_back(m_vertices[tri.I2], m_vertices[tri.I2] + std::min(margin.second, 2.0) * glm::normalize(m_vertices[tri.I2] - m_vertices[tri.I1]));
+//        else checks.emplace_back(1);
 
         auto op = next(width, thickness);
 
@@ -733,19 +743,41 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
                                relief.start + relief.internal * relief.projection(thickness) + glm::dvec2{ 0, 0.2 });
         }
 
-        const std::vector<SectionOperation::Set>& cuts = op.cuts();
-        for (const SectionOperation::Set& set : cuts) {
-            for (uint32_t i = 0; i < set.motions.size(); i++) {
-                glm::dvec2 terminus = set.motions[i].first + set.axis * set.motions[i].second;
-                glm::dvec2 corner = terminus + set.normal * thickness;
+        auto d1 = m_vertices[tri.I0] - m_vertices[tri.I1], d2 = m_vertices[tri.I2] - m_vertices[tri.I1];
+//        auto d1 = m_vertices[prevVertex(tri.I0)] - m_vertices[tri.I0], d2 = m_vertices[nextVertex(tri.I2)] - m_vertices[tri.I2];
 
-                edges.emplace_back(set.motions[i].first, terminus);
-                edges.emplace_back(terminus, corner);
+        auto t0 = atan2(d1.y, d1.x), dt = glm::atan(d2.y, d2.x) - t0;
+        if (t0 < 0) t0 += 2 * M_PI;
+        if (dt < 0) dt += 2 * M_PI;
+        dt /= 1.0;
+        std::cout << "TH: " << t0 << " " << dt << "\n";
 
-                if (i < set.motions.size() - 1) edges.emplace_back(corner, set.motions[i + 1].first);
-            }
+        double t = t0;
+        for (uint32_t i = 0; i < 2; i++) {
+            edges.emplace_back(m_vertices[tri.I1], m_vertices[tri.I1] + 5.0 * glm::dvec2(cos(t), sin(t)));
+            t += dt;
         }
+
+
+
+//        auto v0 =
+
+
+//        const std::vector<SectionOperation::Set>& cuts = op.cuts();
+//        for (const SectionOperation::Set& set : cuts) {
+//            for (uint32_t i = 0; i < set.motions.size(); i++) {
+//                glm::dvec2 terminus = set.motions[i].first + set.axis * set.motions[i].second;
+//                glm::dvec2 corner = terminus + set.normal * thickness;
+//
+//                edges.emplace_back(set.motions[i].first, terminus);
+//                edges.emplace_back(terminus, corner);
+//
+//                if (i < set.motions.size() - 1) edges.emplace_back(corner, set.motions[i + 1].first);
+//            }
+//        }
     }
+
+    std::cout << "FLOOR: " << floor() << "\n";
 
     return edges;
 }

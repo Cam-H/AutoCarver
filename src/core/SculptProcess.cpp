@@ -55,6 +55,7 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     , m_fragmentReleaseEnable(true)
     , m_debrisColoringEnable(true)
     , m_sliceOrder(ConvexSliceOrder::TOP_DOWN)
+    , m_stepDg(90.0)
     , m_actionLimit(0xFFFFFFFF)
     , m_actionLimitEnable(false)
     , m_continuous(false)
@@ -247,7 +248,7 @@ void SculptProcess::plan()
     else m_sculpture->restoreAsHull();
 
     // Repeatedly refined the sculpture by cutting to the outline of the model at discrete orientations
-    if (m_silhouetteRefinementEnable) planOutlineRefinement(90.0);
+    if (m_silhouetteRefinementEnable) planOutlineRefinement(m_stepDg);
 
     // Capture model features with fine carving
 //    planFeatureRefinement();
@@ -409,20 +410,6 @@ void SculptProcess::step(double delta)
 //                m_debris->print();
                 m_debris->completeCut();
                 action.cuts.pop_front();
-            }
-
-            if (action.cuts.empty()) {
-                std::cout << "REM: " << m_debris->hulls().size() << "\n";
-                if (!m_debris->hulls().empty()) {
-                    for (const ConvexHull& hull : m_debris->hulls()) {
-                        std::cout << hull.isValid() << " " << hull.vertexCount() << " NH\n";
-                        if (hull.isValid()) m_sculpture->add(hull);
-                    }
-
-                    m_sculpture->remesh();
-                }
-
-                removeDebris();
             }
         }
     }
@@ -883,8 +870,6 @@ void SculptProcess::planOutlineRefinement(double stepDg)
         detector->capture()->camera().rotate(stepDg);
         detector->capture()->focus();
         step += stepDg;
-
-        break;
     }
 
     // Restore blade-sculpture collision checking
@@ -990,7 +975,7 @@ bool SculptProcess::planBlindCut(const Pose& pose, double depth, Action& action)
     auto axes = pose.axes;
     if (depth < 0) axes.flipXZ();
 
-    action.cuts.emplace_back(Pose(pose.position + 0.5 * m_bladeWidth * pose.axes.xAxis, axes), m_bladeThickness, 0, 0, trajectory->segmentCount() - 2);
+    action.cuts.emplace_back(Pose(pose.position + 0.5 * m_bladeWidth * pose.axes.xAxis, axes), 0, 0, 0, trajectory->segmentCount() - 2);
 
     return true;
 }
@@ -1010,11 +995,13 @@ bool SculptProcess::planMill(const Pose& pose, const glm::dvec3& normal, const g
 
     double direction = 1 - 2 * (glm::dot(pose.axes.xAxis, travel) < 0);
     glm::dvec3 origin = pose.position + 0.5 * m_bladeWidth * direction * pose.axes.xAxis;
-    double teff = std::abs(m_bladeThickness * glm::dot(normal, pose.axes.yAxis));
+
+    double theta = acos(glm::dot(travel, pose.axes.yAxis));
 //    std::cout << "PMT: " << depth << " " << m_bladeThickness << " " << teff << " " << teff * direction << " " << direction << " | " << " " << normal.x << " " << normal.y << " " << normal.z << "\n";
 //    if (teff < 0) throw std::runtime_error("[SculptProcess] Failed to calculate effective thickness");
 
-    action.cuts.emplace_back(origin, normal, travel, teff + 1e-6, 0, 0, trajectory->segmentCount() - 1);
+
+    action.cuts.emplace_back(origin, normal, travel, theta, 0, 0, trajectory->segmentCount() - 1);
 
     return true;
 }
@@ -1126,7 +1113,7 @@ std::shared_ptr<CompositeTrajectory> SculptProcess::prepareThroughCut(Pose pose,
         auto axes = pose.axes;
         if (depth < 0) axes.flipXZ();
 
-        m_cuts.emplace_back(Pose(pose.position, axes), m_bladeThickness, ts, tf, 0);
+        m_cuts.emplace_back(Pose(pose.position, axes), 0, ts, tf, 0);
         return trajectory;
     }
 
@@ -1144,8 +1131,9 @@ void SculptProcess::nextAction()
     action.target->traverse(action.trajectory);
     action.started = true;
 
+    removeDebris();
+
     if (!action.cuts.empty()) {
-        removeDebris();
 
         if (m_cutSimulationEnable) {
             m_debris = m_sculpture->applySection();
@@ -1161,7 +1149,7 @@ void SculptProcess::nextAction()
                 glm::dvec3 normal = cut.normal * -rotation;
                 glm::dvec3 axis = cut.axis * -rotation;
 
-                m_debris->queueCut(origin, normal, axis, cut.thickness);
+                m_debris->queueCut(origin, normal, axis, m_bladeThickness, cut.theta);
             }
 
             std::cout << "CUTS: " << action.cuts.size() << "\n";
@@ -1176,6 +1164,16 @@ void SculptProcess::nextAction()
 void SculptProcess::removeDebris()
 {
     if (m_debris != nullptr) {
+
+        if (!m_debris->hulls().empty()) {
+            for (const ConvexHull& hull : m_debris->hulls()) {
+                std::cout << hull.isValid() << " " << hull.vertexCount() << " NH\n";
+                if (hull.isValid()) m_sculpture->add(hull);
+            }
+
+            m_sculpture->remesh();
+        }
+
         for (uint32_t i = 0; i < m_bodies.size(); i++) {
             if (m_bodies[i] == m_debris) {
                 m_bodies.erase(m_bodies.begin() + i);

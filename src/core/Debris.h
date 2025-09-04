@@ -23,7 +23,7 @@ public:
 
     void addFixedPlane(const Plane& plane);
 
-    void queueCut(const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& axis, double thickness);
+    void queueCut(const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& axis, double thickness, double theta);
     void beginCut();
     void completeCut();
 
@@ -53,13 +53,14 @@ private:
     };
 
     struct CutOperation {
-        CutOperation(const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& axis, double thickness) : origin(origin), normal(normal), axis(axis), thickness(thickness) {}
+        CutOperation(const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& axis, double thickness, double theta) : origin(origin), normal(normal), axis(axis), thickness(thickness), theta(theta) {}
 
         glm::dvec3 origin; // Center position between limit planes, from where axis begins
         glm::dvec3 normal; // Normal of limit plane
 
         glm::dvec3 axis;
         double thickness;
+        double theta; // Angle between blade and normal
 
         std::vector<Kerf> sections;
     };

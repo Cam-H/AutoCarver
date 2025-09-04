@@ -38,9 +38,9 @@ void Debris::addFixedPlane(const Plane& plane)
 }
 
 // System [Local] - xAxis = direction of cut
-void Debris::queueCut(const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& axis, double thickness)
+void Debris::queueCut(const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& axis, double thickness, double theta)
 {
-    m_cuts.emplace_back(origin, normal, axis, thickness);
+    m_cuts.emplace_back(origin, normal, axis, thickness, theta);
 }
 
 void Debris::beginCut()
@@ -48,24 +48,34 @@ void Debris::beginCut()
     if (m_cuts.empty() && !m_inProcess) return;
 
     CutOperation& cut = m_cuts[0];
-    std::cout << "Cut: " << hulls().size() << " " << m_cuts.size() << " " << cut.axis.x << " " << cut.axis.y << " " << cut.axis.z << " | " << cut.normal.x << " " << cut.normal.y << " " << cut.normal.z << " " << "\n";
+    std::cout << "Cut: " << hulls().size() << " " << m_cuts.size() << " " << cut.axis.x << " " << cut.axis.y << " " << cut.axis.z
+    << " | " << cut.normal.x << " " << cut.normal.y << " " << cut.normal.z << " | " << cut.theta << " " << "\n";
 
-    double ht = 0.5 * cut.thickness;
+    double ht = 0.5 * cut.thickness + 1e-6;
 
-    auto fwdPlane = Plane(cut.origin + ht * cut.normal, cut.normal);
-    auto revPlane = Plane(cut.origin - ht * cut.normal, -cut.normal);
+    double hyt = ht, hxt = 0;
+    if (std::abs(cut.theta) > 1e-6) {
+        hyt *= sin(cut.theta);
+        hxt = ht * cos(cut.theta);
+    }
+
+    auto filter = Plane(cut.origin - hxt * cut.axis, cut.axis);
+    auto fwdPlane = Plane(cut.origin + hyt * cut.normal, cut.normal);
+    auto revPlane = Plane(cut.origin - hyt * cut.normal, -cut.normal);
 
     std::vector<uint32_t> kerfs;
 
     // Split any hulls that pass through the cutting planes to limit effect to kerfs
     const uint32_t initialCount = hulls().size();
     for (uint32_t i = 0; i < initialCount; i++) {
+        if (Collision::below(hulls()[i], filter)) continue; // Skip hulls behind the blade
+
         auto [min, max] = hulls()[i].extremes(cut.normal);
         double near = glm::dot(cut.normal, hulls()[i].vertices()[min] - cut.origin);
         double far = glm::dot(cut.normal, hulls()[i].vertices()[max] - cut.origin);
-        std::cout << "H" << i << ": " << near << " " << far << " | " << ht << " ";
+        std::cout << "H" << i << ": " << near << " " << far << " | " << ht << " " << hyt << " " << hxt << " ";
 
-        bool nearPass = near < -ht - 1e-6, farPass = far > ht + 1e-6;
+        bool nearPass = near < -hyt - 1e-6, farPass = far > hyt + 1e-6;
 
         uint32_t idx = i, count = hulls().size();
 

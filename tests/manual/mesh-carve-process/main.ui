@@ -263,18 +263,53 @@
         </property>
        </widget>
       </item>
-      <item row="5" column="4">
+      <item row="6" column="4">
        <widget class="QPushButton" name="testButton2">
         <property name="text">
          <string>Mill Test</string>
         </property>
        </widget>
       </item>
-      <item row="4" column="4">
+      <item row="5" column="4">
        <widget class="QPushButton" name="testButton1">
         <property name="text">
          <string>Blind Test</string>
         </property>
+       </widget>
+      </item>
+      <item row="4" column="4">
+       <widget class="QWidget" name="widget_5" native="true">
+        <layout class="QHBoxLayout" name="horizontalLayout_4">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="label_6">
+           <property name="text">
+            <string>Dg/Step</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QDoubleSpinBox" name="stepDgField">
+           <property name="minimum">
+            <double>5.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>180.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>5.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>90.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </widget>
       </item>
      </layout>

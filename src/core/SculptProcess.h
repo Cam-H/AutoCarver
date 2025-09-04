@@ -94,19 +94,19 @@ public:
 private:
 
     struct Cut {
-        Cut(const Pose& pose, double effectiveThickness, double ts, double tf, uint32_t index)
+        Cut(const Pose& pose, double theta, double ts, double tf, uint32_t index)
             : origin(pose.position)
             , normal(pose.axes.yAxis)
             , axis(pose.axes.xAxis)
-            , thickness(effectiveThickness)
+            , theta(theta)
             , ts(ts)
             , tf(tf)
             , index(index) {}
-        Cut(const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& axis, double effectiveThickness, double ts, double tf, uint32_t index)
+        Cut(const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& axis, double theta, double ts, double tf, uint32_t index)
             : origin(origin)
             , normal(normal)
             , axis(axis)
-            , thickness(effectiveThickness)
+            , theta(theta)
             , ts(ts)
             , tf(tf)
             , index(index) {}
@@ -114,7 +114,7 @@ private:
         glm::dvec3 origin; // Initial position before beginning cut
         glm::dvec3 normal; // Normal to the cutting direction
         glm::dvec3 axis; // Axis of travel
-        double thickness; // Distance between cutting planes (Reduced from full blade thickness when axis is not perpendicular to normal)
+        double theta; // Angle between blade and normal of cut surface
         double ts;
         double tf;
         uint32_t index;
@@ -246,6 +246,8 @@ private:
     bool m_debrisColoringEnable;
 
     ConvexSliceOrder m_sliceOrder;
+
+    double m_stepDg;
 
     uint32_t m_actionLimit;
     bool m_actionLimitEnable;

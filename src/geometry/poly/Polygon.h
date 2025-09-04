@@ -28,7 +28,7 @@ public:
     void insertVertex(const glm::dvec2& vertex);
     void insertVertex(uint32_t index, const glm::dvec2& vertex);
 
-    void positionVertex(uint32_t index, const glm::dvec2& position);
+    virtual void positionVertex(uint32_t index, const glm::dvec2& position);
 
     void translate(const glm::dvec2& translation);
     void scale(double scalar);
