@@ -41,7 +41,7 @@ RigidBody::RigidBody()
 }
 
 RigidBody::RigidBody(const std::string& filename)
-        : RigidBody()
+    : RigidBody()
 {
     Serializable::load(filename);
 
@@ -55,7 +55,7 @@ RigidBody::RigidBody(const std::shared_ptr<Mesh>& mesh)
 }
 
 RigidBody::RigidBody(const ConvexHull& hull)
-        : RigidBody()
+    : RigidBody()
 {
     m_mesh = std::make_shared<Mesh>(hull);
     m_hull = hull;
@@ -65,19 +65,23 @@ RigidBody::RigidBody(const ConvexHull& hull)
 
 bool RigidBody::serialize(std::ofstream& file) const
 {
-    if (!Body::serialize(file)) return false;
-
-    return true;
+    return Body::serialize(file);
 }
 
 bool RigidBody::deserialize(std::ifstream& file)
 {
-    if (Body::deserialize(file)) {
+    std::cout << "RBDS\n";
 
+    if (Body::deserialize(file)) {
+        std::cout << m_mesh << " RBDS0\n";
+
+        std::cout << m_mesh->vertexCount() << "\n";
         updateColliders();
+        std::cout << "RBDS1\n";
 
         return true;
     }
+    std::cout << "RBDSNF\n";
 
     return false;
 }

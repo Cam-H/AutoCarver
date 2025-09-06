@@ -328,9 +328,11 @@ void SceneWidget::paintGL()
         if (settings.hullVisibility) render(item.hull, transform);
         if (settings.axesVisibility) render(m_axes, transform);
 
-        transform.translate(item.bounds.center.x, item.bounds.center.y, item.bounds.center.z);
-        transform.scale(item.bounds.radius);
-        if (settings.boundsVisibility) render(m_sphere, transform);
+        if (settings.boundsVisibility) {
+            transform.translate(item.bounds.center.x, item.bounds.center.y, item.bounds.center.z);
+            transform.scale(item.bounds.radius);
+            render(m_sphere, transform);
+        }
     }
 }
 

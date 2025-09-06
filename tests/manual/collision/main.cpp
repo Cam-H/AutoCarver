@@ -16,7 +16,7 @@
 #include "ControlWidget.h"
 #include "fileIO/MeshHandler.h"
 #include "geometry/MeshBuilder.h"
-#include "core/SculptProcess.h"
+#include "process/SculptProcess.h"
 #include "robot/ArticulatedWrist.h"
 
 #endif

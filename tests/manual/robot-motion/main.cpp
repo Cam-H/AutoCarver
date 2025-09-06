@@ -19,7 +19,7 @@
 #include "renderer/SceneWidget.h"
 #include "fileIO/MeshHandler.h"
 #include "geometry/MeshBuilder.h"
-#include "core/SculptProcess.h"
+#include "process/SculptProcess.h"
 #include "robot/ArticulatedWrist.h"
 #include "geometry/Axis3D.h"
 #include "core/Timer.h"
@@ -60,7 +60,6 @@ QRadioButton *linearButton = nullptr, *cubicButton = nullptr, *quinticButton = n
 QPushButton *simpleTestButton = nullptr, *constrainedTestButton = nullptr, *compositeTestButton = nullptr;
 
 QSpinBox *wpStartField = nullptr, *wpEndField = nullptr;
-QDoubleSpinBox *dxField = nullptr, *dyField = nullptr, *dzField = nullptr;
 
 std::vector<QCheckBox*> jPlotButtons;
 QCheckBox* posPlotButton = nullptr, *delPlotButton = nullptr, *remPlotButton = nullptr, *velPlotButton = nullptr, *accPlotButton = nullptr, *devPlotButton = nullptr;
@@ -380,6 +379,7 @@ int main(int argc, char *argv[])
     QObject::connect(ttAngleField, &QSpinBox::valueChanged, [&](int value) {
         scene->getTurntable()->setJointValueDg(0, value);
         scene->getTurntable()->update();
+        scene->update();
 
         if (planeIdx != std::numeric_limits<uint32_t>::max()) {
             scene->alignToFace(planeIdx);
@@ -566,39 +566,24 @@ int main(int argc, char *argv[])
         test(traj);
     });
 
-
-    dxField = window->findChild<QDoubleSpinBox*>("dxField");
-    dyField = window->findChild<QDoubleSpinBox*>("dyField");
-    dzField = window->findChild<QDoubleSpinBox*>("dzField");
-
     constrainedTestButton = window->findChild<QPushButton*>("constrainedTestButton");
     QObject::connect(constrainedTestButton, &QRadioButton::clicked, [&]() {
-        auto startPose = robot->getPose();
-        glm::dvec3 translation = { dxField->value(), dyField->value(), dzField->value() };
-
-        auto [vLims, aLims] = getLimits(M_PI / 180);
-
-        auto traj = std::make_shared<CartesianTrajectory>(robot, startPose, translation);
-        traj->setLimits(vLims, aLims);
-
-        if (traj->isValid()) test(traj);
-        else std::cout << "Validation failed!\n";
+//        auto startPose = robot->getPose();
+//
+//        auto [vLims, aLims] = getLimits(M_PI / 180);
+//
+//        auto traj = std::make_shared<CartesianTrajectory>(robot, startPose, translation, 10);
+//        traj->setLimits(vLims, aLims);
+//
+//        if (traj->isValid()) test(traj);
+//        else std::cout << "Validation failed!\n";
     });
 
-
-    compositeTestButton = window->findChild<QPushButton*>("compositeTestButton");
-    QObject::connect(compositeTestButton, &QRadioButton::clicked, [&]() {
-        const Waypoint& start = waypoints[wpStartField->value()].toRad(), mid = waypoints[wpEndField->value()].toRad();
-        auto midPose = robot->getPose(mid);
-        glm::dvec3 translation = { dxField->value(), dyField->value(), dzField->value() };
-
-        auto [vLims, aLims] = getLimits(M_PI / 180);
-        auto traj = std::make_shared<CompositeTrajectory>(6);
-        traj->setLimits(vLims, aLims);
-        traj->addTrajectory(std::make_shared<SimpleTrajectory>(start, mid, solver));
-        traj->addTrajectory(std::make_shared<CartesianTrajectory>(robot, midPose, translation));
-        traj->update();
-        test(traj);
+    auto loadButton = window->findChild<QPushButton*>("loadButton");
+    QObject::connect(loadButton, &QPushButton::clicked, [=]() {
+        const QString selectedFile = QFileDialog::getOpenFileName(nullptr, "Select Sculpture",
+                                                                        "../out", "Binary Files (*.bin)");
+        scene->loadSculpture(selectedFile.toStdString());
     });
 
     jPlotButtons = {

@@ -54,6 +54,8 @@ void updateLabel()
 
 template<class T>
 void load(const QStringList& selectedFiles) {
+    if (selectedFiles.empty()) return;
+
     uint32_t idx = polygons.size();
 
     for (const QString& filename : selectedFiles) {

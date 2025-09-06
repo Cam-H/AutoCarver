@@ -10,6 +10,9 @@
 
 #include <gtc/type_ptr.hpp>
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <gtx/string_cast.hpp>
+
 Serializer *Serializer::instance = new Serializer();
 
 Serializer::Serializer ()
@@ -127,6 +130,14 @@ bool Serializer::writeUint(std::ofstream& file, uint32_t value)
     return true;
 }
 
+bool Serializer::writeDouble(std::ofstream& file, double value)
+{
+    char *buffer = reinterpret_cast<char*>(&value);
+    file.write(buffer, sizeof(double));
+
+    return true;
+}
+
 bool Serializer::writeDVec2(std::ofstream& file, const glm::dvec2& value)
 {
     file.write(reinterpret_cast<const char*>(glm::value_ptr(value)), sizeof(glm::dvec2));
@@ -155,6 +166,9 @@ bool Serializer::writeVectorDVec3(std::ofstream& file, const std::vector<glm::dv
 
 bool Serializer::writeTransform(std::ofstream& file, const glm::dmat4x4& value)
 {
+    std::cout << "Transform: " << glm::to_string(value) << "\n";
+
+
     file.write(reinterpret_cast<const char*>(glm::value_ptr(value)), sizeof(glm::dmat4x4));
     return true;
 }
@@ -202,6 +216,17 @@ uint32_t Serializer::readUint(std::ifstream& file)
     return data;
 }
 
+double Serializer::readDouble(std::ifstream& file)
+{
+    char* buffer = new char[8];
+
+    file.read(buffer, sizeof(double));
+    double data = *reinterpret_cast<double*>(buffer);
+
+    delete[] buffer;
+    return data;
+}
+
 glm::dvec2 Serializer::readDVec2(std::ifstream& file)
 {
     auto *buffer = new double[2];
@@ -244,13 +269,18 @@ std::vector<glm::dvec3> Serializer::readVectorDVec3(std::ifstream& file)
     return vertices;
 }
 
-glm::dmat4x4 Serializer::readTransform(std::ifstream& file)
+glm::dmat4 Serializer::readTransform(std::ifstream& file)
 {
-    auto *buffer = new float[16];
-    file.read(reinterpret_cast<char*>(buffer), sizeof(glm::dmat4x4));
+    auto *buffer = new double[16];
+    std::cout << "B " << sizeof(buffer) << " " << sizeof(glm::dmat4) << "\n";
+    file.read(reinterpret_cast<char*>(buffer), sizeof(glm::dmat4));
 
+    std::cout << "RTF\n";
     auto transform = glm::make_mat4(buffer); // TODO check
     delete[] buffer;
+    std::cout << "RTFZ\n";
+
+    std::cout << glm::to_string(transform) << "\n";
 
     return transform;
 }

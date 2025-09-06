@@ -23,8 +23,8 @@ public:
     bool serialize(std::ofstream& file) const;
     static FaceArray deserialize(std::ifstream& file);
 
-    void addFace(std::vector<uint32_t> face);
-    void addFace(const std::vector<uint32_t>& face, const glm::dvec3& color);
+    bool addFace(std::vector<uint32_t> face);
+    bool addFace(const std::vector<uint32_t>& face, const glm::dvec3& color);
 
     void assignNormals(const std::vector<glm::dvec3>& normals);
 
@@ -101,9 +101,6 @@ private:
 
     std::vector<TriIndex> m_triangles;
     std::vector<uint32_t> m_triFaceLookup;
-
-    uint32_t m_faceCount; // Total number of faces
-    uint32_t m_indexCount; // Total number of indices, the sum of all face sizes
 };
 
 

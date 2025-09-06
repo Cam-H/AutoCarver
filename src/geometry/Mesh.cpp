@@ -60,7 +60,6 @@ Mesh::Mesh(const std::string& filename)
     : Mesh()
 {
     Serializable::load(filename);
-    initialize();
 }
 
 Mesh::Mesh(std::ifstream& file)
@@ -119,7 +118,10 @@ bool Mesh::serialize(std::ofstream& file) const
 
 bool Mesh::deserialize(std::ifstream& file)
 {
+    m_initialized = false;
+
     m_vertices = VertexArray(file);
+
     m_faces = FaceArray::deserialize(file);
 
     if (m_vertices.vertexCount() > 0 && m_faces.faceCount() > 0) {
@@ -133,6 +135,8 @@ bool Mesh::deserialize(std::ifstream& file)
 //        if (faceColors) {
 //            m_colors = VertexArray::deserialize(file);
 //        }
+
+        initialize();
 
         return true;
     }

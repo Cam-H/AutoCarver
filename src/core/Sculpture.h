@@ -18,9 +18,13 @@ class Debris;
 class Sculpture : public CompositeBody {
 public:
 
+    Sculpture(const std::string& filename);
     Sculpture(const std::shared_ptr<Mesh>& model, double width = 2.0f, double height = 6.0f);
 
-    void scaleToFit(const std::shared_ptr<Mesh>& model, double width, double maxHeight);
+    bool serialize(std::ofstream& file) const override;
+    bool deserialize(std::ifstream& file) override;
+
+    void scaleToFit(const std::shared_ptr<Mesh>& model, double maxHeight);
 
     void update();
 
@@ -45,7 +49,7 @@ public:
 
     const std::shared_ptr<Mesh>& sculpture();
 
-    const std::shared_ptr<RigidBody>& model();
+    const std::shared_ptr<Body>& model();
 
     [[nodiscard]] double width() const;
     [[nodiscard]] double height() const;
@@ -60,7 +64,11 @@ public:
     [[nodiscard]] double bulkUsageRatio() const;
     [[nodiscard]] double remainderRatio() const;
 
+    void print() const;
+
 private:
+
+    Sculpture();
 
     void prepareBox();
 
@@ -88,7 +96,7 @@ private:
 
 private:
 
-    std::shared_ptr<RigidBody> modelBody;
+    std::shared_ptr<Body> modelBody;
 
     double m_width;
     double m_height;

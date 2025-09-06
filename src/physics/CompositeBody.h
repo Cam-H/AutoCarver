@@ -20,6 +20,9 @@ public:
     explicit CompositeBody(const std::shared_ptr<Mesh>& mesh);
     explicit CompositeBody(const std::vector<ConvexHull>& hulls);
 
+    bool serialize(std::ofstream& file) const override;
+    bool deserialize(std::ifstream& file) override;
+
     virtual void restore();
 
     void locate();

@@ -14,15 +14,19 @@
 #include "geometry/primitives/Triangle.h"
 #include "geometry/primitives/Sphere.h"
 
+#include "fileIO/Serializable.h"
+
 class Mesh;
 class Plane;
 
 class HullBuilder;
 
-class ConvexHull {
+class ConvexHull : public Serializable {
 public:
 
     ConvexHull();
+
+    explicit ConvexHull(std::ifstream& file);
 
     explicit ConvexHull(const VertexArray& cloud);
     explicit ConvexHull(const std::shared_ptr<Mesh>& mesh);
@@ -30,6 +34,9 @@ public:
     explicit ConvexHull(const std::vector<glm::dvec3>& cloud);
 
     ConvexHull(const ConvexHull& rhs) = default;
+
+    bool serialize(std::ofstream& file) const override;
+    bool deserialize(std::ifstream& file) override;
 
     void evaluate();
 

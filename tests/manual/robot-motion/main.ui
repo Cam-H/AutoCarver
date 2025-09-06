@@ -45,9 +45,9 @@
          <property name="geometry">
           <rect>
            <x>0</x>
-           <y>-1337</y>
+           <y>0</y>
            <width>433</width>
-           <height>1965</height>
+           <height>1798</height>
           </rect>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_6">
@@ -63,6 +63,13 @@
                 <item>
                  <widget class="QWidget" name="jointAngleControlWidget" native="true">
                   <layout class="QVBoxLayout" name="verticalLayout_3">
+                   <item>
+                    <widget class="QPushButton" name="loadButton">
+                     <property name="text">
+                      <string>Load Sculpture</string>
+                     </property>
+                    </widget>
+                   </item>
                    <item>
                     <widget class="QWidget" name="settingsWidget" native="true">
                      <layout class="QGridLayout" name="gridLayout_8">
@@ -643,19 +650,6 @@
                            </property>
                           </widget>
                          </item>
-                         <item row="1" column="0">
-                          <widget class="QLabel" name="label_2">
-                           <property name="font">
-                            <font>
-                             <pointsize>10</pointsize>
-                             <bold>true</bold>
-                            </font>
-                           </property>
-                           <property name="text">
-                            <string>Simple Trajectory</string>
-                           </property>
-                          </widget>
-                         </item>
                          <item row="2" column="2">
                           <widget class="QSpinBox" name="wpStartField">
                            <property name="maximum">
@@ -689,51 +683,64 @@
                        </widget>
                       </item>
                       <item>
-                       <widget class="QWidget" name="widget_7" native="true">
-                        <layout class="QHBoxLayout" name="horizontalLayout_3">
-                         <property name="topMargin">
-                          <number>2</number>
-                         </property>
-                         <property name="bottomMargin">
-                          <number>2</number>
-                         </property>
-                         <item>
-                          <widget class="QRadioButton" name="linearButton">
-                           <property name="text">
-                            <string>Linear</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QRadioButton" name="cubicButton">
-                           <property name="text">
-                            <string>Cubic</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QRadioButton" name="quinticButton">
-                           <property name="text">
-                            <string>Quintic</string>
-                           </property>
-                           <property name="checked">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QPushButton" name="simpleTestButton">
-                        <property name="text">
-                         <string>Test</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
                        <widget class="QWidget" name="widget_6" native="true">
                         <layout class="QVBoxLayout" name="verticalLayout_7">
+                         <item>
+                          <widget class="QLabel" name="label_2">
+                           <property name="font">
+                            <font>
+                             <pointsize>10</pointsize>
+                             <bold>true</bold>
+                            </font>
+                           </property>
+                           <property name="text">
+                            <string>Simple Trajectory</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QWidget" name="widget_7" native="true">
+                           <layout class="QHBoxLayout" name="horizontalLayout_3">
+                            <property name="topMargin">
+                             <number>2</number>
+                            </property>
+                            <property name="bottomMargin">
+                             <number>2</number>
+                            </property>
+                            <item>
+                             <widget class="QRadioButton" name="linearButton">
+                              <property name="text">
+                               <string>Linear</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <widget class="QRadioButton" name="cubicButton">
+                              <property name="text">
+                               <string>Cubic</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <widget class="QRadioButton" name="quinticButton">
+                              <property name="text">
+                               <string>Quintic</string>
+                              </property>
+                              <property name="checked">
+                               <bool>true</bool>
+                              </property>
+                             </widget>
+                            </item>
+                           </layout>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QPushButton" name="simpleTestButton">
+                           <property name="text">
+                            <string>Test</string>
+                           </property>
+                          </widget>
+                         </item>
                          <item>
                           <widget class="QLabel" name="label_14">
                            <property name="font">
@@ -748,122 +755,7 @@
                           </widget>
                          </item>
                          <item>
-                          <widget class="QWidget" name="widget_8" native="true">
-                           <property name="font">
-                            <font>
-                             <pointsize>10</pointsize>
-                            </font>
-                           </property>
-                           <layout class="QGridLayout" name="gridLayout_3">
-                            <item row="1" column="0">
-                             <widget class="QLabel" name="label_11">
-                              <property name="text">
-                               <string>X</string>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="3" column="2">
-                             <widget class="QDoubleSpinBox" name="dzField">
-                              <property name="minimum">
-                               <double>-5.000000000000000</double>
-                              </property>
-                              <property name="maximum">
-                               <double>5.000000000000000</double>
-                              </property>
-                              <property name="singleStep">
-                               <double>0.100000000000000</double>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="3" column="0">
-                             <widget class="QLabel" name="label_18">
-                              <property name="text">
-                               <string>Z</string>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="1" column="2">
-                             <widget class="QDoubleSpinBox" name="dxField">
-                              <property name="minimum">
-                               <double>-5.000000000000000</double>
-                              </property>
-                              <property name="maximum">
-                               <double>5.000000000000000</double>
-                              </property>
-                              <property name="singleStep">
-                               <double>0.100000000000000</double>
-                              </property>
-                              <property name="value">
-                               <double>0.000000000000000</double>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="2" column="0">
-                             <widget class="QLabel" name="label_15">
-                              <property name="text">
-                               <string>Y</string>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="2" column="2">
-                             <widget class="QDoubleSpinBox" name="dyField">
-                              <property name="minimum">
-                               <double>-5.000000000000000</double>
-                              </property>
-                              <property name="maximum">
-                               <double>5.000000000000000</double>
-                              </property>
-                              <property name="singleStep">
-                               <double>0.100000000000000</double>
-                              </property>
-                              <property name="value">
-                               <double>1.000000000000000</double>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="4" column="0">
-                             <widget class="QLabel" name="label_19">
-                              <property name="font">
-                               <font>
-                                <pointsize>8</pointsize>
-                               </font>
-                              </property>
-                              <property name="text">
-                               <string>Delta (Local to EOAT axes)</string>
-                              </property>
-                             </widget>
-                            </item>
-                           </layout>
-                          </widget>
-                         </item>
-                         <item>
                           <widget class="QPushButton" name="constrainedTestButton">
-                           <property name="text">
-                            <string>Test</string>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QWidget" name="widget_9" native="true">
-                        <layout class="QVBoxLayout" name="verticalLayout_9">
-                         <item>
-                          <widget class="QLabel" name="label_20">
-                           <property name="font">
-                            <font>
-                             <pointsize>10</pointsize>
-                             <bold>true</bold>
-                            </font>
-                           </property>
-                           <property name="text">
-                            <string>Composite Trajectory</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QPushButton" name="compositeTestButton">
                            <property name="text">
                             <string>Test</string>
                            </property>
@@ -1111,12 +1003,7 @@
   <tabstop>linearButton</tabstop>
   <tabstop>cubicButton</tabstop>
   <tabstop>quinticButton</tabstop>
-  <tabstop>simpleTestButton</tabstop>
-  <tabstop>dxField</tabstop>
-  <tabstop>dyField</tabstop>
-  <tabstop>dzField</tabstop>
   <tabstop>constrainedTestButton</tabstop>
-  <tabstop>compositeTestButton</tabstop>
   <tabstop>j0PlotButton</tabstop>
   <tabstop>j1PlotButton</tabstop>
   <tabstop>j2PlotButton</tabstop>

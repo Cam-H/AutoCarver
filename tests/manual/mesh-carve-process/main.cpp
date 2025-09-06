@@ -17,7 +17,8 @@
 #include "renderer/UiLoader.h"
 #include "renderer/SceneWidget.h"
 #include "fileIO/MeshHandler.h"
-#include "core/SculptProcess.h"
+#include "process/SculptProcess.h"
+#include "core/Debris.h"
 #include "renderer/RenderCapture.h"
 #include "robot/ArticulatedWrist.h"
 #include "core/Timer.h"
@@ -58,8 +59,8 @@ static QWidget *loadUiFile(QWidget *parent)
 
 void setOrder(int index) {
     switch (index) {
-        case 0: scene->setSlicingOrder(SculptProcess::ConvexSliceOrder::TOP_DOWN); break;
-        case 1: scene->setSlicingOrder(SculptProcess::ConvexSliceOrder::BOTTOM_UP); break;
+        case 0: scene->getConfiguration().setSlicingOrder(ProcessConfiguration::ConvexSliceOrder::TOP_DOWN); break;
+        case 1: scene->getConfiguration().setSlicingOrder(ProcessConfiguration::ConvexSliceOrder::BOTTOM_UP); break;
         default: std::cout << "Unhandled order\n";
     }
 }
@@ -152,9 +153,12 @@ int main(int argc, char *argv[])
     });
 
     auto debrisDecompButton = window->findChild<QCheckBox*>("debrisDecompButton");
-    scene->enableDebrisColoring(debrisDecompButton->isChecked());
+    scene->getConfiguration().enableDebrisColoring(debrisDecompButton->isChecked());
     QObject::connect(debrisDecompButton, &QCheckBox::clicked, [&](bool checked) {
-        scene->enableDebrisColoring(checked);
+        scene->getConfiguration().enableDebrisColoring(checked);
+        auto debris = scene->getDebris();
+        if (debris != nullptr) debris->applyCompositeColors(checked);
+
         sceneWidget->update();
     });
 
@@ -180,7 +184,7 @@ int main(int argc, char *argv[])
 
     contButton = window->findChild<QCheckBox*>("contButton");
     QObject::connect(contButton, &QCheckBox::clicked, [&](bool checked) {
-        scene->setContinuous(checked);
+        scene->getConfiguration().setContinuous(checked);
     });
 
     auto pauseButton = window->findChild<QCheckBox*>("pauseButton");
@@ -236,6 +240,16 @@ int main(int argc, char *argv[])
         }
     });
 
+    auto saveButton = window->findChild<QPushButton*>("saveButton");
+    QObject::connect(saveButton, &QPushButton::clicked, [&]() {
+        scene->getSculpture()->save("../out/sculpture.bin");
+    });
+
+    auto loadButton = window->findChild<QPushButton*>("loadButton");
+    QObject::connect(loadButton, &QPushButton::clicked, [&]() {
+        scene->loadSculpture("../out/sculpture.bin");
+    });
+
     auto resetButton = window->findChild<QPushButton*>("resetButton");
     QObject::connect(resetButton, &QPushButton::clicked, [&]() {
         scene->reset();
@@ -243,15 +257,15 @@ int main(int argc, char *argv[])
     });
 
     auto linkButton = window->findChild<QCheckBox*>("linkButton");
-    scene->enableActionLinking(linkButton->isChecked());
+    scene->getConfiguration().enableActionLinking(linkButton->isChecked());
     QObject::connect(linkButton, &QCheckBox::clicked, [&](bool checked) {
-        scene->enableActionLinking(checked);
+        scene->getConfiguration().enableActionLinking(checked);
     });
 
     auto testCollisionButton = window->findChild<QCheckBox*>("testCollisionButton");
-    scene->enableCollisionTesting(testCollisionButton->isChecked());
+    scene->getConfiguration().enableCollisionTesting(testCollisionButton->isChecked());
     QObject::connect(testCollisionButton, &QCheckBox::clicked, [&](bool checked) {
-        scene->enableCollisionTesting(checked);
+        scene->getConfiguration().enableCollisionTesting(checked);
     });
 
     auto mergeButton = window->findChild<QCheckBox*>("mergeButton");
@@ -261,29 +275,29 @@ int main(int argc, char *argv[])
     });
 
     releaseButton = window->findChild<QCheckBox*>("releaseButton");
-    scene->enableFragmentRelease(releaseButton->isChecked());
+    scene->getConfiguration().enableFragmentRelease(releaseButton->isChecked());
     QObject::connect(releaseButton, &QCheckBox::clicked, [&](bool checked) {
-        scene->enableFragmentRelease(checked);
+        scene->getConfiguration().enableFragmentRelease(checked);
     });
 
     auto simulateCutButton = window->findChild<QCheckBox*>("simulateCutButton");
-    scene->enableCutSimulation(simulateCutButton->isChecked());
+    scene->getConfiguration().enableCutSimulation(simulateCutButton->isChecked());
     releaseButton->setEnabled(simulateCutButton->isChecked());
     QObject::connect(simulateCutButton, &QCheckBox::clicked, [&](bool checked) {
-        scene->enableCutSimulation(checked);
+        scene->getConfiguration().enableCutSimulation(checked);
         releaseButton->setEnabled(checked);
     });
 
     auto convexTrimButton = window->findChild<QCheckBox*>("convexTrimButton");
-    scene->enableConvexTrim(convexTrimButton->isChecked());
+    scene->getConfiguration().enableConvexTrim(convexTrimButton->isChecked());
     QObject::connect(convexTrimButton, &QCheckBox::clicked, [&](bool checked) {
-        scene->enableConvexTrim(checked);
+        scene->getConfiguration().enableConvexTrim(checked);
     });
 
     auto outlineRefinementButton = window->findChild<QCheckBox*>("outlineRefinementButton");
-    scene->enableSilhouetteRefinement(outlineRefinementButton->isChecked());
+    scene->getConfiguration().enableSilhouetteRefinement(outlineRefinementButton->isChecked());
     QObject::connect(outlineRefinementButton, &QCheckBox::clicked, [&](bool checked) {
-        scene->enableSilhouetteRefinement(checked);
+        scene->getConfiguration().enableSilhouetteRefinement(checked);
     });
 
     auto sliceOrderBox = window->findChild<QComboBox*>("sliceOrderBox");
@@ -293,17 +307,22 @@ int main(int argc, char *argv[])
     });
 
     sliceLimitField = window->findChild<QSpinBox*>("sliceLimitField");
-    scene->setActionLimit(sliceLimitField->value());
+    scene->getConfiguration().setActionLimit(sliceLimitField->value());
     std::cout << "SLF: " << sliceLimitField->value() << "\n";
     QObject::connect(sliceLimitField, &QSpinBox::valueChanged, [&](int value) {
-        scene->setActionLimit(value);
+        scene->getConfiguration().setActionLimit(value);
     });
 
     auto sliceLimitButton = window->findChild<QCheckBox*>("sliceLimitButton");
-    scene->enableActionLimit(sliceLimitButton->isChecked());
+    scene->getConfiguration().enableActionLimit(sliceLimitButton->isChecked());
     QObject::connect(sliceLimitButton, &QCheckBox::clicked, [&](bool checked) {
         sliceLimitField->setEnabled(checked);
-        scene->enableActionLimit(checked);
+        scene->getConfiguration().enableActionLimit(checked);
+    });
+
+    auto stepOffsetField = window->findChild<QDoubleSpinBox*>("stepOffsetField");
+    QObject::connect(stepOffsetField, &QDoubleSpinBox::valueChanged, [&](double value) {
+        scene->getConfiguration().setStepOffset(value);
     });
 
     auto testButton1 = window->findChild<QPushButton*>("testButton1");

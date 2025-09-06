@@ -40,6 +40,41 @@ CompositeBody::CompositeBody(const std::vector<ConvexHull>& hulls)
     prepareTree();
 }
 
+bool CompositeBody::serialize(std::ofstream& file) const
+{
+    if (RigidBody::serialize(file)) {
+        Serializer::writeUint(file, m_hulls.size());
+        for (const ConvexHull& hull : m_hulls) hull.serialize(file);
+
+        Serializer::writeDVec3(file, m_baseColor);
+        Serializer::writeBool(file, m_applyCompositeColor);
+
+        return true;
+    }
+
+    return false;
+}
+
+bool CompositeBody::deserialize(std::ifstream& file)
+{
+    if (RigidBody::deserialize(file)) {
+        uint32_t count = Serializer::readUint(file);
+
+        m_hulls.clear();
+        for (uint32_t i = 0; i < count; i++) m_hulls.emplace_back(file);
+
+        m_baseColor = Serializer::readDVec3(file);
+        m_applyCompositeColor = Serializer::readBool(file);
+
+        prepareHulls();
+        prepareTree();
+
+        return true;
+    }
+
+    return false;
+}
+
 void CompositeBody::prepareHulls()
 {
     for (ConvexHull& hull : m_hulls) hull.evaluate();

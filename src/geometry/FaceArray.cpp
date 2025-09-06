@@ -18,9 +18,7 @@
 #include <cassert>
 
 FaceArray::FaceArray(uint32_t faceCount, uint32_t indexCount)
-        : m_faceCount(faceCount)
-        , m_indexCount(indexCount)
-        , m_faceSizes(faceCount)
+        : m_faceSizes(faceCount)
         , m_faces(indexCount)
         , m_normals(faceCount)
 {
@@ -64,17 +62,15 @@ FaceArray::FaceArray(const std::vector<TriIndex>& faces)
 
 FaceArray::FaceArray(const std::vector<std::vector<uint32_t>>& indices)
         : m_faceSizes(indices.size())
-        , m_faceCount(indices.size())
-        , m_indexCount(0)
         , m_normals(indices.size())
 {
-    uint32_t idx = 0;
+    uint32_t idx = 0, count = 0;
     for (const std::vector<uint32_t>& face : indices) {
         m_faceSizes[idx++] = face.size();
-        m_indexCount += face.size();
+        count += face.size();
     }
 
-    m_faces = std::vector<uint32_t>(m_indexCount);
+    m_faces = std::vector<uint32_t>(count);
     auto ptr = &m_faces[0];
 
     for (const std::vector<uint32_t>& face : indices) {
@@ -85,33 +81,40 @@ FaceArray::FaceArray(const std::vector<std::vector<uint32_t>>& indices)
 
 bool FaceArray::serialize(std::ofstream& file) const
 {
-    Serializer::writeUint(file, m_faceCount);
-    Serializer::writeUint(file, m_indexCount);
+    Serializer::writeUint(file, m_faceSizes.size());
+    Serializer::writeUint(file, m_faces.size());
 
-    file.write(reinterpret_cast<const char*>(m_faceSizes.data()), m_faceCount * sizeof(uint32_t));
-    file.write(reinterpret_cast<const char*>(m_faces.data()), m_indexCount * sizeof(uint32_t));
+    file.write(reinterpret_cast<const char*>(m_faceSizes.data()), m_faceSizes.size() * sizeof(uint32_t));
+    file.write(reinterpret_cast<const char*>(m_faces.data()), m_faces.size() * sizeof(uint32_t));
+
+    Serializer::writeVectorDVec3(file, m_normals);
+    Serializer::writeVectorDVec3(file, m_colors);
 
     return true;
 }
 FaceArray FaceArray::deserialize(std::ifstream& file)
 {
     // Read face details
-    uint32_t faceCount = Serializer::readUint(file), indexCount = Serializer::readUint(file);
+    uint32_t faceCount = Serializer::readUint(file);
+    uint32_t indexCount = Serializer::readUint(file);
 
     // Read face data
     FaceArray faces(faceCount, indexCount);
     file.read(reinterpret_cast<char*>(faces.m_faceSizes.data()), faceCount * sizeof(uint32_t));
     file.read(reinterpret_cast<char*>(faces.m_faces.data()), indexCount * sizeof(uint32_t));
 
+    faces.m_normals = VertexArray(file).vertices();
+    faces.m_colors = VertexArray(file).vertices();
+
     return faces;
 }
 
-void FaceArray::addFace(std::vector<uint32_t> face)
+bool FaceArray::addFace(std::vector<uint32_t> face)
 {
     // Reject faces malformed faces (Multiple indices)
     for (uint32_t i = 0; i < face.size() - 1; i++) {
         if (face[i] == face[i + 1]) { // Allow duplicate adjacent vertices, but remove
-            if (face.size() < 4) return;
+            if (face.size() < 4) return false;
 
             face.erase(face.begin() + i + 1);
             i--;
@@ -121,33 +124,32 @@ void FaceArray::addFace(std::vector<uint32_t> face)
         for (uint32_t j = i + 1; j < face.size(); j++) {
             if (face[i] == face[j]) {
 //                throw std::runtime_error("[FaceArray] Malformed face. Can not attach");
-                return;
+                return false;
             }
         }
     }
 
     m_faces.insert(m_faces.end(), face.begin(), face.end());
     m_faceSizes.emplace_back(face.size());
-    m_faceCount++;
 
     m_colors.emplace_back(1, 1, 1);
+    return true;
 }
 
-void FaceArray::addFace(const std::vector<uint32_t>& face, const glm::dvec3& color)
+bool FaceArray::addFace(const std::vector<uint32_t>& face, const glm::dvec3& color)
 {
-    uint32_t count = m_faceCount;
-
-    addFace(face);
-
-    if (count < m_faceCount) {
+    if (addFace(face)) {
         m_colors.back() = color;
+        return true;
     }
+
+    return false;
 }
 
 void FaceArray::assignNormals(const std::vector<glm::dvec3>& normals)
 {
     m_normals = normals;
-    m_normals.resize(m_faceCount);
+    m_normals.resize(m_faceSizes.size());
 }
 
 glm::dvec3 FaceArray::calculateNormal(const std::vector<glm::dvec3>& boundary)
@@ -173,11 +175,12 @@ glm::dvec3 FaceArray::calculateNormal(const std::vector<glm::dvec3>& boundary)
 
 void FaceArray::calculateNormals(const std::vector<glm::dvec3>& vertices)
 {
+    assert(!(m_faceSizes.empty() || m_faces.empty()));
 
-    m_normals = std::vector<glm::dvec3>(m_faceCount);
+    m_normals = std::vector<glm::dvec3>(m_faceSizes.size());
 
     uint32_t *idxPtr = &m_faces[0];
-    for (uint32_t i = 0; i < m_faceCount; i++) {
+    for (uint32_t i = 0; i < m_faceSizes.size(); i++) {
         if (m_faceSizes[i] == 3) { // Simple cross-product normal
             m_normals[i] = Triangle3D::normal(vertices[*idxPtr], vertices[*(idxPtr + 1)], vertices[*(idxPtr + 2)]);
         } else { // Otherwise, evaluate the normal using Newell's method
@@ -203,6 +206,7 @@ void FaceArray::calculateNormals(const std::vector<glm::dvec3>& vertices)
 // Triangulates the faces based on edges created from the provided vertices. May crash if called on an invalid object
 void FaceArray::triangulate(const std::vector<glm::dvec3>& vertices)
 {
+    assert(!(m_faceSizes.empty() || m_faces.empty()));
 //    std::cout << "Triangulating... " << m_normals.size() << " " << m_faceCount << "\n"; //TODO verify
 //    if (!m_normals.empty() && m_normals.size() != m_faceCount) throw std::runtime_error("[FaceArray] Mystery normal error");
 //    if (m_normals.size() < m_faceCount) calculateNormals(vertices);
@@ -212,7 +216,7 @@ void FaceArray::triangulate(const std::vector<glm::dvec3>& vertices)
     m_triFaceLookup.clear();
 
     uint32_t *idxPtr = &m_faces[0];
-    for (uint32_t i = 0; i < m_faceCount; i++) {
+    for (uint32_t i = 0; i < m_faceSizes.size(); i++) {
         if (m_faceSizes[i] == 3) {
             m_triFaceLookup.emplace_back(m_triangles.size());
             m_triangles.emplace_back(*idxPtr, *(idxPtr + 1), *(idxPtr + 2));
@@ -245,12 +249,12 @@ void FaceArray::triangulate(const std::vector<glm::dvec3>& vertices)
 
 void FaceArray::setColor(const glm::dvec3& color)
 {
-    m_colors = std::vector<glm::dvec3>(m_faceCount, color);
+    m_colors = std::vector<glm::dvec3>(m_faceSizes.size(), color);
 }
 
 void FaceArray::setColor(uint32_t idx, const glm::dvec3& color)
 {
-    if (idx >= m_faceCount) throw std::runtime_error("[FaceArray] Out of bounds array access!");
+    if (idx >= m_faceSizes.size()) throw std::runtime_error("[FaceArray] Out of bounds array access!");
     if (m_colors.empty()) setColor(color);
     else m_colors[idx] = color;
 }
@@ -275,7 +279,7 @@ const uint32_t* FaceArray::operator[](uint32_t idx) const
 
 uint32_t* FaceArray::idxPtr(uint32_t idx)
 {
-    if (idx >= m_faceCount) throw std::runtime_error("[FaceArray] Out of bounds array access!");
+    if (idx >= m_faceSizes.size()) throw std::runtime_error("[FaceArray] Out of bounds array access!");
 
     uint32_t *ptr = &m_faces[0];
     for (uint32_t i = 0; i < idx; i++) ptr += m_faceSizes[i];
@@ -285,7 +289,7 @@ uint32_t* FaceArray::idxPtr(uint32_t idx)
 
 const uint32_t* FaceArray::idxPtr(uint32_t idx) const
 {
-    if (idx >= m_faceCount) throw std::runtime_error("[FaceArray] Out of bounds array access!");
+    if (idx >= m_faceSizes.size()) throw std::runtime_error("[FaceArray] Out of bounds array access!");
 
     const uint32_t *ptr = &m_faces[0];
     for (uint32_t i = 0; i < idx; i++) ptr += m_faceSizes[i];
@@ -295,12 +299,12 @@ const uint32_t* FaceArray::idxPtr(uint32_t idx) const
 
 uint32_t FaceArray::faceCount() const
 {
-    return m_faceCount;
+    return m_faceSizes.size();
 }
 
 uint32_t FaceArray::indexCount() const
 {
-    return m_indexCount;
+    return m_faces.size();
 }
 
 const std::vector<uint32_t>& FaceArray::faces() const
@@ -352,9 +356,9 @@ const std::vector<TriIndex>& FaceArray::triangles() const
 // Returns the index of the first triangle belonging to the specified face, and the number of triangles belonging to that face
 std::tuple<uint32_t, uint32_t> FaceArray::triangleLookup(uint32_t faceIdx) const
 {
-    assert(faceIdx < m_faceCount);
+    assert(faceIdx < m_faceSizes.size());
 
-    uint32_t last = faceIdx + 1 < m_faceCount ? m_triFaceLookup[faceIdx + 1] : m_triangles.size();
+    uint32_t last = faceIdx + 1 < m_faceSizes.size() ? m_triFaceLookup[faceIdx + 1] : m_triangles.size();
     return { m_triFaceLookup[faceIdx], last - m_triFaceLookup[faceIdx] };
 }
 
@@ -372,7 +376,7 @@ uint32_t FaceArray::faceLookup(uint32_t triIdx) const
 
 std::vector<glm::dvec3> FaceArray::faceBorder(uint32_t faceIdx, const std::vector<glm::dvec3>& vertices) const
 {
-    assert(faceIdx < m_faceCount);
+    assert(faceIdx < m_faceSizes.size());
 
     std::vector<glm::dvec3> border;
 
@@ -417,7 +421,7 @@ std::vector<std::vector<uint32_t>> FaceArray::edgeList() const
     uint32_t pre = m_faces[0];
 
     // Generate a complete list of edges by vertex index
-    for (uint32_t i = 0; i < m_faceCount; i++) {
+    for (uint32_t i = 0; i < m_faceSizes.size(); i++) {
         for (uint32_t j = 0; j < m_faceSizes[i] - 1; j++) {
             uint64_t value = (uint64_t)*ptr++ << 32;
             pairs.emplace_back(value | *ptr);
@@ -447,7 +451,7 @@ std::vector<std::vector<uint32_t>> FaceArray::adjacencies() const
     std::unordered_map<uint64_t, std::pair<uint32_t, uint32_t>> links;
     std::vector<std::vector<uint32_t>> neighbors;
 
-    for (uint32_t i = 0; i < m_faceCount; i++) {
+    for (uint32_t i = 0; i < m_faceSizes.size(); i++) {
         neighbors.emplace_back(m_faceSizes[i], std::numeric_limits<uint32_t>::max());
 
         auto ptr = idxPtr(i);
@@ -498,22 +502,22 @@ inline uint64_t FaceArray::linkKey(uint32_t I0, uint32_t I1)
 
 uint32_t FaceArray::size() const
 {
-    return (m_indexCount + m_faceCount + 2) * sizeof(uint32_t);
+    return (indexCount() + faceCount() + 2) * sizeof(uint32_t);
 }
 
 bool FaceArray::empty() const
 {
-    return m_faceCount == 0;
+    return m_faceSizes.empty();
 }
 
 bool FaceArray::isValid() const
 {
-    if (m_faceCount == 0 || m_faces.empty() || (m_faceCount != m_faceSizes.size())) return false;
+    if (m_faces.empty() || m_faceSizes.empty()) return false;
 
     uint32_t sum = 0;
-    for (uint32_t i = 0; i < m_faceCount; i++) {
-        if (m_faceSizes[i] < 3) return false;
-        sum += m_faceSizes[i];
+    for (uint32_t size : m_faceSizes) {
+        if (size < 3) return false;
+        sum += size;
     }
 
     return sum <= m_faces.size();
@@ -533,10 +537,14 @@ void FaceArray::print() const
 {
     uint32_t idx = 0;
 
-    std::cout << "\n~~~~~ Faces (" << m_faceCount << " " << m_faceSizes.size() << "|" << triangleCount() << " " << m_faces.size() << ") ~~~~~\n";
-    for (uint32_t i = 0; i < m_faceCount; i++) {
-        std::cout << i << "| ";
-        for (uint32_t j = 0; j < m_faceSizes[i]; j++) {
+    std::cout << "\n~~~~~ Faces (" << m_faceSizes.size() << " " << m_faces.size() << " | " << triangleCount() << ") ~~~~~\n";
+    for (uint32_t size : m_faceSizes) {
+        if (idx + size > m_faces.size()) {
+            std::cout << "Error!\n";
+            break;
+        }
+
+        for (uint32_t j = 0; j < size; j++) {
             std::cout << m_faces[idx++] << " ";
         }
         std::cout << "\n";

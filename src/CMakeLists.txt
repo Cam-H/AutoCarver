@@ -5,7 +5,8 @@ add_library(AutoCarverLib
         core/Debris.cpp
         core/Scene.cpp
 
-        core/SculptProcess.cpp
+        process/SculptProcess.cpp
+        process/ProcessConfiguration.cpp
 
         fileIO/MeshHandler.cpp
         fileIO/Serializable.cpp

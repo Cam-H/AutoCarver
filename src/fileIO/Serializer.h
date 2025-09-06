@@ -35,6 +35,8 @@ public:
     static bool writeBool(std::ofstream& file, bool value);
     static bool writeUint(std::ofstream& file, uint32_t value);
 
+    static bool writeDouble(std::ofstream& file, double value);
+
     static bool writeDVec2(std::ofstream& file, const glm::dvec2& value);
     static bool writeDVec3(std::ofstream& file, const glm::dvec3& value);
 
@@ -45,6 +47,8 @@ public:
     static bool readBool(std::ifstream& file);
     static uint32_t readUint(std::ifstream& file);
 
+    static double readDouble(std::ifstream& file);
+
     static glm::dvec2 readDVec2(std::ifstream& file);
     static glm::dvec3 readDVec3(std::ifstream& file);
 
@@ -52,7 +56,7 @@ public:
     static std::vector<glm::dvec3> readVectorDVec3(std::ifstream& file);
 
 
-    static glm::dmat4x4 readTransform(std::ifstream& file);
+    static glm::dmat4 readTransform(std::ifstream& file);
 
     static void toBytes(int value, char* buffer);
     static void toBytes(uint32_t value, char* buffer);

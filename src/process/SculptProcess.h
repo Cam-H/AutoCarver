@@ -5,7 +5,7 @@
 #ifndef AUTOCARVER_SCULPTPROCESS_H
 #define AUTOCARVER_SCULPTPROCESS_H
 
-#include "Scene.h"
+#include "core/Scene.h"
 
 #include <vector>
 #include <deque>
@@ -19,6 +19,8 @@
 #include "robot/trajectory/Waypoint.h"
 #include "robot/trajectory/CompositeTrajectory.h"
 
+#include "ProcessConfiguration.h"
+
 class Profile;
 class SectionOperation;
 
@@ -27,35 +29,11 @@ const static glm::dvec3 UP = { 0, 1, 0};
 class SculptProcess : public Scene {
 public:
 
-    struct Configuration {
-        double materialWidth = 1.0;
-        double materialHeight = 2.0;
-    };
-
-    enum class ConvexSliceOrder {
-        TOP_DOWN = 0, BOTTOM_UP
-    };
-
     explicit SculptProcess(const std::shared_ptr<Mesh>& model);
     ~SculptProcess();
 
     void setTarget(const std::shared_ptr<Mesh>& mesh);
-
-    void enableConvexTrim(bool enable);
-    void enableSilhouetteRefinement(bool enable);
-
-    void enableProcessCut(bool enable);
-
-    void enableActionLinking(bool enable);
-    void enableCollisionTesting(bool enable);
-    void enableCutSimulation(bool enable);
-    void enableFragmentRelease(bool enable);
-
-    void enableDebrisColoring(bool enable);
-
-    void setSlicingOrder(ConvexSliceOrder order);
-    void setActionLimit(uint32_t limit);
-    void enableActionLimit(bool enable);
+    void loadSculpture(const std::string& filename);
 
     void reset();
 
@@ -70,19 +48,18 @@ public:
     void step(double delta) override;
 
     void setSculptingRobot(const std::shared_ptr<Robot>& robot);
-    void setContinuous(bool enable);
 
     void alignToFace(uint32_t faceIdx);
 
-    uint32_t getActionLimit() const;
-    bool isActionLimitEnabled() const;
+    [[nodiscard]] bool simulationComplete() const;
+    [[nodiscard]] bool simulationIdle() const;
+    [[nodiscard]] bool simulationActive() const;
 
-    bool simulationComplete() const;
-    bool simulationIdle() const;
-    bool simulationActive() const;
+    ProcessConfiguration& getConfiguration();
 
     const std::shared_ptr<Sculpture>& getSculpture() const;
-    const std::shared_ptr<RigidBody>& getModel() const;
+    const std::shared_ptr<Body>& getModel() const;
+    const std::shared_ptr<Debris>& getDebris() const;
 
     const std::shared_ptr<Robot>& getSculptor() const;
     const std::shared_ptr<Robot>& getTurntable() const;
@@ -133,6 +110,8 @@ private:
 
         std::deque<Cut> cuts;
     };
+
+    void readySculpture(const std::shared_ptr<Sculpture>& sculpture);
 
     void prepareTurntable();
     void attachSculpture();
@@ -192,11 +171,9 @@ private:
     [[nodiscard]] bool validatePose(const Pose& pose) const;
     [[nodiscard]] bool validateTrajectory(const std::shared_ptr<Trajectory>& trajectory, double dt);
 
-    static uint32_t identifySculpture(const std::vector<std::shared_ptr<Mesh>>& fragments);
-
 private:
 
-    Configuration m_config;
+    ProcessConfiguration m_config;
 
     std::shared_ptr<Mesh> model;
     std::shared_ptr<Sculpture> m_sculpture;
@@ -216,8 +193,6 @@ private:
     std::vector<double> m_baseVelocityLimits, m_baseAccelerationLimits;
     std::vector<double> m_slowVelocityLimits; // TODO use cartesian speed limit (Needs further trajectory development)
 
-    double m_minCutVolume; // Skip cuts when the reduced volume is less than this limit
-
     Waypoint m_robotHome;
     Waypoint m_robotNeutral;
 
@@ -230,31 +205,8 @@ private:
 
     std::vector<Action> m_actions;
 
-    // Planning settings
-
     bool m_planned;
-
-    bool m_convexTrimEnable;
-    bool m_silhouetteRefinementEnable;
-    bool m_processCutEnable;
-
-    bool m_linkActionEnable;
-    bool m_collisionTestingEnable;
-    bool m_cutSimulationEnable;
-    bool m_fragmentReleaseEnable;
-
-    bool m_debrisColoringEnable;
-
-    ConvexSliceOrder m_sliceOrder;
-
-    double m_stepDg;
-
-    uint32_t m_actionLimit;
-    bool m_actionLimitEnable;
-
     uint32_t m_step;
-    bool m_continuous;
-
 };
 
 

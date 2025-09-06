@@ -26,6 +26,12 @@ ConvexHull::ConvexHull()
 {
 }
 
+ConvexHull::ConvexHull(std::ifstream& file)
+    : ConvexHull()
+{
+    ConvexHull::deserialize(file);
+}
+
 ConvexHull::ConvexHull(const VertexArray& cloud)
     : ConvexHull()
 {
@@ -88,10 +94,34 @@ void ConvexHull::initialize()
     m_initialized = true;
 }
 
+bool ConvexHull::serialize(std::ofstream& file) const
+{
+    Serializer::writeBool(file, m_initialized);
+
+    if (m_initialized) {
+        VertexArray(m_vertices).serialize(file);
+        m_faces.serialize(file);
+    }
+
+    return true;
+}
+bool ConvexHull::deserialize(std::ifstream& file)
+{
+    m_initialized = Serializer::readBool(file);
+
+    if (m_initialized) {
+        m_vertices = VertexArray(file).vertices();
+        m_faces = FaceArray::deserialize(file);
+        initialize();
+    }
+
+    return true;
+}
+
 // Calculate additional information like volume that is normally skipped to save time
 void ConvexHull::evaluate()
 {
-    if (m_volume < 0) {
+    if (m_initialized && m_volume < 0) {
         m_faces.triangulate(m_vertices);
         m_volume = m_faces.volume(m_vertices);
     }

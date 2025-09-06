@@ -289,12 +289,12 @@
          <item>
           <widget class="QLabel" name="label_6">
            <property name="text">
-            <string>Dg/Step</string>
+            <string>Step Offset</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QDoubleSpinBox" name="stepDgField">
+          <widget class="QDoubleSpinBox" name="stepOffsetField">
            <property name="minimum">
             <double>5.000000000000000</double>
            </property>
@@ -405,6 +405,20 @@
        <widget class="QPushButton" name="captureButton">
         <property name="text">
          <string>Render Capture</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="saveButton">
+        <property name="text">
+         <string>Save Sculpture</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="loadButton">
+        <property name="text">
+         <string>Load Sculpture</string>
         </property>
        </widget>
       </item>

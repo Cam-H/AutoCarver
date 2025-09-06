@@ -9,11 +9,10 @@
 
 #include "core/Debris.h"
 
-
-Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, double width, double height)
-    : CompositeBody(MeshBuilder::box())
-    , m_width(width)
-    , m_height(height)
+Sculpture::Sculpture()
+    : CompositeBody()
+    , m_width(1.0)
+    , m_height(1.0)
     , m_rotation(0)
     , m_scalar(1.0)
     , m_step(0)
@@ -22,21 +21,79 @@ Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, double width, double he
     , m_highlightColor(0.3, 0.3, 0.8)
 {
 
-    scaleToFit(model, m_width, m_height);
+}
+
+Sculpture::Sculpture(const std::string& filename)
+    : Sculpture()
+{
+    load(filename);
+}
+
+Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, double width, double height)
+    : Sculpture()
+{
+
+    // Position model in the optimal position
+    m_width = width;
+    scaleToFit(model, height);
+
     prepareBox();
 
     prepareColliderVisuals();
 
-    modelBody = std::make_shared<RigidBody>(model);
-    modelBody->setLayer(0);
-    modelBody->setMask(0);
+    modelBody = std::make_shared<Body>(model);
 
     applyCompositeColors(false);
-
-    std::cout << "Volume ratio: " << 100 * bulkUsageRatio() << "% material usage, " << 100 * remainderRatio() << "% Remaining\n";
+    print();
 }
 
-void Sculpture::scaleToFit(const std::shared_ptr<Mesh>& model, double width, double maxHeight)
+bool Sculpture::serialize(std::ofstream& file) const
+{
+    if (CompositeBody::serialize(file)) {
+
+        modelBody->mesh()->serialize(file);
+
+        Serializer::writeDouble(file, m_width);
+        Serializer::writeDouble(file, m_height);
+        Serializer::writeDouble(file, m_rotation);
+        Serializer::writeDouble(file, m_scalar);
+
+        Serializer::writeUint(file, m_step);
+
+        Serializer::writeBool(file, m_mergeEnable);
+
+        Serializer::writeDVec3(file, m_highlightColor);
+
+        return true;
+    }
+
+    return false;
+}
+bool Sculpture::deserialize(std::ifstream& file)
+{
+    if (CompositeBody::deserialize(file)) {
+
+        const std::shared_ptr<Mesh>& mm = std::make_shared<Mesh>(file);
+        modelBody = std::make_shared<Body>(mm);
+
+        m_width = Serializer::readDouble(file);
+        m_height = Serializer::readDouble(file);
+        m_rotation = Serializer::readDouble(file);
+        m_scalar = Serializer::readDouble(file);
+
+        m_step = Serializer::readUint(file);
+
+        m_mergeEnable = Serializer::readBool(file);
+
+        m_highlightColor = Serializer::readDVec3(file);
+
+        return true;
+    }
+
+    return false;
+}
+
+void Sculpture::scaleToFit(const std::shared_ptr<Mesh>& model, double maxHeight)
 {
     // Find the maximum dimensions of the mesh
     double xNear, xFar, yNear, yFar, zNear, zFar;
@@ -58,7 +115,7 @@ void Sculpture::scaleToFit(const std::shared_ptr<Mesh>& model, double width, dou
     m_height = yFar - yNear;
 
     // Calculate the scale factor to make the mesh as large as possible, within the specified limits
-    m_scalar = std::min(width / (xFar - xNear), width / (zFar - zNear));
+    m_scalar = std::min(m_width / (xFar - xNear), m_width / (zFar - zNear));
     if (m_height * m_scalar > maxHeight) { // Adjust scale to ensure the model does not exceed the maximum allowable height
         m_scalar = maxHeight / m_height;
     }
@@ -66,14 +123,13 @@ void Sculpture::scaleToFit(const std::shared_ptr<Mesh>& model, double width, dou
     m_height *= m_scalar;
 
     model->scale(m_scalar); // Scale model to fit within specified limits
-//    model->translate({ 0, -m_height / 2, 0 });
 }
 
 void Sculpture::prepareBox()
 {
-    m_mesh->setBaseColor(baseColor());
-    m_mesh->scale({ m_width, m_height, m_width });
+    setMesh(MeshBuilder::box(m_width, m_width, m_height));
     m_mesh->translate({ 0, m_height / 2, 0 });
+    m_mesh->setBaseColor(baseColor());
 
     updateColliders();
     CompositeBody::restore();
@@ -88,12 +144,11 @@ void Sculpture::update()
 
 void Sculpture::restore()
 {
-    m_mesh = MeshBuilder::box();
     prepareBox();
 }
 void Sculpture::restoreAsHull()
 {
-    m_mesh = std::make_shared<Mesh>(modelBody->hull());
+    m_mesh = std::make_shared<Mesh>(ConvexHull(modelBody->mesh()->vertices()));
     m_mesh->setFaceColor(baseColor());
 
     updateColliders();
@@ -103,7 +158,7 @@ void Sculpture::restoreAsHull()
 
 void Sculpture::moved()
 {
-    modelBody->setTransform(m_transform);
+    if (modelBody != nullptr) modelBody->setTransform(m_transform);
 }
 
 void Sculpture::reset()
@@ -296,7 +351,7 @@ const std::shared_ptr<Mesh>& Sculpture::sculpture()
     return m_mesh;
 }
 
-const std::shared_ptr<RigidBody>& Sculpture::model()
+const std::shared_ptr<Body>& Sculpture::model()
 {
     return modelBody;
 }
@@ -330,7 +385,7 @@ double Sculpture::currentVolume() const
 }
 double Sculpture::finalVolume() const
 {
-    return modelBody->volume();
+    return modelBody->mesh()->volume();
 }
 
 double Sculpture::bulkUsageRatio() const
@@ -342,4 +397,12 @@ double Sculpture::remainderRatio() const
     double fVolume = finalVolume();
 
     return (currentVolume() - fVolume) / (initialVolume() - fVolume);
+}
+
+void Sculpture::print() const
+{
+    std::cout << "[Sculpture] width: " << m_width << ", height: " << m_height
+              << ", volume ratio: " << 100 * bulkUsageRatio() << "% material usage, " << 100 * remainderRatio() << "% remaining\n";
+
+    std::cout << "hulls: " << hulls().size() << "\n";
 }

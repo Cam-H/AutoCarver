@@ -4,14 +4,14 @@
 
 #include "SculptProcess.h"
 
-#include <glm.hpp>
+#include "glm.hpp"
 
 #define GLM_ENABLE_EXPERIMENTAL
-#include <gtx/string_cast.hpp>
-#include <gtx/quaternion.hpp>
+#include "gtx/string_cast.hpp"
+#include "gtx/quaternion.hpp"
 
-#include "Sculpture.h"
-#include "Debris.h"
+#include "core/Sculpture.h"
+#include "core/Debris.h"
 
 #include "geometry/poly/Profile.h"
 #include "geometry/poly/SectionOperation.h"
@@ -46,32 +46,24 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     , m_sculpture(nullptr)
     , m_step(0)
     , m_planned(false)
-    , m_convexTrimEnable(true)
-    , m_silhouetteRefinementEnable(true)
-    , m_processCutEnable(true)
-    , m_linkActionEnable(true)
-    , m_collisionTestingEnable(true)
-    , m_cutSimulationEnable(true)
-    , m_fragmentReleaseEnable(true)
-    , m_debrisColoringEnable(true)
-    , m_sliceOrder(ConvexSliceOrder::TOP_DOWN)
-    , m_stepDg(90.0)
-    , m_actionLimit(0xFFFFFFFF)
-    , m_actionLimitEnable(false)
-    , m_continuous(false)
     , m_ttOffset(0, 0, 0)
     , m_fwd(1, 0, 0)
     // TODO when adapting for different models these need to be changed
     , m_bladeLength(1.5) // Length of cutting area (Does not cut tip + section blocked by base)
     , m_bladeWidth(0.098)
     , m_bladeThickness(0.011)
-    , m_minCutVolume(0.005)
     , m_latestRobotCommand()
     , m_solver(Interpolator::SolverType::QUINTIC)
 {
-    setTarget(model);
+
+    // Create dummies to provide space for the sculpture before it is built
+    m_bodies.push_back(nullptr);
+    m_vis.push_back(nullptr);
+    m_total += 2;
 
     prepareTurntable();
+
+    setTarget(model);
 }
 
 void SculptProcess::setTarget(const std::shared_ptr<Mesh>& mesh)
@@ -79,30 +71,37 @@ void SculptProcess::setTarget(const std::shared_ptr<Mesh>& mesh)
     model = mesh;
     model->center();
 
-    bool firstTarget = m_sculpture == nullptr;
-    m_sculpture = std::make_shared<Sculpture>(model, m_config.materialWidth, m_config.materialHeight);
-    m_sculpture->setName("SCULPTURE");
+    if (m_sculpture != nullptr) reset();
 
-    if (firstTarget) {
-        prepareBody(m_sculpture, 1);
-        prepareBody(m_sculpture->model(), 1);
-    } else { // Overwrite old sculpture if possible
-        m_sculpture->setID(m_bodies[0]->getID());
-        m_sculpture->model()->setID(m_bodies[1]->getID());
+    auto sculpture = std::make_shared<Sculpture>(model, m_config.materialWidth, m_config.materialHeight);
+    sculpture->setName("SCULPTURE");
+
+    readySculpture(sculpture);
+}
+
+void SculptProcess::loadSculpture(const std::string& filename)
+{
+    readySculpture(std::make_shared<Sculpture>(filename));
+}
+
+void SculptProcess::readySculpture(const std::shared_ptr<Sculpture>& sculpture)
+{
+    if (m_sculpture != sculpture) {
+        m_sculpture = sculpture;
+
+        m_sculpture->setID(0);
+        m_sculpture->model()->setID(1);
 
         m_bodies[0] = m_sculpture;
-        m_bodies[1] = m_sculpture->model();
+        m_vis[0] = m_sculpture->model();
 
-        attachSculpture(); // Although already attached, adjusting transform is required
-
-        reset(); // Erase all prior progress
+        attachSculpture();
+        update();
     }
 }
 
 void SculptProcess::prepareTurntable()
 {
-//    model->transform(glm::inverse(KC_AXIS_TRANSFORM));
-
     auto ttTableMesh = MeshHandler::loadAsMeshBody("../res/meshes/TurntableTable.obj");
     auto table = createBody(ttTableMesh);
     table->setName("TT-Table");
@@ -125,8 +124,6 @@ void SculptProcess::prepareTurntable()
     glm::dvec3 axis = m_turntable->links().back()->getRotation() * -UP;
     ttj0Mesh->extents(axis, near, far);
     m_ttOffset = UP * far;
-
-    attachSculpture();
 }
 
 void SculptProcess::attachSculpture()
@@ -150,18 +147,28 @@ void SculptProcess::reset()
     m_cuts.clear();
 
     // Remove any fragments
-    for (int i = m_bodies.size() - 1; i >= 0; i--) {
-        if (m_bodies[i]->getType() == RigidBody::Type::DYNAMIC) m_bodies.erase(m_bodies.begin() + i);
+    uint32_t count = m_bodies.size();
+    for (uint32_t i = 1; i < count; i++) {
+        if (m_bodies[i]->getType() == RigidBody::Type::DYNAMIC) {
+            std::swap(m_bodies[i], m_bodies[count - 1]);
+            count--;
+        }
     }
+
+    if (count < m_bodies.size()) m_bodies.erase(m_bodies.begin() + count, m_bodies.end());
 
     removeDebris();
 
-    m_sculpture->restore();
-    m_sculpture->reset();
+    if (m_sculpture != nullptr) {
+        m_sculpture->restore();
+        m_sculpture->reset();
+    }
 
-    m_turntable->stop();
-    m_turntable->setJointValue(0, 0);
-    m_latestTableCommand = m_turntable->getWaypoint();
+    if (m_turntable != nullptr) {
+        m_turntable->stop();
+        m_turntable->setJointValue(0, 0);
+        m_latestTableCommand = m_turntable->getWaypoint();
+    }
 
     if (m_robot != nullptr) {
         m_robot->stop();
@@ -174,60 +181,6 @@ void SculptProcess::reset()
     if (!paused) pause();
 
     update();
-}
-
-void SculptProcess::enableConvexTrim(bool enable)
-{
-    m_convexTrimEnable = enable;
-}
-void SculptProcess::enableSilhouetteRefinement(bool enable)
-{
-    m_silhouetteRefinementEnable = enable;
-}
-
-void SculptProcess::enableProcessCut(bool enable)
-{
-    m_processCutEnable = enable;
-}
-
-void SculptProcess::enableActionLinking(bool enable)
-{
-    m_linkActionEnable = enable;
-}
-
-void SculptProcess::enableCollisionTesting(bool enable)
-{
-    m_collisionTestingEnable = enable;
-}
-
-void SculptProcess::enableCutSimulation(bool enable)
-{
-    m_cutSimulationEnable = enable;
-}
-
-void SculptProcess::enableFragmentRelease(bool enable)
-{
-    m_fragmentReleaseEnable = enable;
-}
-
-void SculptProcess::enableDebrisColoring(bool enable)
-{
-    if (m_debrisColoringEnable != enable && m_debris != nullptr) m_debris->applyCompositeColors(enable);
-    m_debrisColoringEnable = enable;
-}
-
-void SculptProcess::setSlicingOrder(ConvexSliceOrder order)
-{
-    m_sliceOrder = order;
-}
-void SculptProcess::setActionLimit(uint32_t limit)
-{
-    m_actionLimit = limit;
-    m_actionLimitEnable = true;
-}
-void SculptProcess::enableActionLimit(bool enable)
-{
-    m_actionLimitEnable = enable;
 }
 
 void SculptProcess::plan()
@@ -244,11 +197,11 @@ void SculptProcess::plan()
     const Waypoint initialTableCommand = m_latestTableCommand = m_turntable->getWaypoint();
 
     // Ready the sculpture by carving the convex hull of the model
-    if (m_convexTrimEnable) planConvexTrim();
+    if (m_config.convexTrimEnable) planConvexTrim();
     else m_sculpture->restoreAsHull();
 
     // Repeatedly refined the sculpture by cutting to the outline of the model at discrete orientations
-    if (m_silhouetteRefinementEnable) planOutlineRefinement(m_stepDg);
+    if (m_config.silhouetteRefinementEnable) planOutlineRefinement(m_config.stepOffset);
 
     // Capture model features with fine carving
 //    planFeatureRefinement();
@@ -261,7 +214,7 @@ void SculptProcess::plan()
     m_robot->moveTo(initialRobotCommand);
     m_turntable->moveTo(initialTableCommand);
 
-    if (m_convexTrimEnable) m_sculpture->restore();
+    if (m_config.convexTrimEnable) m_sculpture->restore();
     else m_sculpture->restoreAsHull();
 
     m_sculpture->setRotation(glm::angleAxis(0.0, UP));
@@ -373,7 +326,7 @@ void SculptProcess::step(double delta)
         if (simulationIdle()) { // Handle transition between simulation actions
             if (action.started) {
                 m_step++;
-            } else if (m_continuous) nextAction();
+            } else if (m_config.continuous) nextAction();
         } else if (m_debris != nullptr && !action.cuts.empty() && action.cuts.front().ts < action.trajectory->t()){
             if (!m_debris->inProcess()) m_debris->beginCut();
 
@@ -398,7 +351,7 @@ void SculptProcess::step(double delta)
 
             normal = normal * -glm::quat_cast(m_sculpture->getRotation()); // Convert to local space
             const auto& fragments = m_debris->removeMaterial(normal, depth);
-            if (m_fragmentReleaseEnable && !fragments.empty()) {
+            if (m_config.fragmentReleaseEnable && !fragments.empty()) {
                 for (const std::shared_ptr<RigidBody>& fragment : fragments) {
                     prepareBody(fragment);
                     fragment->mesh()->setFaceColor(m_sculpture->baseColor());
@@ -444,12 +397,6 @@ void SculptProcess::setSculptingRobot(const std::shared_ptr<Robot>& robot){
         assert(m_robotNeutral.values.size() == m_robot->dof());
     }
 }
-
-void SculptProcess::setContinuous(bool enable)
-{
-    m_continuous = enable;
-}
-
 
 void SculptProcess::alignToFace(uint32_t faceIdx)
 {
@@ -504,7 +451,7 @@ Axis3D SculptProcess::faceAlignedAxes(const glm::dvec3& normal, bool alignHorizo
 
 bool SculptProcess::withinActionLimit() const
 {
-    if (m_actionLimitEnable && m_actions.size() >= m_actionLimit) {
+    if (m_config.actionLimitEnable && m_actions.size() >= m_config.actionLimit) {
         std::cout << "\033[93m[SculptProcess] Action limit exceeded\033[0m\n";
         return false;
     }
@@ -575,15 +522,6 @@ glm::dvec3 SculptProcess::poseAdjustedVertex(const Axis3D& axes, const glm::dvec
     return vertex - axes.zAxis * 0.5 * m_bladeLength + axes.yAxis * 0.5 * m_bladeThickness;
 }
 
-uint32_t SculptProcess::getActionLimit() const
-{
-    return m_actionLimit;
-}
-bool SculptProcess::isActionLimitEnabled() const
-{
-    return m_actionLimitEnable;
-}
-
 bool SculptProcess::simulationComplete() const
 {
     return m_step >= m_actions.size();
@@ -596,7 +534,12 @@ bool SculptProcess::simulationIdle() const
 
 bool SculptProcess::simulationActive() const
 {
-    return !simulationComplete() && (m_actions[m_step].target->inTransit() || m_continuous);
+    return !simulationComplete() && (m_actions[m_step].target->inTransit() || m_config.continuous);
+}
+
+ProcessConfiguration& SculptProcess::getConfiguration()
+{
+    return m_config;
 }
 
 const std::shared_ptr<Sculpture>& SculptProcess::getSculpture() const
@@ -604,9 +547,14 @@ const std::shared_ptr<Sculpture>& SculptProcess::getSculpture() const
     return m_sculpture;
 }
 
-const std::shared_ptr<RigidBody>& SculptProcess::getModel() const
+const std::shared_ptr<Body>& SculptProcess::getModel() const
 {
-    return m_bodies[1];
+    return m_sculpture->model();
+}
+
+const std::shared_ptr<Debris>& SculptProcess::getDebris() const
+{
+    return m_debris;
 }
 
 const std::shared_ptr<Robot>& SculptProcess::getSculptor() const
@@ -623,7 +571,7 @@ std::vector<Plane> SculptProcess::orderConvexTrim(const std::vector<Plane>& cuts
 {
     std::vector<Plane> steps = cuts;
 
-    if (m_sliceOrder == ConvexSliceOrder::TOP_DOWN) { // Plan cuts beginning from the top and moving towards the base
+    if (m_config.sliceOrder == ProcessConfiguration::ConvexSliceOrder::TOP_DOWN) { // Plan cuts beginning from the top and moving towards the base
         std::sort(steps.begin(), steps.end(), [](const Plane& a, const Plane& b){
             return glm::dot(a.normal, UP) > glm::dot(b.normal, UP);
         });
@@ -653,13 +601,13 @@ void SculptProcess::planConvexTrim()
 
         auto fragments = Collision::fragments(hull, step);
 
-        if (m_minCutVolume > 0) fragments.first.evaluate();
+        if (m_config.minCutVolume > 0) fragments.first.evaluate();
 
         double vol = fragments.first.volume();
         std::cout << "Step [" << (&step - &steps[0]) << ", vol: " << vol << "]:\n";
 
         // Try performing cut if the action would remove sufficient material
-        if ((m_minCutVolume == 0 || fragments.first.volume() > m_minCutVolume)) {
+        if ((m_config.minCutVolume == 0 || fragments.first.volume() > m_config.minCutVolume)) {
             auto actions = planConvexTrim(hull, step);
             if (!actions.empty()) {
                 commitActions(actions);
@@ -673,12 +621,12 @@ void SculptProcess::planConvexTrim()
 // Develops trajectories between disjoint actions to motions are continuous before attaching them to the list
 void SculptProcess::commitActions(const std::vector<Action>& actions)
 {
-    if (m_linkActionEnable) {
+    if (m_config.linkActionEnable) {
         for (const Action& action : actions) {
 
             // Move robot away if it would collide with the TT when it moves
             if (action.target == m_turntable) {
-                if (m_collisionTestingEnable) {
+                if (m_config.collisionTestingEnable) {
                     m_robot->moveTo(m_latestRobotCommand);
 
                     if (testTurntableCollision(action.trajectory)) {
@@ -741,7 +689,7 @@ std::shared_ptr<Trajectory> SculptProcess::prepareApproach(const Waypoint& desti
     // Try the direct path first
     auto directTrajectory = std::make_shared<SimpleTrajectory>(m_latestRobotCommand, destination, m_solver);
     directTrajectory->setLimits(m_baseVelocityLimits, m_baseAccelerationLimits);
-    if (!m_collisionTestingEnable || validateTrajectory(directTrajectory, dt)) return directTrajectory;
+    if (!m_config.collisionTestingEnable || validateTrajectory(directTrajectory, dt)) return directTrajectory;
 
 
     auto pose = m_robot->getPose(destination);
@@ -1135,11 +1083,11 @@ void SculptProcess::nextAction()
 
     if (!action.cuts.empty()) {
 
-        if (m_cutSimulationEnable) {
+        if (m_config.cutSimulationEnable) {
             m_debris = m_sculpture->applySection();
             if (m_debris == nullptr) throw std::runtime_error("[SculptProcess] Failed to prepare debris");
             m_debris->setName("ACTION" + std::to_string(m_step) + "-DEBRIS");
-            m_debris->applyCompositeColors(m_debrisColoringEnable);
+            m_debris->applyCompositeColors(m_config.debrisColoringEnable);
 
             auto rotation = glm::quat_cast(m_sculpture->getRotation());
 
@@ -1165,7 +1113,7 @@ void SculptProcess::removeDebris()
 {
     if (m_debris != nullptr) {
 
-        if (!m_debris->hulls().empty()) {
+        if (m_sculpture != nullptr && !m_debris->hulls().empty()) {
             for (const ConvexHull& hull : m_debris->hulls()) {
                 std::cout << hull.isValid() << " " << hull.vertexCount() << " NH\n";
                 if (hull.isValid()) m_sculpture->add(hull);
@@ -1183,21 +1131,4 @@ void SculptProcess::removeDebris()
 
         m_debris = nullptr;
     }
-}
-
-uint32_t SculptProcess::identifySculpture(const std::vector<std::shared_ptr<Mesh>>& fragments)
-{
-    uint32_t idx = 0;
-    double volume = fragments[0]->volume();
-
-    for (uint32_t i = 1; i < fragments.size(); i++) {
-        double temp = fragments[i]->volume();
-
-        if (volume < temp) {
-            volume = temp;
-            idx = i;
-        }
-    }
-
-    return idx;
 }
