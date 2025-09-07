@@ -96,6 +96,8 @@ private:
     RenderSettings& getSettings(uint32_t ID);
     RenderItem& getGeometryBuffer(const std::shared_ptr<Mesh>& mesh);
 
+    std::shared_ptr<Mesh> hullMesh(const std::shared_ptr<Mesh>& mesh);
+
 protected:
 
     std::shared_ptr<RenderBuffer> m_buffer;
@@ -115,6 +117,8 @@ private:
 
     std::shared_ptr<Mesh> m_sphere;
     std::shared_ptr<Mesh> m_axes;
+
+    std::unordered_map<std::shared_ptr<Mesh>, std::shared_ptr<Mesh>> m_hulls;
 
     /* ******* CAMERA CONTROLS ******** */
 

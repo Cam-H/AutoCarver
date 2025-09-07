@@ -16,8 +16,7 @@
 class Debris : public CompositeBody {
 public:
 
-    explicit Debris(const ConvexHull& hull);
-    explicit Debris(const std::vector<ConvexHull>& hulls);
+    explicit Debris();
 
     void initialize();
 

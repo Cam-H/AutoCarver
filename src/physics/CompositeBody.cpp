@@ -23,19 +23,19 @@ CompositeBody::CompositeBody()
 CompositeBody::CompositeBody(const std::shared_ptr<Mesh>& mesh)
     : CompositeBody()
 {
-    setMesh(mesh, true);
+    setMesh(mesh);
     prepareTree();
 }
 
 CompositeBody::CompositeBody(const std::vector<ConvexHull>& hulls)
     : CompositeBody()
 {
-    if (!hulls.empty()) {
-        setMesh(MeshBuilder::composite(hulls), true);
+    assert(!hulls.empty());
 
-        m_hulls = hulls;
-        prepareHulls();
-    }
+    m_components = hulls;
+
+    setMesh(MeshBuilder::composite(m_components));
+    prepareComponents();
 
     prepareTree();
 }
@@ -43,8 +43,8 @@ CompositeBody::CompositeBody(const std::vector<ConvexHull>& hulls)
 bool CompositeBody::serialize(std::ofstream& file) const
 {
     if (RigidBody::serialize(file)) {
-        Serializer::writeUint(file, m_hulls.size());
-        for (const ConvexHull& hull : m_hulls) hull.serialize(file);
+        Serializer::writeUint(file, m_components.size());
+        for (const ConvexHull& hull : m_components) hull.serialize(file);
 
         Serializer::writeDVec3(file, m_baseColor);
         Serializer::writeBool(file, m_applyCompositeColor);
@@ -60,13 +60,13 @@ bool CompositeBody::deserialize(std::ifstream& file)
     if (RigidBody::deserialize(file)) {
         uint32_t count = Serializer::readUint(file);
 
-        m_hulls.clear();
-        for (uint32_t i = 0; i < count; i++) m_hulls.emplace_back(file);
+        m_components.clear();
+        for (uint32_t i = 0; i < count; i++) m_components.emplace_back(file);
 
         m_baseColor = Serializer::readDVec3(file);
         m_applyCompositeColor = Serializer::readBool(file);
 
-        prepareHulls();
+        prepareComponents();
         prepareTree();
 
         return true;
@@ -75,19 +75,21 @@ bool CompositeBody::deserialize(std::ifstream& file)
     return false;
 }
 
-void CompositeBody::prepareHulls()
+void CompositeBody::prepareComponents()
 {
-    for (ConvexHull& hull : m_hulls) hull.evaluate();
+    for (ConvexHull& hull : m_components) hull.evaluate();
 }
 
 void CompositeBody::prepareTree()
 {
-    auto bounds = m_hull.isValid() ? AABB(m_hull) : AABB(1.0);
+    assert(m_hull.isValid());
+
+    auto bounds = AABB(m_hull);
 
     m_tree = std::make_shared<Octree>(6, 1.01 * bounds.maxLength());
     m_tree->translate(bounds.center());
 
-    m_mergeTests = std::vector<uint32_t>(m_hulls.size());
+    m_mergeTests = std::vector<uint32_t>(m_components.size());
     std::iota(m_mergeTests.begin(), m_mergeTests.end(), 0);
 
     locate();
@@ -95,24 +97,31 @@ void CompositeBody::prepareTree()
 
 void CompositeBody::restore()
 {
-    m_hulls = { m_hull };
+    m_components = { m_hull };
 
     m_mergeTests = { 0 };
 
     locate();
 }
 
+void CompositeBody::recenter(const glm::dvec3& offset)
+{
+    RigidBody::recenter(offset);
+
+    for (ConvexHull& hull : m_components) hull.translate(-offset);
+}
+
 // Identifies the parents of every hull in relation to the underlying Octree
 void CompositeBody::locate()
 {
     if (m_tree == nullptr) {
-        m_locations = std::vector<uint32_t>(m_hulls.size(), std::numeric_limits<uint32_t>::max());
+        m_locations = std::vector<uint32_t>(m_components.size(), std::numeric_limits<uint32_t>::max());
         return;
     }
 
-    m_locations = std::vector<uint32_t>(m_hulls.size());
-    for (uint32_t i = 0; i < m_hulls.size(); i++) {
-        m_locations[i] = m_tree->locateParent(m_hulls[i]);
+    m_locations = std::vector<uint32_t>(m_components.size());
+    for (uint32_t i = 0; i < m_components.size(); i++) {
+        m_locations[i] = m_tree->locateParent(m_components[i]);
     }
 }
 
@@ -171,7 +180,7 @@ bool CompositeBody::tryMerge()
         }
     }
 
-    if (size != m_hulls.size()) {
+    if (size != m_components.size()) {
 
         if (!m_mergeTests.empty()) throw std::runtime_error("[CompositeBody] Impossible check reached");
 
@@ -180,17 +189,17 @@ bool CompositeBody::tryMerge()
         for (uint32_t i = 0; i < originals.size(); i++) {
             if (originals[i]) {
                 m_locations[index] = m_locations[i];
-                m_hulls[index] = m_hulls[i];
+                m_components[index] = m_components[i];
                 index++;
             }
         }
 
         m_locations.erase(m_locations.begin() + index, m_locations.end());
-        m_hulls.erase(m_hulls.begin() + index, m_hulls.end());
+        m_components.erase(m_components.begin() + index, m_components.end());
 
         remesh();
 
-        std::cout << "Hull # reduction: " << size << " --> " << m_hulls.size() << "\n";
+        std::cout << "Hull # reduction: " << size << " --> " << m_components.size() << "\n";
 
         return true;
     }
@@ -207,7 +216,7 @@ bool CompositeBody::tryMerge(uint32_t octantIndex, uint32_t hullIndex, std::vect
         for (uint32_t& j : it->second) {
             if (hullIndex == j) continue;
 
-            auto [good, result] = ConvexHull::tryMerge(m_hulls[hullIndex], m_hulls[j]);
+            auto [good, result] = ConvexHull::tryMerge(m_components[hullIndex], m_components[j]);
             if (good) {
 
                 // Eliminate references to old hulls
@@ -219,7 +228,7 @@ bool CompositeBody::tryMerge(uint32_t octantIndex, uint32_t hullIndex, std::vect
                 skipTest(j);
 
                 // Prepare the new hull
-                uint32_t newIndex = m_hulls.size();
+                uint32_t newIndex = m_components.size();
                 add(result);
 
                 addLink(newIndex);
@@ -235,50 +244,57 @@ bool CompositeBody::tryMerge(uint32_t octantIndex, uint32_t hullIndex, std::vect
 void CompositeBody::add(const ConvexHull& hull)
 {
     if (!hull.isValid()) throw std::runtime_error("[CompositeBody] Can not add invalid hull!");
-    queueTest(m_hulls.size());
 
-    m_locations.emplace_back(m_tree->locateParent(hull));
-//    addLink(m_hulls.size());
+    // Update spatial partitioning if initialized
+    if (m_tree != nullptr) {
+        queueTest(m_components.size());
 
-    m_hulls.push_back(hull);
+        m_locations.emplace_back(m_tree->locateParent(hull));
+    }
 
-    m_hulls[m_hulls.size() - 1].evaluate();
+    m_components.push_back(hull);
+
+    m_components[m_components.size() - 1].evaluate();
 }
 
 void CompositeBody::replace(const ConvexHull& hull, uint32_t index)
 {
     if (!hull.isValid()) throw std::runtime_error("[CompositeBody] Can not substitute invalid hull!");
 
-    if (index >= m_hulls.size()) add(hull);
+    if (index >= m_components.size()) add(hull);
     else {
 
-        queueTest(index);
+        // Update spatial partitioning if initialized
+        if (m_tree != nullptr) {
+            queueTest(index);
 
 //        removeLink(index);
-        m_locations[index] = m_tree->locateParent(hull);
+            m_locations[index] = m_tree->locateParent(hull);
 //        addLink(index);
+        }
 
-        m_hulls[index] = hull;
-        m_hulls[index].evaluate();
-
+        m_components[index] = hull;
+        m_components[index].evaluate();
     }
 }
 
 void CompositeBody::remove(uint32_t index)
 {
-    if (index >= m_hulls.size()) return;
+    if (index >= m_components.size()) return;
 
-    if (index < m_hulls.size() - 1) {
-        std::swap(m_hulls[index], m_hulls[m_hulls.size() - 1]);
-        std::swap(m_locations[index], m_locations[m_hulls.size() - 1]);
-    }
+    if (index < m_components.size() - 1) std::swap(m_components[index], m_components[m_components.size() - 1]);
 
-    m_hulls.pop_back();
+    m_components.pop_back();
 
-    replaceTest(m_hulls.size(), index);
+    // Update spatial partitioning if initialized
+    if (m_tree != nullptr) {
+        if (index < m_locations.size() - 1)std::swap(m_locations[index], m_locations[m_components.size() - 1]);
+
+        replaceTest(m_components.size(), index);
 
 //    removeLink(m_hulls.size());
-    m_locations.pop_back();
+        m_locations.pop_back();
+    }
 }
 
 // Splits any hulls that pass through the plane in two, along the plane intersection
@@ -288,7 +304,7 @@ std::vector<uint32_t> CompositeBody::split(const Plane& plane)
     std::vector<uint32_t> sources;
 
     if (Collision::test(m_hull, plane)) { // Only bother splitting if the plane might intersect children
-        uint32_t count = m_hulls.size();
+        uint32_t count = m_components.size();
         for (uint32_t i = 0; i < count; i++) {
             if (split(plane, i)) sources.push_back(i);
         }
@@ -298,15 +314,21 @@ std::vector<uint32_t> CompositeBody::split(const Plane& plane)
 }
 
 // Splits the specified hull on the intersection with the plane. Returns true if the plane intersects
-bool CompositeBody::split(const Plane& plane, uint32_t hullIndex) {
-    auto fragments = Collision::fragments(m_hulls[hullIndex], plane);
+bool CompositeBody::split(const Plane& plane, uint32_t componentIndex) {
+    auto fragments = Collision::fragments(m_components[componentIndex], plane);
     if (fragments.first.isValid() && fragments.second.isValid()) { // There was an intersection
-        replace(fragments.first, hullIndex);
+        replace(fragments.first, componentIndex);
         add(fragments.second);
         return true;
     }
 
     return false;
+}
+
+bool CompositeBody::precheck(uint32_t hullID0, uint32_t hullID1, const glm::dmat4& relative) const
+{
+    // TODO apply spatial partitioning
+    return true;
 }
 
 void CompositeBody::queueTest(uint32_t hullIndex)
@@ -348,9 +370,9 @@ void CompositeBody::applyCompositeColors(bool enable)
 
 void CompositeBody::colorHulls()
 {
-    if (m_mesh != nullptr && !m_hulls.empty()) {
+    if (m_mesh != nullptr && !m_components.empty()) {
         uint32_t faceIdx = 0, hullIdx = 0;
-        for (const ConvexHull& hull : m_hulls) {
+        for (const ConvexHull& hull : m_components) {
             const glm::dvec3& color = BRIGHT_SET[hullIdx];
             hullIdx = (hullIdx + 1) % BRIGHT_SET.size();
 
@@ -361,22 +383,29 @@ void CompositeBody::colorHulls()
 
 void CompositeBody::remesh()
 {
-    m_mesh = MeshBuilder::composite(m_hulls);
+    m_mesh = MeshBuilder::composite(m_components);
     if (m_mesh == nullptr) return;
+
 
     // Prepare styling for the hulls
     m_mesh->setFaceColor(m_baseColor);
     if (m_applyCompositeColor) colorHulls();
 }
 
-const std::vector<ConvexHull>& CompositeBody::hulls() const
-{
-    return m_hulls;
-}
-
 const glm::dvec3& CompositeBody::baseColor() const
 {
     return m_baseColor;
+}
+
+const std::vector<ConvexHull>& CompositeBody::components() const
+{
+    return m_components;
+}
+
+bool CompositeBody::test(const std::shared_ptr<RigidBody>& body)
+{
+    std::cout << "TS\n";
+    return false;
 }
 
 void CompositeBody::printMap() const

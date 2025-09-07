@@ -105,7 +105,6 @@ void SculptProcess::prepareTurntable()
     auto ttTableMesh = MeshHandler::loadAsMeshBody("../res/meshes/TurntableTable.obj");
     auto table = createBody(ttTableMesh);
     table->setName("TT-Table");
-    table->prepareColliderVisuals();
 
     auto chain = std::make_shared<KinematicChain>();
     chain->addJoint(Joint(Joint::Type::REVOLUTE, { 0.0f, 0.0f, 0.0f, 0.0f }, 0));
@@ -1079,7 +1078,7 @@ void SculptProcess::nextAction()
     action.target->traverse(action.trajectory);
     action.started = true;
 
-    removeDebris();
+    if (m_config.cutSimulationEnable) removeDebris();
 
     if (!action.cuts.empty()) {
 
@@ -1113,8 +1112,8 @@ void SculptProcess::removeDebris()
 {
     if (m_debris != nullptr) {
 
-        if (m_sculpture != nullptr && !m_debris->hulls().empty()) {
-            for (const ConvexHull& hull : m_debris->hulls()) {
+        if (m_sculpture != nullptr && !m_debris->components().empty()) {
+            for (const ConvexHull& hull : m_debris->components()) {
                 std::cout << hull.isValid() << " " << hull.vertexCount() << " NH\n";
                 if (hull.isValid()) m_sculpture->add(hull);
             }

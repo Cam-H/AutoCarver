@@ -39,8 +39,6 @@ Sculpture::Sculpture(const std::shared_ptr<Mesh>& model, double width, double he
 
     prepareBox();
 
-    prepareColliderVisuals();
-
     modelBody = std::make_shared<Body>(model);
 
     applyCompositeColors(false);
@@ -73,8 +71,7 @@ bool Sculpture::deserialize(std::ifstream& file)
 {
     if (CompositeBody::deserialize(file)) {
 
-        const std::shared_ptr<Mesh>& mm = std::make_shared<Mesh>(file);
-        modelBody = std::make_shared<Body>(mm);
+        modelBody = std::make_shared<Body>(std::make_shared<Mesh>(file));
 
         m_width = Serializer::readDouble(file);
         m_height = Serializer::readDouble(file);
@@ -127,11 +124,10 @@ void Sculpture::scaleToFit(const std::shared_ptr<Mesh>& model, double maxHeight)
 
 void Sculpture::prepareBox()
 {
-    setMesh(MeshBuilder::box(m_width, m_width, m_height));
+    m_mesh = MeshBuilder::box(m_width, m_width, m_height);
     m_mesh->translate({ 0, m_height / 2, 0 });
     m_mesh->setBaseColor(baseColor());
-
-    updateColliders();
+    m_hull = ConvexHull(m_mesh);
     CompositeBody::restore();
 
     prepareTree();
@@ -148,12 +144,10 @@ void Sculpture::restore()
 }
 void Sculpture::restoreAsHull()
 {
-    m_mesh = std::make_shared<Mesh>(ConvexHull(modelBody->mesh()->vertices()));
+    m_hull = ConvexHull(modelBody->mesh());
+    m_mesh = std::make_shared<Mesh>(m_hull);
     m_mesh->setFaceColor(baseColor());
-
-    updateColliders();
     CompositeBody::restore();
-
 }
 
 void Sculpture::moved()
@@ -207,10 +201,13 @@ std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
 {
     m_newFaces.clear();
 
-    auto debris = std::make_shared<Debris>(std::vector<ConvexHull>());
-    for (uint32_t i = 0; i < hulls().size(); i++) {
-        if (Collision::below(hulls()[i], plane)) {
-            debris->add(hulls()[i]);
+    std::cout << "PS0\n";
+    if (!Collision::test(m_hull, plane)) return nullptr;
+
+    auto debris = std::make_shared<Debris>();
+    for (uint32_t i = 0; i < components().size(); i++) {
+        if (Collision::below(components()[i], plane)) {
+            debris->add(components()[i]);
             remove(i);
             i--;
         }
@@ -218,23 +215,25 @@ std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
 
     const std::vector<uint32_t>& sources = split(plane);
     for (uint32_t source : sources) {
-        debris->add(hulls()[hulls().size() - 1]);
-        remove(hulls().size() - 1);
+        debris->add(components()[components().size() - 1]);
+        remove(components().size() - 1);
 
         // Record index of newly introduced face
-        uint32_t index = hulls()[source].faces().matchFace(plane.normal), faceCount = 0;
-        for (uint32_t j = 0; j < source; j++) faceCount += hulls()[j].facetCount();
+        uint32_t index = components()[source].faces().matchFace(plane.normal), faceCount = 0;
+        for (uint32_t j = 0; j < source; j++) faceCount += components()[j].facetCount();
         m_newFaces.emplace_back(faceCount + index);
     }
 
-    if (!debris->hulls().empty()) { // Action was taken to remove parts of the sculpture
+    std::cout << "R " << debris->components().size() << " " << components().size() << "\n";
+
+    if (!debris->components().empty()) { // Action was taken to remove parts of the sculpture
         debris->setTransform(m_transform);
         debris->initialize();
 
         debris->addFixedPlane(plane);
 
-        if (hulls().empty()) throw std::runtime_error("[Sculpture] Empty sculpture");
-        m_hull = hulls()[0]; // Ignores small off-cuts (Little effect on testing) & only works properly before triangular sectioning TODO
+        if (components().empty()) throw std::runtime_error("[Sculpture] Empty sculpture");
+        m_hull = components()[0]; // Ignores small off-cuts (Little effect on testing) & only works properly before triangular sectioning TODO
         remesh();
 
         return debris;
@@ -247,9 +246,9 @@ std::shared_ptr<Debris> Sculpture::triangleSection(const Plane& planeA, const Pl
 {
     m_newFaces.clear();
 
-    auto debris = std::make_shared<Debris>(std::vector<ConvexHull>());
+    auto debris = std::make_shared<Debris>();
 
-    const auto& fragments = hulls();
+    const auto& fragments = components();
     for (uint32_t i = 0; i < fragments.size(); i++) {
 
         auto lFragments = Collision::fragments(fragments[i], limit.inverted());
@@ -275,7 +274,7 @@ std::shared_ptr<Debris> Sculpture::triangleSection(const Plane& planeA, const Pl
         }
     }
 
-    if (!debris->hulls().empty()) { // Action was taken to remove parts of the sculpture
+    if (!debris->components().empty()) { // Action was taken to remove parts of the sculpture
         debris->setTransform(m_transform);
         debris->initialize();
 
@@ -294,10 +293,10 @@ std::shared_ptr<Debris> Sculpture::triangleSection(const Plane& planeA, const Pl
 
 uint32_t Sculpture::attach(const ConvexHull& hull, uint32_t index)
 {
-    if (index >= hulls().size()) add(hull);
+    if (index >= components().size()) add(hull);
     else replace(hull, index);
 
-    return hulls().size();
+    return components().size();
 }
 
 
@@ -404,5 +403,5 @@ void Sculpture::print() const
     std::cout << "[Sculpture] width: " << m_width << ", height: " << m_height
               << ", volume ratio: " << 100 * bulkUsageRatio() << "% material usage, " << 100 * remainderRatio() << "% remaining\n";
 
-    std::cout << "hulls: " << hulls().size() << "\n";
+    std::cout << "hulls: " << components().size() << "\n";
 }

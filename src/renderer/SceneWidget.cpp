@@ -123,6 +123,12 @@ void SceneWidget::initializeGL()
 
 }
 
+std::shared_ptr<Mesh> SceneWidget::hullMesh(const std::shared_ptr<Mesh>& mesh)
+{
+    if (m_hulls.find(mesh) == m_hulls.end()) m_hulls[mesh] = std::make_shared<Mesh>(ConvexHull(mesh));
+    return m_hulls[mesh];
+}
+
 // WARNING: Will crash if a nullptr is passed as the mesh
 SceneWidget::RenderItem& SceneWidget::getGeometryBuffer(const std::shared_ptr<Mesh>& mesh)
 {
@@ -325,13 +331,16 @@ void SceneWidget::paintGL()
 
         auto settings = getSettings(item.ID);
         if (settings.meshVisibility) render(item.mesh, transform);
-        if (settings.hullVisibility) render(item.hull, transform);
         if (settings.axesVisibility) render(m_axes, transform);
 
+        if (settings.hullVisibility) render(hullMesh(item.mesh), transform);
+
         if (settings.boundsVisibility) {
-            transform.translate(item.bounds.center.x, item.bounds.center.y, item.bounds.center.z);
-            transform.scale(item.bounds.radius);
-            render(m_sphere, transform);
+            if (item.bounds.radius > 0) {
+                transform.translate(item.bounds.center.x, item.bounds.center.y, item.bounds.center.z);
+                transform.scale(item.bounds.radius);
+                render(m_sphere, transform);
+            }// else std::cout << "\033[93m[SceneWidget] Can not render bounding sphere. Improperly defined\n\033[0m";
         }
     }
 }

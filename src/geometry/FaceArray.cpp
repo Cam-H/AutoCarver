@@ -544,6 +544,7 @@ void FaceArray::print() const
             break;
         }
 
+        std::cout << "[" << size << "]:";
         for (uint32_t j = 0; j < size; j++) {
             std::cout << m_faces[idx++] << " ";
         }

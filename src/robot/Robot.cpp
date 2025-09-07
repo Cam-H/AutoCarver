@@ -39,7 +39,6 @@ void Robot::prepareLinks()
 
     auto baseMesh = MeshBuilder::box(1.0);
     m_links.push_back(std::make_shared<RigidBody>(baseMesh));
-    m_links.back()->prepareColliderVisuals();
     m_links.back()->setMask(0); // Base is fixed so explicit collision tests are unnecessary
     m_links.back()->setLayer(level); // Prevent overlap with mask of previous robot
 
@@ -73,9 +72,6 @@ void Robot::prepareLinks()
 
         link->setLayer(level <<= 1);
         link->setMask(linkMask(level));
-
-        link->prepareColliderVisuals();
-
 
         m_links.push_back(link);
     }
@@ -210,7 +206,7 @@ void Robot::setLinkMesh(uint32_t index, const std::shared_ptr<Mesh>& mesh)
         mesh->rotate(glm::quat_cast(glm::inverse(m_kinematics->axisInversion())));
     }
 
-    m_links[index]->setMesh(mesh, true);
+    m_links[index]->setMesh(mesh);
 }
 
 void Robot::updateTransforms()

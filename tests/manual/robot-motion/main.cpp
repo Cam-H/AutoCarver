@@ -281,10 +281,6 @@ int main(int argc, char *argv[])
     sculpture = scene->getSculpture();
     sculpture->restoreAsHull();
 
-//    for (const std::shared_ptr<RigidBody>& body : scene->bodies()) {
-//        body->prepareColliderVisuals();
-//    }
-
     robot = scene->createRobot(std::make_shared<ArticulatedWrist>(0.2, 1.2, 1.2, 0.35));
     robot->translate({ -2, 1, 0 });
     robot->rotate({ 0, 1, 0 }, M_PI);
@@ -301,7 +297,6 @@ int main(int argc, char *argv[])
 
     auto eoatMesh = MeshHandler::loadAsMeshBody("../res/meshes/Blade.obj");
     eoat = scene->createBody(eoatMesh);
-    eoat->prepareColliderVisuals();
     robot->setEOAT(eoat, false);
     eoat->setName("BLADE");
 
@@ -311,12 +306,11 @@ int main(int argc, char *argv[])
     mesh->rotate({0, 0, 1}, M_PI);
     mesh->scale(3);
     auto hullTest = scene->createBody(mesh);
-    hullTest->prepareColliderVisuals();
     hullTest->translate({ -5, 1, 0 });
 
-    auto collider = scene->createBody(MeshBuilder::box(0.4));
-    collider->translate({ 0, 4, 0});
-    collider->setType(RigidBody::Type::DYNAMIC);
+//    auto collider = scene->createBody(MeshBuilder::box(0.4));
+//    collider->translate({ 0, 4, 0});
+//    collider->setType(RigidBody::Type::DYNAMIC);
 
     robot->update();
     sceneWidget->update();

@@ -149,8 +149,8 @@ int main(int argc, char *argv[])
     hControlLayout->addWidget(randomButton);
 
     QObject::connect(randomButton, &QPushButton::clicked, [&]() {
-        scene->bodies()[0]->setMesh(randomMesh(), true);
-        scene->bodies()[1]->setMesh(randomMesh(), true);
+        scene->bodies()[0]->setMesh(randomMesh());
+        scene->bodies()[1]->setMesh(randomMesh());
 
         sceneWidget->update();
     });

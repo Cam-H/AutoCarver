@@ -15,12 +15,12 @@
 #include "geometry/MeshBuilder.h"
 #include "geometry/collision/Collision.h"
 
+#include "CompositeBody.h"
+
 const double HOLD_THRESHOLD = 1e-6;
 
 RigidBody::RigidBody()
     : m_type(Type::STATIC)
-    , m_hullMesh(nullptr)
-    , m_hullOK(false)
     , m_mask(0xFFFFFFFF)
     , m_layer(0xFFFFFFFF)
     , m_isManifold(false)
@@ -34,7 +34,6 @@ RigidBody::RigidBody()
     , m_volumeOK(false)
     , m_massOK(false)
     , m_inertiaTensorOK(false)
-    , m_colliderVisualsEnable(false)
     , Body()
 {
 
@@ -44,44 +43,39 @@ RigidBody::RigidBody(const std::string& filename)
     : RigidBody()
 {
     Serializable::load(filename);
-
-    updateColliders();
 }
 
 RigidBody::RigidBody(const std::shared_ptr<Mesh>& mesh)
     : RigidBody()
 {
-    setMesh(mesh, true);
+    setMesh(mesh);
 }
 
 RigidBody::RigidBody(const ConvexHull& hull)
     : RigidBody()
 {
-    m_mesh = std::make_shared<Mesh>(hull);
     m_hull = hull;
-    m_hullOK = hull.isValid();
-    m_boundingSphere = Sphere::enclose(m_hull.vertices());
+    m_mesh = std::make_shared<Mesh>(m_hull);
 }
 
 bool RigidBody::serialize(std::ofstream& file) const
 {
-    return Body::serialize(file);
+    if (Body::serialize(file)) {
+        m_hull.serialize(file);
+
+        return true;
+    }
+
+    return false;
 }
 
 bool RigidBody::deserialize(std::ifstream& file)
 {
-    std::cout << "RBDS\n";
-
     if (Body::deserialize(file)) {
-        std::cout << m_mesh << " RBDS0\n";
-
-        std::cout << m_mesh->vertexCount() << "\n";
-        updateColliders();
-        std::cout << "RBDS1\n";
+        m_hull = ConvexHull(file);
 
         return true;
     }
-    std::cout << "RBDSNF\n";
 
     return false;
 }
@@ -105,18 +99,17 @@ void RigidBody::setType(Type type)
     m_type = type;
 }
 
-void RigidBody::setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate) {
+void RigidBody::setMesh(const std::shared_ptr<Mesh>& mesh) {
     if (mesh == nullptr) return;
 
     m_mesh = mesh;
-
-    if (doColliderUpdate) updateColliders();
+    updateHull();
 }
 
 void RigidBody::setHull(const ConvexHull& hull)
 {
     m_hull = hull;
-    prepareColliders();
+    m_hull.evaluate();
 }
 
 
@@ -157,59 +150,79 @@ uint32_t RigidBody::mask() const
     return m_mask;
 }
 
-bool RigidBody::scan(const std::shared_ptr<RigidBody>& body) const
+bool RigidBody::boundsTest(const std::shared_ptr<RigidBody>& body)
 {
-    return ((m_mask & body->m_layer) > 0);
+    return scan(body)
+        && m_hull.isValid() && body->m_hull.isValid()
+        && Collision::test(bounds(), body->bounds());
 }
 
-bool RigidBody::boundaryCollision(const std::shared_ptr<RigidBody>& body)
+//bool RigidBody::test(const std::shared_ptr<CompositeBody>& body)
+//{
+//    std::cout << "zza\n";
+//
+//    if (test(std::static_pointer_cast<RigidBody>(body))) {
+//        std::cout << "Hit\n";
+//    }
+//
+//    std::cout << "===\n";
+//
+//    return false;
+//}
+
+bool RigidBody::test(const std::shared_ptr<RigidBody>& body)
 {
-    return scan(body) && Collision::test(m_boundingSphere, body->m_boundingSphere);
-}
+//    if (std::dynamic_pointer_cast<CompositeBody>(body)) std::cout << "zzz\n";
+    if (boundsTest(body)) {
+        glm::dmat4 relative = glm::inverse(m_transform) * body->m_transform;
 
-bool RigidBody::collides(const std::shared_ptr<RigidBody>& body)
-{
-    if (body.get() == this || !m_hullOK || !body->m_hullOK || !boundaryCollision(body)) return false;
+        std::pair<uint32_t, uint32_t> nearest = cachedCollision(body);
 
-    glm::dmat4 relative = glm::inverse(m_transform) * body->m_transform;
+        try {
+            Simplex simplex = Collision::gjk(m_hull, body->m_hull, relative, nearest);
 
-    std::pair<uint32_t, uint32_t> nearest = cachedCollision(body);
-
-    try {
-        Simplex simplex = Collision::gjk(m_hull, body->m_hull, relative, nearest);
-
-        cacheCollision(body, simplex[0].idx);
-        return simplex.colliding();
-    } catch (std::exception& e) {
-        m_hull.print();
-        body->m_hull.print();
-        std::cout << "\033[93m[RigidBody] Failed to test collision [" << m_name + " ~ " << body->m_name << "]\n" << e.what() << "\033[0m\n";
-        return false;
+            cacheCollision(body, simplex[0].idx);
+            return simplex.colliding();
+        } catch (std::exception& e) {
+            m_hull.print();
+            body->m_hull.print();
+            std::cout << "\033[93m[RigidBody] Failed to test collision [" << m_name + " ~ " << body->m_name << "]\n" << e.what() << "\033[0m\n";
+        }
     }
+
+    return false;
 }
 
-bool RigidBody::collision(const std::shared_ptr<RigidBody>& body, glm::dvec3& offset)
+std::tuple<bool, glm::dvec3> RigidBody::delta(const std::shared_ptr<RigidBody>& body)
 {
-    EPA epa = collision(body);
-    offset = epa.colliding() ? epa.overlap() : epa.offset();
+    EPA epa = intersection(body);
 
-    return epa.colliding();
+    return {
+        epa.colliding(),
+        epa.delta()
+    };
 }
 
-EPA RigidBody::collision(const std::shared_ptr<RigidBody>& body)
+EPA RigidBody::intersection(const std::shared_ptr<RigidBody>& body)
 {
-    if (!m_hullOK || !body->m_hullOK || !boundaryCollision(body)) return {};
+    if (boundsTest(body)) {
+        glm::dmat4 relative = glm::inverse(m_transform) * body->m_transform;
 
-    glm::dmat4 relative = glm::inverse(m_transform) * body->m_transform;
+        std::pair<uint32_t, uint32_t> nearest = cachedCollision(body);
 
-    std::pair<uint32_t, uint32_t> nearest = cachedCollision(body);
+        EPA epa = Collision::intersection(m_hull, body->m_hull, relative, nearest);
+        epa.setWorldTransform(m_transform);
 
-    EPA epa = Collision::intersection(m_hull, body->m_hull, relative, nearest);
-    epa.setWorldTransform(m_transform);
+        cacheCollision(body, epa.nearest());
+        return epa;
+    }
 
-    cacheCollision(body, epa.nearest());
+    return {};
+}
 
-    return epa;
+bool RigidBody::precheck(uint32_t hullID0, uint32_t hullID1, const glm::dmat4& relative) const
+{
+    return true;
 }
 
 void RigidBody::cacheCollision(const std::shared_ptr<RigidBody>& body, const std::pair<uint32_t, uint32_t>& start)
@@ -244,61 +257,23 @@ void RigidBody::zero()
 {
     if (m_mesh == nullptr) return;
 
-    glm::dvec3 centroid = m_mesh->centroid();
-
-    m_mesh->print();
-
-    m_mesh->translate(-centroid);
-    m_hull = ConvexHull(m_mesh->vertices()); // TODO could translate
-    translate(centroid);
-
-    m_mesh->print();
+    recenter(m_mesh->centroid());
 
     m_inertiaTensorOK = false;
 }
 
-
-void RigidBody::updateColliders()
+void RigidBody::recenter(const glm::dvec3& offset)
 {
-    m_hullOK = false;
+    m_mesh->translate(-offset);
+    m_hull.translate(-offset);
+    translate(offset);
+}
 
+
+void RigidBody::updateHull()
+{
     if (m_mesh == nullptr) return;
-    m_hull = ConvexHull(m_mesh->vertices());
-    prepareColliders();
-}
-
-void RigidBody::prepareColliders()
-{
-    m_hullOK = m_hull.vertexCount() >= 4;
-
-    if (m_hullOK) m_boundingSphere = Sphere::enclose(m_hull.vertices());
-    else m_boundingSphere = Sphere::enclose(m_mesh->vertices());
-
-    // Create new mesh for colliders, if one is already in use (replacement)
-    if (m_colliderVisualsEnable) {
-        prepareHullVisual();
-        prepareSphereVisual();
-    }
-}
-
-void RigidBody::prepareColliderVisuals()
-{
-    if (!m_colliderVisualsEnable) {
-        prepareHullVisual();
-        prepareSphereVisual();
-    }
-
-    m_colliderVisualsEnable = true;
-}
-
-void RigidBody::prepareHullVisual()
-{
-    m_hullMesh = std::make_shared<Mesh>(m_hull);
-}
-void RigidBody::prepareSphereVisual()
-{
-    m_sphereMesh = MeshBuilder::icosphere(m_boundingSphere.radius);
-    m_sphereMesh->translate(m_boundingSphere.center);
+    setHull(ConvexHull(m_mesh));
 }
 
 RigidBody::Type RigidBody::getType() const
@@ -352,19 +327,11 @@ const ConvexHull& RigidBody::hull() const
     return m_hull;
 }
 
-const Sphere& RigidBody::boundingSphere() const
+Sphere RigidBody::bounds() const
 {
-    return m_boundingSphere;
-}
-
-const std::shared_ptr<Mesh>& RigidBody::hullMesh()
-{
-    return m_hullMesh;
-}
-
-const std::shared_ptr<Mesh>& RigidBody::bSphereMesh()
-{
-    return m_sphereMesh;
+    auto bounds = m_hull.bounds();
+//    bounds.center += position();
+    return bounds;
 }
 
 void RigidBody::evaluateManifold()
@@ -415,7 +382,7 @@ std::tuple<bool, double, uint32_t> RigidBody::pickFace(Ray ray, double tLim)
 
     // Initial check against bounding sphere
     {
-        auto [hit, t] = Collision::raycast(m_boundingSphere, ray);
+        auto [hit, t] = Collision::raycast(bounds(), ray);
         if (!hit || t > tLim) return { false, 0, 0 };
     }
 

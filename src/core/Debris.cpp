@@ -8,15 +8,8 @@
 
 
 
-Debris::Debris(const ConvexHull& hull)
-    : CompositeBody({ hull })
-    , m_inProcess(false)
-{
-
-}
-
-Debris::Debris(const std::vector<ConvexHull>& hulls)
-    : CompositeBody(hulls)
+Debris::Debris()
+    : CompositeBody()
     , m_inProcess(false)
 {
 
@@ -25,11 +18,12 @@ Debris::Debris(const std::vector<ConvexHull>& hulls)
 // Deferred in case hulls are to be individually inserted
 void Debris::initialize()
 {
-
-    prepareHulls();
-    prepareTree();
-
     remesh();
+
+    m_hull = ConvexHull(m_mesh);
+
+    prepareComponents();
+    prepareTree();
 }
 
 void Debris::addFixedPlane(const Plane& plane)
@@ -48,7 +42,7 @@ void Debris::beginCut()
     if (m_cuts.empty() && !m_inProcess) return;
 
     CutOperation& cut = m_cuts[0];
-    std::cout << "Cut: " << hulls().size() << " " << m_cuts.size() << " " << cut.axis.x << " " << cut.axis.y << " " << cut.axis.z
+    std::cout << "Cut: " << components().size() << " " << m_cuts.size() << " " << cut.axis.x << " " << cut.axis.y << " " << cut.axis.z
     << " | " << cut.normal.x << " " << cut.normal.y << " " << cut.normal.z << " | " << cut.theta << " " << "\n";
 
     double ht = 0.5 * cut.thickness + 1e-6;
@@ -66,37 +60,37 @@ void Debris::beginCut()
     std::vector<uint32_t> kerfs;
 
     // Split any hulls that pass through the cutting planes to limit effect to kerfs
-    const uint32_t initialCount = hulls().size();
+    const uint32_t initialCount = components().size();
     for (uint32_t i = 0; i < initialCount; i++) {
-        if (Collision::below(hulls()[i], filter)) continue; // Skip hulls behind the blade
+        if (Collision::below(components()[i], filter)) continue; // Skip hulls behind the blade
 
-        auto [min, max] = hulls()[i].extremes(cut.normal);
-        double near = glm::dot(cut.normal, hulls()[i].vertices()[min] - cut.origin);
-        double far = glm::dot(cut.normal, hulls()[i].vertices()[max] - cut.origin);
+        auto [min, max] = components()[i].extremes(cut.normal);
+        double near = glm::dot(cut.normal, components()[i].vertices()[min] - cut.origin);
+        double far = glm::dot(cut.normal, components()[i].vertices()[max] - cut.origin);
         std::cout << "H" << i << ": " << near << " " << far << " | " << ht << " " << hyt << " " << hxt << " ";
 
         bool nearPass = near < -hyt - 1e-6, farPass = far > hyt + 1e-6;
 
-        uint32_t idx = i, count = hulls().size();
+        uint32_t idx = i, count = components().size();
 
         std::cout << nearPass << " " << farPass << " ";
 
         // Try splitting against the near cut plane
         if (nearPass) {
-            if (split(revPlane, idx)) idx = hulls().size() - 1;
+            if (split(revPlane, idx)) idx = components().size() - 1;
         }
 
         // Try splitting against the far cut plane
         if (farPass) {
-            if (split(fwdPlane, idx)) idx = hulls().size() - 1;
+            if (split(fwdPlane, idx)) idx = components().size() - 1;
         }
 
         // If splits were made (Normal kerf) OR thin-hull case (Entire hull fits inside kerf)
-        if (count < hulls().size() || !(nearPass || farPass)) {
+        if (count < components().size() || !(nearPass || farPass)) {
             kerfs.emplace_back(idx);
         }
 
-        std::cout << count << " " << hulls().size() << "\n";
+        std::cout << count << " " << components().size() << "\n";
     }
 
     std::cout << "KERFS: " << kerfs.size() << "\n";
@@ -104,7 +98,7 @@ void Debris::beginCut()
 
     // Prepare sections
     for (uint32_t kerf : kerfs) {
-        auto [idx, vertex] = hulls()[kerf].extreme(-cut.axis);
+        auto [idx, vertex] = components()[kerf].extreme(-cut.axis);
 
         cut.sections.emplace_back(
                 kerf,
@@ -120,10 +114,10 @@ void Debris::beginCut()
 
 void Debris::updateConnections()
 {
-    m_connections = std::vector<Connection>(hulls().size());
+    m_connections = std::vector<Connection>(components().size());
 
     // Identify anchored hulls
-    for (uint32_t i = 0; i < m_connections.size(); i++) m_connections[i].anchor = isAnchor(hulls()[i]);
+    for (uint32_t i = 0; i < m_connections.size(); i++) m_connections[i].anchor = isAnchor(components()[i]);
 
     // Identify hull contacts
     for (uint32_t i = 0; i < m_connections.size(); i++) {
@@ -146,7 +140,7 @@ void Debris::updateConnections()
 void Debris::updateConnection(uint32_t index)
 {
     // Revert anchors when they lose contact with the fixed planes
-    if (m_connections[index].anchor && !isAnchor(hulls()[index])) {
+    if (m_connections[index].anchor && !isAnchor(components()[index])) {
         for (uint32_t link : m_connections[index].contacts) removeAnchor(index, link);
         m_connections[index].anchor = false;
         m_connections[index].tested = m_connections[index].anchors > 0;
@@ -195,7 +189,7 @@ bool Debris::isAnchored(const std::vector<uint32_t>& connections) const
 
 bool Debris::testContact(uint32_t I0, uint32_t I1) const
 {
-    return Collision::distance(hulls()[I0], hulls()[I1]) < 1e-6;
+    return Collision::distance(components()[I0], components()[I1]) < 1e-6;
 }
 
 std::vector<uint32_t> Debris::connections(uint32_t idx) const
@@ -235,14 +229,14 @@ std::vector<std::shared_ptr<RigidBody>> Debris::removeMaterial(const glm::dvec3&
 {
     if (!m_cuts.empty()) {
 
-        assert(m_connections.size() == hulls().size());
+        assert(m_connections.size() == components().size());
 
         Plane cutPlane(m_cuts[0].origin + m_cuts[0].axis * depth, normal); // m_cuts[0].axis
 
         // Remove material from all relevant kerfs and update connections
         for (uint32_t i = 0; i < m_cuts[0].sections.size(); i++) {
             if (m_cuts[0].sections[i].ts < depth) {
-                auto remainder = Collision::fragment(hulls()[m_cuts[0].sections[i].cutIndex], cutPlane);
+                auto remainder = Collision::fragment(components()[m_cuts[0].sections[i].cutIndex], cutPlane);
                 if (remainder.isValid()) {
                     replace(remainder, m_cuts[0].sections[i].cutIndex);
                     updateConnection(m_cuts[0].sections[i].cutIndex);
@@ -273,7 +267,7 @@ void Debris::removeKerf(uint32_t index)
 // Cleanly removes connection - Connected
 void Debris::removeConnection(uint32_t index)
 {
-    uint32_t last = hulls().size() - 1;
+    uint32_t last = components().size() - 1;
 
     // Remove remaining connections to the element
     for (uint32_t idx : m_connections[index].contacts) removeLink(index, idx);
@@ -310,7 +304,7 @@ void Debris::removeAnchor(uint32_t anchor, uint32_t link)
 // Update section (cut) indices if it is not the last hull before removing the hull from the body
 void Debris::removeIndexed(uint32_t index)
 {
-    uint32_t last = hulls().size() - 1;
+    uint32_t last = components().size() - 1;
 
     // Remove kerf associated with the hull (If it exists)
     for (uint32_t i = 0; i < m_cuts[0].sections.size(); i++) {
@@ -369,12 +363,12 @@ std::vector<std::shared_ptr<RigidBody>> Debris::tryFragmentRelease()
 std::shared_ptr<RigidBody> Debris::prepareFragment(const std::vector<uint32_t>& connected)
 {
     std::shared_ptr<RigidBody> fragment = nullptr;
-    if (connected.size() == 1) fragment = std::make_shared<RigidBody>(hulls()[connected[0]]);
+    if (connected.size() == 1) fragment = std::make_shared<RigidBody>(components()[connected[0]]);
     else {
         std::vector<ConvexHull> set;
         set.reserve(connected.size());
 
-        for (uint32_t idx : connected) if (hulls()[idx].isValid()) set.push_back(hulls()[idx]);
+        for (uint32_t idx : connected) if (components()[idx].isValid()) set.push_back(components()[idx]);
         fragment = std::make_shared<CompositeBody>(set);
     }
 
@@ -386,7 +380,7 @@ std::shared_ptr<RigidBody> Debris::prepareFragment(const std::vector<uint32_t>& 
 
 void Debris::print() const
 {
-    std::cout << "[Debris] hulls: " << hulls().size() << " (" << m_connections.size() << "), cuts: " << m_cuts.size() << ", sections: " << m_cuts[0].sections.size() << "\n";
+    std::cout << "[Debris] hulls: " << components().size() << " (" << m_connections.size() << "), cuts: " << m_cuts.size() << ", sections: " << m_cuts[0].sections.size() << "\n";
 
     for (uint32_t i = 0; i < m_connections.size(); i++) {
         std::cout << "CON" << i << ": ( anchors: " << m_connections[i].anchor << ", " << m_connections[i].anchors

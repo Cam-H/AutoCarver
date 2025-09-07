@@ -96,7 +96,7 @@ bool Scene::test(const std::shared_ptr<RigidBody>& body) const
 {
     for (const std::shared_ptr<RigidBody>& collider : m_bodies) { // TODO use broadphase selection
 //        std::cout << "Check: " <<
-        if (body->collides(collider)) {
+        if (body->test(collider)) {
 //            std::cout << "Collision: \n";
 //            body->print();
 //            collider->print();
@@ -159,7 +159,7 @@ void Scene::step(double delta)
     // Check dynamic body collisions
     std::vector<Constraint> constraints;
     for (const std::pair<std::shared_ptr<RigidBody>, std::shared_ptr<RigidBody>>& couple : couples) {
-        auto result = couple.first->collision(couple.second);
+        auto result = couple.first->intersection(couple.second);
         if (result.colliding()) {
             constraints.emplace_back(couple.first, couple.second, result);
 //            std::cout << "Collision: " << couple.first->getName() << " " << couple.second->getName() << "\n";

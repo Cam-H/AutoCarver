@@ -21,6 +21,7 @@
 
 #include "geometry/collision/EPA.h"
 
+class CompositeBody;
 
 class RigidBody : public Body {
 public:
@@ -40,7 +41,7 @@ public:
 
     void setType(Type type);
 
-    void setMesh(const std::shared_ptr<Mesh>& mesh, bool doColliderUpdate = false);
+    void setMesh(const std::shared_ptr<Mesh>& mesh);
     void setHull(const ConvexHull& hull);
 
     void setMask(uint32_t mask);
@@ -56,9 +57,9 @@ public:
     void step(double delta) override;
 
     void zero();
+    virtual void recenter(const glm::dvec3& offset);
 
-    void updateColliders();
-    void prepareColliderVisuals();
+    void updateHull();
 
     [[nodiscard]] Type getType() const;
 
@@ -71,23 +72,22 @@ public:
     glm::dvec3 centroid();
     glm::dmat3 inertiaTensor();
 
-    const ConvexHull &hull() const;
-    const Sphere& boundingSphere() const;
+    [[nodiscard]] const ConvexHull& hull() const;
+    [[nodiscard]] Sphere bounds() const;
 
-    const std::shared_ptr<Mesh>& hullMesh();
-    const std::shared_ptr<Mesh>& bSphereMesh();
-
+    const std::vector<ConvexHull>& components() const;
 
     [[nodiscard]] uint32_t layer() const;
     [[nodiscard]] uint32_t mask() const;
-    [[nodiscard]] bool scan(const std::shared_ptr<RigidBody>& body) const;
+    [[nodiscard]] inline bool scan(const std::shared_ptr<RigidBody>& body) const { return body.get() != this && ((m_mask & body->m_layer) > 0); }
 
-    bool boundaryCollision(const std::shared_ptr<RigidBody>& body);
+    virtual bool boundsTest(const std::shared_ptr<RigidBody>& body);
 
-    bool collides(const std::shared_ptr<RigidBody>& body);
-    bool collision(const std::shared_ptr<RigidBody>& body, glm::dvec3& offset);
+//    virtual bool test(const std::shared_ptr<CompositeBody>& body);
+    virtual bool test(const std::shared_ptr<RigidBody>& body);
 
-    EPA collision(const std::shared_ptr<RigidBody>& body);
+    std::tuple<bool, glm::dvec3> delta(const std::shared_ptr<RigidBody>& body);
+    EPA intersection(const std::shared_ptr<RigidBody>& body);
 
     virtual std::tuple<bool, double> raycast(Ray ray, double tLim);
     virtual std::tuple<bool, double, uint32_t> pickFace(Ray ray, double tLim);
@@ -98,14 +98,11 @@ protected:
 
     RigidBody();
 
+//    bool testHulls(const std::vector<ConvexHull>& hulls, const glm::dmat4& relative);
+
+    virtual bool precheck(uint32_t hullID0, uint32_t hullID1, const glm::dmat4& relative) const;
+
 private:
-
-    void prepareColliders();
-
-
-    void prepareHullVisual();
-    void prepareSphereVisual();
-
 
     void cacheCollision(const std::shared_ptr<RigidBody>& body, const std::pair<uint32_t, uint32_t>& start);
     std::pair<uint32_t, uint32_t> cachedCollision(const std::shared_ptr<RigidBody>& body);
@@ -120,17 +117,11 @@ protected:
 
     Type m_type;
 
+    // A list of hulls composing the rigid body [The first hull is the convex hull of the entire body]
     ConvexHull m_hull;
-    bool m_hullOK;
-
-    Sphere m_boundingSphere;
 
     uint32_t m_mask;
     uint32_t m_layer;
-
-    std::shared_ptr<Mesh> m_hullMesh;
-    std::shared_ptr<Mesh> m_sphereMesh;
-    bool m_colliderVisualsEnable;
 
     bool m_isManifold;
     double m_area;
@@ -146,8 +137,6 @@ protected:
     bool m_inertiaTensorOK;
 
 private:
-
-
 
 };
 

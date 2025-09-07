@@ -32,6 +32,7 @@ public:
 
     [[nodiscard]] bool colliding() const;
 
+    [[nodiscard]] const glm::dvec3& delta() const;
     [[nodiscard]] glm::dvec3 overlap() const;
     [[nodiscard]] glm::dvec3 offset() const;
 

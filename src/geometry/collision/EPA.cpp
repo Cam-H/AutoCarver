@@ -163,6 +163,11 @@ bool EPA::colliding() const
     return m_colliding;
 }
 
+const glm::dvec3& EPA::delta() const
+{
+    return m_worldOffset;
+}
+
 glm::dvec3 EPA::overlap() const
 {
     return m_colliding ? m_worldOffset : glm::dvec3();

@@ -193,21 +193,21 @@ int main(int argc, char *argv[])
     // Handle mesh sphere button
     auto *sphereButton = widget->findChild<QPushButton*>("sphereButton");
     QObject::connect(sphereButton, &QPushButton::clicked, [&]() {
-        collider->setMesh(MeshBuilder::icosphere(radius, 3), true);
+        collider->setMesh(MeshBuilder::icosphere(radius, 3));
         shapeType = 0;
     });
 
     // Handle mesh cube button
     auto *cubeButton = widget->findChild<QPushButton*>("cubeButton");
     QObject::connect(cubeButton, &QPushButton::clicked, [&]() {
-        collider->setMesh(MeshBuilder::box(radius), true);
+        collider->setMesh(MeshBuilder::box(radius));
         shapeType = 1;
     });
 
     // Handle mesh randomization button
     auto *randomButton = widget->findChild<QPushButton*>("randomButton");
     QObject::connect(randomButton, &QPushButton::clicked, [&]() {
-        collider->setMesh(randomMesh(), true);
+        collider->setMesh(randomMesh());
         shapeType = 2;
     });
 

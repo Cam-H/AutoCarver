@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 
 //        std::cout << plane->up().x << " " << plane->up().y << " " << plane->up().z << "\n";
         if (!fragments.first.empty() && !fragments.second.empty()) {
-            base->setMesh(std::make_shared<Mesh>(fragments.first), true);
+            base->setMesh(std::make_shared<Mesh>(fragments.first));
 
             auto debris = scene->createBody(fragments.second, RigidBody::Type::DYNAMIC);
             debris->print();
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
     // Handle mesh randomization button
     auto *randomButton = widget->findChild<QPushButton*>("randomButton");
     QObject::connect(randomButton, &QPushButton::clicked, [&]() {
-        base->setMesh(randomMesh(), true);
+        base->setMesh(randomMesh());
 //        base->setMesh(MeshBuilder::box(6), true);
 
 //        sceneWidget->update();

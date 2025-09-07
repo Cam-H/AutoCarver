@@ -8,6 +8,8 @@
 
 #include "geometry/primitives/ConvexHull.h"
 
+double Simplex::TOLERANCE = 1e-12;
+
 Simplex::Simplex(const std::tuple<uint32_t, uint32_t, glm::dvec3>& start)
     : Simplex(Vertex(start))
 {

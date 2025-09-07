@@ -18,7 +18,6 @@
 
 ConvexHull::ConvexHull()
     : m_initialized(false)
-    , m_center()
     , m_faces(0, 0)
     , m_volume(-1.0)
     , m_walkStart(0)
@@ -76,10 +75,7 @@ void ConvexHull::initialize()
     if (m_vertices.empty() || m_faces.empty()) return;
 
     // Calculate convex hull center
-    for (const glm::dvec3& vertex : m_vertices) {
-        m_center += vertex;
-    }
-    m_center /= (double)m_vertices.size();
+    m_bounds = Sphere::enclose(m_vertices);
 
     m_walks = m_faces.edgeList();
 
@@ -127,6 +123,11 @@ void ConvexHull::evaluate()
     }
 }
 
+void ConvexHull::translate(const glm::dvec3& translation)
+{
+    for (glm::dvec3& vertex : m_vertices) vertex += translation;
+}
+
 void ConvexHull::setWalkStart(uint32_t startIndex)
 {
     if (startIndex < m_walks.size()) {
@@ -164,9 +165,9 @@ const FaceArray& ConvexHull::faces() const
     return m_faces;
 }
 
-glm::dvec3 ConvexHull::center() const
+const Sphere& ConvexHull::bounds() const
 {
-    return m_center;
+    return m_bounds;
 }
 
 Plane ConvexHull::facePlane(uint32_t idx) const
@@ -192,8 +193,11 @@ uint32_t ConvexHull::walk(const glm::dvec3& axis) const
 
 uint32_t ConvexHull::walk(const glm::dvec3& axis, uint32_t index) const
 {
-    if (index >= m_walks.size()) throw std::runtime_error("[ConvexHull] Index out of bounds. Can not walk");
-    else if (m_orphans) {
+    if (index >= m_walks.size()) {
+        std::cout << "HULL: " << index << " " << m_walks.size() << "\n";
+        print();
+        throw std::runtime_error("[ConvexHull] Index out of bounds. Can not walk");
+    } else if (m_orphans) {
 //        std::cout << "\033[93m[ConvexHull] Orphaned start point. Can not walk. Using fallback method\033[0m\n";
         VertexArray::extreme(m_vertices, axis, index);
         return index;

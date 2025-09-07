@@ -119,7 +119,6 @@ int main(int argc, char *argv[])
     auto eoatMesh = MeshHandler::loadAsMeshBody("../res/meshes/Blade.obj");
     eoat = scene->createBody(eoatMesh);
     eoat->setName("BLADE");
-    eoat->prepareColliderVisuals();
     robot->setEOAT(eoat, false);
 
     scene->setSculptingRobot(robot);//
@@ -337,7 +336,7 @@ int main(int argc, char *argv[])
         scene->proceed();
     });
 
-    auto [idx, peak] = scene->getSculpture()->hulls()[0].extreme({ 0, 1, 0});
+    auto [idx, peak] = scene->getSculpture()->hull().extreme({ 0, 1, 0});
     tpos = peak - glm::dvec3(0, 0, 0.1);
 
     scene->start();

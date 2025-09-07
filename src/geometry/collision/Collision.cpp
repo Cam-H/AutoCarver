@@ -11,6 +11,10 @@
 #include "geometry/primitives/Sphere.h"
 #include "geometry/primitives/AABB.h"
 #include "geometry/primitives/ConvexHull.h"
+
+#include "physics/RigidBody.h"
+#include "physics/CompositeBody.h"
+
 #include "EPA.h"
 
 std::tuple<bool, double> Collision::raycast(const Plane& plane, const Ray& ray)
@@ -215,6 +219,8 @@ bool Collision::test(const AABB& bodyA, const Sphere& bodyB)
     glm::dvec3 delta = bodyB.center - nearest(bodyA, bodyB.center);
     return glm::dot(delta, delta) < bodyB.radius * bodyB.radius;
 }
+
+
 
 glm::dvec3 Collision::nearest(const AABB& body, const glm::dvec3& reference)
 {

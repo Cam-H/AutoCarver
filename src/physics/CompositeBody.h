@@ -14,6 +14,7 @@
 class Mesh;
 class Octree;
 
+// Extension to RigidBody to handle spatial partitioning of components
 class CompositeBody : public RigidBody {
 public:
 
@@ -24,6 +25,8 @@ public:
     bool deserialize(std::ifstream& file) override;
 
     virtual void restore();
+
+    void recenter(const glm::dvec3& offset) override;
 
     void locate();
     void sort();
@@ -39,18 +42,22 @@ public:
 
     virtual void remesh();
 
-    const std::vector<ConvexHull>& hulls() const;
-
     const glm::dvec3& baseColor() const;
+
+    const std::vector<ConvexHull>& components() const;
+
+    bool test(const std::shared_ptr<RigidBody>& body) override;
 
 protected:
 
     CompositeBody();
 
-    void prepareHulls();
+    void prepareComponents();
     void prepareTree();
 
-    bool split(const Plane& plane, uint32_t hullIndex);
+    bool split(const Plane& plane, uint32_t componentIndex);
+
+    bool precheck(uint32_t hullID0, uint32_t hullID1, const glm::dmat4& relative) const override;
 
 private:
 
@@ -69,7 +76,7 @@ private:
 
 private:
 
-    std::vector<ConvexHull> m_hulls;
+    std::vector<ConvexHull> m_components;
 
     // Locating hulls relative to one another
     std::shared_ptr<Octree> m_tree;

@@ -25,8 +25,7 @@ void RenderBuffer::update(const Scene* scene)
             body->getID(),
             body->getTransform(),
             body->mesh(),
-            body->hullMesh(),
-            body->boundingSphere()
+            body->hull().bounds()
         });
     }
 
@@ -35,7 +34,6 @@ void RenderBuffer::update(const Scene* scene)
                 body->getID(),
                 body->getTransform(),
                 body->mesh(),
-                nullptr,
                 Sphere()
         });
     }

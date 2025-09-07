@@ -40,6 +40,8 @@ public:
 
     void evaluate();
 
+    void translate(const glm::dvec3& translation);
+
     void setWalkStart(uint32_t startIndex);
     [[nodiscard]] bool getWalkStart() const;
 
@@ -51,7 +53,8 @@ public:
     [[nodiscard]] uint32_t facetCount() const;
     [[nodiscard]] const FaceArray& faces() const;
 
-    [[nodiscard]] glm::dvec3 center() const;
+    [[nodiscard]] const Sphere& bounds() const;
+
     [[nodiscard]] Plane facePlane(uint32_t idx) const;
 
     [[nodiscard]] const glm::dvec3& start() const;
@@ -103,7 +106,7 @@ private:
 
     FaceArray m_faces;
 
-    glm::dvec3 m_center;
+    Sphere m_bounds;
     std::vector<std::vector<uint32_t>> m_walks;
     uint32_t m_walkStart;
     bool m_orphans;
