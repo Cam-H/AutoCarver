@@ -24,6 +24,7 @@ Sequence::Sequence(const Profile* profile, const std::vector<SectionOperation::S
     }
 
     normal = profile->normal();
+    exit = end();
 }
 
 void Sequence::transform(const glm::dquat& rotation, const glm::dvec3& translation)
@@ -37,6 +38,7 @@ void Sequence::transform(const glm::dquat& rotation, const glm::dvec3& translati
     }
 
     normal = rotation * normal;
+    exit = rotation * exit + translation;
 }
 
 const glm::dvec3& Sequence::start() const
@@ -51,7 +53,22 @@ Pose Sequence::startPose(const glm::dvec3& forward) const
     return Pose(sets[0].motions[0].first, sets[0].axes(forward));
 }
 
+const glm::dvec3& Sequence::end() const
+{
+    assert(!sets.empty() && !sets.back().motions.empty());
+    return sets.back().motions.back().first;
+}
+
 Axis3D Sequence::Set::axes(const glm::dvec3& forward) const
 {
     return Axis3D::faceAligned(normal, forward, true);
+}
+
+bool Sequence::Set::isBlind() const
+{
+    return std::abs(glm::dot(travel, axis)) >= 1 - 1e-6;
+}
+bool Sequence::Set::isMill() const
+{
+    return !isBlind();
 }

@@ -84,7 +84,7 @@ const std::string& Body::getName() const
     return m_name;
 }
 
-const std::shared_ptr<Mesh>& Body::mesh()
+std::shared_ptr<Mesh> Body::mesh()
 {
     return m_mesh;
 }

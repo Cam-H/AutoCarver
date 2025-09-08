@@ -339,6 +339,7 @@ int main(int argc, char *argv[])
     auto [idx, peak] = scene->getSculpture()->hull().extreme({ 0, 1, 0});
     tpos = peak - glm::dvec3(0, 0, 0.1);
 
+    std::cout << "xxx\n";
     scene->start();
 
     // Handle updating robot

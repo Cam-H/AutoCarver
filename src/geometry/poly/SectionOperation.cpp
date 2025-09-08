@@ -175,8 +175,11 @@ std::vector<SectionOperation::Set> SectionOperation::sequence(const SectionOpera
 
     auto step = relief.step(thickness);
     auto depths = relief.depths(thickness);
-    cuts.emplace_back(-relief.normal, glm::dvec2(relief.normal.y, -relief.normal.x));
-    if (glm::dot(cuts.back().normal, relief.external) > 0) cuts.back().normal = -cuts.back().normal;
+
+    glm::dvec2 normal = { relief.normal.y, -relief.normal.x };
+    if (glm::dot(normal, relief.external) > 0) normal = -normal;
+
+    cuts.emplace_back(-relief.normal, normal);
 
     for (double depth : depths) {
         cuts.back().motions.emplace_back(position, depth + RUN_UP);
@@ -192,25 +195,42 @@ std::vector<SectionOperation::Set> SectionOperation::sequence(const SectionOpera
 
     // Add a milling operation to clean up surface (Two passes)
     double millDistance = relief.projection(thickness);
-    double teff = 0.5 * std::abs(thickness * glm::dot(-relief.normal, relief.internal));
+    double teff = 0.5 * std::abs(thickness * glm::dot(relief.normal, relief.internal));
     auto travel = (1.0 - 2.0 * reverse) * relief.internal;
-    auto initial = relief.start + reverse * millDistance * relief.internal;
-    cuts.emplace_back(-relief.normal, -cuts.back().normal, travel);
+    auto initial = relief.start + reverse * millDistance * relief.internal - !reverse * thickness * normal;
+    cuts.emplace_back(-relief.normal, normal, travel);
     cuts.back().motions.emplace_back(initial + teff * relief.normal, millDistance);
-    cuts.emplace_back(-relief.normal, cuts.back().normal, travel);
+    cuts.emplace_back(-relief.normal, normal, travel);
     cuts.back().motions.emplace_back(initial, millDistance);
 
     // Perform a blind cut against the newly accessible surface, if the milling did not entirely clear it
     if (millDistance + 1e-12 < relief.length && width < millDistance) {
-        cuts.emplace_back( relief.internal, glm::dvec2(relief.internal.y, -relief.internal.x));
-        if (glm::dot(cuts.back().normal, relief.external) < 0) cuts.back().normal = -cuts.back().normal;
-        cuts.back().motions.emplace_back(relief.start + relief.internal * width, relief.length - width);
+        normal = { relief.internal.y, -relief.internal.x };
+        if (reverse ^ (glm::dot(normal, relief.external) > 0)) normal = -normal;
+
+        initial = relief.start - !reverse * thickness * normal + relief.internal * (width + 0.5 * RUN_UP);
+
+        cuts.emplace_back( relief.internal, normal);
+        cuts.back().motions.emplace_back(initial, relief.length - width - 0.5 * RUN_UP);
+
+        // TODO backcut
+//        cuts.emplace_back( relief.internal, normal, -relief.internal);
+//        cuts.back().motions.emplace_back(initial, -0.5 * RUN_UP);
     }
 
     return cuts;
 }
 
-// TODO Currently only tries forming a relief cut with the adjacent edge as a guide. There are more (infinitely many) options. Trying against the opposite face would also capture some situations
+glm::dvec2 SectionOperation::leftExit() const
+{
+    if (m_cutBA) return startVertex();
+    else return reliefs[0].center();
+}
+glm::dvec2 SectionOperation::rightExit() const
+{
+    if (m_cutBC) return endVertex();
+    else return reliefs[!m_cutBA].center();
+}
 
 
 // Forms a parallelogram representing the required empty region to perform a relief cut
@@ -296,4 +316,10 @@ std::vector<double> SectionOperation::Relief::depths(double t) const
 const glm::dvec2& SectionOperation::Relief::apex()
 {
     return edges[1];
+}
+
+// Calculates and returns the center of the parallelogram (bounds) of this relief
+glm::dvec2 SectionOperation::Relief::center() const
+{
+    return 0.5 * (edges[0] + edges[2]);
 }

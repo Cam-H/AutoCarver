@@ -33,7 +33,7 @@ public:
     [[nodiscard]] uint32_t getID() const;
     [[nodiscard]] const std::string& getName() const;
 
-    const std::shared_ptr<Mesh>& mesh();
+    std::shared_ptr<Mesh> mesh();
 
     [[nodiscard]] const glm::dvec3& getLinearVelocity() const;
     [[nodiscard]] const glm::dvec3& getAngularVelocity() const;

@@ -143,6 +143,8 @@ private:
     void planOutlineRefinement(double stepDg);
     std::vector<Action> planOutlineRefinement(Profile& profile);
     Action planOutlineRefinement(const Profile& profile, const SectionOperation& operation);
+
+    bool planTranslation(const glm::dvec3& translation, Action& action);
     bool planSequence(const Sequence& sequence, Action& action);
 
     bool planBlindCut(const Pose& pose, double depth, Action& action);
@@ -165,9 +167,8 @@ private:
     std::shared_ptr<CompositeTrajectory> preparePlanarTrajectory(const std::vector<glm::dvec3>& border, const glm::dvec3& normal);
     std::shared_ptr<CompositeTrajectory> prepareThroughCut(Pose pose, double depth, double runup, const glm::dvec3& off);
 
-    void commitActions(const std::vector<Action>& actions);
-
     void nextAction();
+    void link();
 
     void removeDebris();
 
@@ -206,9 +207,9 @@ private:
 
     std::deque<Cut> m_cuts; // Temporary container for cuts when preparing action
 
-    std::vector<Action> m_actions;
-
     bool m_planned;
+
+    std::deque<Action> m_actions;
     uint32_t m_step;
 };
 

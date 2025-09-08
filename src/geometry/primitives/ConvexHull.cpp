@@ -42,9 +42,15 @@ ConvexHull::ConvexHull(const VertexArray& cloud)
 }
 
 ConvexHull::ConvexHull(const std::shared_ptr<Mesh>& mesh)
-        : ConvexHull(mesh->vertices())
+    : ConvexHull(*mesh)
 {
-    if (mesh->faces().hasFreeIndices(mesh->vertexCount())) {
+
+}
+
+ConvexHull::ConvexHull(const Mesh& mesh)
+        : ConvexHull(mesh.vertices())
+{
+    if (mesh.faces().hasFreeIndices(mesh.vertexCount())) {
         std::cout << "\033[93m[ConvexHull] Generated from a mesh with orphan vertices! Result may noy be as expected\033[0m\n";
     }
 }

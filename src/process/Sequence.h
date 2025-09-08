@@ -22,6 +22,8 @@ public:
     [[nodiscard]] const glm::dvec3& start() const;
     [[nodiscard]] Pose startPose(const glm::dvec3& forward) const;
 
+    [[nodiscard]] const glm::dvec3& end() const;
+
     struct Set {
 
         Set(const glm::dvec3& axis, const glm::dvec3& normal, const glm::dvec3& travel)
@@ -30,6 +32,9 @@ public:
                 , travel(travel) {}
 
         Axis3D axes(const glm::dvec3& forward) const;
+
+        [[nodiscard]] bool isBlind() const;
+        [[nodiscard]] bool isMill() const;
 
         std::vector<std::pair<glm::dvec3, double>> motions; // First = start position, second = final distance from start
 
@@ -43,6 +48,7 @@ public:
 public:
     std::vector<Set> sets;
     glm::dvec3 normal;
+    glm::dvec3 exit;
 };
 
 

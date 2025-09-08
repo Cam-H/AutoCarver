@@ -322,11 +322,11 @@ int main(int argc, char *argv[])
             showSculptureSetting->setCheckState(Qt::CheckState::Checked);
             body->applyCompositeColors(showHullSetting->isChecked());
             scene->prepareBody(body);
-            scene->prepareBody(body->model());
+            scene->createVisual(mesh);
             scene->update();
 
             body->print();
-            body->model()->print();
+//            body->model()->print();
 
 //            body->restoreAsHull();
 
@@ -348,7 +348,7 @@ int main(int argc, char *argv[])
     scene = std::make_shared<Scene>();
     body = std::make_shared<Sculpture>(mesh, 1.0, 2.0);
     scene->prepareBody(body);
-    scene->prepareBody(body->model());
+    scene->createVisual(mesh);
 
     detector = new EdgeDetect(mesh);
 
@@ -362,7 +362,7 @@ int main(int argc, char *argv[])
     detector->capture()->focus();
 
     body->print();
-    body->model()->print();
+//    body->model()->print();
 
 
     sceneWidget = window->findChild<SceneWidget*>("sceneWidget");

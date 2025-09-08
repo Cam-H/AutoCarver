@@ -54,6 +54,7 @@ public:
         [[nodiscard]] std::vector<double> depths(double t) const;
 
         [[nodiscard]] const glm::dvec2& apex();
+        [[nodiscard]] glm::dvec2 center() const;
 
         glm::dvec2 start; // Start position for relief
 
@@ -82,6 +83,9 @@ public:
 
     [[nodiscard]] std::vector<Set> left() const;
     [[nodiscard]] std::vector<Set> right() const;
+
+    [[nodiscard]] glm::dvec2 leftExit() const;
+    [[nodiscard]] glm::dvec2 rightExit() const;
 
 
     static double RUN_UP;

@@ -30,6 +30,7 @@ public:
 
     explicit ConvexHull(const VertexArray& cloud);
     explicit ConvexHull(const std::shared_ptr<Mesh>& mesh);
+    explicit ConvexHull(const Mesh& mesh);
 
     explicit ConvexHull(const std::vector<glm::dvec3>& cloud);
 

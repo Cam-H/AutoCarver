@@ -282,7 +282,7 @@ void Profile::skip()
                     m_sections.pop_front();
                 }
             }
-        } else if (m_sections[0].skipped) m_sections.clear(); // Clear when the only remaining sections have been skipped
+        } else m_sections.clear();
     }
 }
 

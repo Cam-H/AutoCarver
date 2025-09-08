@@ -138,8 +138,9 @@ SceneWidget::RenderItem& SceneWidget::getGeometryBuffer(const std::shared_ptr<Me
 
         auto item = RenderItem{ (uint32_t)m_geometries.size(),m_defaultProgramIdx + 1 };
         m_renderMap[mesh] = item;
-        if (!mesh->faceColorsAssigned()) mesh->setFaceColor(mesh->baseColor());
-        m_geometries.push_back(new RenderGeometry(mesh, RenderGeometry::Format::VERTEX_NORMAL_COLOR ));
+
+        if (!mesh->faceColorsAssigned()) m_geometries.push_back(new RenderGeometry(mesh, RenderGeometry::Format::VERTEX_NORMAL ));
+        else m_geometries.push_back(new RenderGeometry(mesh, RenderGeometry::Format::VERTEX_NORMAL_COLOR ));
 
         return m_renderMap[mesh];
     }
@@ -361,7 +362,7 @@ void SceneWidget::render(const std::shared_ptr<Mesh> &mesh, const QMatrix4x4& tr
 
     // Handle rendering
     auto *program = m_programs[item.programIdx];
-    if (mesh->useOverrideColor()) program = m_programs[0]; // Use a flat shader instead in case no colors are assigned
+    if (!mesh->faceColorsAssigned() || mesh->useOverrideColor()) program = m_programs[0]; // Use a flat shader instead in case no colors are assigned
     program->bind();
 
     // TODO manage uniforms better
@@ -371,7 +372,7 @@ void SceneWidget::render(const std::shared_ptr<Mesh> &mesh, const QMatrix4x4& tr
     program->setUniformValue("mvp_matrix", m_camera.getViewProjection() * transform);
     program->setUniformValue("n_matrix", transform.normalMatrix());
 
-    const glm::dvec3& color = mesh->overrideColor();
+    const glm::dvec3& color = mesh->faceColorsAssigned() ? mesh->overrideColor() : mesh->baseColor();
     program->setUniformValue("out_color", QVector3D(color.r, color.g, color.b));
 
     // Draw mesh geometry
