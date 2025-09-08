@@ -7,13 +7,17 @@
 
 // translation - in units local to the axes defined in initialPose
 CartesianTrajectory::CartesianTrajectory(const std::shared_ptr<Robot>& robot, const Pose& initialPose, const glm::dvec3& translation, uint32_t steps)
+    : CartesianTrajectory(robot, initialPose, Pose(initialPose.position + initialPose.axes.delocalize(translation), initialPose.axes), steps)
+{
+
+}
+
+CartesianTrajectory::CartesianTrajectory(const std::shared_ptr<Robot>& robot, const Pose& initialPose, const Pose& finalPose, uint32_t steps)
     : TOPPTrajectory({robot == nullptr ? std::vector<Waypoint>() : std::vector<Waypoint>{ robot->inverse(initialPose) }})
     , m_robot(robot)
     , m_initialPose(initialPose)
+    , m_finalPose(finalPose)
 {
-    auto finalPose = m_initialPose;
-    finalPose.localTranslate(translation);
-
     m_curve = Ray(initialPose.position, finalPose.position - initialPose.position);
     m_distance = glm::length(m_curve.axis);
     m_curve.axis /= m_distance;
@@ -24,10 +28,19 @@ CartesianTrajectory::CartesianTrajectory(const std::shared_ptr<Robot>& robot, co
 void CartesianTrajectory::resolve(uint32_t steps)
 {
     Pose pose = m_initialPose;
+
     std::vector<Waypoint> waypoints;
     waypoints.reserve(steps);
 
-    glm::dvec3 dt = (m_distance / (steps - 1)) * m_curve.axis;
+    double dt = 1.0 / (steps - 1);
+    glm::dvec3 del = dt * m_distance * m_curve.axis;
+
+    glm::dquat relative = m_initialPose.axes.relative(m_finalPose.axes);
+    glm::dvec3 axis = glm::axis(relative);
+    double theta = glm::angle(relative);
+
+    auto drot = glm::angleAxis(-dt * theta, axis);
+
     for (uint32_t i = 0; i < steps; i++) {
         waypoints.emplace_back(m_robot->inverse(pose));
         if (!waypoints.back().isValid()) {
@@ -36,8 +49,15 @@ void CartesianTrajectory::resolve(uint32_t steps)
             break;
         }
 
-        pose.position += dt;
+        pose.position += del;
+        pose.axes = pose.axes * drot;
+//        std::cout << waypoints.back().toString() << "\n";
     }
+
+//
+//    for (uint32_t i = 0; i < waypoints.size() - 1; i++) {
+//        std::cout << "DIF " << waypoints[i].toDg().delta(waypoints[i + 1].toDg()) << "\n";
+//    }
 
     m_path = PiecewisePolyPath(waypoints);
 

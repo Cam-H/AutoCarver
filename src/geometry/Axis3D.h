@@ -7,6 +7,8 @@
 
 #include <glm.hpp>
 
+const static glm::dvec3 UP = { 0, 1, 0};
+
 class Axis3D {
 public:
 
@@ -21,6 +23,8 @@ public:
 
     friend Axis3D operator*(const Axis3D& axes, const glm::dmat3& rotation);
     friend Axis3D operator*(const Axis3D& axes, const glm::dquat& rotation);
+
+    static Axis3D faceAligned(const glm::dvec3& normal, const glm::dvec3& direction, bool alignHorizontal);
 
 
     void rotateY();
@@ -41,6 +45,8 @@ public:
 
     [[nodiscard]] glm::dmat3 toTransform() const;
     [[nodiscard]] glm::dquat toQuat() const;
+
+    [[nodiscard]] glm::dquat relative(const Axis3D& axes) const;
 
     [[nodiscard]] glm::dvec3 localize(const glm::dvec3& vertex) const;
     [[nodiscard]] glm::dvec3 delocalize(const glm::dvec3& vertex) const;

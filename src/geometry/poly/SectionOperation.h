@@ -27,6 +27,9 @@ public:
         Set(const glm::dvec2& axis, const glm::dvec2& normal)
             : axis(axis), normal(normal), travel(axis) {}
 
+        Set(const glm::dvec2& axis, const glm::dvec2& normal, const std::vector<std::pair<glm::dvec2, double>>& motions)
+                : axis(axis), normal(normal), travel(axis), motions(motions) {}
+
         Set(const glm::dvec2& axis, const glm::dvec2& normal, const glm::dvec2& travel)
             : axis(axis), normal(normal), travel(travel) {}
 
@@ -77,6 +80,10 @@ public:
 
     [[nodiscard]] std::vector<Set> cuts() const;
 
+    [[nodiscard]] std::vector<Set> left() const;
+    [[nodiscard]] std::vector<Set> right() const;
+
+
     static double RUN_UP;
     static uint8_t ITERATIONS;
 
@@ -89,6 +96,10 @@ private:
                        const glm::dvec2& normal,
                        double length,
                        const Profile* profile);
+
+    [[nodiscard]] Set direct(const glm::dvec2& origin, const glm::dvec2& axis, const glm::dvec2& ref, double depth) const;
+    [[nodiscard]] std::vector<Set> sequence(const SectionOperation::Relief& relief) const;
+
 
 public:
 

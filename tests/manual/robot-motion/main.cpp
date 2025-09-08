@@ -562,15 +562,16 @@ int main(int argc, char *argv[])
 
     constrainedTestButton = window->findChild<QPushButton*>("constrainedTestButton");
     QObject::connect(constrainedTestButton, &QRadioButton::clicked, [&]() {
-//        auto startPose = robot->getPose();
-//
-//        auto [vLims, aLims] = getLimits(M_PI / 180);
-//
-//        auto traj = std::make_shared<CartesianTrajectory>(robot, startPose, translation, 10);
-//        traj->setLimits(vLims, aLims);
-//
-//        if (traj->isValid()) test(traj);
-//        else std::cout << "Validation failed!\n";
+        auto startPose = robot->getPose(waypoints[wpStartField->value()]);
+        auto endPose = robot->getPose(waypoints[wpEndField->value()]);
+
+        auto [vLims, aLims] = getLimits(M_PI / 180);
+
+        auto traj = std::make_shared<CartesianTrajectory>(robot, startPose, endPose, 10);
+        traj->setLimits(vLims, aLims);
+
+        if (traj->isValid()) test(traj);
+        else std::cout << "Validation failed!\n";
     });
 
     auto loadButton = window->findChild<QPushButton*>("loadButton");
@@ -598,6 +599,17 @@ int main(int argc, char *argv[])
 
     saveWaypoint(Waypoint({   0, 135, -45,  0,   0, 0 }, true));
     saveWaypoint(Waypoint({ -10, 150, -35, 25, -15, 0 }, true));
+
+    Pose start = robot->getPose(waypoints[0]);
+
+    start.position.z += 0.8;
+    saveWaypoint(robot->inverse(start).toDg());
+
+    start.axes.rotateZ(1.66 * M_PI);
+    saveWaypoint(robot->inverse(start).toDg());
+
+    start.position.z += 0.5;
+    saveWaypoint(robot->inverse(start).toDg());
 
     wpEndField->setValue(1);
 

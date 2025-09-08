@@ -84,6 +84,16 @@ Waypoint Waypoint::toRad() const
     return wp;
 }
 
+double Waypoint::delta(const Waypoint& wp) const
+{
+    if (values.size() != wp.values.size()) return std::numeric_limits<double>::max();
+
+    double sum = 0;
+    for (uint32_t i = 0; i < values.size(); i++) sum += std::abs(values[i] - wp.values[i]);
+
+    return sum;
+}
+
 Waypoint Waypoint::midpoint(const Waypoint& lhs, const Waypoint& rhs)
 {
     if (lhs.values.size() != rhs.values.size()) throw std::runtime_error("[Waypoint] Can not calculate midpoint. Unequal sizes");

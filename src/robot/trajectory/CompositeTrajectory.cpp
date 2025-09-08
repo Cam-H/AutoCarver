@@ -6,6 +6,8 @@
 
 #include <iostream>
 
+#include "SimpleTrajectory.h"
+
 CompositeTrajectory::CompositeTrajectory(uint32_t dof)
     : Trajectory(dof)
     , m_error(false)
@@ -13,6 +15,7 @@ CompositeTrajectory::CompositeTrajectory(uint32_t dof)
 
 }
 
+// Attaches the provided trajectory, result is disjoint if the end and start points do not match
 void CompositeTrajectory::addTrajectory(const std::shared_ptr<Trajectory>& trajectory)
 {
     if (trajectory != nullptr) {
@@ -23,6 +26,17 @@ void CompositeTrajectory::addTrajectory(const std::shared_ptr<Trajectory>& traje
         std::cout << "Failed to add trajectory. The trajectory provided is invalid\n";
         m_error = true;
     }
+}
+
+// Attaches the provided trajectory, developing an intermediary trajectory if required to maintain continuity
+void CompositeTrajectory::connectTrajectory(const std::shared_ptr<Trajectory>& trajectory)
+{
+    // Check for disjoint trajectory
+    if (!(m_trajectories.empty() || Waypoint::compare(m_trajectories.back()->end(), trajectory->start()))) {
+        addTrajectory(std::make_shared<SimpleTrajectory>(m_trajectories.back()->end(), trajectory->start(), Interpolator::SolverType::QUINTIC));
+    }
+
+    addTrajectory(trajectory);
 }
 
 void CompositeTrajectory::clear()
@@ -55,6 +69,15 @@ void CompositeTrajectory::update()
 
     m_duration = std::max(m_duration, duration);
     m_duration = std::max(m_duration, m_minDuration);
+}
+
+bool CompositeTrajectory::continuous() const
+{
+    for (uint32_t i = 0; i < m_trajectories.size() - 1; i++) {
+        if (Waypoint::compare(m_trajectories[i]->end(), m_trajectories[i + 1]->start())) return false;
+    }
+
+    return true;
 }
 
 uint32_t CompositeTrajectory::segmentCount() const

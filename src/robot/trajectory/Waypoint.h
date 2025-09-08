@@ -30,7 +30,10 @@ public:
     [[nodiscard]] Waypoint toDg() const;
     [[nodiscard]] Waypoint toRad() const;
 
+    [[nodiscard]] double delta(const Waypoint& wp) const;
+
     static Waypoint midpoint(const Waypoint& lhs, const Waypoint& rhs);
+    inline static bool compare(const Waypoint& lhs, const Waypoint& rhs, double tolerance = 1e-3) { return lhs.delta(rhs) < tolerance; }
 
 private:
 

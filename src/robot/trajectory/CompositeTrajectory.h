@@ -17,8 +17,11 @@ public:
     void update() override;
 
     void addTrajectory(const std::shared_ptr<Trajectory>& trajectory);
+    void connectTrajectory(const std::shared_ptr<Trajectory>& trajectory);
 
     void clear();
+
+    [[nodiscard]] bool continuous() const;
 
     [[nodiscard]] uint32_t segmentCount() const;
     [[nodiscard]] std::tuple<double, double> tLimits(uint32_t subIndex) const;

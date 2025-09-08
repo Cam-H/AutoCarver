@@ -20,11 +20,10 @@
 #include "robot/trajectory/CompositeTrajectory.h"
 
 #include "ProcessConfiguration.h"
+#include "Sequence.h"
 
 class Profile;
 class SectionOperation;
-
-const static glm::dvec3 UP = { 0, 1, 0};
 
 class SculptProcess : public Scene {
 public:
@@ -64,7 +63,7 @@ public:
     const std::shared_ptr<Robot>& getSculptor() const;
     const std::shared_ptr<Robot>& getTurntable() const;
 
-    [[nodiscard]] Axis3D faceAlignedAxes(const glm::dvec3& normal, bool alignHorizontal) const;
+    const glm::dvec3& forward() const;
 
 //    std::shared_ptr<Mesh> sculpture();
 
@@ -125,8 +124,11 @@ private:
 
     [[nodiscard]] glm::dvec3 alignedToBlade(const Axis3D& axes, const glm::dvec3& vertex);
 
-    [[nodiscard]] inline glm::dvec3 bladeCenterOffset(const Axis3D& axes, const glm::dvec3& vertex) const;
+    [[nodiscard]] inline glm::dvec3 bladeOffset(const Axis3D& axes, const glm::dvec3& vertex) const;
+    [[nodiscard]] inline glm::dvec3 bladeCenterOffset(const glm::dvec3& zAxis, const glm::dvec3& vertex) const;
     [[nodiscard]] inline glm::dvec3 bladeThicknessOffset(const Axis3D& axes) const;
+
+    [[nodiscard]] inline bool nearest(const Sequence& test, const Sequence& comparison);
 
     static void toWorldSpace(glm::dvec3& normal, const glm::dquat& rotation);
     void toWorldSpace(std::vector<glm::dvec3>& border, const glm::dquat& rotation) const;
@@ -141,6 +143,7 @@ private:
     void planOutlineRefinement(double stepDg);
     std::vector<Action> planOutlineRefinement(Profile& profile);
     Action planOutlineRefinement(const Profile& profile, const SectionOperation& operation);
+    bool planSequence(const Sequence& sequence, Action& action);
 
     bool planBlindCut(const Pose& pose, double depth, Action& action);
     bool planMill(const Pose& pose, const glm::dvec3& normal, const glm::dvec3& travel, double depth, Action& action);

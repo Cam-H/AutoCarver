@@ -46,7 +46,7 @@ public:
 
     const std::vector<ConvexHull>& components() const;
 
-    bool test(const std::shared_ptr<RigidBody>& body) override;
+//    bool test(const std::shared_ptr<RigidBody>& body) override;
 
 protected:
 

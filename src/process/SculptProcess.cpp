@@ -13,9 +13,6 @@
 #include "core/Sculpture.h"
 #include "core/Debris.h"
 
-#include "geometry/poly/Profile.h"
-#include "geometry/poly/SectionOperation.h"
-
 #include "renderer/EdgeDetect.h"
 #include "renderer/RenderCapture.h"
 
@@ -28,6 +25,9 @@
 #include "geometry/MeshBuilder.h"
 #include "geometry/collision/Collision.h"
 #include "fileIO/MeshHandler.h"
+
+#include "geometry/poly/Profile.h"
+#include "geometry/poly/SectionOperation.h"
 
 static const std::array<double, 13> ATTEMPT_OFFSETS = { 0,
                                                  -M_PI / 32, M_PI / 32
@@ -430,24 +430,6 @@ void SculptProcess::toWorldSpace(std::vector<glm::dvec3>& border, const glm::dqu
     }
 }
 
-// Develop axes aligned to a face [by face normal] (x along cut direction, y normal to plane, z along blade)
-Axis3D SculptProcess::faceAlignedAxes(const glm::dvec3& normal, bool alignHorizontal) const
-{
-    Axis3D axes(normal);
-    axes.rotateX(-M_PI / 2);
-
-    // Bring the zAxis into the horizontal plane
-    if (alignHorizontal) {
-        double planeAngle = atan2(-glm::dot(axes.zAxis, UP), glm::dot(axes.xAxis, UP));
-        axes.rotateY(-planeAngle);
-    }
-
-    // Ensure zAxis points towards the sculpture
-    if (glm::dot(axes.zAxis, m_fwd) < 0) axes.flipXZ();
-
-    return axes;
-}
-
 bool SculptProcess::withinActionLimit() const
 {
     if (m_config.actionLimitEnable && m_actions.size() >= m_config.actionLimit) {
@@ -460,7 +442,7 @@ bool SculptProcess::withinActionLimit() const
 
 Waypoint SculptProcess::alignedToFaceWP(const std::vector<glm::dvec3>& border, const glm::dvec3& normal) const
 {
-    auto axes = faceAlignedAxes(normal, false);
+    auto axes = Axis3D::faceAligned(normal, m_fwd, false);
 
     // Find the better position for access (If possible)
     auto optionA = alignedToFaceWP(axes, border);
@@ -563,6 +545,11 @@ const std::shared_ptr<Robot>& SculptProcess::getSculptor() const
 const std::shared_ptr<Robot>& SculptProcess::getTurntable() const
 {
     return m_turntable;
+}
+
+const glm::dvec3& SculptProcess::forward() const
+{
+    return m_fwd;
 }
 
 //TODO arrange steps better
@@ -840,7 +827,10 @@ std::vector<SculptProcess::Action> SculptProcess::planOutlineRefinement(Profile&
                 std::cout << "\033[93mFailed to generate trajectory\033[0m\n";
                 actions.pop_back();
                 profile.skip();
-            } else profile.refine();
+            } else {
+                m_latestRobotCommand = actions.back().trajectory->end();
+                profile.refine();
+            }
         } else profile.skip();
     }
 
@@ -851,41 +841,24 @@ SculptProcess::Action SculptProcess::planOutlineRefinement(const Profile& profil
 {
     auto rotation = glm::angleAxis(m_turntable->getJointValue(0), UP);
 
-    auto pNormal = profile.normal();
-    toWorldSpace(pNormal, rotation);
-
-    const double offset = 0.5 * m_bladeWidth;
-
     auto trajectory = std::make_shared<CompositeTrajectory>(6);
     trajectory->setLimits(m_baseVelocityLimits, m_baseAccelerationLimits);
 
     Action action(trajectory, m_robot);
 
-    const std::vector<SectionOperation::Set>& cuts = operation.cuts();
-    for (const SectionOperation::Set& cut : cuts) {
+    const Pose initialPose = m_robot->getPose(m_latestRobotCommand);
 
-        auto axis = profile.projected3D(cut.axis);
-        auto normal = profile.projected3D(cut.normal);
-        auto travel = profile.projected3D(cut.travel);
+    Sequence left(&profile, operation.left()), right(&profile, operation.right());
+    left.transform(rotation, m_sculpture->position());
+    right.transform(rotation, m_sculpture->position());
 
-        toWorldSpace(axis, rotation);
-        toWorldSpace(normal, rotation);
-        toWorldSpace(travel, rotation);
-
-        auto axes = faceAlignedAxes(normal, true);
-        double direction = 1 - 2 * (glm::dot(axis, axes.xAxis) < 0);
-        auto delta = -axis * offset;
-
-        for (const std::pair<glm::dvec2, double>& motion : cut.motions) {
-            auto pos = rotation * profile.projected3D(motion.first) + m_sculpture->position() + delta;
-            auto pose = Pose(alignedToBlade(axes, pos), axes);
-            if (std::abs(glm::dot(travel, axis)) >= 1 - 1e-6) {
-                if (!planBlindCut(pose, direction * motion.second, action)) return { nullptr, nullptr };
-            } else {
-                auto cutNormal = glm::normalize(glm::cross(pNormal, travel));
-                if (!planMill(pose, cutNormal, travel, motion.second, action)) return { nullptr, nullptr };
-            }
-        }
+    // Perform cuts on both edges, beginning from the sequence nearer to the start position
+    if (nearest(left, right)) {
+        planSequence(left, action);
+        planSequence(right, action);
+    } else {
+        planSequence(right, action);
+        planSequence(left, action);
     }
 
     trajectory->update();
@@ -895,12 +868,46 @@ SculptProcess::Action SculptProcess::planOutlineRefinement(const Profile& profil
         cut.tf = tf;
     }
 
-    m_sculpture->queueSection(profile.projected3D(operation.startVertex(offset)),
+    m_sculpture->queueSection(profile.projected3D(operation.startVertex(m_bladeWidth)),
                               profile.projected3D(operation.splitVertex()),
-                              profile.projected3D(operation.endVertex(offset)),
+                              profile.projected3D(operation.endVertex(m_bladeWidth)),
                               profile.normal());
 
     return action;
+}
+
+bool SculptProcess::nearest(const Sequence& test, const Sequence& comparison)
+{
+    Pose testPose = test.startPose(m_fwd), compPose = comparison.startPose(m_fwd);
+
+    testPose.position = alignedToBlade(testPose.axes, testPose.position);
+    compPose.position = alignedToBlade(compPose.axes, compPose.position);
+
+    return m_latestRobotCommand.delta(m_robot->inverse(testPose)) < m_latestRobotCommand.delta(m_robot->inverse(compPose));
+}
+
+bool SculptProcess::planSequence(const Sequence& sequence, Action& action)
+{
+    for (const Sequence::Set& set : sequence.sets) {
+
+        auto axes = set.axes(m_fwd);
+        double direction = 1 - 2 * (glm::dot(set.axis, axes.xAxis) < 0);
+        auto delta = -0.5 * set.axis * m_bladeWidth;
+        bool started = false;
+
+        for (const std::pair<glm::dvec3, double>& motion : set.motions) {
+            auto pose = Pose(alignedToBlade(axes, motion.first + delta), axes);
+
+            if (std::abs(glm::dot(set.travel, set.axis)) >= 1 - 1e-6) {
+                if (!planBlindCut(pose, direction * motion.second, action)) return false;
+            } else {
+                auto cutNormal = glm::normalize(glm::cross(sequence.normal, set.travel));
+                if (!planMill(pose, cutNormal, set.travel, motion.second, action)) return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 bool SculptProcess::planBlindCut(const Pose& pose, double depth, Action& action)
@@ -916,7 +923,7 @@ bool SculptProcess::planBlindCut(const Pose& pose, double depth, Action& action)
     auto trajectory = std::static_pointer_cast<CompositeTrajectory>(action.trajectory);
 
     // Commit motions to action
-    trajectory->addTrajectory(cutTrajectory);
+    trajectory->connectTrajectory(cutTrajectory);
     trajectory->addTrajectory(retractTrajectory);
 
     auto axes = pose.axes;
@@ -935,10 +942,10 @@ bool SculptProcess::planMill(const Pose& pose, const glm::dvec3& normal, const g
 
     // Action must (is known to) only be called on actions formed with composite trajectories
     auto trajectory = std::static_pointer_cast<CompositeTrajectory>(action.trajectory);
-    trajectory->addTrajectory(std::make_shared<HoldPosition>(millTrajectory->start(), 0.2));
+//    trajectory->addTrajectory(std::make_shared<HoldPosition>(millTrajectory->start(), 0.2));
 
     // Commit motions to action
-    trajectory->addTrajectory(millTrajectory);
+    trajectory->connectTrajectory(millTrajectory);
 
     double direction = 1 - 2 * (glm::dot(pose.axes.xAxis, travel) < 0);
     glm::dvec3 origin = pose.position + 0.5 * m_bladeWidth * direction * pose.axes.xAxis;
@@ -981,7 +988,7 @@ SculptProcess::Action SculptProcess::planRoboticSection(const std::shared_ptr<Co
 // Sectioning step wherein the robot moves to remove all material above the specified plane
 std::shared_ptr<CompositeTrajectory> SculptProcess::preparePlanarTrajectory(const std::vector<glm::dvec3>& border, const glm::dvec3& normal)
 {
-    auto axes = faceAlignedAxes(normal, true);
+    auto axes = Axis3D::faceAligned(normal, m_fwd, true);
 
     uint32_t minIndex, maxIndex;
     VertexArray::extremes(border, axes.xAxis, minIndex, maxIndex);
@@ -1006,13 +1013,18 @@ std::shared_ptr<CompositeTrajectory> SculptProcess::preparePlanarTrajectory(cons
 
 glm::dvec3 SculptProcess::alignedToBlade(const Axis3D& axes, const glm::dvec3& vertex)
 {
-    return vertex + bladeCenterOffset(axes, vertex) + bladeThicknessOffset(axes);
+    return vertex + bladeOffset(axes, vertex);
+}
+
+glm::dvec3 SculptProcess::bladeOffset(const Axis3D& axes, const glm::dvec3& vertex) const
+{
+    return bladeCenterOffset(axes.zAxis, vertex) + bladeThicknessOffset(axes);
 }
 
 // Returns the required offset to center the blade's z-axis on the sculpture
-glm::dvec3 SculptProcess::bladeCenterOffset(const Axis3D& axes, const glm::dvec3& vertex) const
+glm::dvec3 SculptProcess::bladeCenterOffset(const glm::dvec3& zAxis, const glm::dvec3& vertex) const
 {
-    return -axes.zAxis * (0.5 * m_bladeLength + glm::dot(axes.zAxis, vertex - m_sculpture->position()));
+    return -zAxis * (0.5 * m_bladeLength + glm::dot(zAxis, vertex - m_sculpture->position()));
 }
 
 // Adjustment to account for blade thickness

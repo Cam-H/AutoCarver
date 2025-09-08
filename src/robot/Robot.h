@@ -35,11 +35,11 @@ public:
     void setJointValue(uint32_t idx, double value);
     void setJointValueDg(uint32_t idx, double value);
 
-    void moveTo(const glm::dvec3& position);
-    void moveTo(const Axis3D& axes);
+    bool moveTo(const glm::dvec3& position);
+    bool moveTo(const Axis3D& axes);
 
-    void moveTo(const Pose& pose);
-    void moveTo(const Waypoint& waypoint);
+    bool moveTo(const Pose& pose);
+    bool moveTo(const Waypoint& waypoint);
 
     void traverse(const std::shared_ptr<Trajectory>& trajectory);
     void stop();

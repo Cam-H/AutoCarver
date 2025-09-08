@@ -7,6 +7,7 @@ add_library(AutoCarverLib
 
         process/SculptProcess.cpp
         process/ProcessConfiguration.cpp
+        process/Sequence.cpp
 
         fileIO/MeshHandler.cpp
         fileIO/Serializable.cpp

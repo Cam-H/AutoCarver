@@ -402,11 +402,11 @@ const std::vector<ConvexHull>& CompositeBody::components() const
     return m_components;
 }
 
-bool CompositeBody::test(const std::shared_ptr<RigidBody>& body)
-{
-    std::cout << "TS\n";
-    return false;
-}
+//bool CompositeBody::test(const std::shared_ptr<RigidBody>& body)
+//{
+//    std::cout << "TS\n";
+//    return false;
+//}
 
 void CompositeBody::printMap() const
 {

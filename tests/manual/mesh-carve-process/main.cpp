@@ -68,7 +68,7 @@ void setOrder(int index) {
 Pose testPose()
 {
     glm::vec3 normal = glm::normalize(glm::dvec3{ 0, 2, 1 });
-    auto axes = scene->faceAlignedAxes(normal, true);
+    auto axes = Axis3D::faceAligned(normal, scene->forward(), true);
 
     double theta = acos(glm::dot({ 0, 1, 0 }, axes.yAxis));
     double dy = 0.011 * sin(M_PI / 2 - theta);

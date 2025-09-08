@@ -70,6 +70,24 @@ Axis3D operator*(const Axis3D& axes, const glm::dquat& rotation)
     return system;
 }
 
+// Develop axes aligned to a face [by face normal] (x along cut direction, y normal to plane, z along blade)
+Axis3D Axis3D::faceAligned(const glm::dvec3& normal, const glm::dvec3& direction, bool alignHorizontal)
+{
+    Axis3D axes(normal);
+    axes.rotateX(-M_PI / 2);
+
+    // Bring the zAxis into the horizontal plane
+    if (alignHorizontal) {
+        double planeAngle = atan2(-glm::dot(axes.zAxis, UP), glm::dot(axes.xAxis, UP));
+        axes.rotateY(-planeAngle);
+    }
+
+    // Ensure zAxis points in the correct direction
+    if (glm::dot(axes.zAxis, direction) < 0) axes.flipXZ();
+
+    return axes;
+}
+
 
 // Rotates the system about the Y-axis by -90dg
 void Axis3D::rotateY()
@@ -146,6 +164,11 @@ glm::dmat3 Axis3D::toTransform() const
 glm::dquat Axis3D::toQuat() const
 {
     return glm::quat_cast(toTransform());
+}
+
+glm::dquat Axis3D::relative(const Axis3D& axes) const
+{
+    return axes.toTransform() * glm::transpose(toTransform());
 }
 
 // Expresses the provided vertex in terms of the coordinate system

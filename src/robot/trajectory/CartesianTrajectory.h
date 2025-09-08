@@ -18,6 +18,10 @@ class Robot;
 class CartesianTrajectory : public TOPPTrajectory {
 public:
     CartesianTrajectory(const std::shared_ptr<Robot>& robot, const Pose& initialPose, const glm::dvec3& translation, uint32_t steps);
+
+    CartesianTrajectory(const std::shared_ptr<Robot>& robot, const Pose& initialPose, const Pose& finalPose, uint32_t steps);
+
+
 //    CartesianTrajectory(const std::shared_ptr<Robot>& robot, const Pose& initialPose, const glm::dvec3& translation, double tolerance);
 
     void resolve(uint32_t steps);
@@ -39,7 +43,9 @@ private:
 private:
 
     std::shared_ptr<Robot> m_robot; // Robot for which this trajectory was prepared
+
     Pose m_initialPose;
+    Pose m_finalPose;
 
     Ray m_curve;
     double m_distance;

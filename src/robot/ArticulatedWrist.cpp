@@ -29,7 +29,7 @@ ArticulatedWrist::ArticulatedWrist(double d1, double l2, double l3, double d6)
     m_joints[2].setJointLimits(-M_PI / 3, M_PI / 2);
     m_joints[3].setJointLimits(-M_PI, M_PI);
     m_joints[4].setJointLimits(-5 * M_PI / 6, 5 * M_PI / 6);
-    m_joints[5].setJointLimits(-M_PI, M_PI);
+    m_joints[5].setJointLimits(-2 * M_PI, 2 * M_PI);
 
 }
 

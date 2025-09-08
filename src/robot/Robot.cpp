@@ -165,25 +165,31 @@ void Robot::setJointValueDg(uint32_t idx, double value)
     setJointValue(idx, (double)(value * M_PI / 180));
 }
 
-void Robot::moveTo(const glm::dvec3& position)
+bool Robot::moveTo(const glm::dvec3& position)
 {
-    moveTo(Pose(position, getAxes()));
+    return moveTo(Pose(position, getAxes()));
 }
-void Robot::moveTo(const Axis3D& axes)
+bool Robot::moveTo(const Axis3D& axes)
 {
-    moveTo(Pose(getPosition(), axes));
-}
-
-void Robot::moveTo(const Pose& pose)
-{
-    m_kinematics->moveTo(m_invTransform * pose);
-    update();
+    return moveTo(Pose(getPosition(), axes));
 }
 
-void Robot::moveTo(const Waypoint& waypoint)
+bool Robot::moveTo(const Pose& pose)
+{
+    if (m_kinematics->moveTo(m_invTransform * pose)) {
+        update();
+        return true;
+    }
+
+    return false;
+}
+
+bool Robot::moveTo(const Waypoint& waypoint)
 {
     m_kinematics->moveTo(waypoint);
     update();
+
+    return true; //TODO not quite
 }
 
 void Robot::traverse(const std::shared_ptr<Trajectory>& trajectory)

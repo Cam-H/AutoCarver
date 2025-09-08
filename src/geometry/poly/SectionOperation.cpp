@@ -134,61 +134,77 @@ glm::dvec2 SectionOperation::splitVertex() const
 
 std::vector<SectionOperation::Set> SectionOperation::cuts() const
 {
+    std::vector<Set> cuts = left(), r = right();
+    cuts.insert(cuts.end(), r.begin(), r.end());
+    return cuts;
+}
+
+std::vector<SectionOperation::Set> SectionOperation::left() const
+{
+    if (valid) {
+        if (m_cutBA) return { direct(startVertex(), BA, BC, lBA) };
+        else return sequence(reliefs[0]);
+    }
+
+    return {};
+}
+std::vector<SectionOperation::Set> SectionOperation::right() const
+{
+    if (valid) {
+        if (m_cutBC) return { direct(endVertex(), BC, BA, lBC) };
+        else return sequence(reliefs[!m_cutBA]);
+    }
+
+    return {};
+}
+
+// Direct blind cut, if no relief operation is required on edge
+SectionOperation::Set SectionOperation::direct(const glm::dvec2& origin, const glm::dvec2& axis, const glm::dvec2& ref, double depth) const
+{
+    glm::dvec2 normal = { axis.y, -axis.x };
+    if (glm::dot(normal, ref) < 0) normal = -normal;
+
+    return { -axis, normal, {{ origin, depth + RUN_UP - reduction }} };
+}
+
+std::vector<SectionOperation::Set> SectionOperation::sequence(const SectionOperation::Relief& relief) const
+{
     std::vector<Set> cuts;
 
-    if (valid) {
+    glm::dvec2 position = relief.start + relief.extLength * relief.external + relief.normal * RUN_UP;
 
-        if (m_cutBA) { // Direct blind cut, if no relief operation is required on edge AB
-            cuts.emplace_back( -BA, glm::dvec2(BA.y, -BA.x));
-            if (glm::dot(cuts.back().normal, BC) < 0) cuts.back().normal = -cuts.back().normal;
-            cuts.back().motions.emplace_back(startVertex(), lBA + RUN_UP - reduction);
-        }
+    auto step = relief.step(thickness);
+    auto depths = relief.depths(thickness);
+    cuts.emplace_back(-relief.normal, glm::dvec2(relief.normal.y, -relief.normal.x));
+    if (glm::dot(cuts.back().normal, relief.external) > 0) cuts.back().normal = -cuts.back().normal;
 
-        if (m_cutBC) { // Direct blind cut, if no relief operation is required on edge BC
-            cuts.emplace_back( -BC, glm::dvec2(BC.y, -BC.x));
-            if (glm::dot(cuts.back().normal, BA) < 0) cuts.back().normal = -cuts.back().normal;
-            cuts.back().motions.emplace_back(endVertex(), lBC + RUN_UP - reduction);
-        }
+    for (double depth : depths) {
+        cuts.back().motions.emplace_back(position, depth + RUN_UP);
+        position -= step * relief.external;
+    }
 
-        // Perform any required reliefs
-        for (const SectionOperation::Relief& relief : reliefs) {
-
-            glm::dvec2 position = relief.start + relief.extLength * relief.external + relief.normal * RUN_UP;
-
-            auto step = relief.step(thickness);
-            auto depths = relief.depths(thickness);
-            cuts.emplace_back(-relief.normal, glm::dvec2(relief.normal.y, -relief.normal.x));
-            if (glm::dot(cuts.back().normal, relief.external) > 0) cuts.back().normal = -cuts.back().normal;
-
-            for (double depth : depths) {
-                cuts.back().motions.emplace_back(position, depth + RUN_UP);
-                position -= step * relief.external;
-            }
-
-            bool reverse = glm::dot(relief.internal, relief.normal) > 0;
-            if (reverse) std::reverse(cuts.back().motions.begin(), cuts.back().motions.end());
+    bool reverse = glm::dot(relief.internal, relief.normal) > 0;
+    if (reverse) std::reverse(cuts.back().motions.begin(), cuts.back().motions.end());
 
 //            double direction = 1 - 2 * (glm::dot(pose.axes.xAxis, travel) < 0);
 //            glm::dvec3 origin = pose.position + 0.5 * m_bladeWidth * direction * pose.axes.xAxis;
 //            double teff = std::abs(m_bladeThickness * glm::dot(normal, pose.axes.yAxis));
 
-            // Add a milling operation to clean up surface (Two passes)
-            double millDistance = relief.projection(thickness);
-            double teff = 0.5 * std::abs(thickness * glm::dot(-relief.normal, relief.internal));
-            auto travel = (1.0 - 2.0 * reverse) * relief.internal;
-            auto initial = relief.start + reverse * millDistance * relief.internal;
-            cuts.emplace_back(-relief.normal, -cuts.back().normal, travel);
-            cuts.back().motions.emplace_back(initial + teff * relief.normal, millDistance);
-            cuts.emplace_back(-relief.normal, cuts.back().normal, travel);
-            cuts.back().motions.emplace_back(initial, millDistance);
+    // Add a milling operation to clean up surface (Two passes)
+    double millDistance = relief.projection(thickness);
+    double teff = 0.5 * std::abs(thickness * glm::dot(-relief.normal, relief.internal));
+    auto travel = (1.0 - 2.0 * reverse) * relief.internal;
+    auto initial = relief.start + reverse * millDistance * relief.internal;
+    cuts.emplace_back(-relief.normal, -cuts.back().normal, travel);
+    cuts.back().motions.emplace_back(initial + teff * relief.normal, millDistance);
+    cuts.emplace_back(-relief.normal, cuts.back().normal, travel);
+    cuts.back().motions.emplace_back(initial, millDistance);
 
-            // Perform a blind cut against the newly accessible surface, if the milling did not entirely clear it
-            if (millDistance + 1e-12 < relief.length && width < millDistance) {
-                cuts.emplace_back( relief.internal, glm::dvec2(relief.internal.y, -relief.internal.x));
-                if (glm::dot(cuts.back().normal, relief.external) < 0) cuts.back().normal = -cuts.back().normal;
-                cuts.back().motions.emplace_back(relief.start + relief.internal * width, relief.length - width);
-            }
-        }
+    // Perform a blind cut against the newly accessible surface, if the milling did not entirely clear it
+    if (millDistance + 1e-12 < relief.length && width < millDistance) {
+        cuts.emplace_back( relief.internal, glm::dvec2(relief.internal.y, -relief.internal.x));
+        if (glm::dot(cuts.back().normal, relief.external) < 0) cuts.back().normal = -cuts.back().normal;
+        cuts.back().motions.emplace_back(relief.start + relief.internal * width, relief.length - width);
     }
 
     return cuts;

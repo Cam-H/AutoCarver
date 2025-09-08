@@ -8,7 +8,6 @@
 
 #include <gtc/quaternion.hpp>
 
-
 Profile::Profile()
     : Profile({}, { 1, 0,  0 }, { 0, 0, -1 }, { 0, 1, 0 })
 {
@@ -315,7 +314,6 @@ SectionOperation Profile::next(double bladeWidth, double bladeThickness) const
 
     return operation;
 }
-
 
 uint32_t Profile::remainingSections() const
 {
