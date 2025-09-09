@@ -4,6 +4,9 @@
 
 #include "ProcessConfiguration.h"
 
+#include "robot/ArticulatedWrist.h"
+
+
 ProcessConfiguration::ProcessConfiguration()
     : materialWidth(1.0)
     , materialHeight(1.3)
@@ -25,6 +28,24 @@ ProcessConfiguration::ProcessConfiguration()
     , cutSimulationEnable(true)
     , fragmentReleaseEnable(true)
     , debrisColoringEnable(true)
+
+    , solver(Interpolator::SolverType::QUINTIC)
+
+    , forward(-1, 0, 0)
+    , center()
+
+    , bladeLength(1.5) // Length of cutting area (Does not cut tip + section blocked by base)
+    , bladeWidth(0.098)
+    , bladeThickness(0.011)
+
+    , kinematics(std::make_shared<ArticulatedWrist>(0.2, 1.2, 1.2, 0.35))
+    , robotHome(Waypoint({ 0, 110, 20, 0, -130, 0 }, true).toRad())
+
+    , baseVelocityLimits(std::vector<double>(kinematics->jointCount(), M_PI / 2))
+    , baseAccelerationLimits(std::vector<double>(kinematics->jointCount(), M_PI))
+    , slowVelocityLimits(std::vector<double>(kinematics->jointCount(), M_PI)) //TODO slowdown after testing
+
+
 {
 
 }
@@ -138,6 +159,18 @@ void ProcessConfiguration::enableFragmentRelease(bool enable)
 void ProcessConfiguration::enableDebrisColoring(bool enable)
 {
     debrisColoringEnable = enable;
+}
+
+void ProcessConfiguration::setCenter(const glm::dvec3& position)
+{
+    center = position;
+
+//    auto neutral = center + materialHeight * UP;
+//    auto neutralPose = Pose(neutral, Axis3D(forward));
+//    neutralPose.localTranslate({ 0, materialWidth, -0.5 * bladeLength });
+//    robotNeutral = Waypoint(kinematics->invkin(neutralPose), false);
+////
+//    assert(robotNeutral.isValid());
 }
 
 bool ProcessConfiguration::isActionLimitEnabled() const

@@ -29,9 +29,10 @@ QWidget *window = nullptr;
 
 std::unique_ptr<std::thread> updateThread;
 
-std::shared_ptr<Robot> robot = nullptr;
+//std::shared_ptr<Robot> robot = nullptr;
+//std::shared_ptr<RigidBody> eoat = nullptr;
+
 std::shared_ptr<SculptProcess> scene = nullptr;
-std::shared_ptr<RigidBody> eoat = nullptr;
 SceneWidget* sceneWidget = nullptr;
 
 QCheckBox *sculptureButton = nullptr, *modelButton = nullptr;
@@ -106,24 +107,6 @@ int main(int argc, char *argv[])
 //    scene->enableConvexTrim(false);
 //    scene->setContinuous(true);
 
-    robot = scene->createRobot(std::make_shared<ArticulatedWrist>(0.2, 1.2, 1.2, 0.35));
-    robot->setJointValueDg(1, 110);
-    robot->setJointValueDg(2, 20);
-    robot->setJointValueDg(4, -130);
-    robot->translate({ 2, 1, 0 });
-    robot->rotate({ 0, 1, 0 }, M_PI);
-    robot->setLinkMesh(0, MeshHandler::loadAsMeshBody(R"(..\res\meshes\RobotBase.obj)"));
-
-    robot->setLinkMesh(6, MeshHandler::loadAsMeshBody(R"(..\res\meshes\BladeAttachment.obj)"));
-
-    auto eoatMesh = MeshHandler::loadAsMeshBody("../res/meshes/Blade.obj");
-    eoat = scene->createBody(eoatMesh);
-    eoat->setName("BLADE");
-    robot->setEOAT(eoat, false);
-
-    scene->setSculptingRobot(robot);//
-    robot->update();
-
     sceneWidget = window->findChild<SceneWidget*>("sceneWidget");
 //    sceneWidget->camera().setPosition(QVector3D(15, 0, 0));
     sceneWidget->setScene(scene);
@@ -169,9 +152,9 @@ int main(int argc, char *argv[])
     });
 
     auto axesButton = window->findChild<QCheckBox*>("axesButton");
-    sceneWidget->setVisibility(axesButton->isChecked(), eoat->getID(), Scene::Model::AXES);
+    sceneWidget->setVisibility(axesButton->isChecked(), scene->getSculptor()->getEOAT()->getID(), Scene::Model::AXES);
     QObject::connect(axesButton, &QCheckBox::clicked, [&](bool checked) {
-        sceneWidget->setVisibility(checked, eoat->getID(), Scene::Model::AXES);
+        sceneWidget->setVisibility(checked, scene->getSculptor()->getEOAT()->getID(), Scene::Model::AXES);
         sceneWidget->update();
     });
 

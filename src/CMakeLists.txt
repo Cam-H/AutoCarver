@@ -6,6 +6,7 @@ add_library(AutoCarverLib
         core/Scene.cpp
 
         process/SculptProcess.cpp
+        process/ProcessPlanner.cpp
         process/ProcessConfiguration.cpp
         process/Sequence.cpp
 

@@ -5,11 +5,20 @@
 #ifndef AUTOCARVER_PROCESSCONFIGURATION_H
 #define AUTOCARVER_PROCESSCONFIGURATION_H
 
-class SculptProcess;
-
 #include <cstdint>
+#include <memory>
+
+class SculptProcess;
+class ProcessPlanner;
+
+class KinematicChain;
 
 #include "fileIO/Serializable.h"
+
+#include "geometry/curves/Interpolator.h"
+#include "robot/trajectory/Waypoint.h"
+
+#include "robot/Pose.h"
 
 class ProcessConfiguration : public Serializable {
 public:
@@ -45,11 +54,30 @@ public:
 
     void enableDebrisColoring(bool enable);
 
+    void setCenter(const glm::dvec3& position);
 
     [[nodiscard]] bool isActionLimitEnabled() const;
     [[nodiscard]] uint32_t getActionLimit() const;
 
+
+    // Blade-aligned position equivalent to vertex
+    [[nodiscard]] inline glm::dvec3 alignedToBlade(const Axis3D& axes, const glm::dvec3& vertex) const { return vertex + bladeOffset(axes, vertex); }
+
+    // Offset to align the blade
+    [[nodiscard]] inline glm::dvec3 bladeOffset(const Axis3D& axes, const glm::dvec3& vertex) const { return bladeCenterOffset(axes.zAxis, vertex) + bladeThicknessOffset(axes); }
+
+    // Offset to center the blade's z-axis
+    [[nodiscard]] inline glm::dvec3 bladeCenterOffset(const glm::dvec3& zAxis, const glm::dvec3& vertex) const { return -zAxis * (0.5 * bladeLength + glm::dot(zAxis, vertex - center)); }
+
+    // Offset to account for blade thickness
+    [[nodiscard]] inline glm::dvec3 bladeThicknessOffset(const Axis3D& axes) const { return 0.5 * bladeThickness * axes.yAxis; }
+
+    // Apply robot offsets to vertex (Difference between origin and start of cutting surface)
+    [[nodiscard]] glm::dvec3 poseAdjustedVertex(const Axis3D& axes, const glm::dvec3& vertex) const { return vertex - axes.zAxis * 0.5 * bladeLength + axes.yAxis * 0.5 * bladeThickness; }
+
+
     friend class SculptProcess;
+    friend class ProcessPlanner;
 
 private:
 
@@ -89,6 +117,24 @@ private:
     bool fragmentReleaseEnable; // Generate dynamic fragments when disconnected from the sculpture
 
     bool debrisColoringEnable;
+
+    Interpolator::SolverType solver;
+
+    glm::dvec3 forward; // Horizontal direction from robot to turntable
+    glm::dvec3 center; // Origin of the sculpture, centered on the surface of the turntable
+
+    double bladeLength, bladeWidth, bladeThickness;
+
+    std::shared_ptr<KinematicChain> kinematics;
+
+    Waypoint robotHome;
+    Waypoint robotNeutral;
+
+    std::vector<double> baseVelocityLimits, baseAccelerationLimits;
+    std::vector<double> slowVelocityLimits; // TODO use cartesian speed limit (Needs further trajectory development)
+
+//    Waypoint latestTableCommand;
+//    Waypoint latestRobotCommand;
 
 };
 
