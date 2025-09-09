@@ -42,7 +42,9 @@ public:
     bool moveTo(const Waypoint& waypoint);
 
     void traverse(const std::shared_ptr<Trajectory>& trajectory);
+
     void stop();
+    void finishTransit();
 
     void setLinkMesh(uint32_t index, const std::shared_ptr<Mesh>& mesh);
 
@@ -76,7 +78,12 @@ public:
 
     [[nodiscard]] Waypoint preferredWaypoint(const Waypoint& optionA, const Waypoint& optionB) const;
 
-    bool inTransit() const;
+    [[nodiscard]] bool inTransit() const;
+
+    [[nodiscard]] double transitElapsed() const;
+    [[nodiscard]] double transitDuration() const;
+
+    [[nodiscard]] double transitRemaining() const;
 
     void print() const;
 

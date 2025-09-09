@@ -43,6 +43,7 @@ public:
 
     bool form();
 
+    void enableAutoRemesh(bool enable);
     void enableHullMerging(bool enable);
 
     void remesh() override;
@@ -111,6 +112,7 @@ private:
 
     uint32_t m_formStep;
 
+    bool m_autoRemeshEnable;
     bool m_mergeEnable;
 
     // Styling

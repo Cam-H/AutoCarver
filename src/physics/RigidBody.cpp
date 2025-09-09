@@ -122,6 +122,14 @@ void RigidBody::setLayer(uint32_t layer)
     m_layer = layer;
 }
 
+void RigidBody::ignore(const std::shared_ptr<RigidBody>& body)
+{
+    std::cout << "IG: " << m_name << " " << body->m_name << " " << m_layer << " " << m_mask << " " << body->m_layer << " " << body->m_mask << "\n";
+    m_mask &= ~body->m_layer;
+    m_layer &= ~body->m_mask;
+    std::cout << "TO: " << m_layer << " " << m_mask << "\n";
+}
+
 void RigidBody::disableCollisions()
 {
     m_mask = m_layer = 0;

@@ -203,6 +203,14 @@ void Robot::stop()
     m_currentTrajectory = nullptr;
 }
 
+void Robot::finishTransit()
+{
+    if (m_currentTrajectory != nullptr) {
+        moveTo(m_currentTrajectory->end());
+        m_currentTrajectory = nullptr;
+    }
+}
+
 void Robot::setLinkMesh(uint32_t index, const std::shared_ptr<Mesh>& mesh)
 {
     if (index >= m_links.size()) throw std::runtime_error("[Robot] Index out of bounds. Can not update link mesh");
@@ -368,6 +376,20 @@ Waypoint Robot::preferredWaypoint(const Waypoint& optionA, const Waypoint& optio
 bool Robot::inTransit() const
 {
     return m_currentTrajectory != nullptr && !m_currentTrajectory->complete();
+}
+
+double Robot::transitElapsed() const
+{
+    return m_currentTrajectory == nullptr ? 0.0 : m_currentTrajectory->duration() * m_currentTrajectory->t();
+}
+double Robot::transitDuration() const
+{
+    return m_currentTrajectory == nullptr ? 0.0 : m_currentTrajectory->duration();
+}
+
+double Robot::transitRemaining() const
+{
+    return m_currentTrajectory == nullptr ? 0.0 : m_currentTrajectory->duration() * (1.0 - m_currentTrajectory->t());
 }
 
 void Robot::print() const

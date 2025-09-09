@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <memory>
 
+class Mesh;
+
 class SculptProcess;
 class ProcessPlanner;
 
@@ -19,6 +21,7 @@ class KinematicChain;
 #include "robot/trajectory/Waypoint.h"
 
 #include "robot/Pose.h"
+
 
 class ProcessConfiguration : public Serializable {
 public:
@@ -132,6 +135,8 @@ private:
 
     std::vector<double> baseVelocityLimits, baseAccelerationLimits;
     std::vector<double> slowVelocityLimits; // TODO use cartesian speed limit (Needs further trajectory development)
+
+    std::shared_ptr<Mesh> tableMesh;
 
 //    Waypoint latestTableCommand;
 //    Waypoint latestRobotCommand;

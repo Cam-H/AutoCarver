@@ -47,6 +47,8 @@ public:
     void setMask(uint32_t mask);
     void setLayer(uint32_t layer);
 
+    void ignore(const std::shared_ptr<RigidBody>& body);
+
     void disableCollisions();
 
     void resetMask();

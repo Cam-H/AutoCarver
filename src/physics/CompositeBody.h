@@ -44,7 +44,8 @@ public:
 
     const glm::dvec3& baseColor() const;
 
-    const std::vector<ConvexHull>& components() const;
+    [[nodiscard]] const std::vector<ConvexHull>& components() const;
+    [[nodiscard]] ConvexHull container() const;
 
 //    bool test(const std::shared_ptr<RigidBody>& body) override;
 

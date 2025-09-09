@@ -16,6 +16,7 @@
 #include "robot/trajectory/Trajectory.h"
 #include "robot/trajectory/SimpleTrajectory.h"
 #include "robot/trajectory/CompositeTrajectory.h"
+#include "core/Timer.h"
 
 SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     : Scene()
@@ -25,7 +26,10 @@ SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     , m_planned(false)
     , m_ttOffset(0, 0, 0)
     , m_planner()
-    // TODO when adapting for different models these need to be changed
+    , m_smoothed(false)
+    , m_duration(0)
+    , m_time(0)
+// TODO when adapting for different models these need to be changed
 {
 
     // Create dummies to provide space for the sculpture before it is built
@@ -76,17 +80,24 @@ void SculptProcess::readySculpture(const std::shared_ptr<Sculpture>& sculpture)
 // TODO eventually load from file / make editable
 void SculptProcess::prepareRobot()
 {
+    glm::dvec3 hOffset = -2.0 * getConfiguration().forward;
+
+    auto table = createBody(getConfiguration().tableMesh);
+    table->setName("Robot-Table");
+    table->translate(hOffset);
+
     m_robot = createRobot(getConfiguration().kinematics);
     m_robot->setName("SCULPTOR");
 
     m_robot->moveTo(getConfiguration().robotHome);
 
-    m_robot->translate(-2.0 * getConfiguration().forward + glm::dvec3(0, 1, 0));
+    m_robot->translate(hOffset + glm::dvec3(0, 1, 0));
     m_robot->rotate({ 0, 1, 0 }, M_PI);
     m_robot->setLinkMesh(0, MeshHandler::loadAsMeshBody(R"(..\res\meshes\RobotBase.obj)"));
 
     m_robot->setLinkMesh(6, MeshHandler::loadAsMeshBody(R"(..\res\meshes\BladeAttachment.obj)"));
 
+    table->ignore(m_robot->links()[1]);
 
     auto eoatMesh = MeshHandler::loadAsMeshBody("../res/meshes/Blade.obj");
     auto eoat = createBody(eoatMesh);
@@ -98,15 +109,14 @@ void SculptProcess::prepareRobot()
 
 void SculptProcess::prepareTurntable()
 {
-    auto ttTableMesh = MeshHandler::loadAsMeshBody("../res/meshes/TurntableTable.obj");
-    auto table = createBody(ttTableMesh);
+    auto table = createBody(getConfiguration().tableMesh);
     table->setName("TT-Table");
 
     auto chain = std::make_shared<KinematicChain>();
     chain->addJoint(Joint(Joint::Type::REVOLUTE, { 0.0f, 0.0f, 0.0f, 0.0f }, 0));
 
     m_turntable = createRobot(chain);
-    m_turntable->translate(UP * ttTableMesh->ySpan());
+    m_turntable->translate(UP * getConfiguration().tableMesh->ySpan());
     m_turntable->setName("TURNTABLE");
 
     auto ttBaseMesh = MeshHandler::loadAsMeshBody("../res/meshes/TurntableBase.obj");
@@ -176,7 +186,9 @@ void SculptProcess::reset()
         m_robot->moveTo(getConfiguration().robotHome);
     }
 
-    m_planned = false;
+    m_planned = m_smoothed = false;
+
+    m_time = m_duration = 0;
 
     if (!paused) pause();
 
@@ -193,15 +205,30 @@ void SculptProcess::plan()
         return;
     }
 
+    ScopedTimer timer("[SculptProcess] planning");
+
     if (m_planner.plan(m_sculpture, m_robot, m_turntable)) {
         m_planned = true;
         m_step = 0;
 
-        m_actions = m_planner.actions();
+//        m_actions = m_planner.actions();
 
-//        m_actions = getConfiguration().linkActionEnable ? smooth(m_planner.actions()) : m_planner.actions();
+        m_actions = getConfiguration().linkActionEnable ? smooth(m_planner.actions()) : m_planner.actions();
     } else std::cout << "\033[33mWarning! Failed to plan\033[0m\n";
 
+    calculateDuration();
+    m_time = 0;
+}
+
+void SculptProcess::smooth()
+{
+    if (!m_smoothed) m_actions = smooth(m_actions);
+}
+
+void SculptProcess::calculateDuration()
+{
+    m_duration = 0;
+    for (const Action& action : m_actions) m_duration += action.trajectory->duration();
 }
 
 // One-off method useful for testing blind cut operations
@@ -268,9 +295,8 @@ void SculptProcess::proceed()
 {
     if (!m_planned) plan();
 
-    // Block procession before previous step is complete
+    // Do not proceed before previous step is complete
     if (simulationIdle()) {
-
         nextAction();
     } else if (simulationComplete()) std::cout << "Simulation complete!\n";
 }
@@ -284,68 +310,97 @@ void SculptProcess::skip()
         return;
     }
 
-    std::cout << "SKIP| Next step: " << (m_step + 1) << " / Remaining:" << m_actions.size() << " -> " << m_actions.front().target->getWaypoint() << "\n";
+    std::cout << "SKIP| Next step: " << (m_step + 1) << " / Remaining:" << m_actions.size() - 1 << " -> " << m_actions.front().target->getWaypoint() << " " << m_actions[0].trajectory->duration() << "\n";
 
-    // Jump robot to endpoint and apply process to the sculpture
-    if (!m_actions.empty()) {
+    // Jump robot to endpoint and apply relevant sections to the sculpture
+    if (m_actions[0].started) {
+        m_time += m_actions[0].target->transitRemaining();
+        m_actions[0].target->finishTransit();
+    } else {
+        m_time += m_actions[0].trajectory->duration();
         m_actions[0].target->moveTo(m_actions[0].trajectory->end());
         if (!m_actions[0].cuts.empty()) m_sculpture->applySection();
-        m_actions.pop_front();
-        m_step++;
     }
+
+    clearDebris();
+
+    m_actions.pop_front();
+    m_step++;
+
+//    if (m_actions.empty()) home();
 
     update();
 }
 
+void SculptProcess::home()
+{
+    m_robot->moveTo(getConfiguration().robotHome);
+    m_turntable->moveTo(Waypoint({ 0 }, true));
+}
+
+// TODO identify cause of ~5-10% reduced time estimation as opposed to real-world time
 void SculptProcess::step(double delta)
 {
-    Scene::step(delta);
+    if (simulationComplete()) return;
 
-    if (!m_actions.empty()) {
-        Action& action = m_actions[0];
+    if (!m_actions[0].started && getConfiguration().continuous) nextAction();
 
-        if (simulationIdle()) { // Handle transition between simulation actions
-            if (action.started) {
-                m_actions.pop_front();
-                m_step++;
-            } else if (getConfiguration().continuous) nextAction();
-        } else if (m_debris != nullptr && !action.cuts.empty() && action.cuts.front().ts < action.trajectory->t()){
-            if (!m_debris->inProcess()) m_debris->beginCut();
+    double rem = m_actions[0].target->transitRemaining();
+//    std::cout << rem << " " << delta << " " << m_actions[0].started << "\n";
+    while (m_actions[0].started && rem < delta) {
+        m_actions[0].target->finishTransit();
+        Scene::step(rem);
+        m_time += rem;
+        delta -= rem;
+        process();
 
-            // Make sure to take the final pose before completing a cut
-            Pose pose = action.cuts.front().tf <= action.trajectory->t()
+        m_actions.pop_front();
+        m_step++;
+
+        if (m_actions.empty()) return;
+
+        if (getConfiguration().continuous) nextAction();
+        rem = m_actions[0].target->transitRemaining();
+    }
+
+    if (simulationActive()){
+        Scene::step(delta);
+        m_time += delta;
+        process();
+    }
+}
+
+void SculptProcess::process()
+{
+    Action& action = m_actions[0];
+    if (m_debris != nullptr && !action.cuts.empty() && action.cuts.front().ts < action.trajectory->t()) {
+        if (!m_debris->inProcess()) m_debris->beginCut();
+
+        // Make sure to take the final pose before completing a cut
+        Pose pose = action.cuts.front().tf <= action.trajectory->t()
                     ? m_robot->getPose(action.trajectory->evaluate(action.cuts.front().tf))
                     : m_robot->getPose();
 
-            glm::dvec3 normal = (1.0 - 2.0 * (glm::dot(action.cuts[0].axis, pose.axes.xAxis) < 0)) * pose.axes.xAxis; // Direction to front of blade
-            glm::dvec3 reference = pose.position + normal * 0.5 * getConfiguration().bladeWidth; // Center of front-edge of the blade
+        glm::dvec3 normal = (1.0 - 2.0 * (glm::dot(action.cuts[0].axis, pose.axes.xAxis) < 0)) * pose.axes.xAxis; // Direction to front of blade
+        glm::dvec3 reference = pose.position + normal * 0.5 * getConfiguration().bladeWidth; // Center of front-edge of the blade
 
-            double depth = glm::dot(reference - action.cuts[0].origin, action.cuts[0].axis); // Current depth of cut
-//            std::cout << "NR: " << depth << " " << 0.5 * m_bladeWidth << " -> ";
-            depth = std::max(0.0, depth);
-            static double ttt = 0;
-            if (std::abs(depth - ttt) > 0.01) {
-                std::cout << "Depth: " << depth << "(" << glm::dot(m_robot->getPosition() - action.cuts[0].origin, action.cuts[0].axis) << "), "
-                << m_debris->inProcess() << " " << action.cuts.size() << " " << action.cuts.front().ts << " " << action.cuts.front().tf << " " << action.trajectory->t() << "\n";
-                ttt = depth;
+        double depth = glm::dot(reference - action.cuts[0].origin, action.cuts[0].axis); // Current depth of cut
+        depth = std::max(0.0, depth);
+
+        normal = normal * -glm::quat_cast(m_sculpture->getRotation()); // Convert to local space
+        const auto& fragments = m_debris->removeMaterial(normal, depth);
+        if (getConfiguration().fragmentReleaseEnable && !fragments.empty()) {
+            for (const std::shared_ptr<RigidBody>& fragment : fragments) {
+                prepareBody(fragment);
+                fragment->mesh()->setFaceColor(m_sculpture->baseColor());
             }
+        }
 
-
-            normal = normal * -glm::quat_cast(m_sculpture->getRotation()); // Convert to local space
-            const auto& fragments = m_debris->removeMaterial(normal, depth);
-            if (getConfiguration().fragmentReleaseEnable && !fragments.empty()) {
-                for (const std::shared_ptr<RigidBody>& fragment : fragments) {
-                    prepareBody(fragment);
-                    fragment->mesh()->setFaceColor(m_sculpture->baseColor());
-                }
-            }
-
-            if (action.cuts.front().tf <= action.trajectory->t()) {
-                std::cout << "REMOVAL: " << action.cuts.size() << " " << action.cuts.front().tf << " " << action.trajectory->t() <<"\n";
+        if (action.cuts.front().tf <= action.trajectory->t()) {
+            std::cout << "REMOVAL: " << action.cuts.size() << " " << action.cuts.front().tf << " " << action.trajectory->t() <<"\n";
 //                m_debris->print();
-                m_debris->completeCut();
-                action.cuts.pop_front();
-            }
+            m_debris->completeCut();
+            action.cuts.pop_front();
         }
     }
 }
@@ -354,18 +409,19 @@ void SculptProcess::nextAction()
 {
     assert(!m_actions.empty());
 
+    if (getConfiguration().cutSimulationEnable) removeDebris();
+
     if (getConfiguration().linkActionEnable) link();
 
-    std::cout << "Step " << m_step << " / Remaining: " << m_actions.size() << "\n";
+    std::cout << "Step " << m_step << " / Remaining: " << m_actions.size() - 1 << "\n";
     Action& action = m_actions.front();
 
-    std::cout << "AS: " << action.cuts.size() << " " << action.target << " " << action.trajectory->start() << " | " << action.trajectory->end() << "\n";
+//    std::cout << "AS: " << action.cuts.size() << " " << action.target << " " << action.trajectory->start() << " | " << action.trajectory->end() << "\n";
 
     // Begin motion of the robot
     action.target->traverse(action.trajectory);
     action.started = true;
 
-    if (getConfiguration().cutSimulationEnable) removeDebris();
 
     if (!action.cuts.empty()) {
 
@@ -385,8 +441,6 @@ void SculptProcess::nextAction()
 
                 m_debris->queueCut(origin, normal, axis, getConfiguration().bladeThickness, cut.theta);
             }
-
-            std::cout << "CUTS: " << action.cuts.size() << "\n";
 
             m_debris->remesh();
 
@@ -410,6 +464,13 @@ void SculptProcess::removeDebris()
             m_sculpture->remesh();
         }
 
+        clearDebris();
+    }
+}
+
+void SculptProcess::clearDebris()
+{
+    if (m_debris != nullptr) {
         for (uint32_t i = 0; i < m_bodies.size(); i++) {
             if (m_bodies[i] == m_debris) {
                 m_bodies.erase(m_bodies.begin() + i);
@@ -444,6 +505,11 @@ void SculptProcess::alignToFace(uint32_t faceIdx)
     if (wp.isValid()) m_robot->moveTo(wp);
 }
 
+bool SculptProcess::planned() const
+{
+    return m_planned;
+}
+
 bool SculptProcess::simulationComplete() const
 {
     return m_actions.empty();
@@ -451,12 +517,21 @@ bool SculptProcess::simulationComplete() const
 
 bool SculptProcess::simulationIdle() const
 {
-    return !simulationComplete() && !m_actions[0].target->inTransit();
+    return !simulationComplete() && !m_actions[0].started;
 }
 
 bool SculptProcess::simulationActive() const
 {
-    return !simulationComplete() && (m_actions[0].target->inTransit() || getConfiguration().continuous);
+    return !simulationComplete() && m_actions[0].target->inTransit();
+}
+
+double SculptProcess::simulationTime() const
+{
+    return simulationComplete() ? m_duration : m_time;
+}
+double SculptProcess::simulationDuration() const
+{
+    return m_duration;
 }
 
 ProcessConfiguration& SculptProcess::getConfiguration()
@@ -561,25 +636,46 @@ std::deque<Action> SculptProcess::smooth(const std::deque<Action>& actions)
 {
     if (actions.empty()) return {};
 
+    // Save sculpture state to restore later (Geometry must match changing state for testing)
+    auto sculpture = std::make_shared<Sculpture>(*m_sculpture);
+    m_sculpture->enableAutoRemesh(false);
+
     std::deque<Action> smoothed = { actions[0] };
+    smoothed[0].target->moveTo(smoothed[0].trajectory->end());
 
     for (uint32_t i = 1; i < actions.size(); i++) {
-        const Action& action = actions[i];
 
-        smoothed.emplace_front(linked(action));
-        if (smoothed.front().trajectory == nullptr) smoothed.pop_front();
+        // Make sure to test against the actual state of the sculpture when motions are conducted
+        if (!smoothed.back().cuts.empty()) m_sculpture->applySection();
+
+        // Create an intermediary trajectory to connect disjoint ends (If required)
+        smoothed.emplace_back(linked(actions[i]));
+        if (smoothed.back().trajectory == nullptr) smoothed.pop_back();
+        else smoothed.back().target->moveTo(smoothed.back().trajectory->end());
+
+        // Attach the previously planned action and ready for next link
+        smoothed.push_back(actions[i]);
+        smoothed.back().target->moveTo(smoothed.back().trajectory->end());
     }
 
+    // Revert sculpture state
+
+    readySculpture(sculpture);
+
+    m_smoothed = true;
     return smoothed;
 }
 
 // Develops a trajectory, if required, to link the current position to the beginning of the next action
 void SculptProcess::link()
 {
-    if (m_actions.empty()) return;
+    if (m_smoothed || m_actions.empty()) return;
 
     m_actions.emplace_front(linked(m_actions.front()));
     if (m_actions.front().trajectory == nullptr) m_actions.pop_front();
+    else {
+        m_duration += m_actions.front().trajectory->duration();
+    }
 }
 
 Action SculptProcess::linked(const Action& action)
@@ -607,7 +703,6 @@ bool SculptProcess::testTurntableCollision(const std::shared_ptr<Trajectory>& tt
 // Develops an action to move the robot out of the way of the turntable
 Action SculptProcess::planTurntableClearance()
 {
-    std::cout << "TT CLEARANCE\n";
     // TODO better motions than moving towards the neutral position
     return planApproach(getConfiguration().robotNeutral);
 }
@@ -635,15 +730,18 @@ std::shared_ptr<Trajectory> SculptProcess::prepareApproach(const Waypoint& desti
     auto pose = m_robot->getPose(destination);
     pose.localTranslate({ 0, 0.5, 0});
 
-    auto midpoint = m_robot->inverse(pose);
-    if (midpoint.isValid()) {
-        auto trajectory = std::make_shared<CompositeTrajectory>(m_robot->dof());
-        trajectory->setLimits(getConfiguration().baseVelocityLimits, getConfiguration().baseAccelerationLimits);
-        trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(m_robot->getWaypoint(), midpoint, getConfiguration().solver));
-        trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(midpoint, destination, getConfiguration().solver));
-        trajectory->update();
+    std::vector<Waypoint> testWPs = { m_robot->inverse(pose), getConfiguration().robotNeutral };
 
-        if (validateTrajectory(trajectory, dt)) return trajectory;
+    for (const Waypoint& midpoint : testWPs) {
+        if (midpoint.isValid()) {
+            auto trajectory = std::make_shared<CompositeTrajectory>(m_robot->dof());
+            trajectory->setLimits(getConfiguration().baseVelocityLimits, getConfiguration().baseAccelerationLimits);
+            trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(m_robot->getWaypoint(), midpoint, getConfiguration().solver));
+            trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(midpoint, destination, getConfiguration().solver));
+            trajectory->update();
+
+            if (validateTrajectory(trajectory, dt)) return trajectory;
+        }
     }
 
     return nullptr;

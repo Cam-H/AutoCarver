@@ -97,9 +97,9 @@ bool Scene::test(const std::shared_ptr<RigidBody>& body) const
     for (const std::shared_ptr<RigidBody>& collider : m_bodies) { // TODO use broadphase selection
 //        std::cout << "Check: " <<
         if (body->test(collider)) {
-//            std::cout << "Collision: \n";
-//            body->print();
-//            collider->print();
+            std::cout << "Collision: \n";
+            body->print();
+            collider->print();
             return true;
         }
     }
@@ -109,7 +109,6 @@ bool Scene::test(const std::shared_ptr<RigidBody>& body) const
 
 void Scene::step(double delta)
 {
-    delta *= m_timeScalar;
 
     // Update robots
 //    for (const std::shared_ptr<Robot>& robot : m_robots) robot->step();
@@ -228,7 +227,8 @@ void Scene::run()
     Timer rateTimer;
     while (m_running) {
         if (!m_paused) {
-            double delta = rateTimer.getElapsedSeconds();
+            double delta = m_timeScalar * rateTimer.getElapsedSeconds();
+
             try {
                 step(delta);
                 update();

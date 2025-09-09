@@ -22,6 +22,7 @@
 #include "renderer/RenderCapture.h"
 #include "robot/ArticulatedWrist.h"
 #include "core/Timer.h"
+#include "core/Functions.h"
 
 #endif
 
@@ -35,11 +36,10 @@ std::unique_ptr<std::thread> updateThread;
 std::shared_ptr<SculptProcess> scene = nullptr;
 SceneWidget* sceneWidget = nullptr;
 
-QCheckBox *sculptureButton = nullptr, *modelButton = nullptr;
+QCheckBox *sculptureButton = nullptr;
 
 QCheckBox *contButton = nullptr, *releaseButton = nullptr;
 QDoubleSpinBox *timeField = nullptr;
-QPushButton *stepButton = nullptr, *skipButton = nullptr;
 
 QSpinBox* sliceLimitField = nullptr;
 glm::dvec3 tpos;
@@ -82,6 +82,21 @@ Pose testPose()
     return { pos, axes };
 }
 
+void showSculpture(bool enable)
+{
+    sceneWidget->setVisibility(enable, scene->getSculpture()->getID(), Scene::Model::MESH);
+    sceneWidget->setVisibility(!enable, scene->getModel()->getID(), Scene::Model::MESH);
+    sceneWidget->update();
+}
+
+void updateTitle()
+{
+    std::string title = !scene->planned() ? "" : "Process: " + Functions::toString(scene->simulationTime(), 2)
+                                                 + " / " + Functions::toString(scene->simulationDuration(), 2) + "s";
+
+    sceneWidget->setTitle(title);
+}
+
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
@@ -114,16 +129,7 @@ int main(int argc, char *argv[])
 
     sculptureButton = window->findChild<QCheckBox*>("sculptureButton");
     QObject::connect(sculptureButton, &QCheckBox::clicked, [&](bool checked) {
-        if (checked) sceneWidget->show(scene->getSculpture()->getID(), Scene::Model::MESH);
-        else sceneWidget->hide(scene->getSculpture()->getID(), Scene::Model::MESH);
-        sceneWidget->update();
-    });
-
-    modelButton = window->findChild<QCheckBox*>("modelButton");
-    sceneWidget->setVisibility(modelButton->isChecked(), scene->getModel()->getID(), Scene::Model::MESH);
-    QObject::connect(modelButton, &QCheckBox::clicked, [&](bool checked) {
-        sceneWidget->setVisibility(checked, scene->getModel()->getID(), Scene::Model::MESH);
-        sceneWidget->update();
+        showSculpture(checked);
     });
 
     auto sculptureDecompButton = window->findChild<QCheckBox*>("sculptureDecompButton");
@@ -179,17 +185,16 @@ int main(int argc, char *argv[])
         scene->setTimeScaling(value);
     });
 
-    stepButton = window->findChild<QPushButton*>("stepButton");
+    auto stepButton = window->findChild<QPushButton*>("stepButton");
     QObject::connect(stepButton, &QPushButton::clicked, [&]() {
-        stepButton->setEnabled(false);
-        skipButton->setEnabled(false);
         scene->proceed();
         sceneWidget->update();
     });
 
-    skipButton = window->findChild<QPushButton*>("skipButton");
+    auto skipButton = window->findChild<QPushButton*>("skipButton");
     QObject::connect(skipButton, &QPushButton::clicked, [&]() {
         scene->skip();
+        updateTitle();
         sceneWidget->update();
     });
 
@@ -203,10 +208,14 @@ int main(int argc, char *argv[])
             auto mesh = MeshHandler::loadAsMeshBody(fileName.toStdString());
             if (mesh != nullptr) {
                 scene->setTarget(mesh);
-                sculptureButton->setChecked(true);
-                modelButton->setChecked(false);
+                updateTitle();
 
                 sceneWidget->clear();
+                sceneWidget->update();
+
+                sculptureButton->setChecked(true);
+                showSculpture(true);
+
             } else std::cout << "Failed to load model. Can not set target\n";
         }
     });
@@ -235,6 +244,7 @@ int main(int argc, char *argv[])
     auto resetButton = window->findChild<QPushButton*>("resetButton");
     QObject::connect(resetButton, &QPushButton::clicked, [&]() {
         scene->reset();
+        updateTitle();
         sceneWidget->update();
     });
 
@@ -325,22 +335,17 @@ int main(int argc, char *argv[])
     std::cout << "xxx\n";
     scene->start();
 
+    sceneWidget->update();
+    showSculpture(true);
+
     // Handle updating robot
     updateThread = std::make_unique<std::thread>([](){
-        bool idle = false, complete = false;
 
         while (true) {
-            if (scene->simulationActive() || (!idle && scene->simulationIdle()) || (!complete && scene->simulationComplete())) {
+            if (scene->simulationActive()) {
+                updateTitle();
                 sceneWidget->update();
-//                std::cout << "Collision: " << scene->test(scene->getTurntable()->getEOAT()) << "\n";
-
-                complete = scene->simulationComplete();
-            } else {
-                stepButton->setEnabled(true);
-                skipButton->setEnabled(true);
             }
-
-            idle = scene->simulationIdle();
 
             std::this_thread::sleep_for(std::chrono::nanoseconds(10000000));
         }

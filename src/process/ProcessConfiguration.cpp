@@ -6,6 +6,7 @@
 
 #include "robot/ArticulatedWrist.h"
 
+#include "fileIO/MeshHandler.h"
 
 ProcessConfiguration::ProcessConfiguration()
     : materialWidth(1.0)
@@ -45,7 +46,7 @@ ProcessConfiguration::ProcessConfiguration()
     , baseAccelerationLimits(std::vector<double>(kinematics->jointCount(), M_PI))
     , slowVelocityLimits(std::vector<double>(kinematics->jointCount(), M_PI)) //TODO slowdown after testing
 
-
+    , tableMesh(MeshHandler::loadAsMeshBody("../res/meshes/TableQuick.obj"))
 {
 
 }

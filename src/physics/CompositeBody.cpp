@@ -402,6 +402,23 @@ const std::vector<ConvexHull>& CompositeBody::components() const
     return m_components;
 }
 
+ConvexHull CompositeBody::container() const
+{
+    if (m_components.empty()) return {};
+    if (m_components.size() == 1) return m_components[0];
+
+    HullBuilder builder;
+    for (const ConvexHull& component : m_components) builder.add(component.vertices());
+
+    builder.clean();
+
+    builder.initialize();
+    builder.solve();
+
+    return builder.getHull();
+}
+
+
 //bool CompositeBody::test(const std::shared_ptr<RigidBody>& body)
 //{
 //    std::cout << "TS\n";

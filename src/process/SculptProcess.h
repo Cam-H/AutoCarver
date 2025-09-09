@@ -30,11 +30,15 @@ public:
 
     void plan();
 
+    void smooth();
+
     void blind(const Pose& pose, double depth);
     void mill(const Pose& pose, const glm::dvec3& normal, const glm::dvec3& travel, double depth);
 
     void proceed();
     void skip();
+
+    void home();
 
     void step(double delta) override;
 
@@ -42,9 +46,14 @@ public:
 
 //    void setSculptingRobot(const std::shared_ptr<Robot>& robot);
 
+    [[nodiscard]] bool planned() const;
+
     [[nodiscard]] bool simulationComplete() const;
     [[nodiscard]] bool simulationIdle() const;
     [[nodiscard]] bool simulationActive() const;
+
+    [[nodiscard]] double simulationTime() const;
+    [[nodiscard]] double simulationDuration() const;
 
     ProcessConfiguration& getConfiguration();
     [[nodiscard]] const ProcessConfiguration& getConfiguration() const;
@@ -73,9 +82,14 @@ private:
 
     void attachSculpture();
 
+    void process();
+
     void nextAction();
 
     void removeDebris();
+    void clearDebris();
+
+    void calculateDuration();
 
     std::deque<Action> smooth(const std::deque<Action>& actions);
     void link();
@@ -107,9 +121,13 @@ private:
     ProcessPlanner m_planner;
 
     bool m_planned;
+    bool m_smoothed;
 
     std::deque<Action> m_actions;
     uint32_t m_step;
+
+    double m_duration; // Total time required for current simulation
+    double m_time; // Time elapsed for the current simulation
 
 };
 

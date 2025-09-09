@@ -437,16 +437,28 @@ void ConvexHull::print() const
 //    return false;
 //}
 
-HullBuilder::HullBuilder(const std::vector<glm::dvec3>& cloud)
-        : m_cloud(cloud)
-        , m_initialized(false)
-        , m_iteration(0)
+HullBuilder::HullBuilder()
+    : m_initialized(false)
+    , m_iteration(0)
 {
-    assert(!cloud.empty());
+
+}
+
+HullBuilder::HullBuilder(const std::vector<glm::dvec3>& cloud)
+    : HullBuilder()
+{
+    m_cloud = cloud;
+}
+
+void HullBuilder::add(const std::vector<glm::dvec3>& vertices)
+{
+    m_cloud.insert(m_cloud.end(), vertices.begin(), vertices.end());
 }
 
 void HullBuilder::clean()
 {
+    if (m_cloud.size() < 2) return;
+
     const uint32_t initialSize = m_cloud.size();
     m_cloud = VertexArray::clean(m_cloud);
     if (initialSize > m_cloud.size()) std::cout << "\033[93mTried to construct a hull from a cloud with duplicate vertices. " << initialSize - m_cloud.size() << " vertices removed\033[0m\n";

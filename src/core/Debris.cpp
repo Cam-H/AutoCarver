@@ -42,8 +42,8 @@ void Debris::beginCut()
     if (m_cuts.empty() && !m_inProcess) return;
 
     CutOperation& cut = m_cuts[0];
-    std::cout << "Cut: " << components().size() << " " << m_cuts.size() << " " << cut.axis.x << " " << cut.axis.y << " " << cut.axis.z
-    << " | " << cut.normal.x << " " << cut.normal.y << " " << cut.normal.z << " | " << cut.theta << " " << "\n";
+//    std::cout << "Cut: " << components().size() << " " << m_cuts.size() << " " << cut.axis.x << " " << cut.axis.y << " " << cut.axis.z
+//    << " | " << cut.normal.x << " " << cut.normal.y << " " << cut.normal.z << " | " << cut.theta << " " << "\n";
 
     double ht = 0.5 * cut.thickness + 1e-6;
 
@@ -67,13 +67,13 @@ void Debris::beginCut()
         auto [min, max] = components()[i].extremes(cut.normal);
         double near = glm::dot(cut.normal, components()[i].vertices()[min] - cut.origin);
         double far = glm::dot(cut.normal, components()[i].vertices()[max] - cut.origin);
-        std::cout << "H" << i << ": " << near << " " << far << " | " << ht << " " << hyt << " " << hxt << " ";
+//        std::cout << "H" << i << ": " << near << " " << far << " | " << ht << " " << hyt << " " << hxt << " ";
 
         bool nearPass = near < -hyt - 1e-6, farPass = far > hyt + 1e-6;
 
         uint32_t idx = i, count = components().size();
 
-        std::cout << nearPass << " " << farPass << " ";
+//        std::cout << nearPass << " " << farPass << " ";
 
         // Try splitting against the near cut plane
         if (nearPass) {
@@ -90,10 +90,10 @@ void Debris::beginCut()
             kerfs.emplace_back(idx);
         }
 
-        std::cout << count << " " << components().size() << "\n";
+//        std::cout << count << " " << components().size() << "\n";
     }
 
-    std::cout << "KERFS: " << kerfs.size() << "\n";
+//    std::cout << "KERFS: " << kerfs.size() << "\n";
     if (kerfs.empty()) throw std::runtime_error("[Debris] Failed to prepare cut");
 
     // Prepare sections
@@ -105,7 +105,7 @@ void Debris::beginCut()
                 glm::dot(cut.axis, vertex - cut.origin)
                 );
 
-        std::cout << "CS " << cut.sections.back().ts << " " << cut.sections.back().cutIndex << "\n";
+//        std::cout << "CS " << cut.sections.back().ts << " " << cut.sections.back().cutIndex << "\n";
     }
 
     updateConnections();

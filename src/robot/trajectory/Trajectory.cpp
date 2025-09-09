@@ -160,7 +160,7 @@ double Trajectory::minimumDuration() const
 
 double Trajectory::t() const
 {
-    return m_t;
+    return std::min(m_t, 1.0);
 }
 double Trajectory::tStep() const
 {

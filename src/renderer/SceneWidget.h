@@ -52,6 +52,8 @@ public:
     void hideAll(Scene::Model target = Scene::Model::ALL);
     void setVisibility(bool visible, Scene::Model target = Scene::Model::ALL);
 
+    void setTitle(const std::string& title);
+
     void start();
     void pause();
 
@@ -103,6 +105,8 @@ protected:
     std::shared_ptr<RenderBuffer> m_buffer;
 
 private:
+
+    QString m_title;
 
     QTimer *m_timer;
     std::chrono::milliseconds m_interval;

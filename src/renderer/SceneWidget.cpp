@@ -5,6 +5,7 @@
 #include "SceneWidget.h"
 
 #include <QMouseEvent>
+#include <QPainter>
 
 #include <cmath>
 #include <iostream>
@@ -29,6 +30,7 @@ SceneWidget::SceneWidget(QWidget* parent)
     , m_zoomExponential(0.2f)
     , m_sphere(MeshBuilder::icosphere(1.0, 3))
     , m_axes(MeshBuilder::axes(Axis3D()))
+    , m_title("")
     , QOpenGLWidget(parent)
 {
 }
@@ -254,6 +256,11 @@ void SceneWidget::setVisibility(bool visible, Scene::Model target)
     update();
 }
 
+void SceneWidget::setTitle(const std::string& title)
+{
+    m_title = title.c_str();
+}
+
 void SceneWidget::start()
 {
     if (m_timer == nullptr) {
@@ -343,6 +350,14 @@ void SceneWidget::paintGL()
                 render(m_sphere, transform);
             }// else std::cout << "\033[93m[SceneWidget] Can not render bounding sphere. Improperly defined\n\033[0m";
         }
+    }
+
+    if (!m_title.isEmpty()) {
+        QPainter painter(this);
+        painter.setPen(Qt::white);
+        painter.setFont(QFont("Arial", 10, QFont::Weight::Bold));
+        painter.drawText(5, 5, width(), height(), Qt::AlignLeft | Qt::AlignTop, m_title);
+        painter.end();
     }
 }
 

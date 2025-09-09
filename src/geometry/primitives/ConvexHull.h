@@ -121,7 +121,10 @@ private:
 class HullBuilder {
 public:
 
+    HullBuilder();
     explicit HullBuilder(const std::vector<glm::dvec3>& cloud);
+
+    void add(const std::vector<glm::dvec3>& vertices);
 
     void clean();
 

@@ -532,6 +532,7 @@ std::vector<Plane> ProcessPlanner::orderConvexTrim(const std::vector<Plane>& cut
             return glm::dot(a.normal, UP) > glm::dot(b.normal, UP);
         });
     } else { // Plan cuts beginning from the bottom and moving upwards
+        std::cout << "BD\n";
         std::sort(steps.begin(), steps.end(), [](const Plane& a, const Plane& b){
             return glm::dot(a.normal, UP) < glm::dot(b.normal, UP);
         });

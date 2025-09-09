@@ -17,6 +17,7 @@ Sculpture::Sculpture()
     , m_scalar(1.0)
     , m_step(0)
     , m_formStep(0)
+    , m_autoRemeshEnable(true)
     , m_mergeEnable(true)
     , m_highlightColor(0.3, 0.3, 0.8)
 {
@@ -233,8 +234,9 @@ std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
         debris->addFixedPlane(plane);
 
         if (components().empty()) throw std::runtime_error("[Sculpture] Empty sculpture");
-        m_hull = components()[0]; // Ignores small off-cuts (Little effect on testing) & only works properly before triangular sectioning TODO
-        remesh();
+
+        m_hull = container();
+        if (m_autoRemeshEnable) remesh();
 
         return debris;
     }
@@ -281,9 +283,11 @@ std::shared_ptr<Debris> Sculpture::triangleSection(const Plane& planeA, const Pl
         debris->addFixedPlane(planeA);
         debris->addFixedPlane(planeB);
 
-        // Manually remesh only if no hulls are merged (If they are CompositeBody would remesh)
-        if (!m_mergeEnable || !tryMerge()) remesh();
-//        remesh();
+        if (m_autoRemeshEnable) {
+
+            // Manually remesh only if no hulls are merged (If they are CompositeBody would remesh)
+            if (!m_mergeEnable || !tryMerge()) remesh();
+        }
 
         return debris;
     }
@@ -328,6 +332,11 @@ bool Sculpture::form()
 //    }
 
     return false;
+}
+
+void Sculpture::enableAutoRemesh(bool enable)
+{
+    m_autoRemeshEnable = enable;
 }
 
 void Sculpture::enableHullMerging(bool enable)
