@@ -112,48 +112,109 @@ const std::deque<Action>& ProcessPlanner::actions() const
 
 void ProcessPlanner::planConvexTrim()
 {
-    std::vector<Plane> steps;
+    const auto& steps = convexTrimOrder();
 
-    ConvexHull hull = ConvexHull(sculpture->model()->mesh());
-
-    for (uint32_t i = 0; i < hull.facetCount(); i++) steps.emplace_back(hull.facePlane(i));
-
-    steps = orderConvexTrim(steps);
-
-    // Process all the cuts preemptively
-    hull = sculpture->hull();
-    for (Plane& step : steps) {
-        if (!withinActionLimit()) break;
-
-        auto fragments = Collision::fragments(hull, step);
-
-        if (m_config.minCutVolume > 0) fragments.first.evaluate();
-
-        double vol = fragments.first.volume();
-        std::cout << "Step [" << (&step - &steps[0]) << ", vol: " << vol << "]:\n";
-
-        // Try performing cut if the action would remove sufficient material
-        if ((m_config.minCutVolume == 0 || fragments.first.volume() > m_config.minCutVolume)) {
-            auto actions = planConvexTrim(hull, step);
-            if (!actions.empty()) {
-                m_actions.insert(m_actions.end(), actions.begin(), actions.end());
-                hull = fragments.second;
-                sculpture->setHull(hull); // Important to record so commitActions() checks collisions against the latest hull
-            }
+    for (const std::pair<Plane, std::vector<glm::dvec3>>& step : steps) {
+        auto actions = planConvexTrim(step);
+        if (!actions.empty()) {
+            m_actions.insert(m_actions.end(), actions.begin(), actions.end());
         }
     }
 }
 
-// Generates trajectory to perform a trim action. Returns true if successful
-std::vector<Action> ProcessPlanner::planConvexTrim(const ConvexHull& hull, const Plane& plane)
+std::vector<std::pair<Plane, std::vector<glm::dvec3>>> ProcessPlanner::convexTrimOrder() const
 {
-    auto border = Collision::intersection(hull, plane);
-    if (border.size() < 3) return {};
+    ConvexHull target(sculpture->model()->mesh());
+    ConvexHull base = sculpture->hull();
 
+    bool mod = m_config.sliceOrder != ProcessConfiguration::ConvexSliceOrder::TOP_DOWN;
+
+    // Divide planes into those above and below the horizontal
+    std::array<std::vector<Plane>, 2> sets;
+    for (uint32_t i = 0; i < target.facetCount(); i++) {
+        const Plane& plane = target.facePlane(i);
+        sets[mod ^ (glm::dot(UP, plane.normal) < 0)].push_back(plane);
+    }
+
+    // Order planes in the optimal way (In this case based on volume)
+    std::vector<std::pair<Plane, std::vector<glm::dvec3>>> steps;
+    for (const std::vector<Plane>& set : sets) {
+        if (m_config.actionLimitEnable && steps.size() >= m_config.actionLimit) break;
+
+        std::vector<Plane> planes = volumeOptimizedOrder(base, set);
+        for (const Plane& plane : planes) {
+            steps.emplace_back(plane, Collision::intersection(base, plane));
+            base = Collision::fragment(base, plane.inverted());
+        }
+    }
+
+    return steps;
+}
+
+// Generates a list of planes for the purposes of convex trimming. The planes are ordered such that each step removes
+// the maximum volume of material possible
+std::vector<Plane> ProcessPlanner::volumeOptimizedOrder(const ConvexHull& base, const std::vector<Plane>& planes) const
+{
+    std::vector<ConvexHull> fragments;
+    for (const Plane& plane : planes) {
+        fragments.emplace_back(Collision::fragment(base, plane));
+        fragments.back().evaluate();
+    }
+
+    std::vector<uint32_t> indices(fragments.size());
+    std::iota(indices.begin(), indices.end(), 0);
+
+    std::sort(indices.begin(), indices.end(), [&](uint32_t I0, uint32_t I1) {
+        return fragments[I0].volume() > fragments[I1].volume();
+    });
+
+    // Ensure that action limit is not exceeded
+    if (m_config.actionLimitEnable && indices.size() > m_config.actionLimit) {
+        indices.erase(indices.end() - indices.size() + m_config.actionLimit, indices.end());
+    }
+
+    for (uint32_t i = 0; i < indices.size(); i++) {
+
+        // Remove overly small fragments when requested
+        if (m_config.minCutVolume > 0) {
+            for (int j = indices.size() - 1; j > i; j--) {
+                if (fragments[indices[j]].volume() < m_config.minCutVolume) indices.pop_back();
+                else break;
+            }
+        }
+
+        if (i < indices.size()) {
+
+            // Adjust remaining fragments by removing contribution from the next step
+            for (uint32_t j = i + 1; j < indices.size(); j++) {
+                if (!Collision::below(fragments[indices[j]], planes[indices[i]].inverted())) {
+                    fragments[indices[j]] = Collision::fragment(fragments[indices[j]], planes[indices[i]].inverted());
+                    fragments[indices[j]].evaluate();
+                }
+            }
+
+            // Order remaining fragment (index)s from largest to smallest
+            std::sort(indices.begin() + i, indices.end(), [&](uint32_t I0, uint32_t I1) {
+                return fragments[I0].volume() > fragments[I1].volume();
+            });
+        }
+    }
+
+    std::vector<Plane> steps;
+
+    steps.reserve(indices.size());
+    for (uint32_t idx : indices) steps.push_back(planes[idx]);
+
+    return steps;
+}
+
+// Generates trajectory to perform a trim action. Returns true if successful
+std::vector<Action> ProcessPlanner::planConvexTrim(const std::pair<Plane, std::vector<glm::dvec3>>& step)
+{
     std::shared_ptr<CompositeTrajectory> trajectory;
     const double initialRotation = turntable->getJointValue(0);
 
-    double baseRotation = Ray::axialRotation(UP, plane.normal), theta;
+    double baseRotation = Ray::axialRotation(UP, step.first.normal), theta;
 
     // Try developing a trajectory that will allow the robot to complete the planar section
     for (double offset : ATTEMPT_OFFSETS) {
@@ -161,9 +222,9 @@ std::vector<Action> ProcessPlanner::planConvexTrim(const ConvexHull& hull, const
 
         auto rotation = glm::angleAxis(theta, UP);
 
-        glm::dvec3 wsNormal = rotation * plane.normal;
+        glm::dvec3 wsNormal = rotation * step.first.normal;
 
-        std::vector<glm::dvec3> wsBorder = border;
+        std::vector<glm::dvec3> wsBorder = step.second;
         for (glm::dvec3& vertex : wsBorder) vertex = rotation * vertex + m_config.center;
 
         turntable->setJointValue(0, theta);
@@ -179,7 +240,7 @@ std::vector<Action> ProcessPlanner::planConvexTrim(const ConvexHull& hull, const
     }
 
     // Record mesh manipulation operation for later application during carving process
-    sculpture->queueSection(plane.inverted());
+    sculpture->queueSection(step.first.inverted());
 
 
     // Don't add new command if the TT is already in position
@@ -448,19 +509,24 @@ std::shared_ptr<CompositeTrajectory> ProcessPlanner::preparePlanarTrajectory(con
     uint32_t minIndex, maxIndex;
     VertexArray::extremes(border, axes.xAxis, minIndex, maxIndex);
 
+//    std::cout << m_actions.size() << " V " << m_config.center.x << " " << m_config.center.y << " " << m_config.center.z << " | " << border[minIndex].y << " " << border[maxIndex].y << "\n";
+
+    bool upFacing = glm::dot(UP, normal) > 0;
     double runup = 0.1, length = glm::dot(border[maxIndex] - border[minIndex], axes.xAxis) + 1e-3; // 1e-3 to go a bit further (So debris is disconnected properly (Avoid vertex touch))
 
-    if (glm::dot(UP, normal) > 0) { // Upwards-facing cut -> Can use through cut
+
+    if (upFacing && m_config.center.y < border[minIndex].y - runup - m_config.bladeWidth) {
         return prepareThroughCut(Pose(border[minIndex], axes), length + runup, runup + 0.5 * m_config.bladeWidth, 0.4 * axes.yAxis);
     }
 
-    // Adjust length so it stops just before hitting the turntable
+    // Adjust length so it stops just before hitting the turntable TODO don't apply if no risk of TT hit
     length = -(length + runup) + 0.5 * m_config.bladeWidth
              - m_config.bladeThickness * tan(0.5 * M_PI - acos(glm::dot(UP, axes.yAxis)));
 
     auto off = glm::normalize(glm::cross(UP, axes.zAxis));
 
     off *= -(0.4 * m_config.materialWidth + glm::dot(off, length * axes.xAxis)); // Margin + depth (along off) cut
+    if (glm::dot(off, m_config.center - border[maxIndex]) > 0) off = -off;
 
     // Downwards-facing cut -> Through but limited -> Leverage departure to push debris away from the piece
     return prepareThroughCut(Pose(border[maxIndex], axes), length, -runup, axes.localize(off));
@@ -520,23 +586,4 @@ bool ProcessPlanner::withinActionLimit() const
     }
 
     return true;
-}
-
-//TODO arrange steps better
-std::vector<Plane> ProcessPlanner::orderConvexTrim(const std::vector<Plane>& cuts)
-{
-    std::vector<Plane> steps = cuts;
-
-    if (m_config.sliceOrder == ProcessConfiguration::ConvexSliceOrder::TOP_DOWN) { // Plan cuts beginning from the top and moving towards the base
-        std::sort(steps.begin(), steps.end(), [](const Plane& a, const Plane& b){
-            return glm::dot(a.normal, UP) > glm::dot(b.normal, UP);
-        });
-    } else { // Plan cuts beginning from the bottom and moving upwards
-        std::cout << "BD\n";
-        std::sort(steps.begin(), steps.end(), [](const Plane& a, const Plane& b){
-            return glm::dot(a.normal, UP) < glm::dot(b.normal, UP);
-        });
-    }
-
-    return steps;
 }

@@ -85,8 +85,10 @@ public:
 private:
 
     void planConvexTrim();
-    std::vector<Plane> orderConvexTrim(const std::vector<Plane>& cuts);
-    std::vector<Action> planConvexTrim(const ConvexHull& hull, const Plane& plane);
+    std::vector<std::pair<Plane, std::vector<glm::dvec3>>> convexTrimOrder() const;
+    std::vector<Plane> volumeOptimizedOrder(const ConvexHull& base, const std::vector<Plane>& planes) const;
+
+    std::vector<Action> planConvexTrim(const std::pair<Plane, std::vector<glm::dvec3>>& step);
 
     void planOutlineRefinement(double stepDg);
     std::vector<Action> planOutlineRefinement(Profile& profile);

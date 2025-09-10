@@ -312,6 +312,11 @@ int main(int argc, char *argv[])
         scene->getConfiguration().enableActionLimit(checked);
     });
 
+    auto minVolField = window->findChild<QDoubleSpinBox*>("minVolField");
+    QObject::connect(minVolField, &QDoubleSpinBox::valueChanged, [&](double value) {
+        scene->getConfiguration().setMinimumCutVolume(value);
+    });
+
     auto stepOffsetField = window->findChild<QDoubleSpinBox*>("stepOffsetField");
     QObject::connect(stepOffsetField, &QDoubleSpinBox::valueChanged, [&](double value) {
         scene->getConfiguration().setStepOffset(value);
@@ -340,11 +345,13 @@ int main(int argc, char *argv[])
 
     // Handle updating robot
     updateThread = std::make_unique<std::thread>([](){
+        bool justRun = false;
 
         while (true) {
-            if (scene->simulationActive()) {
+            if (scene->simulationActive() || justRun) {
                 updateTitle();
                 sceneWidget->update();
+                justRun = !scene->simulationComplete();
             }
 
             std::this_thread::sleep_for(std::chrono::nanoseconds(10000000));
