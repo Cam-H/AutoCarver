@@ -52,6 +52,8 @@ public:
     [[nodiscard]] bool isVertexExternal(uint32_t index) const;
     [[nodiscard]] bool isNextExternal() const;
 
+    [[nodiscard]] uint32_t nextDepth() const;
+
     [[nodiscard]] double area() const;
 
     [[nodiscard]] double floor() const;
@@ -84,10 +86,17 @@ public:
 private:
 
     struct Section {
-        Section(TriIndex triangle, uint32_t children) : triangle(triangle), children(children), skipped(false) {}
+        Section(TriIndex triangle, uint32_t depth, uint32_t children = 0)
+            : triangle(triangle)
+            , depth(depth)
+            , children(children)
+            , skipped(false) {}
 
         TriIndex triangle; // Indices to the vertices forming the section
+
+        uint32_t depth; // Number of sections that this one is dependent on
         uint32_t children; // Number of sections dependent on this one
+
         bool skipped; // Track if section has previously been skipped
     };
 

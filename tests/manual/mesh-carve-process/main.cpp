@@ -322,6 +322,20 @@ int main(int argc, char *argv[])
         scene->getConfiguration().setStepOffset(value);
     });
 
+    auto revZButton = window->findChild<QPushButton*>("revZButton");
+    QObject::connect(revZButton, &QCheckBox::clicked, [&](bool checked) {
+        const auto& robot = scene->getSculptor();
+        auto pose = robot->getPose();
+        pose.position -= 0.1 * pose.axes.zAxis;
+
+        auto wp = robot->inverse(pose);
+        if (wp.isValid()) {
+            robot->moveTo(wp);
+            scene->update();
+            sceneWidget->update();
+        }
+    });
+
     auto testButton1 = window->findChild<QPushButton*>("testButton1");
     QObject::connect(testButton1, &QCheckBox::clicked, [&](bool checked) {
         scene->blind(testPose(), 0.4);

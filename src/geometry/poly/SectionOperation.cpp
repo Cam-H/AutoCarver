@@ -224,12 +224,14 @@ std::vector<SectionOperation::Set> SectionOperation::sequence(const SectionOpera
 glm::dvec2 SectionOperation::leftExit() const
 {
     if (m_cutBA) return startVertex();
-    else return reliefs[0].center();
+    return reliefs[0].center();
+
 }
 glm::dvec2 SectionOperation::rightExit() const
 {
     if (m_cutBC) return endVertex();
-    else return reliefs[!m_cutBA].center();
+    return reliefs[!m_cutBA].center();
+
 }
 
 

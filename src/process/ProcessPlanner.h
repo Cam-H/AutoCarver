@@ -85,8 +85,8 @@ public:
 private:
 
     void planConvexTrim();
-    std::vector<std::pair<Plane, std::vector<glm::dvec3>>> convexTrimOrder() const;
-    std::vector<Plane> volumeOptimizedOrder(const ConvexHull& base, const std::vector<Plane>& planes) const;
+    [[nodiscard]] std::vector<std::pair<Plane, std::vector<glm::dvec3>>> convexTrimOrder() const;
+    [[nodiscard]] std::vector<Plane> volumeOptimizedOrder(const ConvexHull& base, const std::vector<Plane>& planes) const;
 
     std::vector<Action> planConvexTrim(const std::pair<Plane, std::vector<glm::dvec3>>& step);
 
@@ -96,6 +96,8 @@ private:
 
     bool planTranslation(const glm::dvec3& translation, Action& action);
     bool planSequence(const Sequence& sequence, Action& action);
+
+    Action planRetraction(const Waypoint& start);
 
     bool planBlindCut(const Pose& pose, double depth, Action& action);
     bool planMill(const Pose& pose, const glm::dvec3& normal, const glm::dvec3& travel, double depth, Action& action);

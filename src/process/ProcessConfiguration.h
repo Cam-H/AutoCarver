@@ -131,7 +131,8 @@ private:
     std::shared_ptr<KinematicChain> kinematics;
 
     Waypoint robotHome;
-    Waypoint robotNeutral;
+    Waypoint robotHoverLeft;
+    Waypoint robotHoverRight;
 
     std::vector<double> baseVelocityLimits, baseAccelerationLimits;
     std::vector<double> slowVelocityLimits; // TODO use cartesian speed limit (Needs further trajectory development)

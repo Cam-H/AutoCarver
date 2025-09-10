@@ -63,6 +63,8 @@ bool Profile::serialize(std::ofstream& file) const
         Serializer::writeUint(file, section.triangle.I0);
         Serializer::writeUint(file, section.triangle.I1);
         Serializer::writeUint(file, section.triangle.I2);
+
+        Serializer::writeUint(file, section.depth);
         Serializer::writeUint(file, section.children);
     }
 
@@ -101,7 +103,7 @@ bool Profile::deserialize(std::ifstream& file)
     uint32_t size = Serializer::readUint(file);
     for (uint32_t i = 0; i < size; i++) {
         uint32_t I0 = Serializer::readUint(file), I1 = Serializer::readUint(file), I2 = Serializer::readUint(file);
-        m_sections.emplace_back(TriIndex(I0, I1, I2), Serializer::readUint(file));
+        m_sections.emplace_back(TriIndex(I0, I1, I2), Serializer::readUint(file), Serializer::readUint(file));
     }
 
 //    std::cout << "Deserialize\n";
@@ -333,8 +335,13 @@ bool Profile::isVertexExternal(uint32_t index) const
 
 bool Profile::isNextExternal() const
 {
-    return !complete() && isVertexExternal(m_sections[0].triangle.I0)
-                       && isVertexExternal(m_sections[0].triangle.I2);
+    return !m_sections.empty() && m_sections[0].depth == 0;
+}
+
+uint32_t Profile::nextDepth() const
+{
+    if (m_sections.empty()) return 0;
+    return m_sections[0].depth;
 }
 
 // Returns the area of the next section
@@ -592,7 +599,7 @@ std::vector<Profile::Section> Profile::prepareSections(std::vector<TriIndex>& tr
         if (valid) {
 
             // Correct indexing while constructing sections
-            sections.emplace_back(TriIndex(indexMap[nextTri.I0], indexMap[nextTri.I1], indexMap[nextTri.I2]), 0);
+            sections.emplace_back(TriIndex(indexMap[nextTri.I0], indexMap[nextTri.I1], indexMap[nextTri.I2]), depth);
 
             edges.emplace_back(nextTri.I0, nextTri.I1, depth + 1);
             edges.emplace_back(nextTri.I1, nextTri.I2, depth + 1);
@@ -731,7 +738,7 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
         auto op = next(width, thickness);
 
         // Show reliefs, if appropriate
-        std::cout << "XX " << op.valid << " " << op.reliefs.size() << "\n";
+//        std::cout << "XX " << op.valid << " " << op.reliefs.size() << "\n";
         for (const SectionOperation::Relief& relief : op.reliefs) {
             for (uint32_t i = 1; i < relief.edges.size(); i++) edges.emplace_back(relief.edges[i - 1], relief.edges[i]);
 
@@ -748,7 +755,7 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
         if (t0 < 0) t0 += 2 * M_PI;
         if (dt < 0) dt += 2 * M_PI;
         dt /= 1.0;
-        std::cout << "TH: " << t0 << " " << dt << "\n";
+//        std::cout << "TH: " << t0 << " " << dt << "\n";
 
         double t = t0;
         for (uint32_t i = 0; i < 2; i++) {
@@ -775,7 +782,7 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
 //        }
     }
 
-    std::cout << "FLOOR: " << floor() << "\n";
+//    std::cout << "FLOOR: " << floor() << "\n";
 
     return edges;
 }

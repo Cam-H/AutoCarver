@@ -143,6 +143,10 @@ void refine()
 {
     if (profile.complete()) return;
 
+    bool res = profile.isNextExternal();
+    uint32_t depth = profile.nextDepth();
+    std::cout << "EXT: " << res << " " << depth << "==========================================\n";
+
     auto operation = profile.next(0.108, 0.011);
     if (operation.valid) {
 

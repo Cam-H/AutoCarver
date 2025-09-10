@@ -27,6 +27,11 @@ CartesianTrajectory::CartesianTrajectory(const std::shared_ptr<Robot>& robot, co
 
 void CartesianTrajectory::resolve(uint32_t steps)
 {
+    if (!m_robot->inverse(m_initialPose).isValid() || !m_robot->inverse(m_finalPose).isValid()) {
+        m_valid = false;
+        return;
+    }
+
     Pose pose = m_initialPose;
 
     std::vector<Waypoint> waypoints;

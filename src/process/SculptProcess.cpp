@@ -140,9 +140,14 @@ void SculptProcess::attachSculpture()
 
     auto neutral = m_sculpture->position() + 1.3 * m_sculpture->height() * UP;
     auto neutralPose = Pose(neutral, Axis3D(getConfiguration().forward));
+
     neutralPose.localTranslate({ 0, 1.0 * m_sculpture->width(), -0.5 * getConfiguration().bladeLength });
-    getConfiguration().robotNeutral = m_robot->inverse(neutralPose);
-    assert(getConfiguration().robotNeutral.isValid());
+    getConfiguration().robotHoverLeft = m_robot->inverse(neutralPose);
+
+    neutralPose.localTranslate({ 0, -2.0 * m_sculpture->width(), 0 });
+    getConfiguration().robotHoverRight = m_robot->inverse(neutralPose);
+
+    assert(getConfiguration().robotHoverLeft.isValid() && getConfiguration().robotHoverRight.isValid());
 }
 
 SculptProcess::~SculptProcess()
@@ -704,7 +709,7 @@ bool SculptProcess::testTurntableCollision(const std::shared_ptr<Trajectory>& tt
 Action SculptProcess::planTurntableClearance()
 {
     // TODO better motions than moving towards the neutral position
-    return planApproach(getConfiguration().robotNeutral);
+    return planApproach(getConfiguration().robotHoverRight);
 }
 
 Action SculptProcess::planApproach(const Waypoint& destination)
@@ -730,7 +735,7 @@ std::shared_ptr<Trajectory> SculptProcess::prepareApproach(const Waypoint& desti
     auto pose = m_robot->getPose(destination);
     pose.localTranslate({ 0, 0.5, 0});
 
-    std::vector<Waypoint> testWPs = { m_robot->inverse(pose), getConfiguration().robotNeutral };
+    std::vector<Waypoint> testWPs = { m_robot->inverse(pose), getConfiguration().robotHoverLeft, getConfiguration().robotHoverRight, getConfiguration().robotHome };
 
     for (const Waypoint& midpoint : testWPs) {
         if (midpoint.isValid()) {
