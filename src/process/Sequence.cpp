@@ -64,11 +64,12 @@ Axis3D Sequence::Set::axes(const glm::dvec3& forward) const
     return Axis3D::faceAligned(normal, forward, true);
 }
 
+
 bool Sequence::Set::isBlind() const
 {
-    return std::abs(glm::dot(travel, axis)) >= 1 - 1e-6;
+    return blind;
 }
 bool Sequence::Set::isMill() const
 {
-    return !isBlind();
+    return !blind;
 }

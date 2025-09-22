@@ -30,6 +30,7 @@ link_directories(./extern/assimp/bin ./extern/assimp/lib)
 include_directories(./extern/assimp/include)
 include_directories(./extern/CDT/CDT/include)
 include_directories(./extern/glm/glm)
+include_directories(./extern/nanoflann/include)
 
 add_subdirectory(extern/CDT/CDT)
 

@@ -7,3 +7,6 @@
 [submodule "extern/CDT"]
 	path = extern/CDT
 	url = https://github.com/artem-ogre/CDT.git
+[submodule "extern/nanoflann"]
+	path = extern/nanoflann
+	url = https://github.com/jlblancoc/nanoflann.git

@@ -40,6 +40,11 @@ public:
 
     void inverseWinding() override;
 
+    void setToolDimensions(double width, double thickness);
+
+    void setReferencePosition(const glm::dvec2& start);
+    void setReferenceOrientation(double orientation);
+
     void skip();
     void refine();
 
@@ -70,6 +75,8 @@ public:
 
     [[nodiscard]] const glm::dvec3& normal() const;
 
+    [[nodiscard]] glm::dvec2 project(const glm::dvec3& vertex) const;
+
     [[nodiscard]] inline glm::dvec3 projected3D(const glm::dvec2& vertex) const { return Polygon::projected3D(vertex, m_system.xAxis, m_system.yAxis, {}); }
 
     [[nodiscard]] std::vector<glm::dvec3> projected3D() const;
@@ -78,6 +85,9 @@ public:
 
     [[nodiscard]] uint32_t prevVertex(uint32_t vertexIndex) const;
     [[nodiscard]] uint32_t nextVertex(uint32_t vertexIndex) const;
+
+    [[nodiscard]] const glm::dvec2& getReferencePosition() const;
+    [[nodiscard]] double getReferenceOrientation() const;
 
     [[nodiscard]] std::vector<std::pair<glm::dvec2, glm::dvec2>> debugEdges() const override;
 
@@ -132,9 +142,10 @@ private:
 
     bool intersects(const glm::dvec2& a, const glm::dvec2& b, uint32_t start, uint32_t end) const;
     void intersection(const glm::dvec2& a, const glm::dvec2& b, uint32_t start, uint32_t end, double& t) const;
-    static std::tuple<bool, double> intersection(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c, const glm::dvec2& d);
 
     [[nodiscard]] std::pair<uint32_t, uint32_t> nextHullVertices(uint32_t vertexIndex) const;
+
+    [[nodiscard]] std::vector<glm::dvec2> corners(const glm::dvec2& start, double orientation) const;
 
     static double angle(const glm::dvec2& a, const glm::dvec2& b);
 
@@ -151,9 +162,16 @@ private:
 
     std::deque<Section> m_sections;
 
+    double m_thickness;
+    double m_width;
+
     double m_minimumArea;
 
     uint32_t m_floorIndex;
+
+    // Track reference position (For the purposes of path planning)
+    glm::dvec2 m_start;
+    double m_orientation;
 };
 
 

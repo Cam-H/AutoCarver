@@ -11,6 +11,7 @@ class Profile;
 
 // Helper class to decompose refinement steps into a series of cuts based on what is physically accessible during the process
 // In cases with insufficient clearance, tries to find a set of relief cuts to enable the cut
+// Also finds free paths between cuts
 class SectionOperation {
 public:
 
@@ -20,7 +21,6 @@ public:
                      double width, double thickness);
 
     void prepareReliefs(const Profile* profile);
-
 
     struct Set {
 
@@ -33,10 +33,11 @@ public:
         Set(const glm::dvec2& axis, const glm::dvec2& normal, const glm::dvec2& travel)
             : axis(axis), normal(normal), travel(travel) {}
 
-        std::vector<std::pair<glm::dvec2, double>> motions; // First = start position, second = final distance from start
         glm::dvec2 axis;
         glm::dvec2 normal;
         glm::dvec2 travel;
+
+        std::vector<std::pair<glm::dvec2, double>> motions; // First = start position, second = final distance from start
     };
 
     struct Relief {
@@ -74,12 +75,19 @@ public:
         bool valid;
     };
 
+    [[nodiscard]] inline bool isValid() const { return m_valid; }
+
     [[nodiscard]] glm::dvec2 startVertex(double offset = 0) const;
     [[nodiscard]] glm::dvec2 endVertex(double offset = 0) const;
 
+    [[nodiscard]] double startOrientation() const;
+    [[nodiscard]] double endOrientation() const;
+
     [[nodiscard]] glm::dvec2 splitVertex() const;
 
-    [[nodiscard]] std::vector<Set> cuts() const;
+    [[nodiscard]] inline const std::vector<Relief>& reliefs() const { return m_reliefs; }
+
+    [[nodiscard]] std::vector<Set> connected(const Profile* profile, const glm::dvec2& start, double theta) const;
 
     [[nodiscard]] std::vector<Set> left() const;
     [[nodiscard]] std::vector<Set> right() const;
@@ -104,10 +112,9 @@ private:
     [[nodiscard]] Set direct(const glm::dvec2& origin, const glm::dvec2& axis, const glm::dvec2& ref, double depth) const;
     [[nodiscard]] std::vector<Set> sequence(const SectionOperation::Relief& relief) const;
 
+private:
 
-public:
-
-    bool valid; // Operation is possible given constraints
+    bool m_valid; // Operation is possible given constraints
 
     glm::dvec2 start, end; // Endpoints
     double width, thickness;
@@ -119,9 +126,7 @@ public:
     double theta; // Internal angle between BA and BC
     double reduction; // Depth reduction due to thickness (to prevent overrun)
 
-    std::vector<Relief> reliefs;
-
-private:
+    std::vector<Relief> m_reliefs;
 
     bool m_cutBA, m_cutBC;
 

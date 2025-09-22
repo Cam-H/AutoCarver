@@ -18,8 +18,13 @@ double Timer::getElapsedSeconds(){
 }
 
 
-ScopedTimer::ScopedTimer(std::string message) : Timer(), m_Message(std::move(message)) {}
+ScopedTimer::ScopedTimer(std::string message) : Timer(), m_message(std::move(message)) {}
+
+void ScopedTimer::setMessage(const std::string& message)
+{
+    m_message = message;
+}
 
 ScopedTimer::~ScopedTimer(){
-    std::cout << m_Message << " took " << std::setprecision(5) << getElapsedSeconds() << std::setprecision(default_precision) << "s\n";
+    std::cout << m_message << " took " << std::setprecision(5) << getElapsedSeconds() << std::setprecision(default_precision) << "s\n";
 }

@@ -12,14 +12,14 @@ double SectionOperation::RUN_UP = 0.02;
 uint8_t SectionOperation::ITERATIONS = 8;
 
 SectionOperation::SectionOperation()
-        : valid(false)
+        : m_valid(false)
 {
 
 }
 
 SectionOperation::SectionOperation(const glm::dvec2& start, const glm::dvec2& split, const glm::dvec2& end,
                                    double width, double thickness)
-    : valid(true)
+    : m_valid(true)
     , start(start)
     , end(end)
     , width(width)
@@ -63,13 +63,13 @@ void SectionOperation::prepareReliefs(const Profile* profile)
     double delta = dt / (double)(ITERATIONS - 1);
 
     if (clearance.first < width || !checkFloor(start, left, profile)) {
-        m_cutBA = valid = false;
+        m_cutBA = m_valid = false;
 
         double t = ts;
         for (uint8_t i = 0; i < ITERATIONS; i++) {
             glm::dvec2 normal(cos(t), sin(t));
             if (prepareRelief(start, -BA, AC, BC, normal, std::max(0.0, lBA - reduction), profile)) {
-                valid = true;
+                m_valid = true;
                 break;
             }
 
@@ -77,14 +77,14 @@ void SectionOperation::prepareReliefs(const Profile* profile)
         }
     }
 
-    if (valid && (clearance.second < width || !checkFloor(end, right, profile))) {
-        m_cutBC = valid = false;
+    if (m_valid && (clearance.second < width || !checkFloor(end, right, profile))) {
+        m_cutBC = m_valid = false;
 
         double t = ts + dt;
         for (uint8_t i = 0; i < ITERATIONS; i++) {
             glm::dvec2 normal(cos(t), sin(t));
             if (prepareRelief(end, -BC, -AC, BA, normal, std::max(0.0, lBC - reduction), profile)) {
-                valid = true;
+                m_valid = true;
                 break;
             }
 
@@ -107,9 +107,9 @@ bool SectionOperation::prepareRelief(const glm::dvec2& initial,
                    const Profile* profile)
 {
     if (checkFloor(initial, normal, profile) && std::abs(glm::dot(external, normal)) > 0.2) {
-        reliefs.emplace_back(initial, internal, external, opposite, normal, length, width + RUN_UP, thickness);
-        if (profile->validate(reliefs.back())) return true;
-        reliefs.pop_back();
+        m_reliefs.emplace_back(initial, internal, external, opposite, normal, length, width + RUN_UP, thickness);
+        if (profile->validate(m_reliefs.back())) return true;
+        m_reliefs.pop_back();
     }
 
     return false;
@@ -127,13 +127,26 @@ glm::dvec2 SectionOperation::endVertex(double offset) const
     return end + BC * (RUN_UP + offset);
 }
 
+double SectionOperation::startOrientation() const
+{
+    const glm::dvec2& delta = m_cutBA ? BA : -m_reliefs[0].normal;
+    return atan2(delta.y, delta.x);
+}
+double SectionOperation::endOrientation() const
+{
+    const glm::dvec2& delta = m_cutBC ? BC : -m_reliefs[!m_cutBA].normal;
+    return atan2(delta.y, delta.x);
+}
+
 glm::dvec2 SectionOperation::splitVertex() const
 {
     return start - BA * lBA;
 }
 
-std::vector<SectionOperation::Set> SectionOperation::cuts() const
+std::vector<SectionOperation::Set> SectionOperation::connected(const Profile* profile, const glm::dvec2& start, double theta) const
 {
+    std::cout << "POS2D: " << start.x << " " << start.y << " | " << theta << "\n";
+
     std::vector<Set> cuts = left(), r = right();
     cuts.insert(cuts.end(), r.begin(), r.end());
     return cuts;
@@ -141,18 +154,18 @@ std::vector<SectionOperation::Set> SectionOperation::cuts() const
 
 std::vector<SectionOperation::Set> SectionOperation::left() const
 {
-    if (valid) {
+    if (m_valid) {
         if (m_cutBA) return { direct(startVertex(), BA, BC, lBA) };
-        else return sequence(reliefs[0]);
+        else return sequence(m_reliefs[0]);
     }
 
     return {};
 }
 std::vector<SectionOperation::Set> SectionOperation::right() const
 {
-    if (valid) {
+    if (m_valid) {
         if (m_cutBC) return { direct(endVertex(), BC, BA, lBC) };
-        else return sequence(reliefs[!m_cutBA]);
+        else return sequence(m_reliefs[!m_cutBA]);
     }
 
     return {};
@@ -224,13 +237,13 @@ std::vector<SectionOperation::Set> SectionOperation::sequence(const SectionOpera
 glm::dvec2 SectionOperation::leftExit() const
 {
     if (m_cutBA) return startVertex();
-    return reliefs[0].center();
+    return m_reliefs[0].center();
 
 }
 glm::dvec2 SectionOperation::rightExit() const
 {
     if (m_cutBC) return endVertex();
-    return reliefs[!m_cutBA].center();
+    return m_reliefs[!m_cutBA].center();
 
 }
 

@@ -148,6 +148,9 @@ std::vector<std::pair<Plane, std::vector<glm::dvec3>>> ProcessPlanner::convexTri
         }
     }
 
+    // TODO can further improve by ordering based on relative angle between normals
+    // (Will require saving index of last reduction to limit regions to re-sort)
+
     return steps;
 }
 
@@ -267,6 +270,7 @@ void ProcessPlanner::planOutlineRefinement(double stepDg)
     // Block collision checks between blade and sculpture (Expected but should be ignored)
     robot->getEOAT()->setMask(robot->getEOAT()->mask() & ~sculpture->layer());
 
+    std::cout << "STEPS: " << steps << " | " << stepDg << "\n";
     for (uint32_t i = 0; i < steps; i++) {
         if (!withinActionLimit()) break;
 
@@ -310,28 +314,21 @@ std::vector<Action> ProcessPlanner::planOutlineRefinement(Profile& profile)
 
     m_latestRobotCommand = m_config.robotHome;
 
-    std::vector<Waypoint> midpoints;
+    profile.print();
     while (!profile.complete()) {
         if (!withinActionLimit()) break;
 
         auto operation = profile.next(m_config.bladeWidth, m_config.bladeThickness);
 
 //        std::cout << "IDX: " << tri.I0 << " " << tri.I1 << " " << tri.I2 << "\n";
-        if (operation.valid) { // Confirm the operation is possible before attempting
-
+        if (operation.isValid()) { // Confirm the operation is possible before attempting
             actions.emplace_back(planOutlineRefinement(profile, operation));
             if (actions.back().cuts.empty()) { // No cuts were possible - do nothing and do not proceed through tree
                 std::cout << "\033[93mFailed to generate trajectory\033[0m\n";
-//                if (profile.nextDepth() < midpoints.size()) actions.pop_back(); // Remove planned outline
                 actions.pop_back();
                 profile.skip();
             } else {
                 profile.refine();
-
-                if (profile.isNextExternal()) {
-                    actions.emplace_back(planRetraction(actions.back().trajectory->end()));
-                    if (actions.back().target == nullptr) actions.pop_back();
-                }
 
                 m_latestRobotCommand = actions.back().trajectory->end();
             }
@@ -355,22 +352,13 @@ Action ProcessPlanner::planOutlineRefinement(const Profile& profile, const Secti
 
     const Pose initialPose = robot->getPose(m_latestRobotCommand);
 
-    Sequence left(&profile, operation.left()), right(&profile, operation.right());
+    glm::dvec2 pos2D = profile.project(-rotation * initialPose.position - m_config.center);
+    double theta = acos(glm::dot(UP, initialPose.axes.xAxis));
 
-//    left.exit = profile.projected3D(operation.leftExit());
-    left.transform(rotation, m_config.center);
+    Sequence seq(&profile, operation.connected(&profile, pos2D, theta));
+    seq.transform(rotation, m_config.center);
 
-//    right.exit = profile.projected3D(operation.rightExit());
-    right.transform(rotation, m_config.center);
-
-    // Perform cuts on both edges, beginning from the sequence nearer to the start position
-    if (nearest(left, right)) {
-        if (!planSequence(left, action) || !planSequence(right, action))
-            return { nullptr, nullptr };
-    } else {
-        if (!planSequence(right, action) || !planSequence(left, action))
-            return { nullptr, nullptr };
-    }
+    if (!planSequence(seq, action)) return { nullptr, nullptr };
 
     trajectory->update();
     for (Cut& cut : action.cuts) {
@@ -399,11 +387,6 @@ bool ProcessPlanner::nearest(const Sequence& test, const Sequence& comparison)
 
 bool ProcessPlanner::planSequence(const Sequence& sequence, Action& action)
 {
-    bool started = false;
-    Waypoint start;
-
-    auto trajectory = std::static_pointer_cast<CompositeTrajectory>(action.trajectory);
-
     for (const Sequence::Set& set : sequence.sets) {
 
         auto axes = set.axes(m_config.forward);
@@ -413,13 +396,6 @@ bool ProcessPlanner::planSequence(const Sequence& sequence, Action& action)
         for (const std::pair<glm::dvec3, double>& motion : set.motions) {
             auto pose = Pose(m_config.alignedToBlade(axes, motion.first + delta), axes);
 
-            if (!started) { // Record initial position for this sequence
-                start = robot->inverse(pose);
-                started = true;
-
-                trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(m_latestRobotCommand, start, m_config.solver));
-            }
-
             if (set.isBlind()) {
                 if (!planBlindCut(pose, direction * motion.second, action)) return false;
             } else {
@@ -428,19 +404,6 @@ bool ProcessPlanner::planSequence(const Sequence& sequence, Action& action)
             }
         }
     }
-
-
-//    if (!Waypoint::compare(action.trajectory->end(), start)) {
-////        std::cout << "SEQ: " << trajectory->start().toString() << " " << trajectory->end().toString() << "\n";
-//        trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(trajectory->end(), start, m_config.solver));
-//    }
-
-    if (!Waypoint::compare(action.trajectory->end(), start)) {
-//        std::cout << "SEQ: " << trajectory->start().toString() << " " << trajectory->end().toString() << "\n";
-        trajectory->addTrajectory(std::make_shared<SimpleTrajectory>(trajectory->end(), start, m_config.solver));
-    }
-
-    m_latestRobotCommand = trajectory->end();
 
     return true;
 }

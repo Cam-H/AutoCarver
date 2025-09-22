@@ -41,12 +41,16 @@ QCheckBox *showSculptureSetting = nullptr;
 QCheckBox *showHullSetting = nullptr;
 QPushButton *stepButton = nullptr;
 
+QDoubleSpinBox *xField, *yField, *angleField;
+
 std::shared_ptr<Sculpture> body = nullptr;
 std::shared_ptr<RigidBody> silhouette = nullptr;
 std::shared_ptr<RigidBody> cut = nullptr;
 
 std::shared_ptr<Mesh> mesh = nullptr;
 //std::shared_ptr<Mesh> hull = nullptr;
+
+glm::dvec2 start = { 0, 0 };
 
 EdgeDetect* detector = nullptr;
 
@@ -67,6 +71,26 @@ static QWidget *loadUiFile(QWidget *parent)
     return widget;
 }
 
+void updateRef (const SectionOperation& op)
+{
+    start = op.startVertex();
+    double orientation = op.startOrientation();
+
+    xField->setValue(start.x);
+    yField->setValue(start.y);
+
+    angleField->setValue(orientation);
+
+    profile.setReferencePosition(start);
+    profile.setReferenceOrientation(orientation);
+}
+
+void updateRef()
+{
+    const auto& op = profile.next(0.108, 0.011);
+    updateRef(op);
+}
+
 void updateImage()
 {
     glm::dvec3 offset = -mesh->boundedOffset();
@@ -78,6 +102,8 @@ void updateImage()
 
     profile = detector->profile();
     profile.setRefinementMethod(Profile::RefinementMethod::DELAUNEY);
+
+    updateRef();
 //    profile.rotateAbout({ 0, 1, 0 }, -body->rotation());
 //        profile.centerScale(scalar);
 //    profile.scale(scalar);
@@ -86,7 +112,6 @@ void updateImage()
 //    auto sc = profile.spanCenter();
 //    profile.translate(-sc);
 //    profile.translate(sc + glm::vec2{0.01f, 0});
-
 
 //    auto extrude = MeshBuilder::extrude(profile.projected3D(), profile.normal(), 4);
 //
@@ -148,24 +173,12 @@ void refine()
     std::cout << "EXT: " << res << " " << depth << "==========================================\n";
 
     auto operation = profile.next(0.108, 0.011);
-    if (operation.valid) {
-
-        auto lVertices = std::vector<glm::dvec2>{
-                operation.start,
-                operation.splitVertex(),
-                operation.end
-        };
-
-        auto margin = profile.clearance();
-        if (margin.first > 10 && margin.second > 10) {
-            lVertices[0] += operation.BA * 2.0;
-            lVertices[2] += operation.BC * 2.0;
-        }
+    if (operation.isValid()) {
 
         auto border = std::vector<glm::dvec3>{
-                profile.projected3D(lVertices[0]),
-                profile.projected3D(lVertices[1]),
-                profile.projected3D(lVertices[2])
+                profile.projected3D(operation.startVertex()),
+                profile.projected3D(operation.splitVertex()),
+                profile.projected3D(operation.endVertex())
         };
 
         body->queueSection(border[0], border[1], border[2], profile.normal());
@@ -183,6 +196,7 @@ void refine()
         profile.skip();
     }
 
+    updateRef();
 }
 
 int main(int argc, char *argv[])
@@ -345,6 +359,38 @@ int main(int argc, char *argv[])
 
     });
 
+    auto findPathButton = window->findChild<QCheckBox*>("findPathButton");
+    QObject::connect(findPathButton, &QCheckBox::clicked, [&]() {
+        if (showHullSetting->isChecked()) {
+            showSculptureSetting->setCheckState(Qt::CheckState::Checked);
+            updateBodyVisibility();
+        }
+
+        updateColoring();
+        scene->update();
+    });
+
+    xField = window->findChild<QDoubleSpinBox*>("xField");
+    QObject::connect(xField, &QDoubleSpinBox::valueChanged, [](double value) {
+        start.x = value;
+
+        profile.setReferencePosition(start);
+        polygonWidget->update();
+    });
+
+    yField = window->findChild<QDoubleSpinBox*>("yField");
+    QObject::connect(yField, &QDoubleSpinBox::valueChanged, [](double value) {
+        start.y = value;
+
+        profile.setReferencePosition(start);
+        polygonWidget->update();
+    });
+
+    angleField = window->findChild<QDoubleSpinBox*>("angleField");
+    QObject::connect(angleField, &QDoubleSpinBox::valueChanged, [](double value) {
+        profile.setReferenceOrientation(value);
+        polygonWidget->update();
+    });
 
     mesh = MeshHandler::loadAsMeshBody(R"(..\res\meshes\devil.obj)");
     mesh->center();

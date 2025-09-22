@@ -28,8 +28,11 @@ class ScopedTimer : public Timer {
 public:
     explicit ScopedTimer(std::string message);
     ~ScopedTimer();
+
+    void setMessage(const std::string& message);
+
 private:
-    std::string m_Message;
+    std::string m_message;
 
     const std::streamsize default_precision = std::cout.precision();
 };

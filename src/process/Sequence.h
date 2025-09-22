@@ -29,7 +29,8 @@ public:
         Set(const glm::dvec3& axis, const glm::dvec3& normal, const glm::dvec3& travel)
                 : axis(axis)
                 , normal(normal)
-                , travel(travel) {}
+                , travel(travel)
+                , blind(std::abs(glm::dot(travel, axis)) > 1 - 1e-6) {}
 
         Axis3D axes(const glm::dvec3& forward) const;
 
@@ -41,6 +42,9 @@ public:
         glm::dvec3 axis;
         glm::dvec3 normal;
         glm::dvec3 travel;
+
+    private:
+        bool blind;
     };
 
 

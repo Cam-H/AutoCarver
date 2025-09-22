@@ -19,6 +19,10 @@ Profile::Profile(const std::vector<glm::dvec2>& contour, const glm::dvec3& norma
     , m_method(RefinementMethod::DIRECT)
     , m_minimumArea(0.0002)
     , m_floorIndex(0)
+    , m_width(0.108)
+    , m_thickness(0.011)
+    , m_start()
+    , m_orientation(0.0)
 {
     initialize();
 }
@@ -269,6 +273,21 @@ void Profile::inverseWinding()//TODO update
     }
 }
 
+void Profile::setToolDimensions(double width, double thickness)
+{
+    m_width = width;
+    m_thickness = thickness;
+}
+
+void Profile::setReferencePosition(const glm::dvec2& start)
+{
+    m_start = start;
+}
+void Profile::setReferenceOrientation(double orientation)
+{
+    m_orientation = orientation;
+}
+
 // Skips the next section along with any further sections dependent on it, moving them to the back of the queue
 void Profile::skip()
 {
@@ -405,6 +424,15 @@ uint32_t Profile::nextVertex(uint32_t vertexIndex) const
     return vertexIndex == m_vertices.size() - 1 ? 0 : vertexIndex + 1;
 }
 
+const glm::dvec2& Profile::getReferencePosition() const
+{
+    return m_start;
+}
+double Profile::getReferenceOrientation() const
+{
+    return m_orientation;
+}
+
 // Returns the clearance from either vertex before the first obstruction on the reversed cut direction (Margin for alignment)
 std::pair<double, double> Profile::clearance(const TriIndex& triangle) const
 {
@@ -456,7 +484,7 @@ bool Profile::intersects(const glm::dvec2& a, const glm::dvec2& b, uint32_t star
     uint32_t index = start;
     while (start != end) {
         index = nextVertex(index);
-        auto [hit, tIntersection] = intersection(a, b, m_vertices[start], m_vertices[index]);
+        auto [hit, tIntersection] = Polygon::intersection(a, b, m_vertices[start], m_vertices[index]);
         if (hit && 1e-12 < tIntersection && tIntersection < 1 - 1e-12) {
 //            std::cout << "Intersection: " << start << " " << end << " | " << index << " " << tIntersection << "\n";
             return true;
@@ -472,23 +500,10 @@ void Profile::intersection(const glm::dvec2& a, const glm::dvec2& b, uint32_t st
     uint32_t index = start;
     while (start != end) {
         index = nextVertex(index);
-        auto [hit, tIntersection] = intersection(a, b, m_vertices[start], m_vertices[index]);
+        auto [hit, tIntersection] = Polygon::intersection(a, b, m_vertices[start], m_vertices[index]);
         if (hit) t = std::min(t, tIntersection);
         start = index;
     }
-}
-
-std::tuple<bool, double> Profile::intersection(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c, const glm::dvec2& d)
-{
-    double a1 = Triangle2D::signedArea(a, b, d), a2 = Triangle2D::signedArea(a, b, c);
-
-    if (a1 * a2 < 0) {
-        double a3 = Triangle2D::signedArea(c, d, a), a4 = a3 + a2 - a1;
-//        std::cout << "T: " << a3 / (a3-a4);
-        if (a3 * a4 < 0) return { true, a3 / (a3 - a4) };
-    }
-
-    return { false, 0 };
 }
 
 std::pair<uint32_t, uint32_t> Profile::nextHullVertices(uint32_t vertexIndex) const
@@ -500,6 +515,25 @@ std::pair<uint32_t, uint32_t> Profile::nextHullVertices(uint32_t vertexIndex) co
         lIt == m_hull.begin() ? m_hull.back() : *(lIt - 1), // index is lowest  -> wrap to the last
         hIt == m_hull.end() ? m_hull[0] : *hIt              // index is highest -> wrap to the start
     };
+}
+
+std::vector<glm::dvec2> Profile::corners(const glm::dvec2& start, double orientation) const
+{
+    double ht = 0.5 * m_width, hw = 0.5 * m_thickness, c0 = cos(m_orientation), s0 = sin(m_orientation);
+    std::vector<glm::dvec2> vertices = {
+            glm::dvec2(-ht, -hw),
+            glm::dvec2(-ht,  hw),
+            glm::dvec2( ht,  hw),
+            glm::dvec2( ht, -hw)
+    };
+
+    for (glm::dvec2& vertex : vertices) {
+        double yp = vertex.x * s0 + vertex.y * c0;
+        vertex.x = m_start.x + vertex.x * c0 - vertex.y * s0;
+        vertex.y = m_start.y + yp;
+    }
+
+    return vertices;
 }
 
 const glm::dvec3& Profile::normal() const
@@ -689,6 +723,11 @@ std::vector<glm::dvec2> Profile::sectionVertices(const std::vector<uint32_t>& in
     return section;
 }
 
+glm::dvec2 Profile::project(const glm::dvec3& vertex) const
+{
+    return { glm::dot(m_system.xAxis, vertex), glm::dot(m_system.yAxis, vertex) };
+}
+
 // Project vertices into 3D space according to the defined axis system
 std::vector<glm::dvec3> Profile::projected3D() const
 {
@@ -725,7 +764,6 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
     if (!m_sections.empty()) {
         TriIndex tri = m_sections[0].triangle;
 
-        double width = 0.108, thickness = 0.011; // Test values
         std::vector<uint8_t> checks;
 
 //        auto margin = clearance();
@@ -735,17 +773,17 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
 //        if (margin.second != 0) edges.emplace_back(m_vertices[tri.I2], m_vertices[tri.I2] + std::min(margin.second, 2.0) * glm::normalize(m_vertices[tri.I2] - m_vertices[tri.I1]));
 //        else checks.emplace_back(1);
 
-        auto op = next(width, thickness);
+        auto op = next(m_width, m_thickness);
 
         // Show reliefs, if appropriate
 //        std::cout << "XX " << op.valid << " " << op.reliefs.size() << "\n";
-        for (const SectionOperation::Relief& relief : op.reliefs) {
+        for (const SectionOperation::Relief& relief : op.reliefs()) {
             for (uint32_t i = 1; i < relief.edges.size(); i++) edges.emplace_back(relief.edges[i - 1], relief.edges[i]);
 
-            edges.emplace_back(relief.start + relief.internal * width,
-                               relief.start + relief.internal * width + glm::dvec2{ 0, -0.2 });
-            edges.emplace_back(relief.start + relief.internal * relief.projection(thickness),
-                               relief.start + relief.internal * relief.projection(thickness) + glm::dvec2{ 0, 0.2 });
+            edges.emplace_back(relief.start + relief.internal * m_width,
+                               relief.start + relief.internal * m_width + glm::dvec2{ 0, -0.2 });
+            edges.emplace_back(relief.start + relief.internal * relief.projection(m_thickness),
+                               relief.start + relief.internal * relief.projection(m_thickness) + glm::dvec2{ 0, 0.2 });
         }
 
         auto d1 = m_vertices[tri.I0] - m_vertices[tri.I1], d2 = m_vertices[tri.I2] - m_vertices[tri.I1];
@@ -763,7 +801,11 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
             t += dt;
         }
 
-
+        auto vertices = corners(m_start, m_orientation);
+        edges.emplace_back(vertices[3], vertices[0]);
+        for (uint32_t i = 0; i < vertices.size() - 1; i++) {
+            edges.emplace_back(vertices[i], vertices[i + 1]);
+        }
 
 //        auto v0 =
 
@@ -804,6 +846,11 @@ void Profile::print() const
     for (const Section& section : m_sections) {
         std::cout << section.triangle.I0 << " " << section.triangle.I1 << " " << section.triangle.I2 << " " << section.children << "\n";
     }
+
+    auto [xNear, xFar] = xExtents();
+    auto [yNear, yFar] = yExtents();
+
+    std::cout << "limits: (" << xNear << ", " << yNear << "), (" << xFar << ", " << yFar << ")\n";
 
     std::cout << "\n";
 }

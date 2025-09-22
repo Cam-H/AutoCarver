@@ -11,11 +11,13 @@
 #include "fileIO/Serializable.h"
 
 #include "geometry/primitives/Triangle.h"
+#include "geometry/primitives/Circle.h"
 
 class Polygon : public Serializable {
 public:
 
     explicit Polygon(const std::vector<glm::dvec2> &border, bool enforceCCWWinding = true);
+    Polygon(const glm::dvec2& center, double width, double height, double rotation = 0);
 
     explicit Polygon(const std::string& filename);
     explicit Polygon(std::ifstream& file);
@@ -31,6 +33,10 @@ public:
     virtual void positionVertex(uint32_t index, const glm::dvec2& position);
 
     void translate(const glm::dvec2& translation);
+
+    void rotate(double theta);
+    void rotate(const glm::dvec2& anchor, double theta);
+
     void scale(double scalar);
     void scale(const glm::dvec2& anchor, double scalar);
     void centerScale(double scalar);
@@ -38,21 +44,25 @@ public:
     void correctWinding();
     virtual void inverseWinding();
 
+    void convexify();
+
     void clean();
     static std::vector<glm::dvec2> clean(const std::vector<glm::dvec2>& vertices);
 
-    uint32_t vertexCount() const;
-    const std::vector<glm::dvec2>& border() const;
+    [[nodiscard]] uint32_t vertexCount() const;
+    [[nodiscard]] const std::vector<glm::dvec2>& border() const;
 
-    bool isCW() const;
-    bool isCCW() const;
+    [[nodiscard]] const Circle& bounds() const;
 
-    double xSpan() const;
-    double ySpan() const;
-    glm::dvec2 spanCenter() const;
+    [[nodiscard]] bool isCW() const;
+    [[nodiscard]] bool isCCW() const;
 
-    void xExtents(double& near, double& far) const;
-    void yExtents(double& near, double& far) const;
+    [[nodiscard]] double xSpan() const;
+    [[nodiscard]] double ySpan() const;
+    [[nodiscard]] glm::dvec2 spanCenter() const;
+
+    [[nodiscard]] std::tuple<double, double> xExtents() const;
+    [[nodiscard]] std::tuple<double, double> yExtents() const;
 
     static void cullCollinear(std::vector<glm::dvec2>& vertices, double tolerance = 1e-3);
 
@@ -66,11 +76,15 @@ public:
     std::vector<TriIndex> triangulate() const;
     static std::vector<TriIndex> triangulate(const std::vector<glm::dvec2>& vertices);
 
+    [[nodiscard]] bool test(const glm::dvec2& vertex) const;
+
     [[nodiscard]] virtual std::vector<std::pair<glm::dvec2, glm::dvec2>> debugEdges() const;
 
 protected:
 
     static double cross(const glm::dvec2& origin, const glm::dvec2& a, const glm::dvec2& b);
+
+    static std::tuple<bool, double> intersection(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c, const glm::dvec2& d);
 
 private:
 
@@ -86,7 +100,7 @@ private:
 protected:
 
     std::vector<glm::dvec2> m_vertices; // Plain list of the vertex coordinates that compose the polygon
-
+    Circle m_bounds;
 };
 
 

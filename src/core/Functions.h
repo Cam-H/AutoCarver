@@ -66,5 +66,11 @@ namespace Functions {
 
         return roots;
     }
+
+    template<class T>
+    inline static std::tuple<T, double> midCircum(const T& a, const T& b)
+    {
+        return { { (a + b) / 2.0 }, glm::length(b - a) / 2.0 };
+    }
 }
 

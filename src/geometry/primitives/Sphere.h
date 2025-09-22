@@ -16,6 +16,7 @@ public:
 
     Sphere();
     Sphere(glm::dvec3 center, double radius);
+    explicit Sphere(const std::tuple<glm::dvec3, double>& sphere);
 
     [[nodiscard]] bool isValid() const;
 
@@ -24,7 +25,6 @@ public:
     static Sphere enclose(const std::vector<Sphere>& spheres);
     static Sphere enclose(const std::vector<glm::dvec3>& vertices);
 
-    static Sphere midpointSphere(const glm::dvec3& a, const glm::dvec3& b);
     static Sphere triangleCircumsphere(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c);
     static Sphere tetrahedronCircumsphere(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c, const glm::dvec3& d);
 
@@ -32,7 +32,7 @@ public:
     bool raycast(const glm::dvec3& origin, const glm::dvec3& direction, double& t1, double& t2) const;
 
     [[nodiscard]] const glm::dvec3& start() const;
-    [[nodiscard]] uint32_t supportIndex(const glm::dvec3& axis, uint32_t startIndex = 0) const;
+    static uint32_t supportIndex(const glm::dvec3& axis, uint32_t startIndex = 0);
     [[nodiscard]] std::tuple<uint32_t, glm::dvec3> extreme(const glm::dvec3& axis, uint32_t startIndex = 0) const;
 
 private:

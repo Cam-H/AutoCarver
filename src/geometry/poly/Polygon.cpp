@@ -16,10 +16,32 @@
 #include "geometry/primitives/Circle.h"
 #include "geometry/VertexArray.h"
 
+#include "geometry/collision/Collision2D.h"
+
 Polygon::Polygon(const std::vector<glm::dvec2>& border, bool enforceCCWWinding)
     : m_vertices(border)
+    , m_bounds(Circle::enclose(m_vertices))
 {
     if (enforceCCWWinding) correctWinding();
+}
+
+// Creates a rectangular polygon with the specified parameters
+Polygon::Polygon(const glm::dvec2& center, double width, double height, double rotation)
+    : m_vertices(4)
+{
+    double hw = 0.5 * width, ht = 0.5 * height, c0 = cos(rotation), s0 = sin(rotation);
+    m_vertices[0] = { -hw, -ht };
+    m_vertices[1] = { -hw,  ht };
+    m_vertices[2] = {  hw,  ht };
+    m_vertices[3] = {  hw, -ht };
+
+    for (glm::dvec2& vertex : m_vertices) {
+        double yp = vertex.x * s0 + vertex.y * c0;
+        vertex.x = center.x + vertex.x * c0 - vertex.y * s0;
+        vertex.y = center.y + yp;
+    }
+
+    m_bounds = Circle(center, sqrt(hw*hw + ht*ht));
 }
 
 Polygon::Polygon(const std::string& filename)
@@ -44,6 +66,7 @@ bool Polygon::serialize(std::ofstream& file) const
 bool Polygon::deserialize(std::ifstream& file)
 {
     m_vertices = Serializer::readVectorDVec2(file);
+    m_bounds = Circle::enclose(m_vertices);
 
     return true;
 }
@@ -52,17 +75,22 @@ void Polygon::removeVertex(uint32_t index)
 {
     if (index >= m_vertices.size()) throw std::runtime_error("[Polygon] Index out of bounds error!");
     m_vertices.erase(m_vertices.begin() + index);
+    m_bounds = Circle::enclose(m_vertices);
 }
 
 void Polygon::insertVertex(const glm::dvec2& vertex)
 {
     m_vertices.push_back(vertex);
+
+    if (!Collision2D::encloses(m_bounds, vertex)) m_bounds = Circle::enclose(m_vertices);
 }
 
 void Polygon::insertVertex(uint32_t index, const glm::dvec2& vertex)
 {
     if (index >= m_vertices.size()) m_vertices.push_back(vertex);
     else m_vertices.insert(m_vertices.begin() + index, vertex);
+
+    if (!Collision2D::encloses(m_bounds, vertex)) m_bounds = Circle::enclose(m_vertices);
 }
 
 void Polygon::positionVertex(uint32_t index, const glm::dvec2& position)
@@ -70,16 +98,41 @@ void Polygon::positionVertex(uint32_t index, const glm::dvec2& position)
     if (index >= m_vertices.size()) throw std::runtime_error("[Polygon] Index out of bounds error!");
 
     m_vertices[index] = position;
+    m_bounds = Circle::enclose(m_vertices);
 }
 
 void Polygon::translate(const glm::dvec2& translation)
 {
     for (glm::dvec2& vertex : m_vertices) vertex += translation;
+    m_bounds.center += translation;
+}
+
+// Rotates the polygon by theta about the center of the bounding circle
+void Polygon::rotate(double theta)
+{
+    rotate(m_bounds.center, theta);
+}
+
+// Rotates the polygon by theta about the anchor
+void Polygon::rotate(const glm::dvec2& anchor, double theta)
+{
+    double c0 = cos(theta), s0 = sin(theta);
+    for (glm::dvec2& vertex : m_vertices) {
+        vertex -= anchor;
+
+        double yp = vertex.x * s0 + vertex.y * c0;
+        vertex.x = anchor.x + vertex.x * c0 - vertex.y * s0;
+        vertex.y = anchor.y + yp;
+    }
+
+    auto delta = m_bounds.center - anchor;
+    if (glm::dot(delta, delta) > 1e-12) m_bounds = Circle::enclose(m_vertices);
 }
 
 void Polygon::scale(double scalar)
 {
     for (glm::dvec2& vertex : m_vertices) vertex *= scalar;
+    m_bounds.radius *= scalar;
 }
 
 void Polygon::scale(const glm::dvec2& anchor, double scalar)
@@ -89,6 +142,9 @@ void Polygon::scale(const glm::dvec2& anchor, double scalar)
         delta = vertex - anchor;
         vertex = anchor + delta * scalar;
     }
+
+    delta = m_bounds.center - anchor;
+    m_bounds.center = anchor + delta * scalar;
 }
 
 void Polygon::centerScale(double scalar)
@@ -130,43 +186,38 @@ bool Polygon::isCCW() const
 
 double Polygon::xSpan() const
 {
-    double near, far;
-    xExtents(near, far);
+    auto [near, far] = xExtents();
     return far - near;
 }
 double Polygon::ySpan() const
 {
-    double near, far;
-    yExtents(near, far);
+    auto [near, far] = yExtents();
     return far - near;
 }
 
 glm::dvec2 Polygon::spanCenter() const
 {
-    double near, far, x;
-    xExtents(near, far);
-    x = (near + far) / 2;
-    yExtents(near, far);
-    return { x, (near + far) / 2 };
+    auto [xNear, xFar] = xExtents();
+    auto [yNear, yFar] = yExtents();
+
+    return { 0.5 * (xNear + xFar), 0.5 * (yNear + yFar) };
 }
 
-void Polygon::xExtents(double& near, double& far) const
+std::tuple<double, double> Polygon::xExtents() const
 {
     auto [max, min] = std::minmax_element(m_vertices.begin(), m_vertices.end(), [](const glm::dvec2& lhs, const glm::dvec2& rhs){
         return lhs.x > rhs.x;
     });
 
-    near = min->x;
-    far = max->x;
+    return { min->x, max->x };
 }
-void Polygon::yExtents(double& near, double& far) const
+std::tuple<double, double> Polygon::yExtents() const
 {
     auto [max, min] = std::minmax_element(m_vertices.begin(), m_vertices.end(), [](const glm::dvec2& lhs, const glm::dvec2& rhs){
         return lhs.y > rhs.y;
     });
 
-    near = min->y;
-    far = max->y;
+    return { min->y, max->y };
 }
 
 uint32_t Polygon::vertexCount() const
@@ -177,6 +228,11 @@ uint32_t Polygon::vertexCount() const
 const std::vector<glm::dvec2>& Polygon::border() const
 {
     return m_vertices;
+}
+
+const Circle& Polygon::bounds() const
+{
+    return m_bounds;
 }
 
 void Polygon::cullCollinear(std::vector<glm::dvec2>& vertices, double tolerance)
@@ -260,6 +316,19 @@ double Polygon::cross(const glm::dvec2& origin, const glm::dvec2& a, const glm::
     return (a.x - origin.x) * (b.y - origin.y) - (a.y - origin.y) * (b.x - origin.x);
 }
 
+std::tuple<bool, double> Polygon::intersection(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c, const glm::dvec2& d)
+{
+    double a1 = Triangle2D::signedArea(a, b, d), a2 = Triangle2D::signedArea(a, b, c);
+
+    if (a1 * a2 < 0) {
+        double a3 = Triangle2D::signedArea(c, d, a), a4 = a3 + a2 - a1;
+//        std::cout << "T: " << a3 / (a3-a4);
+        return { a3 * a4 < 0, a3 / (a3 - a4) };
+    }
+
+    return { false, -1.0 };
+}
+
 std::vector<TriIndex> Polygon::triangulate() const
 {
     return triangulate(m_vertices);
@@ -315,6 +384,14 @@ void Polygon::clean()
     m_vertices = clean(m_vertices);
 }
 
+void Polygon::convexify()
+{
+    const auto& indices = hull();
+    std::vector<glm::dvec2> vertices(indices.size());
+    for (uint32_t i = 0; i < vertices.size(); i++) vertices[i] = m_vertices[indices[i]];
+    m_vertices = std::move(vertices);
+}
+
 // Remove duplicate vertices from the polygon - Only applies to adjacent vertices
 std::vector<glm::dvec2> Polygon::clean(const std::vector<glm::dvec2>& vertices)
 {
@@ -336,6 +413,22 @@ std::vector<glm::dvec2> Polygon::clean(const std::vector<glm::dvec2>& vertices)
     if (glm::dot(delta, delta) < 1e-12) cleaned.pop_back();
 
     return cleaned;
+}
+
+// Returns true if the specified vertex is inside the polygon
+// The vertex is inside if a ray from the vertex in any direction intersects with an uneven number of edges
+bool Polygon::test(const glm::dvec2& vertex) const
+{
+    glm::dvec2 end = vertex + glm::dvec2(1, 0), last = m_vertices.back();
+    uint32_t hits = 0;
+
+    for (const glm::dvec2& next : m_vertices) {
+        auto [hit, t] = intersection(vertex, end, last, next);
+        if (t > -1e-12) hits++;
+        last = next;
+    }
+
+    return hits % 2 != 0;
 }
 
 std::vector<std::pair<glm::dvec2, glm::dvec2>> Polygon::debugEdges() const

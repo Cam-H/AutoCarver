@@ -10,6 +10,7 @@ add_subdirectory(raycast)
 add_subdirectory(robot-motion)
 add_subdirectory(sandbox)
 add_subdirectory(topp)
+add_subdirectory(planner)
 
 #add_subdirectory(polygon-boolean)
 

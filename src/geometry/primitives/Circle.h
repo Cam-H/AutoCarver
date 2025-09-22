@@ -12,20 +12,26 @@ public:
 
     Circle();
     Circle(const glm::vec2& center, double radius);
+    explicit Circle(const std::tuple<glm::dvec2, double>& circle);
+
+    static Circle enclose(const std::vector<glm::dvec2>& vertices);
 
     [[nodiscard]] bool isValid() const;
 
     // Required functions for GJK collision tests
     [[nodiscard]] glm::vec2 start() const;
-//    [[nodiscard]] uint32_t supportIndex(const glm::vec2& axis) const;
-//    [[nodiscard]] std::tuple<uint32_t, glm::vec2> extreme(const glm::vec2& axis) const;
+    static uint32_t supportIndex(const glm::dvec2& axis, uint32_t startIndex = 0);
+    [[nodiscard]] std::tuple<uint32_t, glm::dvec2> extreme(const glm::dvec2& axis, uint32_t startIndex = 0) const;
 
-    bool encloses(const glm::vec2& vertex, double tolerance = 1e-12) const;
+    static Circle triangleCircumcircle(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c);
 
-    static Circle triangleCircumcircle(const glm::vec2& a, const glm::vec2& b, const glm::vec2& c);
+private:
+
+    static Circle welzl(std::vector<glm::dvec2>& vertices, std::vector<glm::dvec2> set, uint32_t n);
+
 
 public:
-    glm::vec2 center;
+    glm::dvec2 center;
     double radius;
 };
 

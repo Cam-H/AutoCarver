@@ -318,6 +318,7 @@ int main(int argc, char *argv[])
     });
 
     auto stepOffsetField = window->findChild<QDoubleSpinBox*>("stepOffsetField");
+    scene->getConfiguration().setStepOffset(stepOffsetField->value());
     QObject::connect(stepOffsetField, &QDoubleSpinBox::valueChanged, [&](double value) {
         scene->getConfiguration().setStepOffset(value);
     });
