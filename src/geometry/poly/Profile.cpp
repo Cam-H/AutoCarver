@@ -413,7 +413,7 @@ uint32_t Profile::prevVertex(uint32_t vertexIndex) const
         if (section.triangle.I2 == vertexIndex) return section.triangle.I0;
     }
 
-    return vertexIndex == 0 ? m_vertices.size() - 1 : vertexIndex - 1;
+    return Polygon::prevVertex(vertexIndex);
 }
 uint32_t Profile::nextVertex(uint32_t vertexIndex) const
 {
@@ -421,7 +421,7 @@ uint32_t Profile::nextVertex(uint32_t vertexIndex) const
         if (section.triangle.I0 == vertexIndex) return section.triangle.I2;
     }
 
-    return vertexIndex == m_vertices.size() - 1 ? 0 : vertexIndex + 1;
+    return Polygon::nextVertex(vertexIndex);
 }
 
 const glm::dvec2& Profile::getReferencePosition() const

@@ -21,7 +21,7 @@ PlannerWidget::PlannerWidget(QWidget *parent)
 void PlannerWidget::setStart(const glm::dvec3& start, double width, double height)
 {
     addPolygon(new Polygon({ start.x, start.y }, width, height, start.z));
-    m_polyControl.back().editable = false;
+//    m_polyControl.back().editable = false;
 }
 void PlannerWidget::setGoal(const glm::dvec3& goal, double width, double height)
 {
@@ -105,6 +105,14 @@ void PlannerWidget::drawForeground(QPainter& painter)
     }
 
     PolygonWidget::drawForeground(painter);
+
+    if (m_selection.first != -1) {
+        std::string text = "[" + std::to_string(m_selection.first) + ": " + std::to_string(m_selection.second) + "]";
+
+        painter.setPen(Qt::darkCyan);
+        painter.drawText(10, 20, text.c_str());
+    }
+
 }
 
 void PlannerWidget::drawPolygon(uint32_t index, QPainter& painter, QColor color)

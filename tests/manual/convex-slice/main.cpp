@@ -25,7 +25,7 @@
 
 #include "renderer/UiLoader.h"
 #include "robot/trajectory/Trajectory.h"
-#include "geometry/collision/Collision.h"
+#include "geometry/collision/Collision3D.h"
 #include "geometry/primitives/Plane.h"
 #include "physics/Constraint.h"
 
@@ -141,10 +141,10 @@ int main(int argc, char *argv[])
     // Handle mesh slice button
     auto *sliceButton = widget->findChild<QPushButton*>("sliceButton");
     QObject::connect(sliceButton, &QPushButton::clicked, [&]() {
-//        std::cout << "Result: [" << Collision::intersection(base->hull(), Plane(plane->position(), -plane->up())).size() << "] ["
-//            << Collision::intersection(base->hull(), Plane(plane->position(), plane->up())).size() << "]\n";
+//        std::cout << "Result: [" << Collision3D::intersection(base->hull(), Plane(plane->position(), -plane->up())).size() << "] ["
+//            << Collision3D::intersection(base->hull(), Plane(plane->position(), plane->up())).size() << "]\n";
 
-        auto fragments = Collision::fragments(base->hull(), Plane(plane->position(), plane->up()));
+        auto fragments = Collision3D::fragments(base->hull(), Plane(plane->position(), plane->up()));
 
 //        std::cout << plane->up().x << " " << plane->up().y << " " << plane->up().z << "\n";
         if (!fragments.first.empty() && !fragments.second.empty()) {

@@ -4,7 +4,7 @@
 
 #include "Debris.h"
 
-#include "geometry/collision/Collision.h"
+#include "geometry/collision/Collision3D.h"
 
 
 
@@ -62,7 +62,7 @@ void Debris::beginCut()
     // Split any hulls that pass through the cutting planes to limit effect to kerfs
     const uint32_t initialCount = components().size();
     for (uint32_t i = 0; i < initialCount; i++) {
-        if (Collision::below(components()[i], filter)) continue; // Skip hulls behind the blade
+        if (Collision3D::below(components()[i], filter)) continue; // Skip hulls behind the blade
 
         auto [min, max] = components()[i].extremes(cut.normal);
         double near = glm::dot(cut.normal, components()[i].vertices()[min] - cut.origin);
@@ -165,7 +165,7 @@ void Debris::updateConnection(uint32_t index)
 bool Debris::isAnchor(const ConvexHull& hull) const
 {
     for (const Plane& plane : m_fixedPlanes) {
-        if (Collision::distance(hull, plane) < 1e-12) return true;
+        if (Collision3D::distance(hull, plane) < 1e-12) return true;
     }
 
     return false;
@@ -189,7 +189,7 @@ bool Debris::isAnchored(const std::vector<uint32_t>& connections) const
 
 bool Debris::testContact(uint32_t I0, uint32_t I1) const
 {
-    return Collision::distance(components()[I0], components()[I1]) < 1e-6;
+    return Collision3D::distance(components()[I0], components()[I1]) < 1e-6;
 }
 
 std::vector<uint32_t> Debris::connections(uint32_t idx) const
@@ -236,7 +236,7 @@ std::vector<std::shared_ptr<RigidBody>> Debris::removeMaterial(const glm::dvec3&
         // Remove material from all relevant kerfs and update connections
         for (uint32_t i = 0; i < m_cuts[0].sections.size(); i++) {
             if (m_cuts[0].sections[i].ts < depth) {
-                auto remainder = Collision::fragment(components()[m_cuts[0].sections[i].cutIndex], cutPlane);
+                auto remainder = Collision3D::fragment(components()[m_cuts[0].sections[i].cutIndex], cutPlane);
                 if (remainder.isValid()) {
                     replace(remainder, m_cuts[0].sections[i].cutIndex);
                     updateConnection(m_cuts[0].sections[i].cutIndex);

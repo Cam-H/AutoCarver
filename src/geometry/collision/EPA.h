@@ -12,6 +12,8 @@
 
 class ConvexHull;
 
+#include "GJK.h"
+
 #include "geometry/primitives/Triangle.h"
 #include "Simplex.h"
 
@@ -23,10 +25,10 @@ public:
     EPA();
 
     template<class T1, class T2>
-    EPA(const T1& a, const T2& b, Simplex simplex);
+    EPA(const T1& a, const T2& b, Simplex<3> simplex);
 
     template<class T1, class T2>
-    EPA(const T1& a, const T2& b, Simplex simplex, const glm::dmat4& relative);
+    EPA(const T1& a, const T2& b, Simplex<3> simplex, const glm::dmat4& relative);
 
     void setWorldTransform(const glm::dmat4& transform);
 
@@ -46,13 +48,6 @@ public:
 
     [[nodiscard]] double distance() const;
 
-    template<class T1, class T2>
-    static std::tuple<uint32_t, uint32_t, glm::dvec3> gjkSupport(const T1& bodyA, const T2& bodyB, const glm::dvec3& axis, const std::pair<uint32_t, uint32_t>& idx);
-
-    template<class T1, class T2>
-    static std::tuple<uint32_t, uint32_t, glm::dvec3> gjkSupport(const T1& bodyA, const T2& bodyB, const glm::dvec3& axis, const glm::dmat4& transform, const std::pair<uint32_t, uint32_t>& idx);
-
-
 private:
 
     struct Facet {
@@ -67,11 +62,11 @@ private:
     glm::dvec3 normal(uint32_t a, uint32_t b, uint32_t c);
 
     template<class T1, class T2>
-    static void expandSimplex(const T1& a, const T2& b, const glm::dmat4& relative, Simplex& simplex);
+    static void expandSimplex(const T1& a, const T2& b, const glm::dmat4& relative, Simplex<3>& simplex);
 
-    static bool isValid(const Simplex& simplex);
+    static bool isValid(const Simplex<3>& simplex);
 
-    void prepareFacets(const Simplex& simplex, std::vector<std::pair<double, uint32_t>>& order);
+    void prepareFacets(const Simplex<3>& simplex, std::vector<std::pair<double, uint32_t>>& order);
     void prepareFacets(const std::vector<uint32_t>& horizon, std::vector<std::pair<double, uint32_t>>& order);
 
     void calculateHorizon(const glm::dvec3& apex, int64_t last, uint32_t current, std::vector<uint32_t>& horizon);
@@ -83,7 +78,7 @@ private:
 private:
 
     std::vector<Facet> facets;
-    std::vector<Simplex::Vertex> vertices;
+    std::vector<Simplex<3>::Vertex> vertices;
 
     bool m_colliding;
 

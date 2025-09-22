@@ -16,7 +16,7 @@
 
 #include "geometry/curves/Interpolator.h"
 #include "geometry/MeshBuilder.h"
-#include "geometry/collision/Collision.h"
+#include "geometry/collision/Collision3D.h"
 
 #include "robot/Robot.h"
 #include "robot/trajectory/Waypoint.h"
@@ -143,8 +143,8 @@ std::vector<std::pair<Plane, std::vector<glm::dvec3>>> ProcessPlanner::convexTri
 
         std::vector<Plane> planes = volumeOptimizedOrder(base, set);
         for (const Plane& plane : planes) {
-            steps.emplace_back(plane, Collision::intersection(base, plane));
-            base = Collision::fragment(base, plane.inverted());
+            steps.emplace_back(plane, Collision3D::intersection(base, plane));
+            base = Collision3D::fragment(base, plane.inverted());
         }
     }
 
@@ -160,7 +160,7 @@ std::vector<Plane> ProcessPlanner::volumeOptimizedOrder(const ConvexHull& base, 
 {
     std::vector<ConvexHull> fragments;
     for (const Plane& plane : planes) {
-        fragments.emplace_back(Collision::fragment(base, plane));
+        fragments.emplace_back(Collision3D::fragment(base, plane));
         fragments.back().evaluate();
     }
 
@@ -190,8 +190,8 @@ std::vector<Plane> ProcessPlanner::volumeOptimizedOrder(const ConvexHull& base, 
 
             // Adjust remaining fragments by removing contribution from the next step
             for (uint32_t j = i + 1; j < indices.size(); j++) {
-                if (!Collision::below(fragments[indices[j]], planes[indices[i]].inverted())) {
-                    fragments[indices[j]] = Collision::fragment(fragments[indices[j]], planes[indices[i]].inverted());
+                if (!Collision3D::below(fragments[indices[j]], planes[indices[i]].inverted())) {
+                    fragments[indices[j]] = Collision3D::fragment(fragments[indices[j]], planes[indices[i]].inverted());
                     fragments[indices[j]].evaluate();
                 }
             }

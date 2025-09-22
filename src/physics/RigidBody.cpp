@@ -13,7 +13,8 @@
 #include "core/Timer.h"
 #include "geometry/collision/EPA.h"
 #include "geometry/MeshBuilder.h"
-#include "geometry/collision/Collision.h"
+#include "geometry/collision/GJK.h"
+#include "geometry/collision/Collision3D.h"
 
 #include "CompositeBody.h"
 
@@ -161,8 +162,8 @@ uint32_t RigidBody::mask() const
 bool RigidBody::boundsTest(const std::shared_ptr<RigidBody>& body)
 {
     return scan(body)
-        && m_hull.isValid() && body->m_hull.isValid()
-        && Collision::test(bounds(), body->bounds());
+           && m_hull.isValid() && body->m_hull.isValid()
+           && Collision3D::test(bounds(), body->bounds());
 }
 
 //bool RigidBody::test(const std::shared_ptr<CompositeBody>& body)
@@ -187,7 +188,7 @@ bool RigidBody::test(const std::shared_ptr<RigidBody>& body)
         std::pair<uint32_t, uint32_t> nearest = cachedCollision(body);
 
         try {
-            Simplex simplex = Collision::gjk(m_hull, body->m_hull, relative, nearest);
+            Simplex simplex = GJK::gjk3D(m_hull, body->m_hull, relative, nearest);
 
             cacheCollision(body, simplex[0].idx);
             return simplex.colliding();
@@ -218,7 +219,7 @@ EPA RigidBody::intersection(const std::shared_ptr<RigidBody>& body)
 
         std::pair<uint32_t, uint32_t> nearest = cachedCollision(body);
 
-        EPA epa = Collision::intersection(m_hull, body->m_hull, relative, nearest);
+        EPA epa = Collision3D::intersection(m_hull, body->m_hull, relative, nearest);
         epa.setWorldTransform(m_transform);
 
         cacheCollision(body, epa.nearest());
@@ -390,7 +391,7 @@ std::tuple<bool, double, uint32_t> RigidBody::pickFace(Ray ray, double tLim)
 
     // Initial check against bounding sphere
     {
-        auto [hit, t] = Collision::raycast(bounds(), ray);
+        auto [hit, t] = Collision3D::raycast(bounds(), ray);
         if (!hit || t > tLim) return { false, 0, 0 };
     }
 

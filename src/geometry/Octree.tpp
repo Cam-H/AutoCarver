@@ -1,6 +1,6 @@
 #include "Octree.h"
 
-#include "geometry/collision/Collision.h"
+#include "geometry/collision/Collision3D.h"
 #include "primitives/AABB.h"
 
 template <bool IsConst>
@@ -61,9 +61,9 @@ bool Octree::subtract(const T& body)
 
     while (it != end()) {
         AABB octant(it->top, m_lengths[it->depth]);
-        if (Collision::test(body, octant)) {
+        if (Collision3D::test(body, octant)) {
 
-            if (Collision::encloses(body, octant)) {
+            if (Collision3D::encloses(body, octant)) {
                 it->status = Octant::Status::DEAD;
                 update = true;
                 it.skip();
@@ -87,7 +87,7 @@ bool Octree::collides(const T& body) const
 {
     auto it = begin();
     while (it != end()) {
-        if (it->status != Octant::Status::DEAD && Collision::test(body, AABB(it->top, m_lengths[it->depth]))) {
+        if (it->status != Octant::Status::DEAD && Collision3D::test(body, AABB(it->top, m_lengths[it->depth]))) {
             if (it->status == Octant::Status::TERMINUS) return true;
             ++it;
         } else it.skip();
@@ -103,7 +103,7 @@ uint32_t Octree::locateParent(const T& body)
 
     auto it = begin();
     while (it != end()) {
-        if (Collision::encloses(AABB(it->top, m_lengths[it->depth]), body)) {
+        if (Collision3D::encloses(AABB(it->top, m_lengths[it->depth]), body)) {
             it.limit(it->depth); // Block consideration outside current branch (Other branches can NOT enclose)
 
             index = it.pos();

@@ -5,7 +5,7 @@
 #include "ControlWidget.h"
 #include "geometry/MeshBuilder.h"
 #include "geometry/collision/EPA.h"
-#include "geometry/collision/Collision.h"
+#include "geometry/collision/Collision3D.h"
 #include "geometry/primitives/AABB.h"
 
 ControlWidget::ControlWidget(const std::shared_ptr<Scene>& scene, QWidget* parent)
@@ -78,12 +78,12 @@ void ControlWidget::handleCollision(uint32_t active)
 //    auto center = m_scene->bodies()[1]->position() - m_scene->bodies()[0]->position();
 //    auto body = Sphere{ center, 1.0f };
 ////    auto body = AABB{ center - glm::dvec3{ 0.5f, 0.5f, 0.5f}, center + glm::dvec3{ 0.5f, 0.5f, 0.5f}};
-//    auto result = Collision::test(m_scene->bodies()[0]->hull(), body);
+//    auto result = Collision3D::test(m_scene->bodies()[0]->hull(), body);
 //    std::cout << "Intersection: " << result << "\n";
 
     static bool lastState = false;
 //    bool colliding = m_scene->bodies()[0]->collides(m_scene->bodies()[1]);
-    EPA result = m_scene->bodies()[0]->collision(m_scene->bodies()[1]);
+    EPA result = m_scene->bodies()[0]->intersection(m_scene->bodies()[1]);
     bool colliding = result.colliding();
 
 

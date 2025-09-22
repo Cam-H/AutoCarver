@@ -6,26 +6,77 @@
 
 #include <iostream>
 
-#include "geometry/primitives/ConvexHull.h"
-
-double Simplex::TOLERANCE = 1e-12;
-
-template<uint16_t dims>
-Simplex::Simplex(const std::tuple<uint32_t, uint32_t, Simplex::vec>& start)
-    : Simplex(Vertex(start))
+// Implementation for 2D simplex
+template<> void Simplex<2>::add(const Vertex& vertex)
 {
+    vertices[2] = vertices[1];
+    vertices[1] = vertices[0];
+    vertices[0] = vertex;
 
+    m_size++;
 }
 
-Simplex::Simplex(const Vertex& start)
-    : vertices{ start }
-    , m_size(1)
-    , m_colliding(false)
+//template<> void Simplex<2>::correctWinding()
+//{
+//    if (m_size < 3) return;
+//
+//    // Correct winding order
+//    auto v20 = vertices[0].val - vertices[2].val;
+//    auto v21 = vertices[1].val - vertices[2].val;
+//
+//    if (glm::dot(v30, glm::cross(v31, v32)) < 0) std::swap(vertices[0], vertices[1]);
+//}
+
+template<> void Simplex<2>::evaluateLine(vec& axis)
 {
+    auto AB = vertices[1].val - vertices[0].val, AO = -vertices[0].val;
+    if (glm::dot(AB, AO) < 0) throw std::runtime_error("[Simplex2D] EL Less");
+
+    axis = { AB.y, -AB.x };
+    axis *= 1 - 2.0 * (glm::dot(axis, AO) < 0); // Point axis towards the origin
 }
+
+template<> bool Simplex<2>::evaluateTriangle(vec& axis)
+{
+    auto AB = vertices[1].val - vertices[0].val, AC = vertices[2].val - vertices[0].val, AO = -vertices[0].val;
+
+    auto perp = vec(AB.y, -AB.x);
+    perp *= 1.0 - 2.0 * (glm::dot(perp, AC) > 0); // Ensure vector is directed outwards
+    if (glm::dot(perp, AO) > 0) {
+        m_size = 2;
+        axis = perp;
+        return false;
+    }
+
+    perp = vec(AC.y, -AC.x);
+    perp *= 1.0 - 2.0 * (glm::dot(perp, AB) > 0); // Ensure vector is directed outwards
+    if (glm::dot(perp, AO) > 0) {
+        vertices[1] = vertices[2];
+        m_size = 2;
+        axis = perp;
+        return false;
+    }
+
+    return (m_colliding = true);
+}
+
+template<> bool Simplex<2>::evaluate(vec& axis)
+{
+    switch (m_size) {
+        case 2: evaluateLine(axis); break;
+        case 3: return evaluateTriangle(axis);
+        default: throw std::runtime_error("[Simplex2D] Failed to evaluate. Impossible size reached");
+    }
+
+    return false;
+}
+
+
+
+// Implementation for 3D simplex
 
 // Adds the given vertex to the simplex. Only adds unique vertices, in which case 'true' is returned
-void Simplex::add(const Vertex& vertex)
+template<> void Simplex<3>::add(const Vertex& vertex)
 {
     vertices[3] = vertices[2];
     vertices[2] = vertices[1];
@@ -35,66 +86,25 @@ void Simplex::add(const Vertex& vertex)
     m_size++;
 }
 
-void Simplex::purgeDuplicates()
-{
-    for (uint32_t i = 0; i < m_size; i++) {
-        for (uint32_t j = i + 1; j < m_size; j++) {
-            glm::dvec3 delta = vertices[j].val - vertices[i].val;
-            if (glm::dot(delta, delta) < TOLERANCE) {
-                std::swap(vertices[j], vertices[m_size]);
-                m_size--;
-                j--;
-            }
-        }
-    }
-}
-
-void Simplex::correctWinding()
+template<> void Simplex<3>::correctWinding()
 {
     if (m_size < 4) return;
 
     // Correct winding order
-    glm::dvec3 v30 = vertices[0].val - vertices[3].val;
-    glm::dvec3 v31 = vertices[1].val - vertices[3].val;
-    glm::dvec3 v32 = vertices[2].val - vertices[3].val;
+    auto v30 = vertices[0].val - vertices[3].val;
+    auto v31 = vertices[1].val - vertices[3].val;
+    auto v32 = vertices[2].val - vertices[3].val;
 
     if (glm::dot(v30, glm::cross(v31, v32)) < 0) std::swap(vertices[0], vertices[1]);
 }
 
-Simplex::Vertex Simplex::operator[](uint32_t idx) const
+template<> void Simplex<3>::evaluateLine(vec& axis)
 {
-    return vertices[idx];
-}
-
-uint32_t Simplex::size() const
-{
-    return m_size;
-}
-
-bool Simplex::evaluate(glm::dvec3& axis)
-{
-    glm::dvec3 a = vertices[0].val;
-    glm::dvec3 ao = -a;
-
-    switch (m_size) {
-        case 2: evaluateLine(axis); break;
-        case 3: evaluateTriangle(axis); break;
-        case 4: return evaluateTetrahedron(axis);
-        default: throw std::runtime_error("[Simplex] Failed to evaluate. Impossible size reached");
-    }
-
-    return false;
-}
-
-void Simplex::evaluateLine(glm::dvec3& axis)
-{
-    glm::dvec3 AB = vertices[1].val - vertices[0].val, AO = -vertices[0].val;
-    if (glm::dot(AB, AO) < 0) throw std::runtime_error("[Simplex] EL Less");
-
+    auto AB = vertices[1].val - vertices[0].val, AO = -vertices[0].val;
     axis = glm::cross(glm::cross(AB, AO), AB);
 }
 
-void Simplex::evaluateTriangle(glm::dvec3& axis)
+template<> bool Simplex<3>::evaluateTriangle(vec& axis)
 {
     auto AB = vertices[1].val - vertices[0].val, AC = vertices[2].val - vertices[0].val, AO = -vertices[0].val;
     auto ABC = glm::cross(AB, AC);
@@ -104,20 +114,21 @@ void Simplex::evaluateTriangle(glm::dvec3& axis)
         vertices[1] = vertices[2];
         m_size = 2;
         axis = perp;
-        return;
+        return false;
     }
 
     perp = glm::cross(AB, ABC);
     if (glm::dot(perp, AO) > 0) {
         m_size = 2;
         axis = perp;
-        return;
+        return false;
     }
 
     axis = glm::dot(ABC, AO) > 0 ? ABC : -ABC;
+    return false;
 }
 
-bool Simplex::evaluateTetrahedron(glm::dvec3& axis)
+template<> bool Simplex<3>::evaluateTetrahedron(glm::dvec3& axis)
 {
     auto AB = vertices[1].val - vertices[0].val, AC = vertices[2].val - vertices[0].val, AD = vertices[3].val - vertices[0].val, AO = -vertices[0].val;
     auto ABC = glm::cross(AB, AC), ACD = glm::cross(AC, AD), ADB = glm::cross(AD, AB);
@@ -143,14 +154,14 @@ bool Simplex::evaluateTetrahedron(glm::dvec3& axis)
     return (m_colliding = true);
 }
 
-bool Simplex::colliding() const
+template<> bool Simplex<3>::evaluate(vec& axis)
 {
-    return m_colliding;
-}
+    switch (m_size) {
+        case 2: evaluateLine(axis); break;
+        case 3: evaluateTriangle(axis); break;
+        case 4: return evaluateTetrahedron(axis);
+        default: throw std::runtime_error("[Simplex3D] Failed to evaluate. Impossible size reached");
+    }
 
-void Simplex::print() const
-{
-    std::cout << "[Simplex] size: " << m_size << ", colliding: " << m_colliding << "\n";
-    for (uint32_t i = 0; i < m_size; i++)
-        std::cout << "V" << i << " [" << vertices[i].idx.first << ", " << vertices[i].idx.second << "]: (" << vertices[i].val.x << ", " << vertices[i].val.y << ", " << vertices[i].val.z << ")\n";
+    return false;
 }

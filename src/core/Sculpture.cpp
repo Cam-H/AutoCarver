@@ -5,7 +5,7 @@
 #include "Sculpture.h"
 
 #include "geometry/MeshBuilder.h"
-#include "geometry/collision/Collision.h"
+#include "geometry/collision/Collision3D.h"
 
 #include "core/Debris.h"
 
@@ -203,11 +203,11 @@ std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
     m_newFaces.clear();
 
     std::cout << "PS0\n";
-    if (!Collision::test(m_hull, plane)) return nullptr;
+    if (!Collision3D::test(m_hull, plane)) return nullptr;
 
     auto debris = std::make_shared<Debris>();
     for (uint32_t i = 0; i < components().size(); i++) {
-        if (Collision::below(components()[i], plane)) {
+        if (Collision3D::below(components()[i], plane)) {
             debris->add(components()[i]);
             remove(i);
             i--;
@@ -253,10 +253,10 @@ std::shared_ptr<Debris> Sculpture::triangleSection(const Plane& planeA, const Pl
     const auto& fragments = components();
     for (uint32_t i = 0; i < fragments.size(); i++) {
 
-        auto lFragments = Collision::fragments(fragments[i], limit.inverted());
+        auto lFragments = Collision3D::fragments(fragments[i], limit.inverted());
 
-        auto aFragments = Collision::fragments(lFragments.second, planeA.inverted());
-        auto bFragments = Collision::fragments(aFragments.second, planeB.inverted());
+        auto aFragments = Collision3D::fragments(lFragments.second, planeA.inverted());
+        auto bFragments = Collision3D::fragments(aFragments.second, planeB.inverted());
 
         if (!bFragments.second.empty()) { // Body is within bounds of cut
             uint32_t idx = i;

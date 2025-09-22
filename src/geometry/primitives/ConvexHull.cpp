@@ -9,7 +9,7 @@
 
 #include <glm.hpp>
 
-#include "geometry/collision/Collision.h"
+#include "geometry/collision/Collision3D.h"
 #include "geometry/primitives/Plane.h"
 #include "geometry/poly/Polygon.h"
 
@@ -377,7 +377,7 @@ ConvexHull ConvexHull::unite(const ConvexHull& hullA, const ConvexHull& hullB)
 }
 std::tuple<bool, ConvexHull> ConvexHull::tryMerge(const ConvexHull& hullA, const ConvexHull& hullB)
 {
-    auto collision = Collision::intersection(hullA, hullB, { 0, 0 });
+    auto collision = Collision3D::intersection(hullA, hullB, {0, 0 });
     glm::dvec3 delta = collision.colliding() ? collision.overlap() : collision.offset();
 
 //    std::cout << collision.colliding() << " " << glm::length(collision.offset()) << " " << glm::length(collision.overlap()) << "}{{}\n";

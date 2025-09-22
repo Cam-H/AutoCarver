@@ -519,7 +519,7 @@ int main(int argc, char *argv[])
         scene->getTurntable()->traverse(traj);
 //
         bool result = traj->test(scene.get(), scene->getTurntable(), 0.05);
-        std::cout << "Collision test: " << result << "\n";
+        std::cout << "Collision3D test: " << result << "\n";
     });
 
     wpStartField = window->findChild<QSpinBox*>("wpStartField");
@@ -555,7 +555,7 @@ int main(int argc, char *argv[])
         auto traj = std::make_shared<SimpleTrajectory>(start, end, solver);
         traj->limit(vLims, aLims);
 
-        std::cout << "Collision: " << traj->test(scene.get(), robot, 0.01) << "\n";
+        std::cout << "Collision3D: " << traj->test(scene.get(), robot, 0.01) << "\n";
 
         test(traj);
     });

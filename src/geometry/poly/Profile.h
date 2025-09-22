@@ -83,8 +83,8 @@ public:
     [[nodiscard]] std::vector<glm::dvec3> projected3D(const TriIndex& triangle, const glm::dvec3& offset = {}) const;
     [[nodiscard]] std::vector<glm::dvec3> projected3D(const std::vector<uint32_t>& indices, const glm::dvec3& offset = {}) const;
 
-    [[nodiscard]] uint32_t prevVertex(uint32_t vertexIndex) const;
-    [[nodiscard]] uint32_t nextVertex(uint32_t vertexIndex) const;
+    [[nodiscard]] uint32_t prevVertex(uint32_t vertexIndex) const override;
+    [[nodiscard]] uint32_t nextVertex(uint32_t vertexIndex) const override;
 
     [[nodiscard]] const glm::dvec2& getReferencePosition() const;
     [[nodiscard]] double getReferenceOrientation() const;

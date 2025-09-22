@@ -2,22 +2,17 @@
 // Created by cjhat on 2025-07-18.
 //
 
-#include "Collision.h"
+#include "Collision3D.h"
+
 
 #include "geometry/primitives/Ray.h"
 #include "geometry/primitives/Plane.h"
 #include "geometry/primitives/Triangle.h"
-#include "geometry/primitives/Circle.h"
 #include "geometry/primitives/Sphere.h"
 #include "geometry/primitives/AABB.h"
 #include "geometry/primitives/ConvexHull.h"
 
-#include "physics/RigidBody.h"
-#include "physics/CompositeBody.h"
-
-#include "EPA.h"
-
-std::tuple<bool, double> Collision::raycast(const Plane& plane, const Ray& ray)
+std::tuple<bool, double> Collision3D::raycast(const Plane& plane, const Ray& ray)
 {
     double den = glm::dot(plane.normal, ray.axis);
     if (std::abs(den) < 1e-12) return { false, 0 }; // Parallel case - No intersection
@@ -26,7 +21,7 @@ std::tuple<bool, double> Collision::raycast(const Plane& plane, const Ray& ray)
     double t = glm::dot(plane.normal, plane.origin - ray.origin) / den;
     return { t >= 0, t };
 }
-std::tuple<bool, double> Collision::raycast(const Triangle3D& triangle, const Ray& ray)
+std::tuple<bool, double> Collision3D::raycast(const Triangle3D& triangle, const Ray& ray)
 {
     glm::dvec3 AB = triangle.b - triangle.a, AC = triangle.c - triangle.a;
 
@@ -50,7 +45,7 @@ std::tuple<bool, double> Collision::raycast(const Triangle3D& triangle, const Ra
 }
 
 // Solved via substitution with the analytic sphere formula. Ray is assumed to be normalized for quadratic calculation
-std::tuple<bool, double> Collision::raycast(const Sphere& sphere, const Ray& ray)
+std::tuple<bool, double> Collision3D::raycast(const Sphere& sphere, const Ray& ray)
 {
     glm::dvec3 delta = ray.origin - sphere.center;
     double b = 2.0 * glm::dot(delta, ray.axis);
@@ -68,7 +63,7 @@ std::tuple<bool, double> Collision::raycast(const Sphere& sphere, const Ray& ray
     return { false, 0 };
 
 }
-std::tuple<bool, double> Collision::raycast(const AABB& box, const Ray& ray)
+std::tuple<bool, double> Collision3D::raycast(const AABB& box, const Ray& ray)
 {
     double tMin = std::numeric_limits<double>::lowest(), tMax = std::numeric_limits<double>::max();
 
@@ -90,13 +85,13 @@ std::tuple<bool, double> Collision::raycast(const AABB& box, const Ray& ray)
 
     return { true, tMin };
 }
-std::tuple<bool, double> Collision::raycast(const ConvexHull& hull, const Ray& ray)
+std::tuple<bool, double> Collision3D::raycast(const ConvexHull& hull, const Ray& ray)
 {
     auto [hit, t, idx] = pickFace(hull, ray);
     return { hit, t };
 }
 
-std::tuple<bool, double, uint32_t> Collision::pickFace(const ConvexHull& hull, const Ray& ray)
+std::tuple<bool, double, uint32_t> Collision3D::pickFace(const ConvexHull& hull, const Ray& ray)
 {
     const std::vector<glm::dvec3>& vertices = hull.vertices();
     const FaceArray& fa = hull.faces();
@@ -146,7 +141,7 @@ std::tuple<bool, double, uint32_t> Collision::pickFace(const ConvexHull& hull, c
     return { tMin != -1, tMin, idx };
 }
 
-bool Collision::test(const Plane& bodyA, const Plane& bodyB)
+bool Collision3D::test(const Plane& bodyA, const Plane& bodyB)
 {
     auto cross = glm::cross(bodyA.normal, bodyB.normal);
     if (glm::dot(cross, cross) > 1e-12) return true; // Non-parallel plane case
@@ -154,34 +149,34 @@ bool Collision::test(const Plane& bodyA, const Plane& bodyB)
     return glm::dot(bodyA.normal, bodyB.origin - bodyA.origin) < 1e-12; // Coplanar case
 }
 
-bool Collision::test(const Sphere& bodyA, const Sphere& bodyB)
+bool Collision3D::test(const Sphere& bodyA, const Sphere& bodyB)
 {
     glm::dvec3 delta = bodyA.center - bodyB.center;
     return glm::dot(delta, delta) < pow(bodyA.radius + bodyB.radius, 2);
 }
 
-bool Collision::test(const AABB& bodyA, const AABB& bodyB)
+bool Collision3D::test(const AABB& bodyA, const AABB& bodyB)
 {
     return bodyA.max.x > bodyB.min.x && bodyB.max.x > bodyA.min.x
         && bodyA.max.y > bodyB.min.y && bodyB.max.y > bodyA.min.y
         && bodyA.max.z > bodyB.min.z && bodyB.max.z > bodyA.min.z;
 }
 
-bool Collision::test(const Plane& bodyA, const Sphere& bodyB)
+bool Collision3D::test(const Plane& bodyA, const Sphere& bodyB)
 {
     return test(bodyB, bodyA);
 }
-bool Collision::test(const Sphere& bodyA, const Plane& bodyB)
+bool Collision3D::test(const Sphere& bodyA, const Plane& bodyB)
 {
     glm::dvec3 delta = bodyA.center - bodyB.origin;
     return glm::dot(delta, delta) < bodyA.radius * bodyA.radius;
 }
 
-bool Collision::test(const Plane& bodyA, const AABB& bodyB)
+bool Collision3D::test(const Plane& bodyA, const AABB& bodyB)
 {
     return test(bodyB, bodyA);
 }
-bool Collision::test(const AABB& bodyA, const Plane& bodyB)
+bool Collision3D::test(const AABB& bodyA, const Plane& bodyB)
 {
     auto center = 0.5 * (bodyA.min + bodyA.max);
     auto extent = bodyA.max - center;
@@ -193,11 +188,11 @@ bool Collision::test(const AABB& bodyA, const Plane& bodyB)
     return std::abs(glm::dot(bodyB.normal, center) - bodyB.d()) <= r;
 }
 
-bool Collision::test(const Plane& bodyA, const ConvexHull& bodyB)
+bool Collision3D::test(const Plane& bodyA, const ConvexHull& bodyB)
 {
     return test(bodyB, bodyA);
 }
-bool Collision::test(const ConvexHull& bodyA, const Plane& bodyB)
+bool Collision3D::test(const ConvexHull& bodyA, const Plane& bodyB)
 {
     if (bodyA.empty()) return false;
 
@@ -210,11 +205,11 @@ bool Collision::test(const ConvexHull& bodyA, const Plane& bodyB)
     return false;
 }
 
-bool Collision::test(const Sphere& bodyA, const AABB& bodyB)
+bool Collision3D::test(const Sphere& bodyA, const AABB& bodyB)
 {
     return test(bodyB, bodyA);
 }
-bool Collision::test(const AABB& bodyA, const Sphere& bodyB)
+bool Collision3D::test(const AABB& bodyA, const Sphere& bodyB)
 {
     glm::dvec3 delta = bodyB.center - nearest(bodyA, bodyB.center);
     return glm::dot(delta, delta) < bodyB.radius * bodyB.radius;
@@ -222,7 +217,7 @@ bool Collision::test(const AABB& bodyA, const Sphere& bodyB)
 
 
 
-glm::dvec3 Collision::nearest(const AABB& body, const glm::dvec3& reference)
+glm::dvec3 Collision3D::nearest(const AABB& body, const glm::dvec3& reference)
 {
     return {
             std::clamp(reference.x, body.min.x, body.max.x),
@@ -231,7 +226,7 @@ glm::dvec3 Collision::nearest(const AABB& body, const glm::dvec3& reference)
     };
 }
 
-glm::dvec3 Collision::farthest(const AABB& body, const glm::dvec3& reference)
+glm::dvec3 Collision3D::farthest(const AABB& body, const glm::dvec3& reference)
 {
     glm::dvec3 center = 0.5 * (body.min + body.max);
 
@@ -242,20 +237,20 @@ glm::dvec3 Collision::farthest(const AABB& body, const glm::dvec3& reference)
     };
 }
 
-bool Collision::encloses(const Sphere& body, const glm::dvec3& vertex)
+bool Collision3D::encloses(const Sphere& body, const glm::dvec3& vertex)
 {
     glm::dvec3 delta = vertex - body.center;
     return glm::dot(delta, delta) - body.radius * body.radius < 1e-12;
 }
 
-bool Collision::encloses(const AABB& body, const glm::dvec3& vertex)
+bool Collision3D::encloses(const AABB& body, const glm::dvec3& vertex)
 {
     return body.min.x < vertex.x && body.max.x > vertex.x
         && body.min.y < vertex.y && body.max.y > vertex.y
         && body.min.z < vertex.z && body.max.z > vertex.z;
 }
 
-bool Collision::encloses(const ConvexHull& body, const glm::dvec3& vertex)
+bool Collision3D::encloses(const ConvexHull& body, const glm::dvec3& vertex)
 {
     for (uint32_t i = 0; i < body.facetCount(); i++) {
         const Plane& plane = body.facePlane(i);
@@ -265,14 +260,14 @@ bool Collision::encloses(const ConvexHull& body, const glm::dvec3& vertex)
     return true;
 }
 
-bool Collision::encloses(const Sphere& bodyA, const Sphere& bodyB)
+bool Collision3D::encloses(const Sphere& bodyA, const Sphere& bodyB)
 {
     glm::dvec3 delta = bodyA.center - bodyB.center;
     return glm::dot(delta, delta) < pow(bodyA.radius - bodyB.radius, 2);
 }
 
 // Test whether bodyA encloses bodyB
-bool Collision::encloses(const AABB& bodyA, const AABB& bodyB)
+bool Collision3D::encloses(const AABB& bodyA, const AABB& bodyB)
 {
     return bodyA.min.x < bodyB.min.x && bodyA.max.x > bodyB.max.x
         && bodyA.min.y < bodyB.min.y && bodyA.max.y > bodyB.max.y
@@ -280,13 +275,13 @@ bool Collision::encloses(const AABB& bodyA, const AABB& bodyB)
 }
 
 // Test whether the sphere encloses the AABB
-bool Collision::encloses(const Sphere& bodyA, const AABB& bodyB)
+bool Collision3D::encloses(const Sphere& bodyA, const AABB& bodyB)
 {
     glm::dvec3 delta = bodyA.center - farthest(bodyB, bodyA.center);
     return glm::dot(delta, delta) < bodyA.radius * bodyA.radius;
 }
 // Test whether the AABB encloses the sphere
-bool Collision::encloses(const AABB& bodyA, const Sphere& bodyB)
+bool Collision3D::encloses(const AABB& bodyA, const Sphere& bodyB)
 {
     glm::dvec3 delta = bodyB.center - bodyA.center();
     return std::abs(delta.x) < 0.5f * bodyA.xLength() - bodyB.radius
@@ -294,17 +289,17 @@ bool Collision::encloses(const AABB& bodyA, const Sphere& bodyB)
         && std::abs(delta.z) < 0.5f * bodyA.zLength() - bodyB.radius;
 }
 
-bool Collision::encloses(const Sphere& bodyA, const ConvexHull& bodyB)
+bool Collision3D::encloses(const Sphere& bodyA, const ConvexHull& bodyB)
 {
     return encloses(bodyA, bodyB.vertices());
 }
 
-bool Collision::encloses(const AABB& bodyA, const ConvexHull& bodyB)
+bool Collision3D::encloses(const AABB& bodyA, const ConvexHull& bodyB)
 {
     return encloses(bodyA, AABB(bodyB));
 }
 
-bool Collision::encloses(const ConvexHull& bodyA, const Sphere& bodyB)
+bool Collision3D::encloses(const ConvexHull& bodyA, const Sphere& bodyB)
 {
     for (uint32_t i = 0; i < bodyA.facetCount(); i++) {
         const Plane& plane = bodyA.facePlane(i);
@@ -313,7 +308,7 @@ bool Collision::encloses(const ConvexHull& bodyA, const Sphere& bodyB)
 
     return true;
 }
-bool Collision::encloses(const ConvexHull& bodyA, const AABB& bodyB)
+bool Collision3D::encloses(const ConvexHull& bodyA, const AABB& bodyB)
 {
     return encloses(bodyA, bodyB.min)
         && encloses(bodyA, bodyB.max)
@@ -325,7 +320,7 @@ bool Collision::encloses(const ConvexHull& bodyA, const AABB& bodyB)
         && encloses(bodyA, bodyB.vertex(6));
 }
 
-double Collision::distance(const ConvexHull& hull, const Plane& plane)
+double Collision3D::distance(const ConvexHull& hull, const Plane& plane)
 {
     auto [minIndex, maxIndex] = hull.extremes(plane.normal);
     double min = plane.distance(hull.vertices()[minIndex]), max = plane.distance(hull.vertices()[maxIndex]);
@@ -335,14 +330,14 @@ double Collision::distance(const ConvexHull& hull, const Plane& plane)
     return std::min(std::abs(min), std::abs(max));
 }
 
-double Collision::distance(const ConvexHull& hullA, const ConvexHull& hullB)
+double Collision3D::distance(const ConvexHull& hullA, const ConvexHull& hullB)
 {
     EPA epa = intersection(hullA, hullB, { 0, 0 });
     return glm::length(epa.offset());
 }
 
 
-std::tuple<bool, double, glm::dvec3> Collision::intersection(const AABB& body, const Ray& ray)
+std::tuple<bool, double, glm::dvec3> Collision3D::intersection(const AABB& body, const Ray& ray)
 {
     auto [hit, t] = raycast(body, ray);
     if (!hit) return { false, 0, {} };
@@ -350,7 +345,7 @@ std::tuple<bool, double, glm::dvec3> Collision::intersection(const AABB& body, c
 }
 
 // TODO Improvement: Leverage walk to calculate intersection in-place
-std::vector<glm::dvec3> Collision::intersection(const ConvexHull& hull, const Plane& plane)
+std::vector<glm::dvec3> Collision3D::intersection(const ConvexHull& hull, const Plane& plane)
 {
     if (hull.vertexCount() < 4) return {}; // Early exit when the hull is poorly formed
 
@@ -362,7 +357,7 @@ std::vector<glm::dvec3> Collision::intersection(const ConvexHull& hull, const Pl
 }
 
 // Returns a list of vertices formed from the intersection of edges and the plane (Vertices are not sequential)
-std::vector<glm::dvec3> Collision::intersection(const ConvexHull& hull, const Plane& plane, const std::vector<uint8_t>& partition)
+std::vector<glm::dvec3> Collision3D::intersection(const ConvexHull& hull, const Plane& plane, const std::vector<uint8_t>& partition)
 {
     double d = plane.d();
 
@@ -388,18 +383,18 @@ std::vector<glm::dvec3> Collision::intersection(const ConvexHull& hull, const Pl
     return intersection;
 }
 
-bool Collision::above(const ConvexHull& hull, const Plane& plane)
+bool Collision3D::above(const ConvexHull& hull, const Plane& plane)
 {
     return partition(hull, plane).back() == 1;
 }
-bool Collision::below(const ConvexHull& hull, const Plane& plane)
+bool Collision3D::below(const ConvexHull& hull, const Plane& plane)
 {
     return partition(hull, plane).back() == 2;
 }
 
 // Indicates where vertices are in relation to the plane (0 = on, 1 = above, 2 = below)
 // Last element indicates overall state (0 = divided, 1 = entirely above, 2 = entirely below)
-std::vector<uint8_t> Collision::partition(const ConvexHull& hull, const Plane& plane)
+std::vector<uint8_t> Collision3D::partition(const ConvexHull& hull, const Plane& plane)
 {
     std::vector<uint8_t> state(hull.vertexCount() + 1);
 
@@ -423,7 +418,7 @@ std::vector<uint8_t> Collision::partition(const ConvexHull& hull, const Plane& p
     return state;
 }
 
-ConvexHull Collision::fragment(const ConvexHull& hull, const Plane& plane)
+ConvexHull Collision3D::fragment(const ConvexHull& hull, const Plane& plane)
 {
     if (hull.empty()) return {};
 
@@ -443,7 +438,7 @@ ConvexHull Collision::fragment(const ConvexHull& hull, const Plane& plane)
 
     return ConvexHull(set);
 }
-std::pair<ConvexHull, ConvexHull> Collision::fragments(const ConvexHull& hull, const Plane& plane)
+std::pair<ConvexHull, ConvexHull> Collision3D::fragments(const ConvexHull& hull, const Plane& plane)
 {
     if (hull.empty()) return {};
 
@@ -472,7 +467,7 @@ std::pair<ConvexHull, ConvexHull> Collision::fragments(const ConvexHull& hull, c
 //template<class T1, class T2>
 //bool CollisionPair<T1, T2>::intersects() const
 //{
-//    return Collision::intersects(first, second);
+//    return Collision3D::intersects(first, second);
 //}
 
 

@@ -17,7 +17,7 @@
 #include "primitives/Ray.h"
 
 #include "core/Timer.h"
-#include "geometry/collision/Collision.h"
+#include "geometry/collision/Collision3D.h"
 
 Mesh::Mesh()
     : Mesh(0, 0, 0)
@@ -181,7 +181,7 @@ std::tuple<bool, double, uint32_t> Mesh::pickFace(const Ray& ray) const
     uint32_t idx = 0;
 
     for (const TriIndex& tri : triangles) {
-        auto [hit, tTest] = Collision::raycast(Triangle3D(m_vertices.vertices(), tri), ray);
+        auto [hit, tTest] = Collision3D::raycast(Triangle3D(m_vertices.vertices(), tri), ray);
         if (hit && (t < 0 || tTest < t)) {
             t = tTest;
             idx = &tri - &triangles[0];

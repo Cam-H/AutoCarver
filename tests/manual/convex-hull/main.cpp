@@ -17,7 +17,7 @@
 #include "renderer/UiLoader.h"
 #include "renderer/SceneWidget.h"
 #include "geometry/primitives/Plane.h"
-#include "geometry/collision/Collision.h"
+#include "geometry/collision/Collision3D.h"
 
 #endif
 
@@ -91,7 +91,7 @@ void prepare()
     }
 
 //    hull.print();
-//    auto intersection = Collision::intersection(hull, cutPlane);
+//    auto intersection = Collision3D::intersection(hull, cutPlane);
 //    std::cout << "Intersections: " << intersection.size() << "\n";
 //    int idx = 0;
 //    for (const glm::dvec3& vertex : intersection) {
@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 
     auto nextButton = window->findChild<QPushButton*>("nextButton");
     QObject::connect(nextButton, &QPushButton::clicked, [&]() {
-//        auto fragments = Collision::fragments(hull, cutPlane);
+//        auto fragments = Collision3D::fragments(hull, cutPlane);
 //        updateMesh(std::make_shared<Mesh>(fragments.second));
         builder.step();
         updateMesh(std::make_shared<Mesh>(builder.getHull()));

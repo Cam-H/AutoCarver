@@ -27,7 +27,7 @@ add_library(AutoCarverLib
         geometry/primitives/Sphere.cpp
         geometry/primitives/Triangle.cpp
 
-        geometry/collision/Collision.cpp
+        geometry/collision/Collision3D.cpp
         geometry/collision/Collision2D.cpp
         geometry/collision/EPA.cpp
 

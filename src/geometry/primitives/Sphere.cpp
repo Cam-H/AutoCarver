@@ -3,8 +3,9 @@
 //
 
 #include "Sphere.h"
-#include "geometry/collision/Collision.h"
+#include "geometry/collision/Collision3D.h"
 #include "ConvexHull.h"
+#include "core/Functions.h"
 
 #include <iostream>
 #include <random>
@@ -12,6 +13,8 @@
 Sphere::Sphere() : center({0, 0, 0}), radius(-1.0f){}
 
 Sphere::Sphere(glm::dvec3 center, double radius) : center(center), radius(radius) {}
+
+Sphere::Sphere(const std::tuple<glm::dvec3, double>& sphere) : center(std::get<0>(sphere)), radius(std::get<1>(sphere)){}
 
 Sphere Sphere::enclose(const ConvexHull& hull)
 {
@@ -71,11 +74,8 @@ Sphere Sphere::enclose(const std::vector<glm::dvec3>& vertices){
     return { { 0, 0, 0 }, 0 };
 }
 
-Sphere Sphere::midpointSphere(const glm::dvec3& a, const glm::dvec3& b){
-    return { { (a + b) / 2.0 }, glm::length(b - a) / 2.0 };
-}
-
-Sphere Sphere::triangleCircumsphere(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c){
+Sphere Sphere::triangleCircumsphere(const glm::dvec3& a, const glm::dvec3& b, const glm::dvec3& c)
+{
     glm::dvec3 ab = b - a;
     glm::dvec3 ac = c - a;
 
@@ -119,7 +119,7 @@ Sphere Sphere::welzl(std::vector<glm::dvec3>& vertices, std::vector<glm::dvec3> 
             case 1:
                 return { { set[0] }, 0 };
             case 2:
-                return midpointSphere(set[0], set[1]);
+                return Sphere(Functions::midCircum(set[0], set[1]));
             case 3:
                 return triangleCircumsphere(set[0], set[1], set[2]);
             case 4:
@@ -131,7 +131,7 @@ Sphere Sphere::welzl(std::vector<glm::dvec3>& vertices, std::vector<glm::dvec3> 
     std::swap(vertices[0], vertices[n - 1]);
 
     Sphere test = welzl(vertices, set, n - 1);
-    if (Collision::encloses(test, vertex)) {
+    if (Collision3D::encloses(test, vertex)) {
         return test;
     }
 
@@ -180,7 +180,7 @@ const glm::dvec3& Sphere::start() const
 {
     return center;
 }
-uint32_t Sphere::supportIndex(const glm::dvec3& axis, uint32_t startIndex) const
+uint32_t Sphere::supportIndex(const glm::dvec3& axis, uint32_t startIndex)
 {
     return 0;
 }

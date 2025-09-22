@@ -52,6 +52,9 @@ public:
     [[nodiscard]] uint32_t vertexCount() const;
     [[nodiscard]] const std::vector<glm::dvec2>& border() const;
 
+    [[nodiscard]] virtual uint32_t prevVertex(uint32_t vertexIndex) const;
+    [[nodiscard]] virtual uint32_t nextVertex(uint32_t vertexIndex) const;
+
     [[nodiscard]] const Circle& bounds() const;
 
     [[nodiscard]] bool isCW() const;
@@ -63,6 +66,12 @@ public:
 
     [[nodiscard]] std::tuple<double, double> xExtents() const;
     [[nodiscard]] std::tuple<double, double> yExtents() const;
+
+    [[nodiscard]] bool isValid() const;
+
+    [[nodiscard]] glm::vec2 start() const;
+    [[nodiscard]] uint32_t supportIndex(const glm::dvec2& axis, uint32_t startIndex = 0) const;
+    [[nodiscard]] std::tuple<uint32_t, glm::dvec2> extreme(const glm::dvec2& axis, uint32_t startIndex = 0) const;
 
     static void cullCollinear(std::vector<glm::dvec2>& vertices, double tolerance = 1e-3);
 

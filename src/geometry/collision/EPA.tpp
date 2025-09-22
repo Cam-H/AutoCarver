@@ -6,14 +6,14 @@
 #include "geometry/Axis3D.h"
 
 template<class T1, class T2>
-EPA::EPA(const T1& a, const T2& b, Simplex simplex)
+EPA::EPA(const T1& a, const T2& b, Simplex<3> simplex)
     : EPA(a, b, simplex, glm::dmat4(1.0))
 {
     // TODO implement without transformations to optimize
 }
 
 template<class T1, class T2>
-EPA::EPA(const T1& a, const T2& b, Simplex simplex, const glm::dmat4& relative)
+EPA::EPA(const T1& a, const T2& b, Simplex<3> simplex, const glm::dmat4& relative)
     : EPA()
 {
     std::vector<std::pair<double, uint32_t>> order;
@@ -37,7 +37,7 @@ EPA::EPA(const T1& a, const T2& b, Simplex simplex, const glm::dmat4& relative)
         }
 
         // Find next vertex to expand to, based on current shortest overlap. Verify it protrudes from the reference facet
-        Simplex::Vertex vertex(gjkSupport(a, b, facet.normal, relative, vertices[facet.triangle.I0].idx));
+        Simplex<3>::Vertex vertex(GJK::support(a, b, facet.normal, relative, vertices[facet.triangle.I0].idx));
         if (glm::dot(facet.normal, vertex.val - vertices[facet.triangle.I0].val) <= TOLERANCE) break;
 
         vertices.push_back(vertex);
@@ -77,7 +77,7 @@ EPA::EPA(const T1& a, const T2& b, Simplex simplex, const glm::dmat4& relative)
 }
 
 template<class T1, class T2>
-void EPA::expandSimplex(const T1& a, const T2& b, const glm::dmat4& relative, Simplex& simplex)
+void EPA::expandSimplex(const T1& a, const T2& b, const glm::dmat4& relative, Simplex<3>& simplex)
 {
     switch (simplex.size()) {
         case 1: // Point case
@@ -94,7 +94,7 @@ void EPA::expandSimplex(const T1& a, const T2& b, const glm::dmat4& relative, Si
             };
 
             for (const glm::dvec3& direction : searchDirections) {
-                Simplex::Vertex vertex(gjkSupport(a, b, direction, relative, simplex[0].idx));
+                Simplex<3>::Vertex vertex(GJK::support(a, b, direction, relative, simplex[0].idx));
 
                 glm::dvec3 delta = vertex.val - simplex[0].val;
                 if (glm::dot(delta, delta) >= TOLERANCE) {
@@ -116,7 +116,7 @@ void EPA::expandSimplex(const T1& a, const T2& b, const glm::dmat4& relative, Si
 
             // Find a vertex off the line to expand to
             for (uint32_t i = 0; i < 3; i++) {
-                Simplex::Vertex vertex(gjkSupport(a, b, axis, relative, simplex[0].idx));
+                Simplex<3>::Vertex vertex(GJK::support(a, b, axis, relative, simplex[0].idx));
 
                 if (std::abs(glm::dot(axis, vertex.val - simplex[0].val)) >= TOLERANCE) {
                     simplex.add(vertex);
@@ -132,12 +132,12 @@ void EPA::expandSimplex(const T1& a, const T2& b, const glm::dmat4& relative, Si
         {
             glm::dvec3 axis = glm::normalize(glm::cross(simplex[1].val - simplex[0].val, simplex[2].val - simplex[0].val));
 
-            Simplex::Vertex vertex(gjkSupport(a, b, axis, relative, simplex[0].idx));
+            Simplex<3>::Vertex vertex(GJK::support(a, b, axis, relative, simplex[0].idx));
             double delta = std::abs(glm::dot(axis, vertex.val - simplex[0].val));
 
             // Try the opposite direction of the plane in case the triangle is extreme
             if (delta <= TOLERANCE) {
-                vertex = Simplex::Vertex(gjkSupport(a, b, -axis, relative, simplex[0].idx));
+                vertex = Simplex<3>::Vertex(GJK::support(a, b, -axis, relative, simplex[0].idx));
                 delta = std::abs(glm::dot(axis, vertex.val - simplex[0].val));
             }
 
@@ -149,23 +149,4 @@ void EPA::expandSimplex(const T1& a, const T2& b, const glm::dmat4& relative, Si
     }
 
     simplex.correctWinding();
-}
-
-template<class T1, class T2>
-std::tuple<uint32_t, uint32_t, glm::dvec3> EPA::gjkSupport(const T1& bodyA, const T2& bodyB, const glm::dvec3& axis, const std::pair<uint32_t, uint32_t>& idx)
-{
-    auto [aIdx, aVertex] = bodyA.extreme(axis, idx.first);
-    auto [bIdx, bVertex] = bodyB.extreme(-axis, idx.second);
-
-    return { aIdx, bIdx, aVertex - bVertex };
-}
-
-template<class T1, class T2>
-std::tuple<uint32_t, uint32_t, glm::dvec3> EPA::gjkSupport(const T1& bodyA, const T2& bodyB, const glm::dvec3& axis, const glm::dmat4& transform, const std::pair<uint32_t, uint32_t>& idx)
-{
-    auto [aIdx, aVertex] = bodyA.extreme(axis, idx.first);
-    auto [bIdx, bVertex] = bodyB.extreme(-axis * glm::mat3(transform), idx.second);
-
-    glm::dvec4 vec = transform * glm::dvec4(bVertex.x, bVertex.y, bVertex.z, 1.0);
-    return { aIdx, bIdx, aVertex - glm::dvec3{ vec.x, vec.y, vec.z }};
 }

@@ -31,9 +31,9 @@ Polygon::Polygon(const glm::dvec2& center, double width, double height, double r
 {
     double hw = 0.5 * width, ht = 0.5 * height, c0 = cos(rotation), s0 = sin(rotation);
     m_vertices[0] = { -hw, -ht };
-    m_vertices[1] = { -hw,  ht };
+    m_vertices[1] = {  hw, -ht };
     m_vertices[2] = {  hw,  ht };
-    m_vertices[3] = {  hw, -ht };
+    m_vertices[3] = { -hw,  ht };
 
     for (glm::dvec2& vertex : m_vertices) {
         double yp = vertex.x * s0 + vertex.y * c0;
@@ -220,6 +220,45 @@ std::tuple<double, double> Polygon::yExtents() const
     return { min->y, max->y };
 }
 
+bool Polygon::isValid() const
+{
+    return m_vertices.size() >= 3; // TODO verify convex
+}
+
+glm::vec2 Polygon::start() const
+{
+    assert(!m_vertices.empty());
+    return m_vertices[0];
+}
+
+uint32_t Polygon::supportIndex(const glm::dvec2& axis, uint32_t startIndex) const
+{
+    assert(startIndex < m_vertices.size());
+
+    uint32_t current = startIndex;
+
+    uint32_t next = prevVertex(current);
+    while (glm::dot(axis, m_vertices[next] - m_vertices[current]) > 0) {
+        current = next;
+        next = prevVertex(current);
+    }
+
+    next = nextVertex(current);
+    while (glm::dot(axis, m_vertices[next] - m_vertices[current]) > 0) {
+        current = next;
+        next = nextVertex(current);
+    }
+
+    return current;
+}
+
+// Returns the vertex furthest along axis, beginning search from startIndex (Assumes the polygon is convex. If not result may be bad)
+std::tuple<uint32_t, glm::dvec2> Polygon::extreme(const glm::dvec2& axis, uint32_t startIndex) const
+{
+    auto index = supportIndex(axis, startIndex);
+    return { index, m_vertices[index] };
+}
+
 uint32_t Polygon::vertexCount() const
 {
     return m_vertices.size();
@@ -228,6 +267,15 @@ uint32_t Polygon::vertexCount() const
 const std::vector<glm::dvec2>& Polygon::border() const
 {
     return m_vertices;
+}
+
+uint32_t Polygon::prevVertex(uint32_t vertexIndex) const
+{
+    return vertexIndex == 0 ? m_vertices.size() - 1 : vertexIndex - 1;
+}
+uint32_t Polygon::nextVertex(uint32_t vertexIndex) const
+{
+    return vertexIndex == m_vertices.size() - 1 ? 0 : vertexIndex + 1;
 }
 
 const Circle& Polygon::bounds() const

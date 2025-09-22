@@ -41,7 +41,7 @@ glm::dvec3 EPA::fromBarycentric(const Triangle3D& triangle, const glm::dvec3& ba
 void EPA::exportState(const std::string& path)
 {
     std::vector<glm::dvec3> outVertices;
-    for (const Simplex::Vertex& vertex : vertices) outVertices.emplace_back(vertex.val);
+    for (const Simplex<3>::Vertex& vertex : vertices) outVertices.emplace_back(vertex.val);
 
     std::vector<TriIndex> triangles;
     for (const Facet& facet : facets) triangles.emplace_back(facet.triangle);
@@ -55,7 +55,7 @@ glm::dvec3 EPA::normal(uint32_t a, uint32_t b, uint32_t c)
 }
 
 // Debug method to check correctness of algorithm input
-bool EPA::isValid(const Simplex& simplex)
+bool EPA::isValid(const Simplex<3>& simplex)
 {
     if (simplex.size() != 4) {
         std::cout << "IS: " << simplex.size() << "\n";
@@ -67,7 +67,7 @@ bool EPA::isValid(const Simplex& simplex)
     return simplex.size() == 4;
 }
 
-void EPA::prepareFacets(const Simplex& simplex, std::vector<std::pair<double, uint32_t>>& order)
+void EPA::prepareFacets(const Simplex<3>& simplex, std::vector<std::pair<double, uint32_t>>& order)
 {
     for (uint32_t i = 0; i < 4; i++) vertices.push_back(simplex[i]);
 

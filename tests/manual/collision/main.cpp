@@ -10,7 +10,7 @@
 #include <QSpinBox>
 #include <QRandomGenerator>
 
-#include "geometry/collision/Collision.h"
+#include "geometry/collision/Collision3D.h"
 
 #ifndef QT_NO_OPENGL
 #include "ControlWidget.h"
@@ -32,7 +32,7 @@
 #include "geometry/collision/EPA.h"
 
 std::shared_ptr<Mesh> base;
-std::shared_ptr<Mesh> test;
+std::shared_ptr<Mesh> other;
 
 ControlWidget *sceneWidget = nullptr;
 std::shared_ptr<Scene> scene = nullptr;
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 
 //    test = MeshBuilder::cylinder(0.5, 2, 6);
 //    test = MeshBuilder::icosphere(1.0f, 3);
-    test = MeshBuilder::icosphere();
+    other = MeshBuilder::icosphere();
 
 //    auto hull = ConvexHull(VertexArray("VertexSet.bin"));
 //    VertexArray(hull.vertices()).print();
@@ -121,12 +121,12 @@ int main(int argc, char *argv[])
 //    };
 //
 //    for (const auto& axis : axes) {
-//        const auto& [col, t, c] = Collision::intersection(box, Ray({}, axis));
+//        const auto& [col, t, c] = Collision3D::intersection(box, Ray({}, axis));
 //        std::cout << col << " " << t << " " << c.x << " " << c.y << " " << c.z << "~\n";
 //    }
 
     scene->createBody(base);
-    scene->createBody(test);
+    scene->createBody(other);
 
     sceneWidget = new ControlWidget(scene);
     sceneWidget->setFocusPolicy(Qt::StrongFocus); // Enable keyboard focus

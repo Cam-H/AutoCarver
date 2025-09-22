@@ -47,7 +47,7 @@ Waypoint HoldPosition::evaluate(double t) const
     return m_position;
 }
 
-// Collision only needs to be tested once unlike other trajectory types
+// Collision3D only needs to be tested once unlike other trajectory types
 bool HoldPosition::test(const Scene* scene, const std::shared_ptr<Robot>& robot, double dt) const
 {
     if (scene == nullptr || robot == nullptr) throw std::runtime_error("[HoldPosition] nullptr can not evaluate collision");

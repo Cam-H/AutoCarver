@@ -10,7 +10,7 @@
 #include "geometry/primitives/ConvexHull.h"
 #include "geometry/collision/EPA.h"
 #include "physics/Constraint.h"
-#include "geometry/collision/Collision.h"
+#include "geometry/collision/Collision3D.h"
 #include "Timer.h"
 
 #include "renderer/RenderBuffer.h"
@@ -97,7 +97,7 @@ bool Scene::test(const std::shared_ptr<RigidBody>& body) const
     for (const std::shared_ptr<RigidBody>& collider : m_bodies) { // TODO use broadphase selection
 //        std::cout << "Check: " <<
         if (body->test(collider)) {
-            std::cout << "Collision: \n";
+            std::cout << "Collision3D: \n";
             body->print();
             collider->print();
             return true;
@@ -161,7 +161,7 @@ void Scene::step(double delta)
         auto result = couple.first->intersection(couple.second);
         if (result.colliding()) {
             constraints.emplace_back(couple.first, couple.second, result);
-//            std::cout << "Collision: " << couple.first->getName() << " " << couple.second->getName() << "\n";
+//            std::cout << "Collision3D: " << couple.first->getName() << " " << couple.second->getName() << "\n";
         }
 
     }

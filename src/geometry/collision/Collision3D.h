@@ -12,16 +12,17 @@
 class Ray;
 class Plane;
 class Triangle3D;
-class Circle;
 class Sphere;
 class AABB;
 class ConvexHull;
 
+#include "GJK.h"
+
 #include "EPA.h"
 #include "Simplex.h"
 
-// An array of static collision detection methods for primitive shapes
-class Collision {
+// An array of static collision detection methods for primitive 3D shapes
+class Collision3D {
 public:
 
     static std::tuple<bool, double> raycast(const Plane& plane, const Ray& ray);
@@ -55,14 +56,6 @@ public:
     template<class T1, class T2>
     static bool test(const T1& bodyA, const T2& bodyB);
 
-
-    template<class T1, class T2>
-    static Simplex gjk(const T1& bodyA, const T2& bodyB, const std::pair<uint32_t, uint32_t>& idx);
-
-    template<class T1, class T2>
-    static Simplex gjk(const T1& bodyA, const T2& bodyB, const glm::dmat4& transform, const std::pair<uint32_t, uint32_t>& idx);
-
-
     // Determine the closest vertex on the body to the reference
     static glm::dvec3 nearest(const AABB& body, const glm::dvec3& reference);
 
@@ -71,6 +64,8 @@ public:
 
     // Determine if the first body (A) encloses the vertex
     static bool encloses(const Sphere& body, const glm::dvec3& vertex);
+
+
     static bool encloses(const AABB& body, const glm::dvec3& vertex);
     static bool encloses(const ConvexHull& body, const glm::dvec3& vertex);
 
@@ -115,9 +110,6 @@ public:
 
 private:
 
-    template<class T1, class T2>
-    static glm::dvec3 initialAxis(const T1& bodyA, const T2& bodyB);
-
     static std::vector<glm::dvec3> intersection(const ConvexHull& hull, const Plane& plane, const std::vector<uint8_t>& partition);
     static std::vector<uint8_t> partition(const ConvexHull& hull, const Plane& plane);
 
@@ -136,8 +128,8 @@ private:
 //    T2 second;
 //};
 //
-//#include "Collision.tpp"
+//#include "Collision3D.tpp"
 
-#include "Collision.tpp"
+#include "Collision3D.tpp"
 
 #endif //AUTOCARVER_COLLISIONPAIR_H

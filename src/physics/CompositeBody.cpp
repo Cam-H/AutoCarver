@@ -303,7 +303,7 @@ std::vector<uint32_t> CompositeBody::split(const Plane& plane)
 {
     std::vector<uint32_t> sources;
 
-    if (Collision::test(m_hull, plane)) { // Only bother splitting if the plane might intersect children
+    if (Collision3D::test(m_hull, plane)) { // Only bother splitting if the plane might intersect children
         uint32_t count = m_components.size();
         for (uint32_t i = 0; i < count; i++) {
             if (split(plane, i)) sources.push_back(i);
@@ -315,7 +315,7 @@ std::vector<uint32_t> CompositeBody::split(const Plane& plane)
 
 // Splits the specified hull on the intersection with the plane. Returns true if the plane intersects
 bool CompositeBody::split(const Plane& plane, uint32_t componentIndex) {
-    auto fragments = Collision::fragments(m_components[componentIndex], plane);
+    auto fragments = Collision3D::fragments(m_components[componentIndex], plane);
     if (fragments.first.isValid() && fragments.second.isValid()) { // There was an intersection
         replace(fragments.first, componentIndex);
         add(fragments.second);
