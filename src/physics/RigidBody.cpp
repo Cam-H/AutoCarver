@@ -125,10 +125,8 @@ void RigidBody::setLayer(uint32_t layer)
 
 void RigidBody::ignore(const std::shared_ptr<RigidBody>& body)
 {
-    std::cout << "IG: " << m_name << " " << body->m_name << " " << m_layer << " " << m_mask << " " << body->m_layer << " " << body->m_mask << "\n";
     m_mask &= ~body->m_layer;
     m_layer &= ~body->m_mask;
-    std::cout << "TO: " << m_layer << " " << m_mask << "\n";
 }
 
 void RigidBody::disableCollisions()
@@ -188,7 +186,7 @@ bool RigidBody::test(const std::shared_ptr<RigidBody>& body)
         std::pair<uint32_t, uint32_t> nearest = cachedCollision(body);
 
         try {
-            Simplex simplex = GJK::gjk3D(m_hull, body->m_hull, relative, nearest);
+            Simplex simplex = GJK::solve3D(m_hull, body->m_hull, relative, nearest);
 
             cacheCollision(body, simplex[0].idx);
             return simplex.colliding();

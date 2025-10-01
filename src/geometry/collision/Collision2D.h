@@ -8,6 +8,7 @@
 #include <glm.hpp>
 
 class Circle;
+class Line;
 class Polygon;
 
 #include "GJK.h"
@@ -17,8 +18,8 @@ class Polygon;
 class Collision2D {
 public:
 
-    static bool test(const Circle& bodyA, const glm::dvec2& a, const glm::dvec2& b);
-    static bool test(const Polygon& bodyA, const glm::dvec2& a, const glm::dvec2& b);
+    static bool test(const Circle& bodyA, const Line& bodyB);
+    static bool test(const Polygon& bodyA, const Line& bodyB);
 
     static bool test(const Circle& bodyA, const Circle& bodyB);
 
@@ -34,7 +35,7 @@ private:
     template<class T1, class T2>
     static bool gjkTest(const T1& bodyA, const T2& bodyB)
     {
-        auto simplex = GJK::gjk2D(bodyA, bodyB, { 0, 0 });
+        auto simplex = GJK::solve2D(bodyA, bodyB, { 0, 0 });
         return simplex.colliding();
     }
 

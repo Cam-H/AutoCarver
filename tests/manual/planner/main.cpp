@@ -55,13 +55,15 @@ QDoubleSpinBox *widthField, *heightField, *timeScalarField;
 QDoubleSpinBox *startXField, *startYField, *startAngleField;
 QDoubleSpinBox *goalXField, *goalYField, *goalAngleField;
 
-QSpinBox *countField;
+QSpinBox *countField, *rateField;
 QPushButton *randomButton, *iterateButton, *solveButton, *followButton;
+
+QCheckBox *autoButton;
 
 QLineEdit *outField;
 
 TOPPTrajectory* traj = nullptr;
-bool delReq = false;
+bool sim = false, delReq = false;
 
 static QWidget *loadUiFile(QWidget *parent)
 {
@@ -75,6 +77,12 @@ static QWidget *loadUiFile(QWidget *parent)
     file.close();
 
     return widget;
+}
+
+void rmTraj()
+{
+    delete traj;
+    traj = nullptr;
 }
 
 void updateDisplay()
@@ -118,8 +126,16 @@ void updateFields()
     updateGoalFields();
 }
 
+void updatePath()
+{
+    traj = new TOPPTrajectory(planner.waypoints(config.polygons), std::vector<double>{ 4.0, 4.0, 4.0 }, std::vector<double>{ 1.5, 1.5, 1.5 });
+    displayWidget->setPath(PiecewisePolyPath(planner.waypoints(config.polygons)));
+}
+
 void updateStart()
 {
+    rmTraj();
+
     updateStartFields();
 
     planner.setStart(config.start);
@@ -129,10 +145,18 @@ void updateStart()
 
 void updateGoal()
 {
+    rmTraj();
+
     updateGoalFields();
+    displayWidget->updateGoal(config.goal, config.width, config.height);
 
     planner.setGoal(config.goal);
-    displayWidget->updateGoal(config.goal, config.width, config.height);
+    if (planner.solutionImproved()) {
+        updatePath();
+
+        planner.clearUpdateFlag();
+    }
+
     displayWidget->update();
 }
 
@@ -140,6 +164,8 @@ void updateDims()
 {
     widthField->setValue(config.width);
     heightField->setValue(config.height);
+
+    planner.setTargetDimensions(config.width, config.height);
 
     displayWidget->updateStart(config.start, config.width, config.height);
     displayWidget->updateGoal(config.goal, config.width, config.height);
@@ -197,6 +223,19 @@ int main(int argc, char *argv[])
     });
 
     timeScalarField = window->findChild<QDoubleSpinBox*>("timeScalarField");
+
+    auto tField = window->findChild<QDoubleSpinBox*>("tField");
+    QObject::connect(tField, &QDoubleSpinBox::valueChanged, [](double value) {
+        if (planner.solved()) {
+            if (sim || traj == nullptr) {
+                updatePath();
+            }
+
+            auto wp = traj->evaluate(value);
+            travel({ wp.values[0], wp.values[1], wp.values[2] });
+
+        }
+    });
 
     heightField = window->findChild<QDoubleSpinBox*>("heightField");
     QObject::connect(heightField, &QDoubleSpinBox::valueChanged, [](double value) {
@@ -260,33 +299,41 @@ int main(int argc, char *argv[])
 
     solveButton = window->findChild<QPushButton*>("solveButton");
     QObject::connect(solveButton, &QPushButton::clicked, [&]() {
-        planner.solve(config.polygons);
+        planner.solve(config.polygons, 5000);
         displayWidget->update();
+
+        if (planner.solved()) {
+            rmTraj();
+            updatePath();
+        }
+    });
+
+    auto updatePathButton = window->findChild<QPushButton*>("updatePathButton");
+    QObject::connect(followButton, &QPushButton::clicked, [&]() {
+        if (planner.solved()) {
+            updatePath();
+        }
     });
 
     followButton = window->findChild<QPushButton*>("followButton");
     QObject::connect(followButton, &QPushButton::clicked, [&]() {
-        std::vector<glm::dvec3> path = planner.path();
+        if (planner.solved()) {
+            delete traj;
 
-        if (!path.empty()) {
-            std::vector<Waypoint> wps(path.size());
+            traj = new TOPPTrajectory(planner.waypoints(), std::vector<double>{ 4.0, 4.0, 4.0 }, std::vector<double>{ 1.5, 1.5, 1.5 });
+            sim = true;
 
-            std::cout << path.size() << " xx\n";
-            for (uint32_t i = 0; i < wps.size(); i++) wps[i] = Waypoint({ path[i].x, path[i].y, path[i].z }, true);
-            std::cout << "yy\n";
-
-            for (const Waypoint& wp : wps) std::cout << wp.toString() << "||!\n";
-
-            if (traj != nullptr) delete traj;
-            traj = new TOPPTrajectory(wps, std::vector<double>{ 4.0, 4.0, 4.0 }, std::vector<double>{ 1.5, 1.5, 1.5 });
-            std::cout << "Traj: " << traj->t() << " " << traj->tStep() << " " << traj->duration() << " " << traj->minimumDuration() << "\n";
-            std::cout << "zz\n";
+            if (!traj->isValid()) {
+                std::cout << "\033[93mFailed to prepare trajectory\033[0m\n";
+                rmTraj();
+            }
         }
     });
 
     auto resetButton = window->findChild<QPushButton*>("resetButton");
     QObject::connect(resetButton, &QPushButton::clicked, [&]() {
-        delReq = true;
+        if (!sim) rmTraj();
+        else delReq = true;
 
         planner.reset();
         displayWidget->update();
@@ -304,6 +351,23 @@ int main(int argc, char *argv[])
         displayWidget->enableBounds(state == Qt::CheckState::Checked);
         displayWidget->update();
     });
+
+    auto showTreeButton = window->findChild<QCheckBox*>("showTreeButton");
+    displayWidget->enableTree(showTreeButton->isChecked());
+    QObject::connect(showTreeButton, &QCheckBox::stateChanged, [&](int state) {
+        displayWidget->enableTree(state == Qt::CheckState::Checked);
+        displayWidget->update();
+    });
+
+    auto showPathButton = window->findChild<QCheckBox*>("showPathButton");
+    displayWidget->enablePath(showPathButton->isChecked());
+    QObject::connect(showPathButton, &QCheckBox::stateChanged, [&](int state) {
+        displayWidget->enablePath(state == Qt::CheckState::Checked);
+        displayWidget->update();
+    });
+
+    rateField = window->findChild<QSpinBox*>("rateField");
+    autoButton = window->findChild<QCheckBox*>("autoButton");
 
     outField = window->findChild<QLineEdit*>("outField");
 
@@ -328,19 +392,27 @@ int main(int argc, char *argv[])
         Timer rateTimer;
 
         while (true) {
-            if (traj != nullptr) {
-                std::cout << traj << " " << traj->isValid() << " " << traj->t() << "\n";
+            if (sim && traj != nullptr) {
                 auto wp = traj->timestep(timeScalarField->value() * rateTimer.getElapsedSeconds());
-                std::cout << "WW: " << wp.delta(traj->end()) << " " << wp.values.size() << " " << wp.isValid() << "\n";
                 travel({ wp.values[0], wp.values[1], wp.values[2] });
 
                 if (delReq || traj->complete()) {
                     delReq = false;
-                    delete traj;
-
-                    std::cout << "zz: " << traj << "\n";
-                    traj = nullptr;
+                    rmTraj();
                 }
+            } else if (autoButton->isChecked()) {
+                for (uint32_t i = 0; i < rateField->value(); i++) planner.iterate(config.polygons);
+
+                if (planner.solutionImproved()) {
+                    std::cout << "Superior solution discovered!\n";
+                    updatePath();
+
+                    planner.clearUpdateFlag();
+                }
+
+                displayWidget->update();
+
+//                planner.print();
             }
 
             rateTimer.reset();

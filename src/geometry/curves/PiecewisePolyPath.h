@@ -15,6 +15,8 @@ public:
 
     explicit PiecewisePolyPath(const std::vector<Waypoint>& waypoints);
 
+    std::vector<double> operator[](uint32_t idx) const;
+
     [[nodiscard]] uint32_t order() const;
     [[nodiscard]] double sEnd() const;
 

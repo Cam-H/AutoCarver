@@ -22,6 +22,7 @@ add_library(AutoCarverLib
         geometry/primitives/AABB.cpp
         geometry/primitives/Circle.cpp
         geometry/primitives/ConvexHull.cpp
+        geometry/primitives/Line.cpp
         geometry/primitives/Plane.cpp
         geometry/primitives/Ray.cpp
         geometry/primitives/Sphere.cpp

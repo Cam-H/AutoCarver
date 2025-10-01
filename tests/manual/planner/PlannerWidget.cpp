@@ -13,7 +13,11 @@
 
 PlannerWidget::PlannerWidget(QWidget *parent)
     : PolygonWidget(parent)
+    , planner(nullptr)
+    , m_path({})
     , m_boundsEnable(true)
+    , m_treeEnable(true)
+    , m_pathEnable(true)
 {
     QObject::connect(this, &PolygonWidget::moved, this, &PlannerWidget::moved);
 }
@@ -21,12 +25,16 @@ PlannerWidget::PlannerWidget(QWidget *parent)
 void PlannerWidget::setStart(const glm::dvec3& start, double width, double height)
 {
     addPolygon(new Polygon({ start.x, start.y }, width, height, start.z));
-//    m_polyControl.back().editable = false;
+    m_polyControl.back().editable = false;
+
+    m_path = PiecewisePolyPath({});
 }
 void PlannerWidget::setGoal(const glm::dvec3& goal, double width, double height)
 {
     addPolygon(new Polygon({ goal.x, goal.y }, width, height, goal.z));
     m_polyControl.back().editable = false;
+
+    m_path = PiecewisePolyPath({});
 }
 
 void PlannerWidget::updateStart(const glm::dvec3& start, double width, double height)
@@ -35,6 +43,8 @@ void PlannerWidget::updateStart(const glm::dvec3& start, double width, double he
 
     delete m_polygons[m_polygons.size() - 2];
     m_polygons[m_polygons.size() - 2] = new Polygon({ start.x, start.y }, width, height, start.z);
+
+    m_path = PiecewisePolyPath({});
 }
 void PlannerWidget::updateGoal(const glm::dvec3& goal, double width, double height)
 {
@@ -42,6 +52,8 @@ void PlannerWidget::updateGoal(const glm::dvec3& goal, double width, double heig
 
     delete m_polygons[m_polygons.size() - 1];
     m_polygons[m_polygons.size() - 1] = new Polygon({ goal.x, goal.y }, width, height, goal.z);
+
+    m_path = PiecewisePolyPath({});
 }
 
 void PlannerWidget::offsetStart(const glm::dvec3& offset)
@@ -56,9 +68,24 @@ void PlannerWidget::setPlanner(const RRTPlanner* planner)
     this->planner = planner;
 }
 
+void PlannerWidget::setPath(const PiecewisePolyPath& path)
+{
+    m_path = path;
+}
+
 void PlannerWidget::enableBounds(bool enable)
 {
     m_boundsEnable = enable;
+}
+
+void PlannerWidget::enableTree(bool enable)
+{
+    m_treeEnable = enable;
+}
+
+void PlannerWidget::enablePath(bool enable)
+{
+    m_pathEnable = enable;
 }
 
 //void PlannerWidget::paintEvent(QPaintEvent *event)
@@ -85,15 +112,17 @@ void PlannerWidget::drawForeground(QPainter& painter)
         }
     }
 
-    // Draw planned paths if available
-    if (planner != nullptr) {
-        QColor color(0, 0, 0);
-        painter.setPen(color);
-        painter.setBrush(Qt::NoBrush);
+    QColor color(0, 0, 0);
+    painter.setPen(color);
+    painter.setBrush(Qt::NoBrush);
 
-        for (const Node& node : planner->nodes) {
+    // Draw planned paths if available
+    if (m_treeEnable && planner != nullptr) {
+        const auto& nodes = planner->nodes();
+
+        for (const Node& node : nodes) {
             glm::dvec3 start = node.parent == std::numeric_limits<uint32_t>::max()
-                               ? planner->start() : planner->nodes[node.parent].location;
+                               ? planner->start() : nodes[node.parent].location;
 
             color.setRedF((node.location.z - start.z) / (2 * M_PI)); // Red  - Change in rotation
             color.setBlueF(start.z / (2 * M_PI));                    // Blue - Initial rotation
@@ -101,6 +130,38 @@ void PlannerWidget::drawForeground(QPainter& painter)
 
             glm::dvec2 a = transformed({ start.x, start.y }), b = transformed({ node.location.x, node.location.y });
             painter.drawLine(a.x, a.y, b.x, b.y);
+        }
+    }
+
+    if (m_pathEnable && !m_path.empty()) {
+        color.setRgb(0, 0, 0);
+        painter.setPen(color);
+
+        std::vector<double> wp = m_path.evaluate(0);
+        glm::dvec2 last = transformed({ wp[0], wp[1] });
+
+        double dt = m_path.sEnd() / 100, t = dt;
+        while (t < m_path.sEnd()) {
+            wp = m_path.evaluate(t);
+
+            glm::dvec2 vertex = transformed({ wp[0], wp[1] });
+            painter.drawLine(last.x, last.y, vertex.x, vertex.y);
+
+            last = vertex;
+            t += dt;
+        }
+
+        for (uint32_t i = 0; i < m_path.segments(); i++) {
+            wp = m_path[i];
+
+            glm::dvec2 vertex = transformed({ wp[0], wp[1] });
+
+            color.setBlueF(wp[2] / (2 * M_PI));
+            color.setBlueF(1.0 - wp[2] / (2 * M_PI));
+            painter.setPen(color);
+            painter.setBrush(color);
+
+            painter.drawEllipse(QPointF(vertex.x, vertex.y), 2, 2);
         }
     }
 
@@ -113,6 +174,37 @@ void PlannerWidget::drawForeground(QPainter& painter)
         painter.drawText(10, 20, text.c_str());
     }
 
+    if (planner != nullptr) {
+        painter.setPen(Qt::green);
+
+        glm::dvec2 start = { planner->start().x, planner->start().y }, goal = { planner->goal().x, planner->goal().y };
+
+        auto [axis, r] = planner->profile(planner->start(), planner->goal());
+
+        glm::dvec2 norm = { axis.y, -axis.x };
+        r *= m_scalar;
+
+        glm::dvec2 a = transformed(start), b = transformed(goal);
+        painter.drawLine(a.x, a.y, b.x, b.y);
+
+        glm::dvec2 vas = a + r * glm::dvec2(norm.x, -norm.y), vaf = a - r * glm::dvec2(norm.x, -norm.y);
+        glm::dvec2 vbs = b + r * glm::dvec2(norm.x, -norm.y), vbf = b - r * glm::dvec2(norm.x, -norm.y);
+
+        painter.drawLine(vas.x, vas.y, vaf.x, vaf.y);
+        painter.drawLine(vas.x, vas.y, vbs.x, vbs.y);
+        painter.drawLine(vaf.x, vaf.y, vbf.x, vbf.y);
+        painter.drawLine(vbs.x, vbs.y, vbf.x, vbf.y);
+
+        painter.setPen(Qt::magenta);
+
+        std::string text = "Iterations: " + std::to_string(planner->iterations());
+        if (planner->solved()) {
+            const auto& sol = planner->lastSolution();
+            text += ", solution cost: " + std::to_string(sol.second);
+        }
+
+        painter.drawText(50, 20, text.c_str());
+    }
 }
 
 void PlannerWidget::drawPolygon(uint32_t index, QPainter& painter, QColor color)

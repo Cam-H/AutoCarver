@@ -110,13 +110,53 @@
          <double>0.100000000000000</double>
         </property>
         <property name="maximum">
-         <double>1000000.000000000000000</double>
+         <double>100.000000000000000</double>
         </property>
         <property name="singleStep">
-         <double>1.000000000000000</double>
+         <double>0.500000000000000</double>
         </property>
         <property name="value">
          <double>1.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_10">
+        <property name="text">
+         <string>t</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QDoubleSpinBox" name="tField">
+        <property name="maximum">
+         <double>1.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.010000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_11">
+        <property name="text">
+         <string>Rate</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QSpinBox" name="rateField">
+        <property name="minimum">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>1000</number>
+        </property>
+        <property name="singleStep">
+         <number>5</number>
+        </property>
+        <property name="value">
+         <number>10</number>
         </property>
        </widget>
       </item>
@@ -322,6 +362,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="updatePathButton">
+        <property name="text">
+         <string>Update Path</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="followButton">
         <property name="text">
          <string>Follow</string>
@@ -364,6 +411,33 @@
         </property>
         <property name="checked">
          <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="showTreeButton">
+        <property name="text">
+         <string>Show Tree</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="showPathButton">
+        <property name="text">
+         <string>Show Path</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="autoButton">
+        <property name="text">
+         <string>Auto</string>
         </property>
        </widget>
       </item>

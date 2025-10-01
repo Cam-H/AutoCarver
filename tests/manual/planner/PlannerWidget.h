@@ -20,6 +20,7 @@ class Polygon;
 #include "renderer/PolygonWidget.h"
 #include "Configuration.h"
 #include "RRTPlanner.h"
+#include "geometry/curves/PiecewisePolyPath.h"
 
 class PlannerWidget : public PolygonWidget {
 Q_OBJECT
@@ -45,7 +46,11 @@ public:
 
     void setPlanner(const RRTPlanner* planner);
 
+    void setPath(const PiecewisePolyPath& path);
+
     void enableBounds(bool enable);
+    void enableTree(bool enable);
+    void enablePath(bool enable);
 
 protected:
 //    void paintEvent(QPaintEvent *event) override;
@@ -59,8 +64,11 @@ protected:
 private:
 
     const RRTPlanner* planner;
+    PiecewisePolyPath m_path;
 
     bool m_boundsEnable;
+    bool m_treeEnable;
+    bool m_pathEnable;
 
 };
 

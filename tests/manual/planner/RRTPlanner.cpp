@@ -5,186 +5,381 @@
 
 #include "RRTPlanner.h"
 
+#include <deque>
+#include <stack>
+
 #include "core/Timer.h"
 
+#include "geometry/primitives/Line.h"
 #include "geometry/poly/Polygon.h"
 #include "geometry/collision/Collision2D.h"
 
+#include "robot/Trajectory/Waypoint.h"
+
+uint32_t RRTPlanner::REBUILD_THRESHOLD = 20;
+
 RRTPlanner::RRTPlanner()
-    : min(-20.0, -20.0)
-    , max(std::numeric_limits<double>::lowest())
-    , width(1.0)
-    , height(1.0)
-    , step_size(2.0)
-    , goal_radius(3.0)
-    , max_iter(5000)
-    , iterations(0)
+    : m_tree(new KDTree2D(2, m_cloud, nanoflann::KDTreeSingleIndexAdaptorParams(10)))
+    , m_goal()
+    , m_min(-20.0, -20.0)
+    , m_max(std::numeric_limits<double>::lowest())
+    , m_width(1.0)
+    , m_height(1.0)
+    , m_radius(0.5 * std::hypot(1.0, 1.0))
+    , m_diagonal(0.5 * M_PI)
+    , m_stepSize(1.0)
+    , m_goalRadius(3.0)
+    , m_iterations(0)
+    , m_lastRebuild(0)
     , m_solved(false)
-    , m_terminus(0)
+    , m_terminus(std::numeric_limits<uint32_t>::max())
+    , m_offset(0)
+    , m_updateTracking(0, 0)
 {
+    m_rng.seed(std::random_device{}());
 
-    std::cout << "LIMS: " << min.x << " " << min.y << " | " << max.x << " " << max.y << "\n";
+    m_xDist = std::uniform_real_distribution<double>(m_min.x, m_max.x);
+    m_yDist = std::uniform_real_distribution<double>(m_min.y, m_max.y);
+}
 
-    rng.seed(std::random_device{}());
-
-    xDist = std::uniform_real_distribution<double>(min.x, max.x);
-    yDist = std::uniform_real_distribution<double>(min.y, max.y);
+RRTPlanner::~RRTPlanner()
+{
+    delete m_tree;
 }
 
 void RRTPlanner::updateBounds(const std::vector<Polygon>& env, double margin)
 {
-    min = { std::numeric_limits<double>::max(), std::numeric_limits<double>::max() };
-    max = { std::numeric_limits<double>::lowest(), std::numeric_limits<double>::lowest() };
+    m_min = { std::numeric_limits<double>::max(), std::numeric_limits<double>::max() };
+    m_max = { std::numeric_limits<double>::lowest(), std::numeric_limits<double>::lowest() };
 
     for (const Polygon& poly : env) {
         auto [xNear, xFar] = poly.xExtents();
-        if (xNear < min.x) min.x = xNear;
-        if (xFar > max.x) max.x = xFar;
+        if (xNear < m_min.x) m_min.x = xNear;
+        if (xFar > m_max.x) m_max.x = xFar;
 
         auto [yNear, yFar] = poly.yExtents();
-        if (yNear < min.y) min.y = yNear;
-        if (yFar > max.y) max.y = yFar;
+        if (yNear < m_min.y) m_min.y = yNear;
+        if (yFar > m_max.y) m_max.y = yFar;
     }
 
-    margin *= glm::length(max - min); // Scale margin to span
+    margin *= glm::length(m_max - m_min); // Scale margin to span
 
-    min -= margin;
-    max += margin;
+    m_min -= margin;
+    m_max += margin;
 
-    xDist = std::uniform_real_distribution<double>(min.x, max.x);
-    yDist = std::uniform_real_distribution<double>(min.y, max.y);
+    m_xDist = std::uniform_real_distribution<double>(m_min.x, m_max.x);
+    m_yDist = std::uniform_real_distribution<double>(m_min.y, m_max.y);
 }
 
-void RRTPlanner::setTargetDimensions(double width, double height)
+void RRTPlanner::setTargetDimensions(double targetWidth, double targetHeight)
 {
-    this->width = width;
-    this->height = height;
+    m_width = targetWidth;
+    m_height = targetHeight;
+    m_radius = 0.5 * std::hypot(m_width, m_height);
+
+    m_diagonal = atan2(m_height, m_width);
 }
 
 void RRTPlanner::reset()
 {
-    iterations = 0;
-    nodes.clear();
+    resetTree();
+    resetPath();
+}
+
+void RRTPlanner::resetTree()
+{
+    m_iterations = 0;
+
+    if (!m_cloud.pts.empty()) {
+        m_cloud.pts = { m_cloud.pts[0] };
+        m_tree->buildIndex();
+    }
+}
+void RRTPlanner::resetPath()
+{
+    m_solved = false;
+    m_terminus = std::numeric_limits<uint32_t>::max();
+    m_offset = 0;
+
+    m_updateTracking = { 0, 0 };
 }
 
 void RRTPlanner::setStart(const glm::dvec3& start)
 {
-    reset();
+    if (m_cloud.pts.empty()) {
+        m_cloud.pts = { Node(start) };
+        m_tree->buildIndex();
+    } else {
+        m_cloud.pts[0].location = start;
+        reset();
+    }
 
-    nodes = { Node({ start.x, start.y, 0.0 }) };
+    // TODO rebalance tree
 }
 void RRTPlanner::setGoal(const glm::dvec3& goal)
 {
-    reset();
+    m_goal = goal;
+    resetPath();
 
-    nodes = { nodes[0] };
-    this->goal = goal;
+    // Leverage existing tree to try and find a new path
+    double r = radius(m_iterations);
+    auto neighbors = near(goal, r);
+
+    for (uint32_t idx : neighbors) checkGoal(m_cloud.pts[idx]);
 }
 
-void RRTPlanner::solve(const std::vector<Polygon>& env) {
-    ScopedTimer timer("[RRTPlanner] Solution: Failed. Process");
+// Iterates maximumIterations times, or until a faster solution is discovered, whichever comes first.
+// Returns true if a path solution was discovered
+bool RRTPlanner::solve(const std::vector<Polygon>& env, uint32_t maximumIterations) {
+    ScopedTimer timer(m_solved ? "[RRTPlanner] Failed to find a better solution"
+        : "[RRTPlanner] Failed to find a solution");
 
-    while (iterations < max_iter) {
+    maximumIterations += m_iterations; // Perform up to maximumIterations on top of what has already been done
+    while (m_iterations < maximumIterations) {
         iterate(env);
 
-        iterations++;
-
         // Check goal
-        if (distance(nodes.back(), goal) < goal_radius) {
-            m_solved = true;
-            m_terminus = nodes.size() - 1;
-
-            timer.setMessage("[RRTPlanner] Solution: Goal reached at iteration: " + std::to_string(iterations) + ". Process");
-            break;
+        if (m_solved && m_terminus == m_cloud.pts.size() - 1) {
+            timer.setMessage("[RRTPlanner] Found a solution at iteration: " + std::to_string(m_iterations) + ". Cost: " + std::to_string(m_cloud.pts[m_terminus].cost));
+            return true;
         }
     }
+
+    return false;
 }
 
+// Tries to add a new node to the tree based on a random sample. Returns true if a node was successfully added
 bool RRTPlanner::iterate(const std::vector<Polygon>& env)
 {
+
+    m_iterations++;
+
     glm::dvec3 rand = sample();
     uint32_t neighbor = nearest(rand);
 
     // Determine direction of travel and position of new node
-    glm::dvec3 forward = glm::normalize(rand - nodes[neighbor].location);
-    glm::dvec3 next = nodes[neighbor].location + step_size * forward;
+    glm::dvec3 forward = glm::normalize(rand - m_cloud.pts[neighbor].location);
+    glm::dvec3 next = m_cloud.pts[neighbor].location + m_stepSize * forward;
 
     // Confirm new position does not result in collision with the environment
-    auto bounds = Polygon({ next.x, next.y }, width, height, next.z);
-//    std::cout << "xx\n";
-//    std::cout << ": ->" << free(env, bounds) << "\n";
-//    std::cout << ": ->" << free(env, x_nearest->location, x_new.location) << "\n";
+    auto bounds = Polygon({ next.x, next.y }, m_width, m_height, next.z);
 
-    if (!free(env, bounds) || !free(env, nodes[neighbor].location, next)) return false;
+    if (!free(env, bounds) || !free(env, m_cloud.pts[neighbor].location, next)) return false;
 
-    double r = radius(iterations);
-    std::cout << iterations << " | " << nodes.size() << " " << r << " " << (nodes.size() - 1) << "\n";
+    attach(env, next, neighbor);
 
-    // Find best parent
-    uint32_t parent = neighbor;
-    double cost = nodes[neighbor].cost + distance(nodes[neighbor], next);
-    for (const Node& node : nodes) {
-        double dist = distance(node, next);
-
-        if (dist < r) {
-            if (free(env, node.location, next) && node.cost + dist < cost) {
-                parent = &node - &nodes[0];
-                cost = node.cost + dist;
-            }
-        }
-    }
-
-    // Add node
-    nodes.emplace_back(next, cost, parent);
-    uint32_t index = nodes.size() - 1;
-
-    // Rewire neighbors
-    for (uint32_t i = 0; i < nodes.size(); i++) {
-        if (i == index) continue;
-
-        double dist = distance(nodes[i], nodes[index]);
-        if (dist < r) {
-            if (free(env, nodes[index].location, nodes[i].location) && nodes[index].cost + dist < nodes[i].cost) {
-                nodes[i].parent = index;
-                nodes[i].cost = nodes[index].cost + dist;
-            }
-        }
-    }
+    checkGoal(m_cloud.pts.back());
 
     return true;
 }
 
-glm::dvec3 RRTPlanner::start() const
+void RRTPlanner::attach(const std::vector<Polygon>& env, const glm::dvec3& next, uint32_t parent)
 {
-    assert(!nodes.empty());
-    return nodes[0].location;
+    double cost = m_cloud.pts[parent].cost + distance(m_cloud.pts[parent], next);
+    double r = radius(m_iterations);
+
+    auto neighbors = near(next, r);
+    std::vector<double> distances(neighbors.size());
+    for (uint32_t i = 0; i < distances.size(); i++) distances[i] = distance(m_cloud.pts[neighbors[i]], next);
+
+    // Find best parent
+    for (uint32_t i = 0; i < neighbors.size(); i++) {
+        double dist = m_cloud.pts[neighbors[i]].cost + distances[i];
+        if (dist < cost && free(env, m_cloud.pts[neighbors[i]].location, next)) {
+            parent = neighbors[i];
+            cost = dist;
+        }
+    }
+
+    // Add node to the best parent
+    addNode(next, cost, parent);
+    uint32_t index = m_cloud.pts.size() - 1;
+
+    // Rewire neighbors
+    for (uint32_t i = 0; i < neighbors.size(); i++) {
+        double dist = cost + distances[i];
+        if (dist < m_cloud.pts[neighbors[i]].cost && free(env, next, m_cloud.pts[neighbors[i]].location)) {
+            propagateCost(neighbors[i], dist - m_cloud.pts[neighbors[i]].cost);
+            replaceParent(neighbors[i], index);
+        }
+    }
 }
 
+void RRTPlanner::addNode(const glm::dvec3& vertex, double cost, uint32_t parent)
+{
+    m_cloud.pts[parent].children.emplace_back(m_cloud.pts.size());
+    m_cloud.pts.emplace_back(vertex, cost, parent);
+    if (m_lastRebuild++ > REBUILD_THRESHOLD) {
+        m_tree->buildIndex();
+        m_lastRebuild = 0;
+    }
+}
+
+void RRTPlanner::replaceParent(uint32_t index, uint32_t newParent)
+{
+    // Remove link from old parent
+    uint32_t parent = m_cloud.pts[index].parent;
+    auto it = std::find(m_cloud.pts[parent].children.begin(), m_cloud.pts[parent].children.end(), index);
+    assert(it != m_cloud.pts[parent].children.end());
+    m_cloud.pts[parent].children.erase(it);
+
+    // Create link to and from new parent
+    m_cloud.pts[index].parent = newParent;
+    m_cloud.pts[newParent].children.emplace_back(index);
+}
+
+// Applies delta to costs of specified node (by index) and all of its children
+void RRTPlanner::propagateCost(uint32_t index, double delta)
+{
+    std::deque<uint32_t> nodes = { index };
+    while (!nodes.empty()) {
+        uint32_t current = nodes.front();
+        nodes.pop_front();
+
+        for (uint32_t child : m_cloud.pts[current].children) nodes.emplace_back(child);
+        m_cloud.pts[current].cost += delta;
+    }
+}
+
+// Update path if the specified node is a faster solution
+void RRTPlanner::checkGoal(Node& node)
+{
+    double offset = distance(node, m_goal);
+    if (offset < m_goalRadius) {
+        if (!m_solved || m_cloud.pts[m_terminus].cost + m_offset > node.cost + offset) {
+            m_terminus = &node - &m_cloud.pts[0];
+            m_offset = offset;
+            m_solved = true;
+        }
+    }
+}
+
+glm::dvec3 RRTPlanner::start() const
+{
+    assert(!m_cloud.pts.empty());
+    return m_cloud.pts[0].location;
+}
+
+const glm::dvec3& RRTPlanner::goal() const
+{
+    return m_goal;
+}
+
+double RRTPlanner::width() const
+{
+    return m_width;
+}
+double RRTPlanner::height() const
+{
+    return m_height;
+}
+double RRTPlanner::radius() const
+{
+    return m_radius;
+}
+
+double RRTPlanner::diagonal() const
+{
+    return m_diagonal;
+}
+
+const std::vector<Node>& RRTPlanner::nodes() const
+{
+    return m_cloud.pts;
+}
+
+bool RRTPlanner::solved() const
+{
+    return m_solved && m_terminus != std::numeric_limits<uint32_t>::max();
+}
+
+uint32_t RRTPlanner::terminus() const
+{
+    return m_terminus;
+}
+
+bool RRTPlanner::solutionImproved() const
+{
+    return m_solved
+        && (m_updateTracking.first < m_terminus
+        || m_updateTracking.second > m_cloud.pts[m_terminus].cost + 1e-12);
+}
+
+void RRTPlanner::clearUpdateFlag()
+{
+    if (m_solved) m_updateTracking = { m_terminus, m_cloud.pts[m_terminus].cost };
+}
+
+uint32_t RRTPlanner::iterations() const
+{
+    return m_iterations;
+}
+
+const std::pair<uint32_t, double>& RRTPlanner::lastSolution() const
+{
+    return m_updateTracking;
+}
+
+// Returns the locations of all nodes along the optimal path discovered, from the start to the goal
 std::vector<glm::dvec3> RRTPlanner::path() const
 {
     if (!m_solved) return {};
 
-    std::cout << nodes.size() << " " << m_terminus << " RV PATH\n";
-
-//    for (const Node& node : nodes) {
-//        std::cout << "N" << (&node - &nodes[0]) << ": " << node.parent << " " << (node.parent - &nodes[0]) << " " << node.cost << "\n";
-//    }
-
     uint32_t index = m_terminus;
     std::vector<glm::dvec3> vertices;
-    glm::dvec3 last = nodes[index].location;
 
-    do {
-        std::cout << index << " " << nodes[index].parent << " " << vertices.size() << " |" << glm::length(last - nodes[index].location) << "\n";
-        last = nodes[index].location;
+    while (index != std::numeric_limits<uint32_t>::max()) {
+        vertices.emplace_back(m_cloud.pts[index].location);
+        index = m_cloud.pts[index].parent;
 
-        vertices.emplace_back(nodes[index].location);
-        index = nodes[index].parent;
-    } while (index != std::numeric_limits<uint32_t>::max());
-
-    std::cout << "br\n";
+    }
 
     std::reverse(vertices.begin(), vertices.end());
+    vertices.emplace_back(m_goal);
+
+    return vertices;
+}
+
+std::vector<Waypoint> RRTPlanner::waypoints() const
+{
+    return waypoints(path());
+}
+
+std::vector<Waypoint> RRTPlanner::waypoints(const std::vector<Polygon>& env) const
+{
+    return waypoints(pruned(env, path()));
+}
+
+std::vector<Waypoint> RRTPlanner::waypoints(const std::vector<glm::dvec3>& path)
+{
+    std::vector<Waypoint> wps(path.size());
+    for (uint32_t i = 0; i < wps.size(); i++) {
+        wps[i] = Waypoint({ path[i].x, path[i].y, path[i].z }, true);
+    }
+
+    return wps;
+}
+
+std::vector<glm::dvec3> RRTPlanner::pruned(const std::vector<Polygon>& env, const std::vector<glm::dvec3>& path) const
+{
+    if (path.empty()) return {};
+
+    std::vector<glm::dvec3> vertices = { path[0] };
+
+    std::stack<uint32_t> turns;
+    turns.emplace(path.size() - 1);
+
+    uint32_t current = 0;
+
+    while (!turns.empty()) {
+        if (turns.top() == current + 1                        // Section can not be further subdivided
+            || free(env, path[current], path[turns.top()])) { // Free path - Intermediate points are unnecessary
+            vertices.emplace_back(path[turns.top()]);
+            current = turns.top();
+            turns.pop();
+        } else turns.emplace(0.5 * (current + turns.top()));
+    }
+
     return vertices;
 }
 
@@ -193,23 +388,22 @@ glm::dvec3 RRTPlanner::sample()
     static std::uniform_real_distribution<double> tDist(0.0, 2 * M_PI);
 
     return {
-        xDist(rng),
-        yDist(rng),
-        tDist(rng)
+        m_xDist(m_rng),
+        m_yDist(m_rng),
+        tDist(m_rng)
     };
 }
 
 double RRTPlanner::distance(const Node& a, const glm::dvec3& b)
 {
-    // Ignore orientation for the distance calculation
-    return glm::length(glm::dvec2(a.location.x - b.x, a.location.y - b.y));
+//    glm::dvec2 delta = { a.location.x - b.x, a.location.y - b.y };
+    auto delta = a.location - b;
+    return glm::dot(delta, delta);
 }
 
 // Returns true if bounds does not collide with any polygons in env
-bool RRTPlanner::free(const std::vector<Polygon>& env, const Polygon& bounds)
+bool RRTPlanner::free(const std::vector<Polygon>& env, const Polygon& bounds) const
 {
-//    return true;
-
     for (const Polygon& poly : env) {
         if (Collision2D::test(poly, bounds)) return false;
     }
@@ -218,35 +412,90 @@ bool RRTPlanner::free(const std::vector<Polygon>& env, const Polygon& bounds)
 }
 
 // Returns true if there is no intersection along the path (start to end)
-bool RRTPlanner::free(const std::vector<Polygon>& env, const glm::dvec3& start, const glm::dvec3& end)
+bool RRTPlanner::free(const std::vector<Polygon>& env, const glm::dvec3& start, const glm::dvec3& end) const
 {
-    return true;
+    // TODO NOTE: Collision check may introduce false negatives (Profile is good but a new polygon would need to be created to provide a perfect test)
+    auto [axis, r] = profile(start, end);
+    glm::dvec2 norm = { axis.y, -axis.x };
 
-    // TODO check externals instead
+    Line top({ start.x, start.y }, { end.x, end.y }), bot = top;
+    top.translate(norm * r);
+    bot.translate(-norm * r);
+
     for (const Polygon& poly : env) {
-        if (Collision2D::test(poly, start, end)) return false;
+        if (Collision2D::test(poly, top) || Collision2D::test(poly, bot)) return false;
     }
 
     return true;
 }
 
-uint32_t RRTPlanner::nearest(const glm::dvec3& position) {
-    uint32_t best = 0;
+std::tuple<glm::dvec2, double> RRTPlanner::profile(const glm::dvec3& start, const glm::dvec3& end) const
+{
+    glm::dvec2 delta = { end.x - start.x, end.y - start.y };
 
-    double cost = std::numeric_limits<double>::max();
-    for (const Node& node : nodes) {
-        glm::dvec3 delta = node.location - position;
-        double dist = glm::dot(delta, delta);
+    double sAngle = start.z - atan2(delta.y, delta.x);
+    double diff = end.z - start.z, mod = 1.0;
 
-        if (dist < cost) {
-            best = &node - &nodes[0];
-            cost = dist;
+    if (std::abs(diff) < M_PI) {
+        double gAngle = sAngle + diff, ss = sin(sAngle), sg = sin(sAngle + diff);
+        if ((ss * sg > 0.0) == (tan(sAngle) * tan(gAngle) > 0.0)) {
+            std::array<double, 4> set = {
+                    std::abs(sin(sAngle - m_diagonal)),
+                    std::abs(sin(sAngle + m_diagonal)),
+                    std::abs(sin(gAngle - m_diagonal)),
+                    std::abs(sin(gAngle + m_diagonal))
+            };
+
+            auto it = std::max_element(set.begin(), set.end(), [](double lhs, double rhs){
+                return lhs < rhs;
+            });
+
+            mod = *it;
         }
     }
-    return best;
+
+    return { glm::normalize(delta), m_radius * mod };
 }
 
+uint32_t RRTPlanner::nearest(const glm::dvec3& position) const
+{
+    double query[2] = { position.x, position.y }, distance;
+    size_t index;
+
+    nanoflann::KNNResultSet<double> set(1);
+    set.init(&index, &distance);
+
+    m_tree->findNeighbors(set, query, nanoflann::SearchParameters(10));
+    return index;
+}
+
+std::vector<uint32_t> RRTPlanner::near(const glm::dvec3& position, double radius) const
+{
+    double query[2] = { position.x, position.y };
+    std::vector<nanoflann::ResultItem<uint32_t, double>> matches;
+
+    nanoflann::SearchParameters params;
+    const size_t nMatches = m_tree->radiusSearch(query, radius * radius, matches, params);
+
+    std::vector<uint32_t> neighbors;
+    neighbors.reserve(matches.size());
+
+    for (const auto& match : matches) neighbors.emplace_back(match.first);
+
+    return neighbors;
+}
+
+// Shrinks with iterations (theory: ~O((log n / n)^(1/d)))
 double RRTPlanner::radius(int iteration) {
-    // Shrinks with iterations (theory: ~O((log n / n)^(1/d)))
-    return step_size * 5.0 / std::sqrt(iteration + 1);
+    return m_stepSize * 5.0 / sqrt(log(iteration + 1) / iteration);
+}
+
+void RRTPlanner::print() const
+{
+    std::cout << "[RRTPlanner] nodes: " << m_cloud.pts.size() << ", iterations: " << m_iterations << ", solved: "
+        << m_solved << "\n";
+
+    if (m_solved) {
+        std::cout << "Solution: " << m_terminus << ", cost: " << m_cloud.pts[m_terminus].cost << "\n";
+    }
 }

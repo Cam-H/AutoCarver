@@ -12,7 +12,7 @@ public:
 
     TOPP(const PiecewisePolyPath& path, uint32_t N);
 
-    void compute(const std::vector<double>& vLims, const std::vector<double>& aLims);
+    bool compute(const std::vector<double>& vLims, const std::vector<double>& aLims);
 
     [[nodiscard]] std::vector<double> sVelocity() const;
     [[nodiscard]] std::vector<double> timestep() const;

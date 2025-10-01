@@ -4,6 +4,8 @@
 
 #include "TOPPTrajectory.h"
 
+#include <utility>
+
 #include "core/Functions.h"
 #include "TOPP.h"
 
@@ -15,7 +17,8 @@ TOPPTrajectory::TOPPTrajectory(const std::vector<Waypoint>& waypoints)
 {
     if (!waypoints.empty()) {
         m_dof = waypoints[0].values.size();
-        resetLimits();
+        m_velocityLimits = std::vector<double>(m_dof, std::numeric_limits<double>::max());
+        m_accelerationLimits = std::vector<double>(m_dof, std::numeric_limits<double>::max());
 
         m_inDg = waypoints[0].inDg;
     }
@@ -39,7 +42,7 @@ void TOPPTrajectory::update()
 
     m_ds = m_path.sEnd() / (500 - 1);
     TOPP solver(m_path, 500);
-    solver.compute(m_velocityLimits, m_accelerationLimits);
+    m_valid &= solver.compute(m_velocityLimits, m_accelerationLimits);
 
     m_t = solver.timestep();
 

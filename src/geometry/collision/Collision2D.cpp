@@ -5,18 +5,27 @@
 #include "Collision2D.h"
 
 #include "geometry/primitives/Circle.h"
+#include "geometry/primitives/Line.h"
 #include "geometry/poly/Polygon.h"
 
-bool Collision2D::test(const Circle& bodyA, const glm::dvec2& a, const glm::dvec2& b)
+bool Collision2D::test(const Circle& bodyA, const Line& bodyB)
 {
-    glm::dvec2 axis = glm::normalize(b - a);
+    glm::dvec2 axis = glm::normalize(bodyB.second - bodyB.first);
     axis = { axis.y, -axis.x };
 
-    return std::abs(glm::dot(axis, bodyA.center - a)) < bodyA.radius;
+    return std::abs(glm::dot(axis, bodyA.center - bodyB.first)) < bodyA.radius;
 }
-bool Collision2D::test(const Polygon& bodyA, const glm::dvec2& a, const glm::dvec2& b)
+bool Collision2D::test(const Polygon& bodyA, const Line& bodyB)
 {
-    return test(bodyA.bounds(), a, b);
+    if (test(bodyA.bounds(), bodyB)) {
+        try {
+            return gjkTest(bodyA, bodyB);
+        } catch (std::exception& e) {
+            std::cout << "\033[93m[Collision2D] Failed to test collision of polygon and line\n" << e.what() << "\033[0m\n";
+        }
+    }
+
+    return false;
 }
 
 bool Collision2D::test(const Circle& bodyA, const Circle& bodyB)

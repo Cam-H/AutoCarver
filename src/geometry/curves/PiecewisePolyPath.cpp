@@ -49,6 +49,12 @@ PiecewisePolyPath::PiecewisePolyPath(const std::vector<Waypoint>& waypoints)
     }
 }
 
+// Evaluates the path at the specified breakpoint (by index)
+std::vector<double> PiecewisePolyPath::operator[](uint32_t idx) const
+{
+    assert(idx < m_breakpoints.size());
+    return evaluate(m_breakpoints[idx]);
+}
 
 uint32_t PiecewisePolyPath::order() const
 {

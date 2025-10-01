@@ -34,7 +34,7 @@ void TOPP::discretize(const PiecewisePolyPath& path)
     }
 }
 
-void TOPP::compute(const std::vector<double>& vLims, const std::vector<double>& aLims)
+bool TOPP::compute(const std::vector<double>& vLims, const std::vector<double>& aLims)
 {
     assert(m_order == vLims.size());
     assert(m_order == aLims.size());
@@ -42,18 +42,30 @@ void TOPP::compute(const std::vector<double>& vLims, const std::vector<double>& 
     forwardPass(vLims, aLims);
     reversePass(aLims);
 
-    uint32_t N = m_path.size();
+    uint32_t N = m_path.size(), reduc = 0;
     m_sv = std::vector<double>(N);
-    m_t = std::vector<double>(N);
 
     // Merge results from forward and reverse pass to obtain the maximum feasible velocity profile
-    for (size_t i = 0; i < N; ++i) m_sv[i] = std::min(m_fwd[i], m_rev[i]);
+    m_sv[0] = m_sv.back() = 0;
+    for (uint32_t i = 1; i < N - 1; i++) {
+        m_sv[i - reduc] = std::min(m_fwd[i], m_rev[i]);
+        if (m_sv[i - reduc] <= 1e-12) {
+            reduc++;
+        }
+    }
+
+    m_sv.erase(m_sv.end() - reduc, m_sv.end());
+    m_sv.back() = 0;
+
+    m_t = std::vector<double>(m_sv.size());
 
     // Integrate time
     m_t[0] = 0.0;
-    for (int i = 1; i < N; ++i) {
+    for (int i = 1; i < m_sv.size(); ++i) {
         m_t[i] = m_t[i - 1] + (2 * m_ds / (m_sv[i - 1] + m_sv[i] + 1e-6));
     }
+
+    return reduc == 0;
 }
 
 void TOPP::forwardPass(const std::vector<double>& vLims, const std::vector<double>& aLims)
@@ -86,7 +98,7 @@ double TOPP::maxPathVelocity(const PathVertex& vertex, const std::vector<double>
 {
     double vel = std::numeric_limits<double>::max();
     for (uint32_t i = 0; i <  vLims.size(); i++) {
-        if (std::abs(vertex.q_dot[i]) > 1e-8) {
+        if (std::abs(vertex.q_dot[i]) > 1e-12) {
             vel = std::min(vel, vLims[i] / std::abs(vertex.q_dot[i]));
         }
     }
@@ -98,7 +110,7 @@ double TOPP::maxPathAcceleration(const PathVertex& vertex, double sv, const std:
 {
     double accel = std::numeric_limits<double>::max();
     for (uint32_t i = 0; i < aLims.size(); i++) {
-        if (std::abs(vertex.q_dot[i]) > 1e-8) {
+        if (std::abs(vertex.q_dot[i]) > 1e-12) {
             accel = std::min(accel, (aLims[i] - vertex.q_ddot[i] * sv*sv) / vertex.q_dot[i]);
         }
     }
@@ -110,7 +122,7 @@ double TOPP::minPathAcceleration(const PathVertex& vertex, double sv, const std:
 {
     double accel = std::numeric_limits<double>::lowest();
     for (uint32_t i = 0; i < aLims.size(); i++) {
-        if (std::abs(vertex.q_dot[i]) > 1e-8) {
+        if (std::abs(vertex.q_dot[i]) > 1e-12) {
             accel = std::max(accel, (-aLims[i] - vertex.q_ddot[i] * sv*sv) / vertex.q_dot[i]);
         }
     }

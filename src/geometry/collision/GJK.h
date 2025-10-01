@@ -40,7 +40,7 @@ public:
 
 
     template<class T1, class T2>
-    static Simplex<2> gjk2D(const T1& bodyA, const T2& bodyB, const std::pair<uint32_t, uint32_t>& idx)
+    static Simplex<2> solve2D(const T1& bodyA, const T2& bodyB, const std::pair<uint32_t, uint32_t>& idx)
     {
         if (!bodyA.isValid() || !bodyB.isValid()) throw std::runtime_error("[GJK2D] Invalid bodies. Can not calculate");
 
@@ -66,7 +66,7 @@ public:
     }
 
     template<class T1, class T2>
-    static Simplex<3> gjk3D(const T1& bodyA, const T2& bodyB, const std::pair<uint32_t, uint32_t>& idx)
+    static Simplex<3> solve3D(const T1& bodyA, const T2& bodyB, const std::pair<uint32_t, uint32_t>& idx)
     {
         if (!bodyA.isValid() || !bodyB.isValid()) throw std::runtime_error("[GJK3D] Invalid bodies. Can not calculate");
 
@@ -92,7 +92,7 @@ public:
     }
 
     template<class T1, class T2>
-    static Simplex<3> gjk3D(const T1& bodyA, const T2& bodyB, const glm::dmat4& transform, const std::pair<uint32_t, uint32_t>& idx)
+    static Simplex<3> solve3D(const T1& bodyA, const T2& bodyB, const glm::dmat4& transform, const std::pair<uint32_t, uint32_t>& idx)
     {
         if (!bodyA.isValid() || !bodyB.isValid()) throw std::runtime_error("[GJK3D] Invalid bodies. Can not calculate");
 
