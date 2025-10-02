@@ -20,7 +20,9 @@ uint32_t RRTPlanner::REBUILD_THRESHOLD = 20;
 
 RRTPlanner::RRTPlanner()
     : m_tree(new KDTree2D(2, m_cloud, nanoflann::KDTreeSingleIndexAdaptorParams(10)))
+    , m_start()
     , m_goal()
+    , m_first(0)
     , m_min(-20.0, -20.0)
     , m_max(std::numeric_limits<double>::lowest())
     , m_width(1.0)
@@ -40,6 +42,8 @@ RRTPlanner::RRTPlanner()
 
     m_xDist = std::uniform_real_distribution<double>(m_min.x, m_max.x);
     m_yDist = std::uniform_real_distribution<double>(m_min.y, m_max.y);
+
+    m_cloud.pts = { Node(m_start) };
 }
 
 RRTPlanner::~RRTPlanner()
@@ -90,10 +94,10 @@ void RRTPlanner::resetTree()
 {
     m_iterations = 0;
 
-    if (!m_cloud.pts.empty()) {
-        m_cloud.pts = { m_cloud.pts[0] };
-        m_tree->buildIndex();
-    }
+    m_cloud.pts = { Node(m_start) };
+    m_first = 0;
+
+    m_tree->buildIndex();
 }
 void RRTPlanner::resetPath()
 {
@@ -104,18 +108,127 @@ void RRTPlanner::resetPath()
     m_updateTracking = { 0, 0 };
 }
 
+// Sets the start position for path planning. The tree is reset when called
 void RRTPlanner::setStart(const glm::dvec3& start)
 {
-    if (m_cloud.pts.empty()) {
-        m_cloud.pts = { Node(start) };
-        m_tree->buildIndex();
-    } else {
-        m_cloud.pts[0].location = start;
-        reset();
+    m_start = start;
+    reset();
+}
+
+// Sets the start position for path planning. The existing tree is preserved. Fails, returning false, when
+// the tree can not be modified. Such failure states include: intersection at start position, unreachable start positions (from the perspective of the tree)
+bool RRTPlanner::setStart(const std::vector<Polygon>& env, const glm::dvec3& start)
+{
+    // Confirm no intersections on new position
+    auto bounds = Polygon({ start.x, start.y }, m_width, m_height, start.z);
+    if (!free(env, bounds)) return false;
+
+    uint32_t newRoot = nearest(start);
+    if (m_first != newRoot) { // Proceed if a new root is required
+
+        // Confirm new position is accessible
+        if (!free(env, m_cloud.pts[newRoot].location, start)) return false;
+
+        m_start = start;
+        m_first = newRoot;
+
+        reroot(env);
     }
 
-    // TODO rebalance tree
+    m_tree->buildIndex();
+
+    return true;
 }
+
+void RRTPlanner::reroot(const std::vector<Polygon>& env)
+{
+
+    uint32_t prev = m_first, target = m_cloud.pts[m_first].parent;
+
+    // Remove old parent-child relationship to root
+    removeChild(target, m_first);
+    m_cloud.pts[m_first].parent = std::numeric_limits<uint32_t>::max();
+
+    // Crawl to the old root, inverting parent-child relationships to grow from the new root
+    while (m_cloud.pts[target].parent != std::numeric_limits<uint32_t>::max()) {
+        uint32_t next = m_cloud.pts[target].parent;
+        replaceParent(target, prev);
+
+        prev = target;
+        target = next;
+    }
+
+    // Connect old root to the chain
+    m_cloud.pts[prev].children.emplace_back(target);
+    m_cloud.pts[target].parent = prev;
+
+    updateCosts();
+}
+
+// From the resultant cost [from root] at each node, calculate and overwrite with only the cost from the parent
+//void RRTPlanner::propagateStepCost()
+//{
+//    std::deque<uint32_t> nodes;
+//    for (uint32_t child : m_cloud.pts[m_first].children) nodes.emplace_back(child);
+//
+//    std::vector<double> costs(m_cloud.pts.size());
+//    costs[m_first] = 0;
+//
+//    while (!nodes.empty()) {
+//        uint32_t current = nodes.front();
+//        nodes.pop_front();
+//
+//        costs[current] = m_cloud.pts[m_first].cost;
+//        m_cloud.pts[m_first].cost -= costs[m_cloud.pts[current].parent];
+//
+//        for (uint32_t child : m_cloud.pts[current].children) nodes.emplace_back(child);
+//    }
+//}
+//
+//// Update costs after a reroot
+//void RRTPlanner::propagateCost()
+//{
+//
+//    // Store index and cost to travel to parent [from root] for each node
+//    std::deque<std::pair<uint32_t, double>> nodes = {
+//            { m_first, distance(m_cloud.pts[m_first], m_start) }
+//    };
+//
+//    // Update costs for all nodes
+//    while (!nodes.empty()) {
+//        auto current = nodes.front();
+//        nodes.pop_front();
+//
+//        m_cloud.pts[current.first].cost += current.second;
+//
+//        for (uint32_t child : m_cloud.pts[current.first].children) {
+//            nodes.emplace_back(child, m_cloud.pts[child].cost);
+//
+//            // Determine cost of travel between nodes (Would be negative for inverted child-parent links)
+//            double dist = std::abs(current.second - m_cloud.pts[child].cost);
+//            m_cloud.pts[child].cost = m_cloud.pts[current.first].cost + dist;
+//        }
+//    }
+//}
+
+void RRTPlanner::updateCosts()
+{
+    std::deque<uint32_t> nodes;
+    for (uint32_t child : m_cloud.pts[m_first].children) nodes.emplace_back(child);
+
+    m_cloud.pts[m_first].cost = distance(m_cloud.pts[m_first], m_start);
+
+    while (!nodes.empty()) {
+        uint32_t parent = m_cloud.pts[nodes.front()].parent;
+        m_cloud.pts[nodes.front()].cost = m_cloud.pts[parent].cost
+                + distance(m_cloud.pts[parent], m_cloud.pts[nodes.front()]);
+
+        for (uint32_t child : m_cloud.pts[nodes.front()].children) nodes.emplace_back(child);
+
+        nodes.pop_front();
+    }
+}
+
 void RRTPlanner::setGoal(const glm::dvec3& goal)
 {
     m_goal = goal;
@@ -217,15 +330,19 @@ void RRTPlanner::addNode(const glm::dvec3& vertex, double cost, uint32_t parent)
 
 void RRTPlanner::replaceParent(uint32_t index, uint32_t newParent)
 {
-    // Remove link from old parent
-    uint32_t parent = m_cloud.pts[index].parent;
-    auto it = std::find(m_cloud.pts[parent].children.begin(), m_cloud.pts[parent].children.end(), index);
-    assert(it != m_cloud.pts[parent].children.end());
-    m_cloud.pts[parent].children.erase(it);
+    removeChild(m_cloud.pts[index].parent, index);
 
     // Create link to and from new parent
     m_cloud.pts[index].parent = newParent;
     m_cloud.pts[newParent].children.emplace_back(index);
+}
+
+// Remove link from old parent
+void RRTPlanner::removeChild(uint32_t parent, uint32_t child)
+{
+    auto it = std::find(m_cloud.pts[parent].children.begin(), m_cloud.pts[parent].children.end(), child);
+    assert(it != m_cloud.pts[parent].children.end());
+    m_cloud.pts[parent].children.erase(it);
 }
 
 // Applies delta to costs of specified node (by index) and all of its children
@@ -254,10 +371,9 @@ void RRTPlanner::checkGoal(Node& node)
     }
 }
 
-glm::dvec3 RRTPlanner::start() const
+const glm::dvec3& RRTPlanner::start() const
 {
-    assert(!m_cloud.pts.empty());
-    return m_cloud.pts[0].location;
+    return m_start;
 }
 
 const glm::dvec3& RRTPlanner::goal() const
@@ -334,6 +450,7 @@ std::vector<glm::dvec3> RRTPlanner::path() const
 
     }
 
+    if (m_first != 0) vertices.emplace_back(m_start);
     std::reverse(vertices.begin(), vertices.end());
     vertices.emplace_back(m_goal);
 

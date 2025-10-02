@@ -66,6 +66,8 @@ public:
     void setTargetDimensions(double targetWidth, double targetHeight);
 
     void setStart(const glm::dvec3& start);
+    bool setStart(const std::vector<Polygon>& env, const glm::dvec3& start);
+
     void setGoal(const glm::dvec3& goal);
 
     void reset();
@@ -76,7 +78,7 @@ public:
 
     void clearUpdateFlag();
 
-    [[nodiscard]] glm::dvec3 start() const;
+    [[nodiscard]] const glm::dvec3& start() const;
     [[nodiscard]] const glm::dvec3& goal() const;
 
     [[nodiscard]] double width() const;
@@ -108,9 +110,18 @@ private:
     void resetTree();
     void resetPath();
 
+    void reroot(const std::vector<Polygon>& env);
+
+//    void propagateStepCost();
+//    void propagateCost();
+
+    void updateCosts();
+
     void attach(const std::vector<Polygon>& env, const glm::dvec3& next, uint32_t parent);
     void addNode(const glm::dvec3& vertex, double cost, uint32_t parent);
+
     void replaceParent(uint32_t index, uint32_t newParent);
+    void removeChild(uint32_t parent, uint32_t child);
 
     void propagateCost(uint32_t index, double delta);
 
@@ -140,7 +151,10 @@ private:
     NodeCloud m_cloud;
     KDTree2D* m_tree;
 
+    glm::dvec3 m_start;
     glm::dvec3 m_goal;
+
+    uint32_t m_first; // Index of the start node (Usually 0 but can be different if start position is changed)
 
     glm::dvec2 m_min, m_max;
 

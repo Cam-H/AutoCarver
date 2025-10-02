@@ -137,9 +137,11 @@ void updateStart()
     rmTraj();
 
     updateStartFields();
-
-    planner.setStart(config.start);
     displayWidget->updateStart(config.start, config.width, config.height);
+
+    planner.setStart(config.polygons, config.start);
+    if (planner.solved()) updatePath();
+
     displayWidget->update();
 }
 
