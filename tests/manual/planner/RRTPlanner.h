@@ -22,13 +22,16 @@ struct Node {
     Node(const glm::dvec3& location, double cost, uint32_t parent)
             : location(location)
             , cost(cost)
-            , parent(parent) {}
+            , parent(parent)
+            , frontier(std::numeric_limits<uint16_t>::max()){}
 
     glm::dvec3 location;
 
     double cost;
     uint32_t parent; // Index of parent node
     std::vector<uint32_t> children; // Indices of child nodes
+
+    uint16_t frontier; // Index of entry in frontier node list (= MAX if not a frontier node)
 };
 
 struct NodeCloud {
@@ -112,9 +115,6 @@ private:
 
     void reroot(const std::vector<Polygon>& env);
 
-//    void propagateStepCost();
-//    void propagateCost();
-
     void updateCosts();
 
     void attach(const std::vector<Polygon>& env, const glm::dvec3& next, uint32_t parent);
@@ -127,10 +127,16 @@ private:
 
     void checkGoal(Node& node);
 
+    bool tryFrontierInsertion(const std::vector<uint32_t>& set, const std::vector<double>& distances);
+    void sortFrontier();
+
+    [[nodiscard]] uint32_t selectFrontier();
+
     [[nodiscard]] std::vector<glm::dvec3> pruned(const std::vector<Polygon>& env, const std::vector<glm::dvec3>& path) const;
     static std::vector<Waypoint> waypoints(const std::vector<glm::dvec3>& path);
 
-    [[nodiscard]] glm::dvec3 sample();
+    [[nodiscard]] std::tuple<uint32_t, glm::dvec3> sample();
+    [[nodiscard]] uint32_t selectParent(const glm::dvec3& position);
 
     [[nodiscard]] static inline double distance(const Node& a, const Node& b) { return distance(a, b.location); }
     [[nodiscard]] static double distance(const Node& a, const glm::dvec3& b);
@@ -145,6 +151,9 @@ private:
     [[nodiscard]] double radius(int iteration);
 
     static uint32_t REBUILD_THRESHOLD;
+
+    static double EXPLORATION_BIAS;
+    static const uint16_t FRONTIER_NODE_COUNT = 10;
 
 private:
 
@@ -169,9 +178,14 @@ private:
 
     uint32_t m_lastRebuild;
 
+    std::array<std::pair<uint32_t, double>, FRONTIER_NODE_COUNT> m_frontier;
+
     std::mt19937 m_rng;
+    std::uniform_real_distribution<double> m_dist01;
+
     std::uniform_real_distribution<double> m_xDist;
     std::uniform_real_distribution<double> m_yDist;
+    std::uniform_real_distribution<double> m_tDist;
 
     bool m_solved; // Whether a path was found
     uint32_t m_terminus; // Index of the end of the best path discovered

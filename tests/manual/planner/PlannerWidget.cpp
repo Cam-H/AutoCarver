@@ -124,8 +124,9 @@ void PlannerWidget::drawForeground(QPainter& painter)
             glm::dvec3 start = node.parent == std::numeric_limits<uint32_t>::max()
                                ? planner->start() : nodes[node.parent].location;
 
-            color.setRedF((node.location.z - start.z) / (2 * M_PI)); // Red  - Change in rotation
-            color.setBlueF(start.z / (2 * M_PI));                    // Blue - Initial rotation
+            float cc = start.z / (2 * M_PI);
+            color.setRedF(cc);
+            color.setBlueF(cc);
             painter.setPen(color);
 
             glm::dvec2 a = transformed({ start.x, start.y }), b = transformed({ node.location.x, node.location.y });
@@ -195,7 +196,7 @@ void PlannerWidget::drawForeground(QPainter& painter)
         painter.drawLine(vaf.x, vaf.y, vbf.x, vbf.y);
         painter.drawLine(vbs.x, vbs.y, vbf.x, vbf.y);
 
-        painter.setPen(Qt::magenta);
+        painter.setPen(Qt::black);
 
         std::string text = "Iterations: " + std::to_string(planner->iterations());
         if (planner->solved()) {

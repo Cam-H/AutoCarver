@@ -301,7 +301,7 @@ int main(int argc, char *argv[])
 
     solveButton = window->findChild<QPushButton*>("solveButton");
     QObject::connect(solveButton, &QPushButton::clicked, [&]() {
-        planner.solve(config.polygons, 5000);
+        planner.solve(config.polygons, 20000);
         displayWidget->update();
 
         if (planner.solved()) {

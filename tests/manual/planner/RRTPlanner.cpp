@@ -17,6 +17,7 @@
 #include "robot/Trajectory/Waypoint.h"
 
 uint32_t RRTPlanner::REBUILD_THRESHOLD = 20;
+double RRTPlanner::EXPLORATION_BIAS = 0.10;
 
 RRTPlanner::RRTPlanner()
     : m_tree(new KDTree2D(2, m_cloud, nanoflann::KDTreeSingleIndexAdaptorParams(10)))
@@ -37,13 +38,15 @@ RRTPlanner::RRTPlanner()
     , m_terminus(std::numeric_limits<uint32_t>::max())
     , m_offset(0)
     , m_updateTracking(0, 0)
+    , m_dist01(std::uniform_real_distribution<double>(0.0, 1.0))
+    , m_xDist(std::uniform_real_distribution<double>(m_min.x, m_max.x))
+    , m_yDist(std::uniform_real_distribution<double>(m_min.y, m_max.y))
+    , m_tDist(std::uniform_real_distribution<double>(0.0, 2.0 * M_PI))
 {
     m_rng.seed(std::random_device{}());
 
-    m_xDist = std::uniform_real_distribution<double>(m_min.x, m_max.x);
-    m_yDist = std::uniform_real_distribution<double>(m_min.y, m_max.y);
-
     m_cloud.pts = { Node(m_start) };
+    m_frontier.fill({ 0, 0 });
 }
 
 RRTPlanner::~RRTPlanner()
@@ -96,6 +99,8 @@ void RRTPlanner::resetTree()
 
     m_cloud.pts = { Node(m_start) };
     m_first = 0;
+
+    m_frontier.fill({ 0, 0 });
 
     m_tree->buildIndex();
 }
@@ -165,52 +170,6 @@ void RRTPlanner::reroot(const std::vector<Polygon>& env)
     updateCosts();
 }
 
-// From the resultant cost [from root] at each node, calculate and overwrite with only the cost from the parent
-//void RRTPlanner::propagateStepCost()
-//{
-//    std::deque<uint32_t> nodes;
-//    for (uint32_t child : m_cloud.pts[m_first].children) nodes.emplace_back(child);
-//
-//    std::vector<double> costs(m_cloud.pts.size());
-//    costs[m_first] = 0;
-//
-//    while (!nodes.empty()) {
-//        uint32_t current = nodes.front();
-//        nodes.pop_front();
-//
-//        costs[current] = m_cloud.pts[m_first].cost;
-//        m_cloud.pts[m_first].cost -= costs[m_cloud.pts[current].parent];
-//
-//        for (uint32_t child : m_cloud.pts[current].children) nodes.emplace_back(child);
-//    }
-//}
-//
-//// Update costs after a reroot
-//void RRTPlanner::propagateCost()
-//{
-//
-//    // Store index and cost to travel to parent [from root] for each node
-//    std::deque<std::pair<uint32_t, double>> nodes = {
-//            { m_first, distance(m_cloud.pts[m_first], m_start) }
-//    };
-//
-//    // Update costs for all nodes
-//    while (!nodes.empty()) {
-//        auto current = nodes.front();
-//        nodes.pop_front();
-//
-//        m_cloud.pts[current.first].cost += current.second;
-//
-//        for (uint32_t child : m_cloud.pts[current.first].children) {
-//            nodes.emplace_back(child, m_cloud.pts[child].cost);
-//
-//            // Determine cost of travel between nodes (Would be negative for inverted child-parent links)
-//            double dist = std::abs(current.second - m_cloud.pts[child].cost);
-//            m_cloud.pts[child].cost = m_cloud.pts[current.first].cost + dist;
-//        }
-//    }
-//}
-
 void RRTPlanner::updateCosts()
 {
     std::deque<uint32_t> nodes;
@@ -267,19 +226,16 @@ bool RRTPlanner::iterate(const std::vector<Polygon>& env)
 
     m_iterations++;
 
-    glm::dvec3 rand = sample();
-    uint32_t neighbor = nearest(rand);
+    auto [parent, forward] = sample();
 
-    // Determine direction of travel and position of new node
-    glm::dvec3 forward = glm::normalize(rand - m_cloud.pts[neighbor].location);
-    glm::dvec3 next = m_cloud.pts[neighbor].location + m_stepSize * forward;
+    glm::dvec3 next = m_cloud.pts[parent].location + m_stepSize * forward;
 
     // Confirm new position does not result in collision with the environment
     auto bounds = Polygon({ next.x, next.y }, m_width, m_height, next.z);
 
-    if (!free(env, bounds) || !free(env, m_cloud.pts[neighbor].location, next)) return false;
+    if (!free(env, bounds) || !free(env, m_cloud.pts[parent].location, next)) return false;
 
-    attach(env, next, neighbor);
+    attach(env, next, parent);
 
     checkGoal(m_cloud.pts.back());
 
@@ -307,6 +263,8 @@ void RRTPlanner::attach(const std::vector<Polygon>& env, const glm::dvec3& next,
     // Add node to the best parent
     addNode(next, cost, parent);
     uint32_t index = m_cloud.pts.size() - 1;
+
+//    tryFrontierInsertion(neighbors, distances);
 
     // Rewire neighbors
     for (uint32_t i = 0; i < neighbors.size(); i++) {
@@ -370,6 +328,64 @@ void RRTPlanner::checkGoal(Node& node)
         }
     }
 }
+
+// Update frontier based on the new node
+bool RRTPlanner::tryFrontierInsertion(const std::vector<uint32_t>& set, const std::vector<double>& distances)
+{
+    bool updated = false;
+
+    // Reduce frontier weights when closer to the new node
+    for (uint32_t i = 0; i < set.size(); i++) {
+        if (m_cloud.pts[set[i]].frontier != std::numeric_limits<uint16_t>::max()
+            && distances[i] < m_frontier[set[i]].second) {
+            m_frontier[set[i]].second = distances[i];
+            updated = true;
+        }
+    }
+
+    // Try adding the new node to the frontier when it is relatively far from any neighbors
+    auto cost = std::min(distances.begin(), distances.end());
+    if (*cost > m_frontier.back().second) {
+        m_frontier.back() = { m_cloud.pts.size() - 1, *cost };
+        updated = true;
+    }
+
+    //
+    // TODO NOTE: Although a frontier node may be incorrectly removed, it is probably not worth sorting twice to deal with it
+    if (updated) sortFrontier();
+
+    return updated;
+}
+
+void RRTPlanner::sortFrontier()
+{
+    std::sort(m_frontier.begin(), m_frontier.end(), [](const std::pair<uint32_t, double>& lhs, const std::pair<uint32_t, double>& rhs) {
+        return lhs.second > rhs.second;
+    });
+
+    // Update frontier indexing
+    for (uint16_t i = 0; i < FRONTIER_NODE_COUNT; i++) {
+        m_cloud.pts[m_frontier[i].first].frontier = i;
+    }
+}
+
+uint32_t RRTPlanner::selectFrontier()
+{
+    double sum = 0;
+
+    for (const auto& front : m_frontier) {
+        sum += front.second;
+    }
+
+    double sel = m_dist01(m_rng) * sum;
+    for (const auto& front : m_frontier) {
+        if (sel < front.second) return front.first;
+        sel -= front.second;
+    }
+
+    throw std::runtime_error("[RRTPlanner] Error selecting frontier");
+}
+
 
 const glm::dvec3& RRTPlanner::start() const
 {
@@ -500,15 +516,26 @@ std::vector<glm::dvec3> RRTPlanner::pruned(const std::vector<Polygon>& env, cons
     return vertices;
 }
 
-glm::dvec3 RRTPlanner::sample()
+std::tuple<uint32_t, glm::dvec3> RRTPlanner::sample()
 {
-    static std::uniform_real_distribution<double> tDist(0.0, 2 * M_PI);
-
-    return {
-        m_xDist(m_rng),
-        m_yDist(m_rng),
-        tDist(m_rng)
+    glm::dvec3 rand = {
+            m_xDist(m_rng),
+            m_yDist(m_rng),
+            m_tDist(m_rng)
     };
+
+    uint32_t parent = selectParent(rand);
+
+    return { parent, glm::normalize(rand - m_cloud.pts[parent].location) };
+}
+
+uint32_t RRTPlanner::selectParent(const glm::dvec3& position)
+{
+//    if (m_frontier.back().first != 0 && m_dist01(m_rng) < EXPLORATION_BIAS) { // Occasionally try from a frontier node if available
+//        return selectFrontier();
+//    }
+
+    return nearest(position);
 }
 
 double RRTPlanner::distance(const Node& a, const glm::dvec3& b)
