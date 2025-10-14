@@ -79,15 +79,21 @@ public:
     static std::vector<glm::dvec3> projected3D(const std::vector<glm::dvec2>& vertices, const glm::dvec3& xAxis, const glm::dvec3& yAxis, const glm::dvec3& offset = {});
     static inline glm::dvec3 projected3D(const glm::dvec2& vertex, const glm::dvec3& xAxis, const glm::dvec3& yAxis, const glm::dvec3& offset) { return offset + xAxis * vertex.x + yAxis * vertex.y; };
 
-    std::vector<uint32_t> hull() const;
+    [[nodiscard]] std::vector<uint32_t> hull() const;
     static std::vector<uint32_t> hull(const std::vector<glm::dvec2>& vertices);
 
-    std::vector<TriIndex> triangulate() const;
+    [[nodiscard]] std::vector<TriIndex> triangulate() const;
     static std::vector<TriIndex> triangulate(const std::vector<glm::dvec2>& vertices);
+
+    [[nodiscard]] virtual std::vector<Polygon> decompose() const;
 
     [[nodiscard]] bool test(const glm::dvec2& vertex) const;
 
+    [[nodiscard]] double clear(double clearance, glm::dvec3& location) const;
+
     [[nodiscard]] virtual std::vector<std::pair<glm::dvec2, glm::dvec2>> debugEdges() const;
+
+    virtual void print() const;
 
 protected:
 

@@ -41,7 +41,7 @@ QCheckBox *showSculptureSetting = nullptr;
 QCheckBox *showHullSetting = nullptr;
 QPushButton *stepButton = nullptr;
 
-QDoubleSpinBox *xField, *yField, *angleField;
+QDoubleSpinBox *xField, *yField, *angleField, *rotateOffsetField;
 
 std::shared_ptr<Sculpture> body = nullptr;
 std::shared_ptr<RigidBody> silhouette = nullptr;
@@ -87,8 +87,8 @@ void updateRef (const SectionOperation& op)
 
 void updateRef()
 {
-    const auto& op = profile.next(0.108, 0.011);
-    updateRef(op);
+    const auto& op = profile.nextOperation();
+    if (op.isValid()) updateRef(op);
 }
 
 void updateImage()
@@ -103,7 +103,7 @@ void updateImage()
     profile = detector->profile();
     profile.setRefinementMethod(Profile::RefinementMethod::DELAUNEY);
 
-    updateRef();
+//    updateRef();
 //    profile.rotateAbout({ 0, 1, 0 }, -body->rotation());
 //        profile.centerScale(scalar);
 //    profile.scale(scalar);
@@ -172,13 +172,17 @@ void refine()
     uint32_t depth = profile.nextDepth();
     std::cout << "EXT: " << res << " " << depth << "==========================================\n";
 
-    auto operation = profile.next(0.108, 0.011);
+    auto operation = profile.nextOperation();
     if (operation.isValid()) {
 
+        static int i = 0;
+//        operation.collider().save("../out/RO" + std::to_string(i++) + ".bin");
+
+        Triangle2D section = operation.bounds(0.108);
         auto border = std::vector<glm::dvec3>{
-                profile.projected3D(operation.startVertex()),
-                profile.projected3D(operation.splitVertex()),
-                profile.projected3D(operation.endVertex())
+                profile.projected3D(section.a),
+                profile.projected3D(section.b),
+                profile.projected3D(section.c)
         };
 
         body->queueSection(border[0], border[1], border[2], profile.normal());
@@ -196,7 +200,10 @@ void refine()
         profile.skip();
     }
 
-    updateRef();
+    std::cout << "zz\n";
+//    updateRef();
+    std::cout << "zzx\n";
+
 }
 
 int main(int argc, char *argv[])
@@ -253,9 +260,11 @@ int main(int argc, char *argv[])
         scene->update();
     });
 
+    rotateOffsetField = window->findChild<QDoubleSpinBox*>("rotateOffsetField");
+
     stepButton = window->findChild<QPushButton*>("stepButton");
     QObject::connect(stepButton, &QPushButton::clicked, [&]() {
-        detector->capture()->camera().rotate(5);
+        detector->capture()->camera().rotate(rotateOffsetField->value());
         detector->capture()->focus();
         updateImage();
         scene->update();
@@ -336,6 +345,7 @@ int main(int argc, char *argv[])
 
             scene->clear();
             body = std::make_shared<Sculpture>(mesh, 1.0f, 1.0f);
+            body->enableHullMerging(false);
             showModelSetting->setCheckState(Qt::CheckState::Checked);
             showSculptureSetting->setCheckState(Qt::CheckState::Checked);
             body->applyCompositeColors(showHullSetting->isChecked());
@@ -397,6 +407,7 @@ int main(int argc, char *argv[])
 
     scene = std::make_shared<Scene>();
     body = std::make_shared<Sculpture>(mesh, 1.0, 2.0);
+    body->enableHullMerging(false);
     scene->prepareBody(body);
     scene->createVisual(mesh);
 

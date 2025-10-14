@@ -17,6 +17,8 @@ public:
     void update() override;
 
     void addTrajectory(const std::shared_ptr<Trajectory>& trajectory);
+
+    void connect(const Waypoint& waypoint);
     void connectTrajectory(const std::shared_ptr<Trajectory>& trajectory);
 
     void clear();

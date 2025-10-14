@@ -310,13 +310,11 @@ void Profile::setToolDimensions(double width, double thickness)
 void Profile::skip()
 {
     if (!m_sections.empty()) {
-//        const std::vector<Polygon>& skips = nextSkips();
-//        m_remainder.insert(m_remainder.end(), skips.begin(), skips.end());
-        std::cout << m_sections.size() << " | " << m_sections[0].depth << " " << m_sections[0].children << " " << m_sections[0].skipped << " " << m_sections[0].external << "\n";
+        const std::vector<Polygon>& skips = nextSkips();
+        m_remainder.insert(m_remainder.end(), skips.begin(), skips.end());
 
         uint32_t count = 1 + m_sections[0].children;
         if (count < m_sections.size()) {
-            std::cout << count << " " << m_sections.size() << ": " << m_sections[count].external << " " << m_sections[count].skipped << "\n";
 
             // Directly remove section when delaying can not make a section possible
             if (m_sections[0].external || m_sections[0].skipped || m_sections[count].external || m_sections[count].skipped) {
@@ -339,6 +337,24 @@ void Profile::skip()
 
         } else m_sections.clear(); // No use skipping the sole independent section - Always delete
     }
+}
+
+std::vector<Polygon> Profile::nextSkips()
+{
+    std::vector<Polygon> skips;
+
+    if (!m_sections.empty()) {
+        const uint32_t count = std::min(m_sections[0].children + 1, (uint32_t)m_sections.size());
+
+        if (count == m_sections.size() || m_sections[0].external || m_sections[0].skipped || m_sections[count].external || m_sections[count].skipped) {
+            for (uint32_t i = 0; i < count; i++) {
+                const TriIndex& tri = m_sections[0].triangle;
+                skips.emplace_back(std::vector<glm::dvec2>{ m_vertices[tri.I0], m_vertices[tri.I1], m_vertices[tri.I2] });
+            }
+        }
+    }
+
+    return skips;
 }
 
 void Profile::refine()
@@ -808,6 +824,10 @@ std::vector<Polygon> Profile::decompose() const
 {
     std::vector<Polygon> hulls = Polygon::decompose();
     for (const Polygon& hull : m_remainder) hulls.emplace_back(hull);
+
+    std::vector<Polygon> frontier;
+    for (const Polygon& front : frontier) hulls.emplace_back(front);
+
     return hulls;
 }
 
@@ -835,24 +855,6 @@ std::vector<Polygon> Profile::frontier() const
 const std::vector<Polygon>& Profile::remainder() const
 {
     return m_remainder;
-}
-
-std::vector<Polygon> Profile::nextSkips()
-{
-    std::vector<Polygon> skips;
-
-    if (!m_sections.empty()) {
-        const uint32_t count = std::min(m_sections[0].children + 1, (uint32_t)m_sections.size());
-
-        if (m_sections[0].skipped || count == m_sections.size()) {
-            for (uint32_t i = 0; i < count; i++) {
-                const TriIndex& tri = m_sections[0].triangle;
-                skips.emplace_back(std::vector<glm::dvec2>{ m_vertices[tri.I0], m_vertices[tri.I1], m_vertices[tri.I2] });
-            }
-        }
-    }
-
-    return skips;
 }
 
 std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {

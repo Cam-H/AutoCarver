@@ -7,31 +7,61 @@
 
 #include <glm.hpp>
 
-class Ray {
+template<typename Derived, uint16_t dims>
+class RayBase {
+public:
+
+    using vec = std::conditional_t<dims == 2, glm::dvec2, glm::dvec3>;
+
+    RayBase(const vec& origin, const vec& axis);
+
+    friend vec operator*(const Derived& ray, double t) { return ray.origin + t * ray.axis; }
+    friend vec operator*(double t, const Derived& ray) { return ray.origin + t * ray.axis; }
+
+    void reverse();
+
+    [[nodiscard]] bool isValid() const;
+
+    [[nodiscard]] double squareDistance(const vec& vertex) const;
+
+public:
+    vec origin;
+    vec axis;
+};
+
+template<uint16_t dims>
+class Ray : public RayBase<Ray<dims>, dims> {
+public:
+    using RayBase<Ray<dims>, dims>::data_;
+};
+
+template<>
+class Ray<2> : public RayBase<Ray<2>, 2> {
+public:
+
+    Ray();
+    Ray(const glm::dvec3& location);
+    Ray(const glm::dvec2& origin, const glm::dvec2& axis);
+
+    void print() const;
+};
+
+template<>
+class Ray<3> : public RayBase<Ray<3>, 3> {
 public:
 
     Ray();
     Ray(const glm::dvec3& origin, const glm::dvec3& axis);
 
-    friend glm::dvec3 operator*(const Ray& ray, double t);
-    friend glm::dvec3 operator*(double t, const Ray& ray);
+    friend Ray<3> operator*(const glm::dmat4& transform, const Ray& ray);
 
-    friend Ray operator*(const glm::dmat4& transform, const Ray& ray);
-
-    [[nodiscard]] bool isValid() const;
-
-    [[nodiscard]] double axialRotation(const glm::dvec3& axis) const;
     static double axialRotation(const glm::dvec3& reference, const glm::dvec3& axis);
-
-    [[nodiscard]] double squareDistance(const glm::dvec3& vertex) const;
+    [[nodiscard]] double axialRotation(const glm::dvec3& axis) const;
 
     void print() const;
-
-public:
-    glm::dvec3 origin;
-    glm::dvec3 axis;
-
 };
 
+template class RayBase<Ray<2>, 2>;
+template class RayBase<Ray<3>, 3>;
 
 #endif //AUTOCARVER_RAY_H

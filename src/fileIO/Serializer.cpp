@@ -57,10 +57,11 @@ void Serializer::ioTest()
             for (uint32_t test : uintTests) {
                 uint32_t result = toUint(ptr);
                 if (test != result) {
-                    std::cerr << "De/Serialization test failed:\n";
+                    std::cerr << "\033[91m[Serializer] De/Serialization test failed:\n";
                     printBits(test);
                     printBits(result);
                     m_OK = false;
+                    std::cerr << "\033[0m";
                     break;
                 }
 
@@ -78,7 +79,7 @@ bool Serializer::serialize(const std::string& filename, const char* buffer, std:
 {
     std::ofstream file(filename, std::ios::binary);
     if (!file.is_open()) {
-        std::cerr << "Error: Failed to open file for test writing.\n";
+        std::cerr << "\033[91m[Serializer] Error: Failed to open file for test writing.\033[0m\n";
         return false;
     }
 
@@ -92,7 +93,7 @@ char* Serializer::deserialize(const std::string& filename, std::streamsize size)
 {
     std::ifstream file(filename, std::ios::binary);
     if (!file.is_open()) {
-        std::cerr << "Error: Failed to open file for test reading\n";
+        std::cerr << "\033[91m[Serializer] Error: Failed to open file for test reading\033[0m\n";
         return nullptr;
     }
 

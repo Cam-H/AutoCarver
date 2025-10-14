@@ -374,13 +374,13 @@ void RigidBody::calculateInertiaTensor()
     }
 }
 
-std::tuple<bool, double> RigidBody::raycast(Ray ray, double tLim)
+std::tuple<bool, double> RigidBody::raycast(Ray<3> ray, double tLim)
 {
     auto [hit, t, idx] = pickFace(ray, tLim);
     return { hit, t };
 }
 
-std::tuple<bool, double, uint32_t> RigidBody::pickFace(Ray ray, double tLim)
+std::tuple<bool, double, uint32_t> RigidBody::pickFace(Ray<3> ray, double tLim)
 {
     if (m_mesh == nullptr) return { false, 0, 0 };
 

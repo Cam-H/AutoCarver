@@ -134,6 +134,12 @@ void ConvexHull::translate(const glm::dvec3& translation)
     for (glm::dvec3& vertex : m_vertices) vertex += translation;
 }
 
+void ConvexHull::transform(const glm::dquat& rotation, const glm::dvec3& translation)
+{
+    for (glm::dvec3& vertex : m_vertices) vertex = rotation * vertex + translation;
+}
+
+
 void ConvexHull::setWalkStart(uint32_t startIndex)
 {
     if (startIndex < m_walks.size()) {

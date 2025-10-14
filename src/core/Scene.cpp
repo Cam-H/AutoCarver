@@ -372,7 +372,7 @@ bool Scene::isPaused() const
     return m_paused;
 }
 
-std::tuple<std::shared_ptr<RigidBody>, double> Scene::raycast(const Ray& ray) const
+std::tuple<std::shared_ptr<RigidBody>, double> Scene::raycast(const Ray<3>& ray) const
 {
     // TODO potential optimization: prepass or sort bodies relative to ray before evaluating
     double tMin = std::numeric_limits<double>::max();

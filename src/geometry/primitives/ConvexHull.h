@@ -42,6 +42,7 @@ public:
     void evaluate();
 
     void translate(const glm::dvec3& translation);
+    void transform(const glm::dquat& rotation, const glm::dvec3& translation);
 
     void setWalkStart(uint32_t startIndex);
     [[nodiscard]] bool getWalkStart() const;

@@ -216,6 +216,27 @@ bool Triangle3D::encloses(const QVector2D& a, const QVector2D& b, const QVector2
     return true;
 }
 
+
+Triangle2D::Triangle2D(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c)
+    : a(a)
+    , b(b)
+    , c(c)
+{
+
+}
+
+// Sample a point on the triangle using the barycentric coordinates
+glm::dvec2 Triangle2D::sample(double u, double v, double w)
+{
+    return u * a + v * b + w * c;
+}
+
+double Triangle2D::perimeter() const
+{
+    return glm::length(b - a) + glm::length(c - b) + glm::length(a - c);
+}
+
+
 double Triangle2D::area(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c)
 {
     return 0.5f * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y));

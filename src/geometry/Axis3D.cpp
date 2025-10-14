@@ -20,7 +20,7 @@ Axis3D::Axis3D()
 Axis3D::Axis3D(const glm::dvec3& axis)
     : zAxis(axis)
 {
-    xAxis = axis.x * axis.x > 0.99f ? glm::dvec3(0, 0, 1) : glm::dvec3(1, 0, 0);
+    xAxis = axis.x * axis.x > 1 - 1e-6 ? glm::dvec3(0, 0, 1) : glm::dvec3(1, 0, 0);
     xAxis = glm::normalize(glm::cross(zAxis, xAxis));
 
     yAxis = glm::normalize(glm::cross(zAxis, xAxis));

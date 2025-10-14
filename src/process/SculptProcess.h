@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <deque>
+#include <mutex>
 
 #include "geometry/VertexArray.h"
 #include "geometry/Mesh.h"
@@ -20,6 +21,7 @@
 class SculptProcess : public Scene {
 public:
 
+    SculptProcess(const ProcessConfiguration& configuration = ProcessConfiguration());
     explicit SculptProcess(const std::shared_ptr<Mesh>& model);
     ~SculptProcess();
 
@@ -28,7 +30,7 @@ public:
 
     void reset();
 
-    void plan();
+    ProcessPlanner::Report plan();
 
     void smooth();
 
@@ -46,6 +48,7 @@ public:
 
 //    void setSculptingRobot(const std::shared_ptr<Robot>& robot);
 
+    [[nodiscard]] bool ready() const;
     [[nodiscard]] bool planned() const;
 
     [[nodiscard]] bool simulationComplete() const;
@@ -74,6 +77,9 @@ public:
     [[nodiscard]] Waypoint alignedToVertexWP(const Axis3D& axes, const glm::dvec3& vertex, const glm::dvec3& tryAxis, double tryLimit) const;
 
 private:
+
+    void initialize();
+
 
     void readySculpture(const std::shared_ptr<Sculpture>& sculpture);
 
@@ -119,6 +125,9 @@ private:
 
 
     ProcessPlanner m_planner;
+
+    bool m_ready;
+    std::mutex m_mutex;
 
     bool m_planned;
     bool m_smoothed;

@@ -20,10 +20,11 @@ SectionOperation::SectionOperation()
 SectionOperation::SectionOperation(const glm::dvec2& start, const glm::dvec2& split, const glm::dvec2& end,
                                    double width, double thickness)
     : m_valid(true)
-    , start(start)
-    , end(end)
+    , m_start(start)
+    , m_end(end)
     , width(width)
     , thickness(thickness)
+    , floor(std::numeric_limits<double>::lowest())
     , BA(start - split)
     , BC(end - split)
     , AC(end - start)
@@ -45,16 +46,14 @@ void SectionOperation::prepareReliefs(const Profile* profile)
 {
     assert(profile != nullptr);
 
-    const auto& tri = profile->next();
+    const auto& tri = profile->nextTriangle();
     auto clearance = profile->clearance();
 
 
-    auto left  = clearance.first  < width + RUN_UP
-            ? glm::normalize(profile->border()[profile->prevVertex(tri.I0)] - profile->border()[tri.I0])
-            : BA;
-    auto right  = clearance.second  < width + RUN_UP
-            ? glm::normalize(profile->border()[profile->nextVertex(tri.I2)] - profile->border()[tri.I2])
-            : BC;
+    auto left  = clearance.first < width + RUN_UP
+            ? glm::normalize(profile->border()[profile->prevVertex(tri.I0)] - profile->border()[tri.I0]) : BA;
+    auto right  = clearance.second < width + RUN_UP
+            ? glm::normalize(profile->border()[profile->nextVertex(tri.I2)] - profile->border()[tri.I2]) : BC;
 
     auto ts = atan2(left.y, left.x), dt = glm::atan(right.y, right.x) - ts;
     if (ts < 0) ts += 2 * M_PI;
@@ -62,13 +61,14 @@ void SectionOperation::prepareReliefs(const Profile* profile)
 
     double delta = dt / (double)(ITERATIONS - 1);
 
-    if (clearance.first < width || !checkFloor(start, left, profile)) {
+    floor = profile->floor();
+    if (clearance.first < width || !checkFloor(m_start, left)) {
         m_cutBA = m_valid = false;
 
         double t = ts;
         for (uint8_t i = 0; i < ITERATIONS; i++) {
             glm::dvec2 normal(cos(t), sin(t));
-            if (prepareRelief(start, -BA, AC, BC, normal, std::max(0.0, lBA - reduction), profile)) {
+            if (prepareRelief(m_start, -BA, AC, BC, normal, std::max(0.0, lBA - reduction), profile)) {
                 m_valid = true;
                 break;
             }
@@ -77,13 +77,13 @@ void SectionOperation::prepareReliefs(const Profile* profile)
         }
     }
 
-    if (m_valid && (clearance.second < width || !checkFloor(end, right, profile))) {
+    if (m_valid && (clearance.second < width || !checkFloor(m_end, right))) {
         m_cutBC = m_valid = false;
 
         double t = ts + dt;
         for (uint8_t i = 0; i < ITERATIONS; i++) {
             glm::dvec2 normal(cos(t), sin(t));
-            if (prepareRelief(end, -BC, -AC, BA, normal, std::max(0.0, lBC - reduction), profile)) {
+            if (prepareRelief(m_end, -BC, -AC, BA, normal, std::max(0.0, lBC - reduction), profile)) {
                 m_valid = true;
                 break;
             }
@@ -93,9 +93,178 @@ void SectionOperation::prepareReliefs(const Profile* profile)
     }
 }
 
-bool SectionOperation::checkFloor(const glm::dvec2& initial, const glm::dvec2& normal, const Profile* profile) const
+// Offsets endpoints such that they do not collide with the hull. Returns true if the system remains possible (No floor contact + no reliefs)
+bool SectionOperation::clear(const Polygon& hull)
 {
-    return (initial + normal * (width + RUN_UP)).y >= profile->floor();
+    if (!m_cutBA || !m_cutBC) return false;
+
+    glm::dvec3 start = { m_start.x, m_start.y, startOrientation() };
+    glm::dvec3 end = { m_end.x, m_end.y, endOrientation() };
+
+    double clearance = RUN_UP + 0.5 * width;
+    double ts = hull.clear(clearance, start);
+    double te = hull.clear(clearance, end);
+    assert(ts > -1e-12 && te > -1e-12); // Would only be negative if cut is in some way reversed
+
+    if (!checkFloor({ start.x, start.y }, BA) || !checkFloor({ end.x, end.y }, BC)) return false;
+
+    if (ts > 1e-12) {
+        m_start = { start.x, start.y };
+        lBA += ts;
+    }
+
+    if (te > 1e-12) {
+        m_end = { end.x, end.y };
+        lBC += te;
+    }
+
+    return true;
+}
+
+glm::dvec3 SectionOperation::initialLeft() const
+{
+    glm::dvec2 pos = start();
+    return { pos.x, pos.y, startOrientation() };
+}
+glm::dvec3 SectionOperation::initialRight() const
+{
+    glm::dvec2 pos = end();
+    return { pos.x, pos.y, endOrientation() };
+}
+
+bool SectionOperation::plan(RRTPlanner& planner, std::vector<Polygon>& env)
+{
+    if (m_valid) {
+
+        static int iter = 0;
+        planner.setStart(initialLeft());
+        planner.setGoal(initialRight());
+        planner.save("../out/B" + std::to_string(iter++) + ".bin");
+
+        {
+            m_sequence = left();
+            std::vector<Set> rem = right();
+            m_sequence.insert(m_sequence.end(), rem.begin(), rem.end());
+            return true;
+        }
+
+
+//        glm::dvec2 sv = startVertex(0.5 * planner.width()), ev = endVertex(0.5 * planner.width());
+        glm::dvec2 sv = start(), ev = end();
+
+        glm::dvec3 first = { sv.x, sv.y, startOrientation() }, second = { ev.x, ev.y, endOrientation() };
+
+        std::vector<Set> rem;
+
+        // Choose the nearer cut to begin from TODO path plan in sequence creation
+        glm::dvec2 initial = { planner.first().x, planner.first().y };
+        glm::dvec2 ds = sv - initial, de = ev - initial;
+        bool rightFirst = glm::dot(de, de) < glm::dot(ds, ds);
+
+        if (rightFirst) {
+            std::swap(first, second);
+            m_sequence = right();
+            rem = left();
+        } else {
+            m_sequence = left();
+            rem = right();
+        }
+
+        std::cout << "SG " << first.x << " " << first.y << " " << first.z << " | " << second.x << " " << second.y << " " << second.z << "\n";
+
+        // Develop approach to the first cut
+        planner.setGoal(first);
+
+        if (!planner.solved() && !planner.solve(env, planner.iterations() == 0 ? 40000 : 20000)) {
+            std::cout << "\033[93mFailed to find approach\033[0m\n";
+            return false;
+        }
+
+        // Remove relief material from subsequent consideration
+        if (requiresRelief()) env.back() = midBounds(rightFirst);
+
+        m_sequence.front().approach = planner.prunedPath(env);
+        std::cout << "Possible approach identified\n";
+
+        // Begin next plan from the end of the cut sequence
+//        if (planner.setStart(env, m_sequence.back().end())) {
+//            std::cout << "Failed to change start point!\n";
+//        }
+        if (!planner.moveToGoal()) {
+            std::cout << "\033[93mFailed to change start point!\033[0m\n";
+        }
+
+        // Develop approach between first and second cuts
+        planner.setGoal(second);
+
+        // If a solution is already available, try to find a better one (And help rebase tree after rerooting)
+        if (planner.solved()) planner.iterate(env, 1000);
+
+        if (!planner.solved() && !planner.solve(env, 20000)) {
+            std::cout << "\033[93mFailed to find intermediary\033[0m\n";
+            return false;
+        }
+
+        rem.front().approach = planner.prunedPath(env);
+
+        m_sequence.insert(m_sequence.end(), rem.begin(), rem.end());
+
+        return true;
+    }
+
+    m_sequence = {};
+    return false;
+}
+
+glm::dvec3 SectionOperation::Set::start() const
+{
+    if (!approach.empty()) return approach[0];
+
+    assert(!motions.empty());
+
+    return {
+        motions.front().first.x,
+        motions.front().first.y,
+        atan2(axis.y, axis.x)
+    };
+}
+
+glm::dvec3 SectionOperation::Set::end() const
+{
+    if (!motions.empty()) {
+        return {
+            motions.back().first.x,
+            motions.back().first.y,
+            atan2(axis.y, axis.x)
+        };
+    }
+
+    assert(!approach.empty());
+    return approach.back();
+}
+
+std::vector<SectionOperation::Set> SectionOperation::left() const
+{
+    if (m_valid) {
+        if (m_cutBA) return { direct(m_start, BA, BC, lBA) };
+        else return sequence(m_reliefs[0]);
+    }
+
+    return {};
+}
+std::vector<SectionOperation::Set> SectionOperation::right() const
+{
+    if (m_valid) {
+        if (m_cutBC) return { direct(m_end, BC, BA, lBC) };
+        else return sequence(m_reliefs[!m_cutBA]);
+    }
+
+    return {};
+}
+
+bool SectionOperation::checkFloor(const glm::dvec2& initial, const glm::dvec2& normal) const
+{
+    return (initial + (0.5 * width + RUN_UP) * normal).y >= floor;
 }
 
 // Prepare relief, returns true (success) if the relief would not hit the floor, the relief is not near-perpendicular
@@ -106,7 +275,7 @@ bool SectionOperation::prepareRelief(const glm::dvec2& initial,
                    double length,
                    const Profile* profile)
 {
-    if (checkFloor(initial, normal, profile) && std::abs(glm::dot(external, normal)) > 0.2) {
+    if (checkFloor(initial, normal) && std::abs(glm::dot(external, normal)) > 0.2) {
         m_reliefs.emplace_back(initial, internal, external, opposite, normal, length, width + RUN_UP, thickness);
         if (profile->validate(m_reliefs.back())) return true;
         m_reliefs.pop_back();
@@ -115,16 +284,28 @@ bool SectionOperation::prepareRelief(const glm::dvec2& initial,
     return false;
 }
 
-glm::dvec2 SectionOperation::startVertex(double offset) const
+glm::dvec2 SectionOperation::start() const
 {
-    if (!m_cutBA) return start;
-    return start + BA * (RUN_UP + offset);
+    if (m_cutBA) return m_start;
+    return reliefStart(m_reliefs[0], 0);
 }
 
-glm::dvec2 SectionOperation::endVertex(double offset) const
+glm::dvec2 SectionOperation::end() const
 {
-    if (!m_cutBC) return end;
-    return end + BC * (RUN_UP + offset);
+    if (m_cutBC) return m_end;
+    return reliefStart(m_reliefs[!m_cutBA], 0);
+}
+
+glm::dvec2 SectionOperation::reliefStart(const SectionOperation::Relief& relief, double offset) const
+{
+    glm::dvec2 position = relief.start + relief.extLength * relief.external + relief.normal * RUN_UP;
+
+    if (glm::dot(relief.internal, relief.normal) > 0) { // Relief cut direction is inverted
+        double step = relief.step(thickness);
+        position -= std::floor(relief.extLength / step) * step * relief.external;
+    }
+
+    return position + relief.normal * offset;
 }
 
 double SectionOperation::startOrientation() const
@@ -140,35 +321,53 @@ double SectionOperation::endOrientation() const
 
 glm::dvec2 SectionOperation::splitVertex() const
 {
-    return start - BA * lBA;
+    return m_start - BA * lBA;
 }
 
-std::vector<SectionOperation::Set> SectionOperation::connected(const Profile* profile, const glm::dvec2& start, double theta) const
+bool SectionOperation::requiresRelief() const
 {
-    std::cout << "POS2D: " << start.x << " " << start.y << " | " << theta << "\n";
-
-    std::vector<Set> cuts = left(), r = right();
-    cuts.insert(cuts.end(), r.begin(), r.end());
-    return cuts;
+    return !m_cutBA || !m_cutBC;
 }
 
-std::vector<SectionOperation::Set> SectionOperation::left() const
+Triangle2D SectionOperation::bounds(double expansion) const
 {
-    if (m_valid) {
-        if (m_cutBA) return { direct(startVertex(), BA, BC, lBA) };
-        else return sequence(m_reliefs[0]);
-    }
-
-    return {};
+    return {
+        m_start + BA * (expansion + (m_cutBA ? width + RUN_UP : 0.0)),
+        splitVertex(),
+        m_end   + BC * (expansion + (m_cutBC ? width + RUN_UP : 0.0))
+    };
 }
-std::vector<SectionOperation::Set> SectionOperation::right() const
-{
-    if (m_valid) {
-        if (m_cutBC) return { direct(endVertex(), BC, BA, lBC) };
-        else return sequence(m_reliefs[!m_cutBA]);
-    }
 
-    return {};
+// Returns bounds
+Polygon SectionOperation::bounds() const
+{
+    return Polygon({ splitVertex(), m_start, m_end });
+}
+
+// Returns bounds, but with the first relief removed
+Polygon SectionOperation::midBounds(bool rightFirst) const
+{
+    std::vector<glm::dvec2> border;
+    if (!rightFirst && !m_cutBA) {
+        double proj = m_reliefs[0].projection(thickness);
+        if (proj + 1e-12 < lBA) border.emplace_back(m_start - BA * proj);
+        border.emplace_back(m_start + AC * m_reliefs[0].extLength);
+    } else border.emplace_back(m_start);
+
+    if (rightFirst && !m_cutBC) {
+        double proj = m_reliefs[!m_cutBA].projection(thickness);
+        border.emplace_back(m_end - AC * m_reliefs[!m_cutBA].extLength);
+        if (proj + 1e-12 < lBC) border.emplace_back(m_end - BC * proj);
+    } else border.emplace_back(m_end);
+
+    border.emplace_back(splitVertex());
+
+    return Polygon(border);
+}
+
+std::vector<SectionOperation::Set> SectionOperation::sequence() const
+{
+    return m_sequence;
 }
 
 // Direct blind cut, if no relief operation is required on edge
@@ -177,7 +376,7 @@ SectionOperation::Set SectionOperation::direct(const glm::dvec2& origin, const g
     glm::dvec2 normal = { axis.y, -axis.x };
     if (glm::dot(normal, ref) < 0) normal = -normal;
 
-    return { -axis, normal, {{ origin, depth + RUN_UP - reduction }} };
+    return { -axis, normal, {{ origin, depth - reduction }} };
 }
 
 std::vector<SectionOperation::Set> SectionOperation::sequence(const SectionOperation::Relief& relief) const
@@ -223,30 +422,16 @@ std::vector<SectionOperation::Set> SectionOperation::sequence(const SectionOpera
 
         initial = relief.start - !reverse * thickness * normal + relief.internal * (width + 0.5 * RUN_UP);
 
-        cuts.emplace_back( relief.internal, normal);
+        cuts.emplace_back(relief.internal, normal);
         cuts.back().motions.emplace_back(initial, relief.length - width - 0.5 * RUN_UP);
 
         // TODO backcut
 //        cuts.emplace_back( relief.internal, normal, -relief.internal);
-//        cuts.back().motions.emplace_back(initial, -0.5 * RUN_UP);
+//        cuts.back().motions.emplace_back(initial, -0.5 * m_runup);
     }
 
     return cuts;
 }
-
-glm::dvec2 SectionOperation::leftExit() const
-{
-    if (m_cutBA) return startVertex();
-    return m_reliefs[0].center();
-
-}
-glm::dvec2 SectionOperation::rightExit() const
-{
-    if (m_cutBC) return endVertex();
-    return m_reliefs[!m_cutBA].center();
-
-}
-
 
 // Forms a parallelogram representing the required empty region to perform a relief cut
 SectionOperation::Relief::Relief(const glm::dvec2& start,
@@ -323,6 +508,8 @@ std::vector<double> SectionOperation::Relief::depths(double t) const
         depth.emplace_back(x * factor - reduc);
         x -= del;
     }
+
+    assert(depth.size() == (size_t)std::floor(extLength / del));
 
     depth[0] += sink;
     return depth;

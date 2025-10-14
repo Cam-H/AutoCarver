@@ -15,11 +15,10 @@
 #include "MeshBuilder.h"
 #include "fileIO/MeshHandler.h"
 #include "geometry/primitives/ConvexHull.h"
+#include "geometry/primitives/Ray.h"
 
 #include "VertexArray.h"
 #include "FaceArray.h"
-
-class Ray;
 
 static glm::dvec3 NULL_COLOR = { 1.0f, 0.0f, 1.0f };
 
@@ -110,8 +109,8 @@ public:
 
     std::vector<uint32_t> sharedFaces(const std::shared_ptr<Mesh>& reference) const;
 
-    std::tuple<bool, double> raycast(const Ray& ray) const;
-    std::tuple<bool, double, uint32_t> pickFace(const Ray& ray) const;
+    std::tuple<bool, double> raycast(const Ray<3>& ray) const;
+    std::tuple<bool, double, uint32_t> pickFace(const Ray<3>& ray) const;
 
     void print() const;
 

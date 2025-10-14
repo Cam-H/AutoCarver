@@ -61,7 +61,7 @@
       <item>
        <widget class="QDoubleSpinBox" name="widthField">
         <property name="minimum">
-         <double>2.000000000000000</double>
+         <double>0.010000000000000</double>
         </property>
         <property name="maximum">
          <double>100.000000000000000</double>
@@ -84,7 +84,7 @@
       <item>
        <widget class="QDoubleSpinBox" name="heightField">
         <property name="minimum">
-         <double>2.000000000000000</double>
+         <double>0.010000000000000</double>
         </property>
         <property name="maximum">
          <double>100.000000000000000</double>
@@ -177,6 +177,45 @@
       <property name="bottomMargin">
        <number>0</number>
       </property>
+      <item row="1" column="1">
+       <widget class="QDoubleSpinBox" name="startXField">
+        <property name="minimum">
+         <double>-100.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>100.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.010000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="2">
+       <widget class="QDoubleSpinBox" name="goalAngleField">
+        <property name="minimum">
+         <double>-10.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>10.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.200000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QDoubleSpinBox" name="startAngleField">
+        <property name="minimum">
+         <double>-10.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>10.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.200000000000000</double>
+        </property>
+       </widget>
+      </item>
       <item row="2" column="0">
        <widget class="QLabel" name="label_5">
         <property name="font">
@@ -195,10 +234,16 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="1">
-       <widget class="QLabel" name="label_3">
-        <property name="text">
-         <string>Start</string>
+      <item row="2" column="2">
+       <widget class="QDoubleSpinBox" name="goalYField">
+        <property name="minimum">
+         <double>-100.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>100.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.010000000000000</double>
         </property>
        </widget>
       </item>
@@ -220,10 +265,10 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="2">
-       <widget class="QLabel" name="label_4">
+      <item row="0" column="1">
+       <widget class="QLabel" name="label_3">
         <property name="text">
-         <string>Goal</string>
+         <string>Start</string>
         </property>
        </widget>
       </item>
@@ -245,16 +290,6 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
-       <widget class="QDoubleSpinBox" name="startXField">
-        <property name="minimum">
-         <double>-100.000000000000000</double>
-        </property>
-        <property name="maximum">
-         <double>100.000000000000000</double>
-        </property>
-       </widget>
-      </item>
       <item row="2" column="1">
        <widget class="QDoubleSpinBox" name="startYField">
         <property name="minimum">
@@ -263,18 +298,15 @@
         <property name="maximum">
          <double>100.000000000000000</double>
         </property>
+        <property name="singleStep">
+         <double>0.010000000000000</double>
+        </property>
        </widget>
       </item>
-      <item row="3" column="1">
-       <widget class="QDoubleSpinBox" name="startAngleField">
-        <property name="minimum">
-         <double>-10.000000000000000</double>
-        </property>
-        <property name="maximum">
-         <double>10.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>0.200000000000000</double>
+      <item row="0" column="2">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Goal</string>
         </property>
        </widget>
       </item>
@@ -286,28 +318,22 @@
         <property name="maximum">
          <double>100.000000000000000</double>
         </property>
-       </widget>
-      </item>
-      <item row="2" column="2">
-       <widget class="QDoubleSpinBox" name="goalYField">
-        <property name="minimum">
-         <double>-100.000000000000000</double>
-        </property>
-        <property name="maximum">
-         <double>100.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="2">
-       <widget class="QDoubleSpinBox" name="goalAngleField">
-        <property name="minimum">
-         <double>-10.000000000000000</double>
-        </property>
-        <property name="maximum">
-         <double>10.000000000000000</double>
-        </property>
         <property name="singleStep">
-         <double>0.200000000000000</double>
+         <double>0.010000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="QPushButton" name="clearObsButton">
+        <property name="text">
+         <string>Clear Obstacles</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="3">
+       <widget class="QPushButton" name="followButton">
+        <property name="text">
+         <string>Follow</string>
         </property>
        </widget>
       </item>
@@ -342,6 +368,9 @@
       </item>
       <item>
        <widget class="QPushButton" name="randomButton">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="text">
          <string>Randomize Environment</string>
         </property>
@@ -369,16 +398,16 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="followButton">
+       <widget class="QPushButton" name="resetButton">
         <property name="text">
-         <string>Follow</string>
+         <string>Reset</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="resetButton">
+       <widget class="QPushButton" name="clearButton">
         <property name="text">
-         <string>Reset</string>
+         <string>Clear</string>
         </property>
        </widget>
       </item>
@@ -435,12 +464,61 @@
        </widget>
       </item>
       <item>
+       <widget class="QLabel" name="label_12">
+        <property name="text">
+         <string>Sampler</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="samplerBox">
+        <item>
+         <property name="text">
+          <string>Box</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Triangle</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Circle</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="setButton">
+        <property name="text">
+         <string>Set</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="restoreButton">
+        <property name="text">
+         <string>Restore</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QCheckBox" name="autoButton">
         <property name="text">
          <string>Auto</string>
         </property>
        </widget>
       </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="widget_5" native="true">
+     <layout class="QHBoxLayout" name="horizontalLayout_4">
       <item>
        <widget class="QLineEdit" name="outField">
         <property name="text">
@@ -456,9 +534,30 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="loadButton">
+       <widget class="QPushButton" name="loadConfigButton">
         <property name="text">
-         <string>Load</string>
+         <string>Load Configuration</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="loadPlannerButton">
+        <property name="text">
+         <string>Load Planner</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="loadPolyButton">
+        <property name="text">
+         <string>Load Polygons</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="loadPolyListButton">
+        <property name="text">
+         <string>Load Poly List</string>
         </property>
        </widget>
       </item>

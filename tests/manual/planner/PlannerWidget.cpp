@@ -110,6 +110,42 @@ void PlannerWidget::drawForeground(QPainter& painter)
 
             }
         }
+
+        painter.setPen(Qt::blue);
+        switch (planner->getSampler()) {
+            case RRTPlanner::SampleSpace::BOX:
+            {
+                auto [min, max] = planner->getBounds();
+                min = transformed(min);
+                max = transformed(max);
+
+                painter.drawLine(min.x, min.y, max.x, min.y);
+                painter.drawLine(max.x, min.y, max.x, max.y);
+                painter.drawLine(max.x, max.y, min.x, max.y);
+                painter.drawLine(min.x, max.y, min.x, min.y);
+            }
+                break;
+            case RRTPlanner::SampleSpace::TRIANGLE:
+            {
+                Triangle2D tri = planner->getTriBounds();
+                tri.a = transformed(tri.a);
+                tri.b = transformed(tri.b);
+                tri.c = transformed(tri.c);
+
+                painter.drawLine(tri.a.x, tri.a.y, tri.b.x, tri.b.y);
+                painter.drawLine(tri.b.x, tri.b.y, tri.c.x, tri.c.y);
+                painter.drawLine(tri.c.x, tri.c.y, tri.a.x, tri.a.y);
+
+            }
+                break;
+            case RRTPlanner::SampleSpace::CIRCLE:
+                Circle circ = planner->getCircBounds();
+                circ.center = transformed(circ.center);
+                circ.radius *= m_scalar;
+
+                painter.drawEllipse(QPointF(circ.center.x, circ.center.y), circ.radius, circ.radius);
+                break;
+        }
     }
 
     QColor color(0, 0, 0);
@@ -124,7 +160,7 @@ void PlannerWidget::drawForeground(QPainter& painter)
             glm::dvec3 start = node.parent == std::numeric_limits<uint32_t>::max()
                                ? planner->start() : nodes[node.parent].location;
 
-            float cc = start.z / (2 * M_PI);
+            float cc = start.z / M_PI;
             color.setRedF(cc);
             color.setBlueF(cc);
             painter.setPen(color);
@@ -167,13 +203,6 @@ void PlannerWidget::drawForeground(QPainter& painter)
     }
 
     PolygonWidget::drawForeground(painter);
-
-    if (m_selection.first != -1) {
-        std::string text = "[" + std::to_string(m_selection.first) + ": " + std::to_string(m_selection.second) + "]";
-
-        painter.setPen(Qt::darkCyan);
-        painter.drawText(10, 20, text.c_str());
-    }
 
     if (planner != nullptr) {
         painter.setPen(Qt::green);

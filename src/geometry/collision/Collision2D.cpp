@@ -22,6 +22,9 @@ bool Collision2D::test(const Polygon& bodyA, const Line& bodyB)
             return gjkTest(bodyA, bodyB);
         } catch (std::exception& e) {
             std::cout << "\033[93m[Collision2D] Failed to test collision of polygon and line\n" << e.what() << "\033[0m\n";
+//            static int i = 0;
+//            bodyA.save("..\out\C2D-SET" + std::to_string(i++) + ".bin");
+//            std::cout << "LINE: " << bodyB.first.x << " " << bodyB.first.y << " | " << bodyB.second.x << " " << bodyB.second.y << "\n";
         }
     }
 
@@ -74,4 +77,46 @@ bool Collision2D::encloses(const Circle& body, const glm::dvec2& vertex)
 {
     glm::dvec2 delta = vertex - body.center;
     return glm::dot(delta, delta) - body.radius * body.radius < 1e-12;
+}
+
+// Returns true if the line crosses the axis of the ray. t is the multiple for the intersection. The value is negative when
+// the line is behind the ray
+std::tuple<bool, double> Collision2D::intersection(const Line& bodyA, const Ray<2>& bodyB)
+{
+    auto v = bodyB.origin + bodyB.axis;
+    auto a1 = Triangle2D::signedArea(bodyB.origin, v, bodyA.second);
+    auto a2 = Triangle2D::signedArea(bodyB.origin, v, bodyA.first);
+
+    if (a1 * a2 < 0) {
+        double a3 = Triangle2D::signedArea(bodyA.first, bodyA.second, bodyB.origin), a4 = a3 + a2 - a1;
+        return { true, a3 / (a3 - a4) };
+    }
+
+    return { false, -1.0 };
+}
+
+// Returns true if the polygon passes the axis of the ray. Also returns tMin and tMax, the distance from the ray origin of the most extreme intersections
+std::tuple<bool, double, double> Collision2D::intersection(const Polygon& bodyA, const Ray<2>& bodyB)
+{
+   if (bodyA.vertexCount() >= 3) {
+       glm::dvec2 last = bodyA.border().back();
+       double min = std::numeric_limits<double>::max(), max = std::numeric_limits<double>::lowest();
+       bool intersects = false;
+
+        for (uint32_t i = 0; i < bodyA.vertexCount(); i++) {
+            Line edge(last, bodyA.border()[i]);
+            auto [hit, t] = intersection(edge, bodyB);
+            if (hit) {
+                if (t < min) min = t;
+                if (t > max) max = t;
+                intersects = true;
+            }
+
+            last = edge.second;
+        }
+
+        return { intersects, min, max };
+   }
+
+    return { false, -1.0, -1.0 };
 }

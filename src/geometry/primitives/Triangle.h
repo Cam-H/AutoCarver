@@ -83,8 +83,18 @@ public:
 class Triangle2D {
 public:
 
+    Triangle2D(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c);
+
+    glm::dvec2 sample(double u, double v, double w);
+
+    [[nodiscard]] double perimeter() const;
+
     static double area(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c);
     static double signedArea(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c);
+
+    glm::dvec2 a;
+    glm::dvec2 b;
+    glm::dvec2 c;
 
 };
 

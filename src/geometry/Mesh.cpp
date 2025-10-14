@@ -168,13 +168,13 @@ void Mesh::calculateVertexNormals()
     m_vertexNormals = VertexArray(normals);
 }
 
-std::tuple<bool, double> Mesh::raycast(const Ray& ray) const
+std::tuple<bool, double> Mesh::raycast(const Ray<3>& ray) const
 {
     auto [hit, t, idx] = pickFace(ray);
     return { hit, t };
 }
 
-std::tuple<bool, double, uint32_t> Mesh::pickFace(const Ray& ray) const
+std::tuple<bool, double, uint32_t> Mesh::pickFace(const Ray<3>& ray) const
 {
     const std::vector<TriIndex>& triangles = m_faces.triangles();
     double t = -1;

@@ -60,12 +60,14 @@ struct Action {
     Action (const std::shared_ptr<Trajectory>& trajectory, const std::shared_ptr<Robot>& robot)
             : trajectory(trajectory)
             , target(robot)
-            , started(false) {}
+            , started(false)
+            , skip(false) {}
 
 
     std::shared_ptr<Trajectory> trajectory;
     std::shared_ptr<Robot> target;
     bool started;
+    bool skip;
 
     std::deque<Cut> cuts;
 };
@@ -73,9 +75,36 @@ struct Action {
 class ProcessPlanner {
 public:
 
-    ProcessPlanner();
+    struct Report {
+        Report()
+            : success(false)
+            , appliedConvexTrim(false)
+            , ctStepCount(0)
+            , appliedSilhouetteRefinement(false)
+            , srStepCount(0)
+            , appliedFeatureRefinement(false)
+            , frStepCount(0)
+            {}
 
-    bool plan(const std::shared_ptr<Sculpture>& target, const std::shared_ptr<Robot>& sculptor, const std::shared_ptr<Robot>& tt);
+        bool success;
+
+        bool appliedConvexTrim;
+        uint32_t ctStepCount;
+
+        bool appliedSilhouetteRefinement;
+        std::vector<std::pair<double, uint32_t>> srOrientations;
+        uint32_t srStepCount;
+
+        bool appliedFeatureRefinement;
+        uint32_t frStepCount;
+
+        void print() const;
+    };
+
+    ProcessPlanner();
+    explicit ProcessPlanner(ProcessConfiguration  configuration);
+
+    Report plan(const std::shared_ptr<Sculpture>& target, const std::shared_ptr<Robot>& sculptor, const std::shared_ptr<Robot>& tt);
 
     ProcessConfiguration& getConfiguration();
     [[nodiscard]] const ProcessConfiguration& getConfiguration() const;
@@ -84,18 +113,24 @@ public:
 
 private:
 
+    void complete();
+
     void planConvexTrim();
     [[nodiscard]] std::vector<std::pair<Plane, std::vector<glm::dvec3>>> convexTrimOrder() const;
     [[nodiscard]] std::vector<Plane> volumeOptimizedOrder(const ConvexHull& base, const std::vector<Plane>& planes) const;
 
     std::vector<Action> planConvexTrim(const std::pair<Plane, std::vector<glm::dvec3>>& step);
 
-    void planOutlineRefinement(double stepDg);
-    std::vector<Action> planOutlineRefinement(Profile& profile);
-    Action planOutlineRefinement(const Profile& profile, const SectionOperation& operation);
+    void planSilhouetteRefinement();
+
+    std::vector<Action> planProfile(Profile& profile);
+
+    bool planSection(const Profile& profile, const SectionOperation& operation, std::vector<Action>& actions);
 
     bool planTranslation(const glm::dvec3& translation, Action& action);
     bool planSequence(const Sequence& sequence, Action& action);
+    bool planApproach(const Axis3D& axes, const std::vector<std::pair<glm::dvec3, double>>& approach, Action& action);
+    Action planPath2D(const Profile& profile, const std::vector<glm::dvec3>& path2D);
 
     Action planRetraction(const Waypoint& start);
 
@@ -109,16 +144,17 @@ private:
     Action planRoboticSection(const std::shared_ptr<CompositeTrajectory>& trajectory);
 
 
-    std::shared_ptr<CompositeTrajectory> preparePlanarTrajectory(const std::vector<glm::dvec3>& border, const glm::dvec3& normal);
+    std::shared_ptr<CompositeTrajectory> preparePlanarTrajectory(const std::vector<glm::dvec3>& border, const Axis3D& axes);
     std::shared_ptr<CompositeTrajectory> prepareThroughCut(Pose pose, double depth, double runup, const glm::dvec3& off);
 
-    [[nodiscard]] bool withinActionLimit() const;
+    [[nodiscard]] bool withinActionLimit(uint32_t buffered) const;
 
-    [[nodiscard]] inline bool nearest(const Sequence& test, const Sequence& comparison);
+    [[nodiscard]] glm::dvec3 projected2D(const Waypoint& wp, const Profile& profile) const;
 
 private:
 
     ProcessConfiguration m_config;
+    Report m_report;
 
     std::shared_ptr<Sculpture> sculpture;
 

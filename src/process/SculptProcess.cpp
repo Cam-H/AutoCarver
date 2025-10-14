@@ -18,20 +18,39 @@
 #include "robot/trajectory/CompositeTrajectory.h"
 #include "core/Timer.h"
 
+SculptProcess::SculptProcess(const ProcessConfiguration& configuration)
+    : Scene()
+    , model(MeshHandler::loadAsMeshBody(configuration.targetSource))
+    , m_sculpture(nullptr)
+    , m_step(0)
+    , m_planner(configuration)
+    , m_ready(true)
+    , m_planned(false)
+    , m_ttOffset(0, 0, 0)
+    , m_smoothed(false)
+    , m_duration(0)
+    , m_time(0)
+{
+    initialize();
+}
+
 SculptProcess::SculptProcess(const std::shared_ptr<Mesh>& model)
     : Scene()
     , model(model)
     , m_sculpture(nullptr)
     , m_step(0)
+    , m_ready(true)
     , m_planned(false)
     , m_ttOffset(0, 0, 0)
-    , m_planner()
     , m_smoothed(false)
     , m_duration(0)
     , m_time(0)
-// TODO when adapting for different models these need to be changed
 {
+    initialize();
+}
 
+void SculptProcess::initialize()
+{
     // Create dummies to provide space for the sculpture before it is built
     m_bodies.push_back(nullptr);
     m_vis.push_back(nullptr);
@@ -200,29 +219,53 @@ void SculptProcess::reset()
     update();
 }
 
-void SculptProcess::plan()
+ProcessPlanner::Report SculptProcess::plan()
 {
-    if (m_planned) {
-        std::cout << "\033[33mWarning! The process has already been planned\033[0m\n";
-        return;
-    } else if (m_robot == nullptr) {
-        std::cout << "\033[33mWarning! No sculpting robot has been provided\033[0m\n";
-        return;
-    }
+    if (m_ready) {
+        m_mutex.lock();
+        m_ready = false;
 
-    ScopedTimer timer("[SculptProcess] planning");
+        if (!m_planned && m_robot != nullptr) {
+            ScopedTimer timer("[SculptProcess] planning");
 
-    if (m_planner.plan(m_sculpture, m_robot, m_turntable)) {
-        m_planned = true;
-        m_step = 0;
+            auto report = m_planner.plan(m_sculpture, m_robot, m_turntable);
+            report.print();
 
-//        m_actions = m_planner.actions();
+            if (report.success) {
+                m_step = 0;
 
-        m_actions = getConfiguration().linkActionEnable ? smooth(m_planner.actions()) : m_planner.actions();
-    } else std::cout << "\033[33mWarning! Failed to plan\033[0m\n";
+                m_actions = getConfiguration().linkActionEnable ? smooth(m_planner.actions()) : m_planner.actions();
+            } else std::cout << "\033[33m[SculptProcess]Warning! Failed to plan\033[0m\n";
 
-    calculateDuration();
-    m_time = 0;
+            calculateDuration();
+            m_time = 0;
+
+            if (report.success) { // Apply initial skips when requested
+                while (!m_actions.empty() && m_actions[0].skip) {
+                    m_time += m_actions[0].trajectory->duration();
+                    if (!m_actions[0].cuts.empty()) m_sculpture->applySection();
+                    m_actions.pop_front();
+                    m_step++;
+                }
+            }
+
+            m_planned = report.success;
+            m_ready = true;
+
+            return report;
+        }
+
+        if (m_planned) {
+            std::cout << "\033[33mWarning! The process has already been planned\033[0m\n";
+        } else if (m_robot == nullptr) {
+            std::cout << "\033[33mWarning! No sculpting robot has been provided\033[0m\n";
+        }
+
+        m_ready = true;
+        m_mutex.unlock();
+    } else  std::cout << "\033[33m[SculptProcess] Can not plan. Not ready\033[0m\n";
+
+    return {};
 }
 
 void SculptProcess::smooth()
@@ -298,43 +341,59 @@ void SculptProcess::mill(const Pose& pose, const glm::dvec3& normal, const glm::
 
 void SculptProcess::proceed()
 {
-    if (!m_planned) plan();
+    if (m_ready) {
+        if (!m_planned) plan();
 
-    // Do not proceed before previous step is complete
-    if (simulationIdle()) {
-        nextAction();
-    } else if (simulationComplete()) std::cout << "Simulation complete!\n";
+//        m_mutex.lock();
+        m_ready = false;
+
+        // Do not proceed before previous step is complete
+        if (simulationIdle()) {
+            nextAction();
+        } else if (simulationComplete()) std::cout << "Simulation complete!\n";
+
+        m_ready = true;
+//        m_mutex.unlock();
+    }
 }
 
 void SculptProcess::skip()
 {
-    if (!m_planned) plan();
+    if (m_ready) {
+        if (!m_planned) plan();
 
-    if (simulationComplete()) {
-        std::cout << "Simulation complete!\n";
-        return;
-    }
+//        m_mutex.lock();
+        m_ready = false;
 
-    std::cout << "SKIP| Next step: " << (m_step + 1) << " / Remaining:" << m_actions.size() - 1 << " -> " << m_actions.front().target->getWaypoint() << " " << m_actions[0].trajectory->duration() << "\n";
+        if (simulationComplete()) {
+            std::cout << "Simulation complete!\n";
+            return;
+        }
 
-    // Jump robot to endpoint and apply relevant sections to the sculpture
-    if (m_actions[0].started) {
-        m_time += m_actions[0].target->transitRemaining();
-        m_actions[0].target->finishTransit();
-    } else {
-        m_time += m_actions[0].trajectory->duration();
-        m_actions[0].target->moveTo(m_actions[0].trajectory->end());
-        if (!m_actions[0].cuts.empty()) m_sculpture->applySection();
-    }
+        std::cout << "SKIP| Next step: " << (m_step + 1) << " / Remaining:" << m_actions.size() - 1 << " -> " << m_actions.front().target->getWaypoint() << " " << m_actions[0].trajectory->duration() << "\n";
 
-    clearDebris();
+        // Jump robot to endpoint and apply relevant sections to the sculpture
+        if (m_actions[0].started) {
+            m_time += m_actions[0].target->transitRemaining();
+            m_actions[0].target->finishTransit();
+        } else {
+            m_time += m_actions[0].trajectory->duration();
+            m_actions[0].target->moveTo(m_actions[0].trajectory->end());
+            if (!m_actions[0].cuts.empty()) m_sculpture->applySection();
+        }
 
-    m_actions.pop_front();
-    m_step++;
+        clearDebris();
+
+        m_actions.pop_front();
+        m_step++;
 
 //    if (m_actions.empty()) home();
 
-    update();
+        update();
+
+        m_ready = true;
+//        m_mutex.unlock();
+    }
 }
 
 void SculptProcess::home()
@@ -348,30 +407,39 @@ void SculptProcess::step(double delta)
 {
     if (simulationComplete()) return;
 
-    if (!m_actions[0].started && getConfiguration().continuous) nextAction();
+    if (m_ready) {
 
-    double rem = m_actions[0].target->transitRemaining();
+//        m_mutex.lock();
+//        m_ready = false;
+
+        if (!m_actions[0].started && getConfiguration().continuous) nextAction();
+
+        double rem = m_actions[0].target->transitRemaining();
 //    std::cout << rem << " " << delta << " " << m_actions[0].started << "\n";
-    while (m_actions[0].started && rem < delta) {
-        m_actions[0].target->finishTransit();
-        Scene::step(rem);
-        m_time += rem;
-        delta -= rem;
-        process();
+        while (m_actions[0].started && rem < delta) {
+            m_actions[0].target->finishTransit();
+            Scene::step(rem);
+            m_time += rem;
+            delta -= rem;
+            process();
 
-        m_actions.pop_front();
-        m_step++;
+            m_actions.pop_front();
+            m_step++;
 
-        if (m_actions.empty()) return;
+            if (m_actions.empty()) return;
 
-        if (getConfiguration().continuous) nextAction();
-        rem = m_actions[0].target->transitRemaining();
-    }
+            if (getConfiguration().continuous) nextAction();
+            rem = m_actions[0].target->transitRemaining();
+        }
 
-    if (simulationActive()){
-        Scene::step(delta);
-        m_time += delta;
-        process();
+        if (simulationActive()){
+            Scene::step(delta);
+            m_time += delta;
+            process();
+        }
+
+//        m_ready = true;
+//        m_mutex.unlock();
     }
 }
 
@@ -510,6 +578,11 @@ void SculptProcess::alignToFace(uint32_t faceIdx)
     if (wp.isValid()) m_robot->moveTo(wp);
 }
 
+bool SculptProcess::ready() const
+{
+    return m_ready;
+}
+
 bool SculptProcess::planned() const
 {
     return m_planned;
@@ -581,7 +654,7 @@ const glm::dvec3& SculptProcess::forward() const
 
 Waypoint SculptProcess::alignedToFaceWP(const std::vector<glm::dvec3>& border, const glm::dvec3& normal) const
 {
-    auto axes = Axis3D::faceAligned(normal, getConfiguration().forward, false);
+    auto axes = Axis3D::faceAligned(normal, getConfiguration().forward, true);
 
     // Find the better position for access (If possible)
     auto optionA = alignedToFaceWP(axes, border);
@@ -685,19 +758,23 @@ void SculptProcess::link()
 
 Action SculptProcess::linked(const Action& action)
 {
+    Action link(nullptr, nullptr);
     if (action.target == m_turntable) { // Move robot away if it would collide with the TT when it moves
         if (getConfiguration().collisionTestingEnable && testTurntableCollision(action.trajectory)) {
-            return planTurntableClearance();
+            link = planTurntableClearance();
+            link.skip = action.skip;
         }
     } else if (action.target == m_robot) { // Prepare approach trajectories to connect the last pose and the initial pose for this action
         if (!Waypoint::compare(m_robot->getWaypoint(), action.trajectory->start())) {
             auto linkTrajectory = prepareApproach(action.trajectory->start());
-            if (linkTrajectory != nullptr) return { linkTrajectory, m_robot };
-            else std::cout << "\033[93mFailed to link actions\033[0m\n";
+            if (linkTrajectory != nullptr) {
+                link = { linkTrajectory, m_robot };
+                link.skip = action.skip;
+            } else std::cout << "\033[93mFailed to link actions\033[0m\n";
         }
     }
 
-    return { nullptr, nullptr };
+    return link;
 }
 
 bool SculptProcess::testTurntableCollision(const std::shared_ptr<Trajectory>& ttTrajectory)

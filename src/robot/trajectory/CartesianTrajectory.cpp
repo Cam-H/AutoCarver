@@ -18,7 +18,7 @@ CartesianTrajectory::CartesianTrajectory(const std::shared_ptr<Robot>& robot, co
     , m_initialPose(initialPose)
     , m_finalPose(finalPose)
 {
-    m_curve = Ray(initialPose.position, finalPose.position - initialPose.position);
+    m_curve = Ray<3>(initialPose.position, finalPose.position - initialPose.position);
     m_distance = glm::length(m_curve.axis);
     m_curve.axis /= m_distance;
 
@@ -28,6 +28,7 @@ CartesianTrajectory::CartesianTrajectory(const std::shared_ptr<Robot>& robot, co
 void CartesianTrajectory::resolve(uint32_t steps)
 {
     if (!m_robot->inverse(m_initialPose).isValid() || !m_robot->inverse(m_finalPose).isValid()) {
+        std::cout << "\033[93m[CartesianTrajectory] Impossible to resolve. Endpoints are not reachable!\n\033[0m";
         m_valid = false;
         return;
     }
@@ -49,7 +50,7 @@ void CartesianTrajectory::resolve(uint32_t steps)
     for (uint32_t i = 0; i < steps; i++) {
         waypoints.emplace_back(m_robot->inverse(pose));
         if (!waypoints.back().isValid()) {
-            std::cout << "\033[93mFAILED to resolve cartesian trajectory: " << i << " " << steps << "\n\033[0m";
+            std::cout << "\033[93m[CartesianTrajectory] Failed to resolve: " << i << " " << steps << "\n\033[0m";
             waypoints.clear();
             break;
         }
@@ -93,7 +94,7 @@ std::vector<Waypoint> CartesianTrajectory::cartesianWaypoints(const std::shared_
 
         glm::dvec3 axis = finalPose.position - initialPose.position;
         double length = glm::length(axis);
-        Ray ray(initialPose.position, axis / length);
+        Ray<3> ray(initialPose.position, axis / length);
 
         std::vector<double> steps = { 0.0, 1.0 }; // Track position along axis ([0] = max, -> steps)
 

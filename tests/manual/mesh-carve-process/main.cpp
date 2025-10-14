@@ -38,7 +38,7 @@ SceneWidget* sceneWidget = nullptr;
 
 QCheckBox *sculptureButton = nullptr;
 
-QCheckBox *contButton = nullptr, *releaseButton = nullptr;
+QCheckBox *contButton = nullptr, *releaseButton = nullptr, *titleButton = nullptr;
 QDoubleSpinBox *timeField = nullptr;
 
 QSpinBox* sliceLimitField = nullptr;
@@ -91,8 +91,9 @@ void showSculpture(bool enable)
 
 void updateTitle()
 {
-    std::string title = !scene->planned() ? "" : "Process: " + Functions::toString(scene->simulationTime(), 2)
-                                                 + " / " + Functions::toString(scene->simulationDuration(), 2) + "s";
+    std::string title = !scene->planned() || !titleButton->isChecked() ? "" :
+            "Process: " + Functions::toString(scene->simulationTime(), 2)
+            + " / " + Functions::toString(scene->simulationDuration(), 2) + "s";
 
     sceneWidget->setTitle(title);
 }
@@ -112,13 +113,7 @@ int main(int argc, char *argv[])
     window = loadUiFile(nullptr);
     if (window == nullptr) return -1;
 
-    std::string source = "../res/meshes/devil.obj";
-//    std::string source = "../res/meshes/teddy.obj";
-//    std::string source = "../res/meshes/bunny.obj";
-    auto model = MeshHandler::loadAsMeshBody(source);
-    model->setBaseColor({1, 0, 1});
-
-    scene = std::make_shared<SculptProcess>(model);
+    scene = std::make_shared<SculptProcess>();
 //    scene->enableConvexTrim(false);
 //    scene->setContinuous(true);
 
@@ -148,6 +143,12 @@ int main(int argc, char *argv[])
         if (debris != nullptr) debris->applyCompositeColors(checked);
 
         sceneWidget->update();
+    });
+
+    titleButton = window->findChild<QCheckBox*>("titleButton");
+    QObject::connect(debrisDecompButton, &QCheckBox::clicked, [&](bool checked) {
+        updateTitle();
+        sceneWidget->update(); // Second call because of buffer
     });
 
     auto hullButton = window->findChild<QCheckBox*>("hullButton");
@@ -185,17 +186,34 @@ int main(int argc, char *argv[])
         scene->setTimeScaling(value);
     });
 
+    auto planButton = window->findChild<QPushButton*>("planButton");
+    QObject::connect(planButton, &QPushButton::clicked, [&]() {
+        auto report = scene->plan();
+
+        int attempts = 0;
+        while (!report.success && attempts < 100) {
+            scene->reset();
+            scene->plan();
+            attempts++;
+        }
+
+        std::cout << "Attempts: " << attempts << "\n";
+        report.print();
+
+        updateTitle();
+        sceneWidget->update(); // Second call because of buffer
+    });
+
     auto stepButton = window->findChild<QPushButton*>("stepButton");
     QObject::connect(stepButton, &QPushButton::clicked, [&]() {
         scene->proceed();
-        sceneWidget->update();
     });
 
     auto skipButton = window->findChild<QPushButton*>("skipButton");
     QObject::connect(skipButton, &QPushButton::clicked, [&]() {
         scene->skip();
         updateTitle();
-        sceneWidget->update();
+        sceneWidget->update(); // Second call because of buffer
     });
 
     auto newModelButton = window->findChild<QPushButton*>("newModelButton");
@@ -280,6 +298,12 @@ int main(int argc, char *argv[])
         releaseButton->setEnabled(checked);
     });
 
+    auto convexSkipButton = window->findChild<QCheckBox*>("convexSkipButton");
+    scene->getConfiguration().enableConvexSkip(convexSkipButton->isChecked());
+    QObject::connect(convexSkipButton, &QCheckBox::clicked, [&](bool checked) {
+        scene->getConfiguration().enableConvexSkip(checked);
+    });
+
     auto convexTrimButton = window->findChild<QCheckBox*>("convexTrimButton");
     scene->getConfiguration().enableConvexTrim(convexTrimButton->isChecked());
     QObject::connect(convexTrimButton, &QCheckBox::clicked, [&](bool checked) {
@@ -315,6 +339,12 @@ int main(int argc, char *argv[])
     auto minVolField = window->findChild<QDoubleSpinBox*>("minVolField");
     QObject::connect(minVolField, &QDoubleSpinBox::valueChanged, [&](double value) {
         scene->getConfiguration().setMinimumCutVolume(value);
+    });
+
+    auto stepStartField = window->findChild<QDoubleSpinBox*>("stepStartField");
+    scene->getConfiguration().setStepStart(stepStartField->value());
+    QObject::connect(stepStartField, &QDoubleSpinBox::valueChanged, [&](double value) {
+        scene->getConfiguration().setStepStart(value);
     });
 
     auto stepOffsetField = window->findChild<QDoubleSpinBox*>("stepOffsetField");

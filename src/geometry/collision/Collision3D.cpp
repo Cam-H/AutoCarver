@@ -12,7 +12,7 @@
 #include "geometry/primitives/AABB.h"
 #include "geometry/primitives/ConvexHull.h"
 
-std::tuple<bool, double> Collision3D::raycast(const Plane& plane, const Ray& ray)
+std::tuple<bool, double> Collision3D::raycast(const Plane& plane, const Ray<3>& ray)
 {
     double den = glm::dot(plane.normal, ray.axis);
     if (std::abs(den) < 1e-12) return { false, 0 }; // Parallel case - No intersection
@@ -21,7 +21,7 @@ std::tuple<bool, double> Collision3D::raycast(const Plane& plane, const Ray& ray
     double t = glm::dot(plane.normal, plane.origin - ray.origin) / den;
     return { t >= 0, t };
 }
-std::tuple<bool, double> Collision3D::raycast(const Triangle3D& triangle, const Ray& ray)
+std::tuple<bool, double> Collision3D::raycast(const Triangle3D& triangle, const Ray<3>& ray)
 {
     glm::dvec3 AB = triangle.b - triangle.a, AC = triangle.c - triangle.a;
 
@@ -45,7 +45,7 @@ std::tuple<bool, double> Collision3D::raycast(const Triangle3D& triangle, const 
 }
 
 // Solved via substitution with the analytic sphere formula. Ray is assumed to be normalized for quadratic calculation
-std::tuple<bool, double> Collision3D::raycast(const Sphere& sphere, const Ray& ray)
+std::tuple<bool, double> Collision3D::raycast(const Sphere& sphere, const Ray<3>& ray)
 {
     glm::dvec3 delta = ray.origin - sphere.center;
     double b = 2.0 * glm::dot(delta, ray.axis);
@@ -63,7 +63,7 @@ std::tuple<bool, double> Collision3D::raycast(const Sphere& sphere, const Ray& r
     return { false, 0 };
 
 }
-std::tuple<bool, double> Collision3D::raycast(const AABB& box, const Ray& ray)
+std::tuple<bool, double> Collision3D::raycast(const AABB& box, const Ray<3>& ray)
 {
     double tMin = std::numeric_limits<double>::lowest(), tMax = std::numeric_limits<double>::max();
 
@@ -85,13 +85,13 @@ std::tuple<bool, double> Collision3D::raycast(const AABB& box, const Ray& ray)
 
     return { true, tMin };
 }
-std::tuple<bool, double> Collision3D::raycast(const ConvexHull& hull, const Ray& ray)
+std::tuple<bool, double> Collision3D::raycast(const ConvexHull& hull, const Ray<3>& ray)
 {
     auto [hit, t, idx] = pickFace(hull, ray);
     return { hit, t };
 }
 
-std::tuple<bool, double, uint32_t> Collision3D::pickFace(const ConvexHull& hull, const Ray& ray)
+std::tuple<bool, double, uint32_t> Collision3D::pickFace(const ConvexHull& hull, const Ray<3>& ray)
 {
     const std::vector<glm::dvec3>& vertices = hull.vertices();
     const FaceArray& fa = hull.faces();
@@ -337,7 +337,7 @@ double Collision3D::distance(const ConvexHull& hullA, const ConvexHull& hullB)
 }
 
 
-std::tuple<bool, double, glm::dvec3> Collision3D::intersection(const AABB& body, const Ray& ray)
+std::tuple<bool, double, glm::dvec3> Collision3D::intersection(const AABB& body, const Ray<3>& ray)
 {
     auto [hit, t] = raycast(body, ray);
     if (!hit) return { false, 0, {} };

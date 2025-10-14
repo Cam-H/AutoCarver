@@ -7,6 +7,7 @@
 #include <iostream>
 
 #include "SimpleTrajectory.h"
+#include "HoldPosition.h"
 
 CompositeTrajectory::CompositeTrajectory(uint32_t dof)
     : Trajectory(dof)
@@ -28,13 +29,24 @@ void CompositeTrajectory::addTrajectory(const std::shared_ptr<Trajectory>& traje
     }
 }
 
+// Generates a SimpleTrajectory from the current end point to the specified waypoint (Or brief HoldPosition if empty)
+void CompositeTrajectory::connect(const Waypoint& waypoint)
+{
+    assert(waypoint.values.size() == m_dof);
+
+    if (m_trajectories.empty()) addTrajectory(std::make_shared<HoldPosition>(waypoint, 0.01));
+    else {
+        if (!Waypoint::compare(m_trajectories.back()->end(), waypoint)) {
+            addTrajectory(std::make_shared<SimpleTrajectory>(m_trajectories.back()->end(), waypoint, Interpolator::SolverType::QUINTIC));
+        }
+    }
+}
+
 // Attaches the provided trajectory, developing an intermediary trajectory if required to maintain continuity
 void CompositeTrajectory::connectTrajectory(const std::shared_ptr<Trajectory>& trajectory)
 {
     // Check for disjoint trajectory
-    if (!(m_trajectories.empty() || Waypoint::compare(m_trajectories.back()->end(), trajectory->start()))) {
-        addTrajectory(std::make_shared<SimpleTrajectory>(m_trajectories.back()->end(), trajectory->start(), Interpolator::SolverType::QUINTIC));
-    }
+    if (!m_trajectories.empty()) connect(trajectory->start());
 
     addTrajectory(trajectory);
 }

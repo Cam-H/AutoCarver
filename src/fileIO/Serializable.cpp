@@ -9,13 +9,13 @@
 bool Serializable::save(const std::string& filename) const
 {
     if (!Serializer::getInstance()->isOK()) {
-        std::cerr << "Issues with serializer. Object serialization is not available\n";
+        std::cerr << "\033[91m[Serializable] Issues with serializer. Object serialization is not available\033[0m\n";
         return false;
     }
 
     std::ofstream file(filename, std::ios::binary);
     if (!file.is_open()) {
-        std::cerr << "Error: Failed to open file for writing.\n";
+        std::cerr << "\033[91m[Serializable] Error: Failed to open file for writing.\033[0m\n";
         return false;
     }
 
@@ -24,7 +24,7 @@ bool Serializable::save(const std::string& filename) const
     file.close();
 
     if (success) std::cout << "Object serialized successfully at: [" << filename << "]\n";
-    else std::cerr << "Failed to serialize the object\n";
+    else std::cerr << "\033[91m[Serializable] Failed to serialize the object\033[0m\n";
 
     return success;
 }
@@ -32,13 +32,13 @@ bool Serializable::save(const std::string& filename) const
 bool Serializable::load(const std::string& filename)
 {
     if (!Serializer::getInstance()->isOK()) {
-        std::cerr << "Issues with serializer. Object deserialization is not available\n";
+        std::cerr << "\033[91m[Serializable] Issues with serializer. Object deserialization is not available\033[0m\n";
         return false;
     }
 
     std::ifstream file(filename, std::ios::binary);
     if (!file.is_open()) {
-        std::cerr << "Error: Failed to open file for reading\n";
+        std::cerr << "\033[91m[Serializable] Error: Failed to open file for reading\033[0m\n";
         return false;
     }
 
@@ -47,7 +47,7 @@ bool Serializable::load(const std::string& filename)
     file.close();
 
     if (success) std::cout << "Object deserialized successfully\n";
-    else std::cerr << "Failed to deserialize the object\n";
+    else std::cerr << "\033[91m[Serializable] Failed to deserialize the object\033[0m\n";
 
     return success;
 }

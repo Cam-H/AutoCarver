@@ -10,7 +10,6 @@ qt_add_executable(planner
         main.cpp
         Configuration.cpp
         PlannerWidget.cpp
-        RRTPlanner.cpp
         main.ui
         )
 

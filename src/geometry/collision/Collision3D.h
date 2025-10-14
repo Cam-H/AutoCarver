@@ -9,12 +9,13 @@
 
 #include <glm.hpp>
 
-class Ray;
 class Plane;
 class Triangle3D;
 class Sphere;
 class AABB;
 class ConvexHull;
+
+#include "geometry/primitives/Ray.h"
 
 #include "GJK.h"
 
@@ -25,13 +26,13 @@ class ConvexHull;
 class Collision3D {
 public:
 
-    static std::tuple<bool, double> raycast(const Plane& plane, const Ray& ray);
-    static std::tuple<bool, double> raycast(const Triangle3D& triangle, const Ray& ray);
-    static std::tuple<bool, double> raycast(const Sphere& sphere, const Ray& ray);
-    static std::tuple<bool, double> raycast(const AABB& box, const Ray& ray);
-    static std::tuple<bool, double> raycast(const ConvexHull& hull, const Ray& ray);
+    static std::tuple<bool, double> raycast(const Plane& plane, const Ray<3>& ray);
+    static std::tuple<bool, double> raycast(const Triangle3D& triangle, const Ray<3>& ray);
+    static std::tuple<bool, double> raycast(const Sphere& sphere, const Ray<3>& ray);
+    static std::tuple<bool, double> raycast(const AABB& box, const Ray<3>& ray);
+    static std::tuple<bool, double> raycast(const ConvexHull& hull, const Ray<3>& ray);
 
-    static std::tuple<bool, double, uint32_t> pickFace(const ConvexHull& hull, const Ray& ray);
+    static std::tuple<bool, double, uint32_t> pickFace(const ConvexHull& hull, const Ray<3>& ray);
 
     // Determine if there is an intersection between the specified bodies
     static bool test(const Plane& bodyA, const Plane& bodyB);
@@ -89,7 +90,7 @@ public:
     static double distance(const ConvexHull& hullA, const ConvexHull& hullB);
 
     // Determine the intersection between the specified bodies
-    static std::tuple<bool, double, glm::dvec3> intersection(const AABB& body, const Ray& ray);
+    static std::tuple<bool, double, glm::dvec3> intersection(const AABB& body, const Ray<3>& ray);
 
     static std::vector<glm::dvec3> intersection(const ConvexHull& hull, const Plane& plane);
 

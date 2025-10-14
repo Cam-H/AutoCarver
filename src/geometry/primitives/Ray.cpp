@@ -7,61 +7,75 @@
 
 #include <iostream>
 
-Ray::Ray()
-    : origin({})
-    , axis({ 0, 1, 0 })
+template<typename Derived, uint16_t dims>
+RayBase<Derived, dims>::RayBase(const vec& origin, const vec& axis)
+        : origin(origin)
+        , axis(axis)
 {
 
 }
 
-Ray::Ray(const glm::dvec3& origin, const glm::dvec3& axis)
-    : origin(origin)
-    , axis(axis)
+template<typename Derived, uint16_t dims>
+void RayBase<Derived, dims>::reverse()
 {
-
+    axis = -axis;
 }
 
-glm::dvec3 operator*(const Ray& ray, double t)
-{
-    return ray.origin + t * ray.axis;
-}
-glm::dvec3 operator*(double t, const Ray& ray)
-{
-    return ray.origin + t * ray.axis;
-}
-
-Ray operator*(const glm::dmat4& transform, const Ray& ray)
-{
-    glm::dvec4 transformed = transform * glm::dvec4(ray.origin.x, ray.origin.y, ray.origin.z, 1);
-    return { glm::dvec3(transformed.x, transformed.y, transformed.z), Transformable::rotation(transform) * ray.axis };
-}
-
-bool Ray::isValid() const
+template<typename Derived, uint16_t dims>
+bool RayBase<Derived, dims>::isValid() const
 {
     double len = glm::dot(axis, axis);
     return 1 - 1e-12 < len && len < 1 + 1e-12;
 }
 
-// Calculate the rotation of the ray axis about the specified reference axis
-double Ray::axialRotation(const glm::dvec3& reference) const
+template<typename Derived, uint16_t dims>
+double RayBase<Derived, dims>::squareDistance(const vec& vertex) const
 {
-    return axialRotation(reference, axis);
+    vec delta = vertex - origin;
+    delta -= axis * glm::dot(axis, delta);
+    return glm::dot(delta, delta);
 }
 
-double Ray::axialRotation(const glm::dvec3& reference, const glm::dvec3& axis)
+
+
+Ray<2>::Ray() : RayBase<Ray<2>, 2>({}, { 0, 1 }) {}
+
+// Creates a forward pointing ray. The origin (x, y) and location.z represents the angle from x+
+Ray<2>::Ray(const glm::dvec3& location) : RayBase<Ray<2>, 2>({ location.x, location.y }, { cos(location.z), sin(location.z) }) {}
+
+Ray<2>::Ray(const glm::dvec2& origin, const glm::dvec2& axis) : RayBase<Ray<2>, 2>(origin, axis) {}
+
+void Ray<2>::print() const
+{
+    std::cout << "[RayD] origin: (" << origin.x << ", " << origin.y
+              << "), axis: (" << axis.x << ", " << axis.y << ")\n";
+}
+
+
+
+Ray<3>::Ray() : RayBase<Ray<3>, 3>({}, { 0, 0, 1 }) {}
+Ray<3>::Ray(const glm::dvec3& origin, const glm::dvec3& axis) : RayBase<Ray<3>, 3>(origin, axis) {}
+
+Ray<3> operator*(const glm::dmat4& transform, const Ray<3>& ray)
+{
+    glm::dvec4 transformed = transform * glm::dvec4(ray.origin.x, ray.origin.y, ray.origin.z, 1);
+    return { { transformed.x, transformed.y, transformed.z }, Transformable::rotation(transform) * ray.axis };
+}
+
+double Ray<3>::axialRotation(const glm::dvec3& reference, const glm::dvec3& axis)
 {
     glm::dvec3 proj = axis - reference * glm::dot(axis, reference);
     return atan2(proj.x, -proj.z);
 }
 
-double Ray::squareDistance(const glm::dvec3& vertex) const
+// Calculate the rotation of the ray axis about the specified reference axis
+double Ray<3>::axialRotation(const glm::dvec3& reference) const
 {
-    glm::dvec3 delta = vertex - origin;
-    delta -= axis * glm::dot(axis, delta);
-    return glm::dot(delta, delta);
+    return axialRotation(reference, axis);
 }
 
-void Ray::print() const
+void Ray<3>::print() const
 {
-    std::cout << "[Ray] origin: (" << origin.x << ", " << origin.y << ", " << origin.z << "), axis: (" << axis.x << ", " << axis.y << ", " << axis.z << ")\n";
+    std::cout << "[Ray3D] origin: (" << origin.x << ", " << origin.y << ", " << origin.z
+                     << "), axis: (" << axis.x << ", " << axis.y << ", " << axis.z << ")\n";
 }

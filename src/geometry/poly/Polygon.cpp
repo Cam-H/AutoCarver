@@ -421,10 +421,88 @@ std::vector<TriIndex> Polygon::triangulate(const std::vector<glm::dvec2>& vertic
         else std::cout << "[Polygon] Failed to triangulate due to duplicate vertices #" << e.v1() << " and #" << e.v2() << "\n";
 
     }  catch (std::exception& e) {
-        std::cout << e.what() << "\n";
+        std::cout << "[Polygon] Triangulation: " << e.what() << "\n";
     }
 
     return triangles;
+}
+
+// Decompose polygon into a set of convex hulls
+std::vector<Polygon> Polygon::decompose() const
+{
+    if (hull().size() == m_vertices.size()) return { *this }; // Early exit if polygon is already convex. TODO: save convex state
+
+    auto triangles = triangulate();
+
+    // Track remaining triangles to consider
+    uint32_t current = 0;
+    std::vector<bool> complete(triangles.size(), false);
+
+    // Develop list of triangles sharing a given vertex
+    std::vector<std::vector<uint32_t>> shared(m_vertices.size());
+    for (uint32_t i = 0; i < triangles.size(); i++) {
+        shared[triangles[i].I0].emplace_back(i);
+        shared[triangles[i].I1].emplace_back(i);
+        shared[triangles[i].I2].emplace_back(i);
+    }
+
+    std::vector<Polygon> hulls;
+
+    while (current < triangles.size()) {
+        if (complete[current]) { // Skip triangles that have already been considered
+            current++;
+            continue;
+        }
+
+        complete[current] = true;
+
+        std::vector<std::pair<uint32_t, uint32_t>> edges = {
+                { triangles[current].I0, triangles[current].I1 },
+                { triangles[current].I1, triangles[current].I2 },
+                { triangles[current].I2, triangles[current].I0 }
+        };
+
+
+        for (uint32_t i = 0; i < edges.size(); i++) { // Iterate over all edges, trying to expand the border by subsuming adjacent triangles
+            auto& edge = edges[i];
+
+            // Adjacent vertices from the perspective of the current edge
+            uint32_t prev = i == 0 ? edges.back().first : edges[i - 1].first;
+            uint32_t next = i >= edges.size() - 1 ? edges.front().first : edges[i + 1].second;
+
+            std::cout << "PN " << prev << " " << next << "\n";
+
+            for (uint32_t j = 0; j < shared[edge.first].size(); j++) { // Check all triangles that share a vertex (might share an edge)
+                uint32_t idx = shared[edge.first][j];
+                if (complete[idx]) continue;
+
+                const auto& tri = triangles[idx];
+                if (tri.has(edge.second)) { // Edge is shared
+                    uint32_t rem = tri.last(edge.first, edge.second);
+                    if (cross(m_vertices[prev], m_vertices[edge.first], m_vertices[rem]) > 0
+                        && cross(m_vertices[rem], m_vertices[edge.second], m_vertices[next]) > 0) {
+                        edges.insert(edges.begin() + i + 1, { rem, edge.second });
+                        edges[i] = { edge.first, rem };
+                        complete[idx] = true;
+                        i--;
+                    }
+
+                    break; //  Can only be one shared edge
+                }
+            }
+
+
+        }
+
+        // Commit hull developed
+        std::vector<glm::dvec2> border;
+        border.reserve(edges.size());
+
+        for (const std::pair<uint32_t, uint32_t>& edge : edges) border.emplace_back(m_vertices[edge.first]);
+        hulls.emplace_back(border);
+    }
+
+    return hulls;
 }
 
 void Polygon::clean()
@@ -479,7 +557,41 @@ bool Polygon::test(const glm::dvec2& vertex) const
     return hits % 2 != 0;
 }
 
+// Modifies location such that it is at least clearance from the polygon along the ray (Ray defined by angle location.z from x+)
+double Polygon::clear(double clearance, glm::dvec3& location) const
+{
+    auto ray = Ray<2>(location);
+
+    auto [hit, tREV, tFWD] = Collision2D::intersection(*this, ray);
+
+    if (hit) {
+
+        double t = 0.0;
+        if (tREV * tFWD < 0) {
+            if (std::abs(tREV) < std::abs(tFWD)) t = -clearance + tREV;
+            else t = clearance + tFWD;
+        } else {
+            if (tREV > 0) t = -std::max(0.0, clearance - tREV);
+            else t = std::max(0.0, clearance + tFWD);
+        }
+
+        location.x += t * ray.axis.x;
+        location.y += t * ray.axis.y;
+        return t;
+    }
+
+    return 0.0;
+}
+
 std::vector<std::pair<glm::dvec2, glm::dvec2>> Polygon::debugEdges() const
 {
     return {};
+}
+
+void Polygon::print() const
+{
+    std::cout << "[Polygon], vertices: " << m_vertices.size() << "\n";
+    for (uint32_t i = 0; i < m_vertices.size(); i++) {
+        std::cout << i << ": (" << m_vertices[i].x << ", " << m_vertices[i].y << ")\n";
+    }
 }

@@ -6,6 +6,19 @@
 
 #include <gtc/quaternion.hpp>
 
+Sequence::Sequence(const Profile* profile, const std::vector<glm::dvec3>& approach)
+{
+    assert(profile != nullptr);
+
+    sets.emplace_back();
+    for (const glm::dvec3& vertex : approach) {
+        auto proj = profile->projected3D(glm::dvec2(vertex.x, vertex.y));
+        sets[0].approach.emplace_back(proj, vertex.z);
+    }
+
+    normal = profile->normal();
+}
+
 Sequence::Sequence(const Profile* profile, const std::vector<SectionOperation::Set>& cuts)
 {
     assert(profile != nullptr);
@@ -21,10 +34,14 @@ Sequence::Sequence(const Profile* profile, const std::vector<SectionOperation::S
         for (const std::pair<glm::dvec2, double>& motion : cut.motions) {
             sets.back().motions.emplace_back(profile->projected3D(motion.first), motion.second);
         }
+
+        for (const glm::dvec3& vertex : cut.approach) {
+            auto proj = profile->projected3D(glm::dvec2(vertex.x, vertex.y));
+            sets.back().approach.emplace_back(proj, vertex.z);
+        }
     }
 
     normal = profile->normal();
-    exit = end();
 }
 
 void Sequence::transform(const glm::dquat& rotation, const glm::dvec3& translation)
@@ -34,23 +51,22 @@ void Sequence::transform(const glm::dquat& rotation, const glm::dvec3& translati
         set.normal = rotation * set.normal;
         set.travel = rotation * set.travel;
 
-        for (std::pair<glm::dvec3, double>& motion : set.motions) motion.first = rotation * motion.first + translation;
+        for (std::pair<glm::dvec3, double>& motion : set.motions) {
+            motion.first = rotation * motion.first + translation;
+        }
+
+        for (std::pair<glm::dvec3, double>& vertex : set.approach) {
+            vertex.first = rotation * vertex.first + translation;
+        }
     }
 
     normal = rotation * normal;
-    exit = rotation * exit + translation;
 }
 
 const glm::dvec3& Sequence::start() const
 {
     assert(!sets.empty() && !sets[0].motions.empty());
     return sets[0].motions[0].first;
-}
-
-Pose Sequence::startPose(const glm::dvec3& forward) const
-{
-    assert(!sets.empty() && !sets[0].motions.empty());
-    return Pose(sets[0].motions[0].first, sets[0].axes(forward));
 }
 
 const glm::dvec3& Sequence::end() const
@@ -61,15 +77,21 @@ const glm::dvec3& Sequence::end() const
 
 Axis3D Sequence::Set::axes(const glm::dvec3& forward) const
 {
-    return Axis3D::faceAligned(normal, forward, true);
+    Axis3D system(axis, normal);
+    if (glm::dot(forward, system.zAxis) < 0) system.flipXZ();
+    return system;
 }
 
 
+bool Sequence::Set::isApproach() const
+{
+    return type == 0;
+}
 bool Sequence::Set::isBlind() const
 {
-    return blind;
+    return type == 1;
 }
 bool Sequence::Set::isMill() const
 {
-    return !blind;
+    return type == 2;
 }

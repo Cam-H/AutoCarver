@@ -17,6 +17,7 @@ add_library(AutoCarverLib
 
         geometry/poly/Polygon.cpp
         geometry/poly/Profile.cpp
+        geometry/poly/ProfileBuilder.cpp
         geometry/poly/SectionOperation.cpp
 
         geometry/primitives/AABB.cpp
@@ -81,6 +82,8 @@ add_library(AutoCarverLib
         geometry/Axis3D.cpp
 
         robot/Pose.cpp
+
+        robot/planning/RRTPlanner.cpp
 
         robot/trajectory/Waypoint.cpp
 

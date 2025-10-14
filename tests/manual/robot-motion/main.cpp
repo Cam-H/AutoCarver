@@ -271,7 +271,7 @@ int main(int argc, char *argv[])
     window = loadUiFile(nullptr);
     if (window == nullptr) return -1;
 
-    std::string source = R"(..\res\meshes\devil.obj)";
+    std::string source = R"(..\res\meshes\teddy.obj)";
     auto model = MeshHandler::loadAsMeshBody(source);
 
     model->setBaseColor({1, 0, 1});
@@ -281,26 +281,14 @@ int main(int argc, char *argv[])
     sculpture = scene->getSculpture();
     sculpture->restoreAsHull();
 
-    robot = scene->createRobot(std::make_shared<ArticulatedWrist>(0.2, 1.2, 1.2, 0.35));
-    robot->translate({ -2, 1, 0 });
-    robot->rotate({ 0, 1, 0 }, M_PI);
-    robot->setLinkMesh(0, MeshHandler::loadAsMeshBody(R"(..\res\meshes\RobotBase.obj)"));
+    robot = scene->getSculptor();
+    eoat = robot->getEOAT();
+    axes = robot->getAxes();
 
     sceneWidget = window->findChild<SceneWidget*>("sceneWidget");
     sceneWidget->setScene(scene);
 
-    robot->setJointValueDg(1, 135);
-    robot->setJointValueDg(2, -45);
-    axes = robot->getAxes();
-
-    robot->setLinkMesh(6, MeshHandler::loadAsMeshBody(R"(..\res\meshes\BladeAttachment.obj)"));
-
-    auto eoatMesh = MeshHandler::loadAsMeshBody("../res/meshes/Blade.obj");
-    eoat = scene->createBody(eoatMesh);
-    robot->setEOAT(eoat, false);
-    eoat->setName("BLADE");
-
-    scene->setSculptingRobot(robot);
+//    scene->setSculptingRobot(robot);
 
     auto mesh = MeshHandler::loadAsMeshBody("../res/meshes/TurntableJ0.obj");
     mesh->rotate({0, 0, 1}, M_PI);
@@ -330,6 +318,9 @@ int main(int argc, char *argv[])
             window->findChild<QDoubleSpinBox*>("zField")
     };
 
+    std::cout << "ROB: " << robot << "\n";
+    std::cout << robot->getName() << " " << robot->dof() << " " << robot->isValid() << "\n";
+
     // Joint angle control
     for (uint8_t i = 0; i < 6; i++) {
         auto *field = jointFields[i];
@@ -346,6 +337,7 @@ int main(int argc, char *argv[])
         });
     }
 
+    std::cout << "E2\n";
 
     // EOAT position
     for (uint8_t i = 0; i < 3; i++) {
@@ -368,6 +360,7 @@ int main(int argc, char *argv[])
             updateJointFields();
         });
     }
+    std::cout << "F1\n";
 
     ttAngleField = window->findChild<QSpinBox*>("ttAngleField");
     QObject::connect(ttAngleField, &QSpinBox::valueChanged, [&](int value) {
@@ -385,6 +378,7 @@ int main(int argc, char *argv[])
 
         sceneWidget->update();
     });
+    std::cout << "F2\n";
 
     auto localSettingButton = window->findChild<QCheckBox*>("localSettingButton");
     QObject::connect(localSettingButton, &QCheckBox::clicked, [&](bool checked) {
@@ -428,6 +422,7 @@ int main(int argc, char *argv[])
         updateAxes();
     });
 
+    std::cout << "F3\n";
 
     auto showMeshButton = window->findChild<QCheckBox*>("showMeshButton");
     QObject::connect(showMeshButton, &QCheckBox::clicked, [&](bool checked) {
@@ -455,8 +450,9 @@ int main(int argc, char *argv[])
         sceneWidget->setVisibility(checked, eoat->getID(), Scene::Model::AXES);
         sceneWidget->update();
     });
+    std::cout << "F4\n";
 
-    QObject::connect(sceneWidget, &SceneWidget::mousepick, [&](Ray ray) {
+    QObject::connect(sceneWidget, &SceneWidget::mousepick, [&](Ray<3> ray) {
         auto [body, t] = scene->raycast(ray);
         if (body == sculpture) { // Only select sculpture
             body->mesh()->setFaceColor(body->mesh()->baseColor());
@@ -485,6 +481,7 @@ int main(int argc, char *argv[])
 
         sceneWidget->update();
     });
+    std::cout << "E3\n";
 
     treeWidget = window->findChild<QTreeWidget*>("treeWidget");
     treeWidget->setHeaderLabels({ "Name", "Data" });
@@ -511,6 +508,7 @@ int main(int argc, char *argv[])
     QObject::connect(saveWaypointButton, &QPushButton::clicked, [&]() {
         saveWaypoint();
     });
+    std::cout << "E4\n";
 
     auto spinTestButton = window->findChild<QPushButton*>("spinTestButton");
     QObject::connect(spinTestButton, &QPushButton::clicked, [&]() {
@@ -596,20 +594,21 @@ int main(int argc, char *argv[])
     velPlotButton = window->findChild<QCheckBox*>("velPlotButton");
     accPlotButton = window->findChild<QCheckBox*>("accPlotButton");
     devPlotButton = window->findChild<QCheckBox*>("devPlotButton");
+    std::cout << "E5\n";
 
     saveWaypoint(Waypoint({   0, 135, -45,  0,   0, 0 }, true));
     saveWaypoint(Waypoint({ -10, 150, -35, 25, -15, 0 }, true));
 
-    Pose start = robot->getPose(waypoints[0]);
-
-    start.position.z += 0.8;
-    saveWaypoint(robot->inverse(start).toDg());
-
-    start.axes.rotateZ(1.66 * M_PI);
-    saveWaypoint(robot->inverse(start).toDg());
-
-    start.position.z += 0.5;
-    saveWaypoint(robot->inverse(start).toDg());
+//    Pose start = robot->getPose(waypoints[0]);
+//
+//    start.position.z += 0.8;
+//    saveWaypoint(robot->inverse(start).toDg());
+//
+//    start.axes.rotateZ(1.66 * M_PI);
+//    saveWaypoint(robot->inverse(start).toDg());
+//
+//    start.position.z += 0.5;
+//    saveWaypoint(robot->inverse(start).toDg());
 
     wpEndField->setValue(1);
 
@@ -661,6 +660,8 @@ int main(int argc, char *argv[])
             std::this_thread::sleep_for(std::chrono::nanoseconds(4000000));
         }
     });
+
+    std::cout << "E6\n";
 
     return app.exec();
 }

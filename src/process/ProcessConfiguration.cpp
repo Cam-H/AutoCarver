@@ -9,14 +9,19 @@
 #include "fileIO/MeshHandler.h"
 
 ProcessConfiguration::ProcessConfiguration()
-    : materialWidth(1.0)
-    , materialHeight(1.3)
+//    : targetSource("../res/meshes/devil.obj")
+    : targetSource("../res/meshes/teddy.obj")
+//    : targetSource("../res/meshes/bunny.obj")
+    , materialWidth(1.0)
+    , materialHeight(1.1)
 
     , convexTrimEnable(true)
+    , convexSkipEnable(true)
     , sliceOrder(ConvexSliceOrder::TOP_DOWN)
     , minCutVolume(0.005)
 
     , silhouetteRefinementEnable(true)
+    , stepStart(0.0)
     , stepOffset(90.0)
 
     , continuous(false)
@@ -44,8 +49,10 @@ ProcessConfiguration::ProcessConfiguration()
 
     , baseVelocityLimits(std::vector<double>(kinematics->jointCount(), M_PI / 2))
     , baseAccelerationLimits(std::vector<double>(kinematics->jointCount(), M_PI))
-    , slowVelocityLimits(std::vector<double>(kinematics->jointCount(), M_PI)) //TODO slowdown after testing
+    , slowVelocityLimits(std::vector<double>(kinematics->jointCount(), M_PI / 8)) //TODO slowdown after testing
+    , verySlowVelocityLimits(std::vector<double>(kinematics->jointCount(), M_PI / 16))
 
+//    , tableMesh(MeshHandler::loadAsMeshBody("../res/meshes/Table.obj"))
     , tableMesh(MeshHandler::loadAsMeshBody("../res/meshes/TableQuick.obj"))
 {
 
@@ -104,6 +111,11 @@ void ProcessConfiguration::enableConvexTrim(bool enable)
     convexTrimEnable = enable;
 }
 
+void ProcessConfiguration::enableConvexSkip(bool enable)
+{
+    convexSkipEnable = enable;
+}
+
 void ProcessConfiguration::setSlicingOrder(ConvexSliceOrder order)
 {
     sliceOrder = order;
@@ -118,6 +130,11 @@ void ProcessConfiguration::setMinimumCutVolume(double volume)
 void ProcessConfiguration::enableSilhouetteRefinement(bool enable)
 {
     silhouetteRefinementEnable = enable;
+}
+
+void ProcessConfiguration::setStepStart(double degrees)
+{
+    stepStart = degrees;
 }
 
 void ProcessConfiguration::setStepOffset(double degrees)
@@ -173,6 +190,7 @@ void ProcessConfiguration::setCenter(const glm::dvec3& position)
 ////
 //    assert(robotNeutral.isValid());
 }
+
 
 bool ProcessConfiguration::isActionLimitEnabled() const
 {

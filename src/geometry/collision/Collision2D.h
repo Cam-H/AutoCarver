@@ -11,6 +11,8 @@ class Circle;
 class Line;
 class Polygon;
 
+#include "geometry/primitives/Ray.h"
+
 #include "GJK.h"
 #include "Simplex.h"
 
@@ -29,6 +31,9 @@ public:
     static bool test(const Polygon& bodyA, const Polygon& bodyB);
 
     static bool encloses(const Circle& body, const glm::dvec2& vertex);
+
+    static std::tuple<bool, double> intersection(const Line& bodyA, const Ray<2>& bodyB);
+    static std::tuple<bool, double, double> intersection(const Polygon& bodyA, const Ray<2>& bodyB);
 
 private:
 

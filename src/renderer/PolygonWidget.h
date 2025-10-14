@@ -25,6 +25,8 @@ Q_OBJECT
 signals:
     void moved(uint32_t selection, const glm::dvec2& delta);
 
+    void requestDeletion(uint32_t index);
+
 public:
     explicit PolygonWidget(QWidget *parent = nullptr);
 
@@ -53,6 +55,8 @@ public:
     [[nodiscard]] const std::vector<Polygon*>& getPolygons() const;
 
     Polygon* getPolygon(uint32_t idx);
+
+    [[nodiscard]] int selection() const;
 
 protected:
 

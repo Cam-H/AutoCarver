@@ -47,7 +47,7 @@ private:
     Pose m_initialPose;
     Pose m_finalPose;
 
-    Ray m_curve;
+    Ray<3> m_curve;
     double m_distance;
 
 };

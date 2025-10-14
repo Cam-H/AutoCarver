@@ -30,7 +30,7 @@ Q_OBJECT
 
 signals:
     void perspectiveChanged();
-    void mousepick(Ray ray);
+    void mousepick(Ray<3> ray);
 
 public:
     using QOpenGLWidget::QOpenGLWidget;

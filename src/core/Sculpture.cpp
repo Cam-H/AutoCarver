@@ -18,7 +18,7 @@ Sculpture::Sculpture()
     , m_step(0)
     , m_formStep(0)
     , m_autoRemeshEnable(true)
-    , m_mergeEnable(true)
+    , m_mergeEnable(false)
     , m_highlightColor(0.3, 0.3, 0.8)
 {
 
@@ -198,6 +198,24 @@ std::shared_ptr<Debris> Sculpture::applySection()
     return nullptr;
 }
 
+// Applies all queued operations to the sculpture
+void Sculpture::complete()
+{
+    std::cout << "CC " << m_operations.size() << "\n";
+
+    if (!m_operations.empty()) {
+        bool enable = m_autoRemeshEnable;
+        m_autoRemeshEnable = false;
+
+        while (m_step < m_operations.size()) applySection();
+
+        std::cout << "SC\n";
+        m_autoRemeshEnable = enable;
+        m_newFaces.clear();
+        remesh();
+    }
+}
+
 std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
 {
     m_newFaces.clear();
@@ -222,7 +240,7 @@ std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
         // Record index of newly introduced face
         uint32_t index = components()[source].faces().matchFace(plane.normal), faceCount = 0;
         for (uint32_t j = 0; j < source; j++) faceCount += components()[j].facetCount();
-        m_newFaces.emplace_back(faceCount + index);
+//        m_newFaces.emplace_back(faceCount + index);
     }
 
     std::cout << "R " << debris->components().size() << " " << components().size() << "\n";

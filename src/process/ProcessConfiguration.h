@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 
 class Mesh;
 
@@ -37,10 +38,12 @@ public:
 
 
     void enableConvexTrim(bool enable);
+    void enableConvexSkip(bool enable);
     void setSlicingOrder(ConvexSliceOrder order);
     void setMinimumCutVolume(double volume);
 
     void enableSilhouetteRefinement(bool enable);
+    void setStepStart(double degrees);
     void setStepOffset(double degrees);
 
     void setContinuous(bool enable);
@@ -84,6 +87,7 @@ public:
 
 private:
 
+    std::string targetSource;
 
     // SCULPTING PARAMETERS
 
@@ -94,6 +98,7 @@ private:
     // CONVEX REFINEMENT PARAMETERS
 
     bool convexTrimEnable; // Convex trim subprocess enable
+    bool convexSkipEnable; // Skip convex trim actions enable
 
     ConvexSliceOrder sliceOrder; // Specify priority when ordering cuts
     double minCutVolume; // Minimum volume for a cut
@@ -103,6 +108,7 @@ private:
 
     bool silhouetteRefinementEnable; // Silhouette subprocess enable
 
+    double stepStart;
     double stepOffset; // Degree offset per step
 
 
@@ -135,7 +141,7 @@ private:
     Waypoint robotHoverRight;
 
     std::vector<double> baseVelocityLimits, baseAccelerationLimits;
-    std::vector<double> slowVelocityLimits; // TODO use cartesian speed limit (Needs further trajectory development)
+    std::vector<double> slowVelocityLimits, verySlowVelocityLimits; // TODO use cartesian speed limit (Needs further trajectory development)
 
     std::shared_ptr<Mesh> tableMesh;
 

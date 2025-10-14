@@ -91,8 +91,8 @@ public:
     std::tuple<bool, glm::dvec3> delta(const std::shared_ptr<RigidBody>& body);
     EPA intersection(const std::shared_ptr<RigidBody>& body);
 
-    virtual std::tuple<bool, double> raycast(Ray ray, double tLim);
-    virtual std::tuple<bool, double, uint32_t> pickFace(Ray ray, double tLim);
+    virtual std::tuple<bool, double> raycast(Ray<3> ray, double tLim);
+    virtual std::tuple<bool, double, uint32_t> pickFace(Ray<3> ray, double tLim);
 
     void print() const;
 

@@ -19,7 +19,7 @@ class Polygon;
 
 #include "renderer/PolygonWidget.h"
 #include "Configuration.h"
-#include "RRTPlanner.h"
+#include "robot/planning/RRTPlanner.h"
 #include "geometry/curves/PiecewisePolyPath.h"
 
 class PlannerWidget : public PolygonWidget {

@@ -21,8 +21,11 @@
 #include "PlannerWidget.h"
 
 #include "Configuration.h"
-#include "RRTPlanner.h"
+#include "robot/planning/RRTPlanner.h"
 #include "core/Timer.h"
+#include "geometry/poly/Profile.h"
+
+#include "fileIO/SerialList.h"
 
 #endif
 
@@ -65,6 +68,8 @@ QLineEdit *outField;
 TOPPTrajectory* traj = nullptr;
 bool sim = false, delReq = false;
 
+glm::dvec2 min, max;
+
 static QWidget *loadUiFile(QWidget *parent)
 {
     QFile file("../tests/manual/planner/main.ui");
@@ -92,11 +97,6 @@ void updateDisplay()
 
     displayWidget->setStart(config.start, config.width, config.height);
     displayWidget->setGoal(config.goal, config.width, config.height);
-
-    planner.updateBounds(config.polygons);
-
-    planner.setStart(config.start);
-    planner.setGoal(config.goal);
 
     if (displayWidget->isCentered()) displayWidget->center(); // addPolygon does not automatically recalculate offset
 
@@ -130,6 +130,12 @@ void updatePath()
 {
     traj = new TOPPTrajectory(planner.waypoints(config.polygons), std::vector<double>{ 4.0, 4.0, 4.0 }, std::vector<double>{ 1.5, 1.5, 1.5 });
     displayWidget->setPath(PiecewisePolyPath(planner.waypoints(config.polygons)));
+}
+
+void updateBounds()
+{
+    double margin = 2.0 * planner.radius();
+    planner.setBounds({ min.x - margin, min.y }, { max.x + margin, max.y + margin });
 }
 
 void updateStart()
@@ -169,6 +175,8 @@ void updateDims()
 
     planner.setTargetDimensions(config.width, config.height);
 
+    updateBounds();
+
     displayWidget->updateStart(config.start, config.width, config.height);
     displayWidget->updateGoal(config.goal, config.width, config.height);
     displayWidget->update();
@@ -188,6 +196,29 @@ void travel(const glm::dvec3& position)
 void load(const std::string& filename)
 {
     config.load(filename);
+//    config.polygons.clear();
+//
+//    Profile profile("../out/orthoprof.bin");
+//    profile.scale(50);
+//    auto [xMin, xMax] = profile.xExtents();
+//    auto [yMin, yMax] = profile.yExtents();
+//
+//    min = { xMin, yMin };
+//    max = { xMax, yMax };
+//
+//    std::cout << "PROF: " << xMin << " " << xMax << " | " << yMin << " " << yMax << "\n";
+//
+//    const auto& hulls = profile.decompose();
+//    for (const Polygon& hull : hulls) config.polygons.emplace_back(hull);
+
+    auto [tmin, tmax] = planner.minimumBounds(config.polygons);
+    min = tmin; max = tmax;
+
+    planner.setStart(config.start);
+    planner.setGoal(config.goal);
+
+    updateBounds();
+
     updateDisplay();
     updateFields();
 }
@@ -216,6 +247,12 @@ int main(int argc, char *argv[])
     QObject::connect(displayWidget, &PlannerWidget::goalMoved, [](const glm::dvec2& delta) {
         config.goal += glm::dvec3(delta.x, delta.y, 0.0);
         updateGoal();
+    });
+
+    QObject::connect(displayWidget, &PlannerWidget::requestDeletion, [](uint32_t index) {
+        std::cout << index << " " << config.polygons.size() << " DEL REQ\n";
+        config.polygons.erase(config.polygons.begin() + index); // TODO find issue with deleting non-back polygons
+//        std::cout << "ED\n";
     });
 
     widthField = window->findChild<QDoubleSpinBox*>("widthField");
@@ -317,6 +354,15 @@ int main(int argc, char *argv[])
         }
     });
 
+    auto clearObsButton = window->findChild<QPushButton*>("clearObsButton");
+    QObject::connect(clearObsButton, &QPushButton::clicked, [&]() {
+        planner.clearObstacle(config.polygons.back(), config.width);
+        config.start = planner.start();
+        config.goal = planner.goal();
+        updateStart();
+        updateGoal();
+    });
+
     followButton = window->findChild<QPushButton*>("followButton");
     QObject::connect(followButton, &QPushButton::clicked, [&]() {
         if (planner.solved()) {
@@ -368,6 +414,55 @@ int main(int argc, char *argv[])
         displayWidget->update();
     });
 
+    auto samplerBox = window->findChild<QComboBox*>("samplerBox");
+    QObject::connect(samplerBox, &QComboBox::currentIndexChanged, [&](int state) {
+       switch (state) {
+           case 0: planner.setSampler(RRTPlanner::SampleSpace::BOX); break;
+           case 1: planner.setSampler(RRTPlanner::SampleSpace::TRIANGLE); break;
+           case 2: planner.setSampler(RRTPlanner::SampleSpace::CIRCLE); break;
+           default: std::cout << "Unrecognized sampler\n";
+       }
+
+        displayWidget->update();
+    });
+
+    auto setButton = window->findChild<QPushButton*>("setButton");
+    QObject::connect(setButton, &QPushButton::clicked, [&]() {
+        int sel = displayWidget->selection();
+        if (sel != -1) {
+            switch (planner.getSampler()) {
+                case RRTPlanner::SampleSpace::BOX:
+                {
+                    auto [xMin, xMax] = config.polygons[sel].xExtents();
+                    auto [yMin, yMax] = config.polygons[sel].yExtents();
+                    planner.setBounds({ xMin, yMin }, { xMax, yMax });
+                }
+                    break;
+                case RRTPlanner::SampleSpace::TRIANGLE:
+                {
+                    if (config.polygons[sel].vertexCount() == 3) {
+                        Triangle2D tri(config.polygons[sel].border()[0], config.polygons[sel].border()[1], config.polygons[sel].border()[2]);
+                        planner.setBounds(tri);
+                    }
+                }
+                    break;
+                case RRTPlanner::SampleSpace::CIRCLE:
+                    planner.setBounds(config.polygons[sel].bounds());
+                    break;
+            }
+
+            displayWidget->update();
+        }
+    });
+
+    auto restoreButton = window->findChild<QPushButton*>("restoreButton");
+    QObject::connect(restoreButton, &QPushButton::clicked, [&]() {
+        planner.setSampler(RRTPlanner::SampleSpace::BOX);
+        updateBounds();
+
+        displayWidget->update();
+    });
+
     rateField = window->findChild<QSpinBox*>("rateField");
     autoButton = window->findChild<QCheckBox*>("autoButton");
 
@@ -378,13 +473,66 @@ int main(int argc, char *argv[])
         config.save("../out/" + outField->text().toStdString() + ".bin");
     });
 
-    auto loadButton = window->findChild<QPushButton*>("loadButton");
-    QObject::connect(loadButton, &QPushButton::clicked, [&]() {
+    auto loadConfigButton = window->findChild<QPushButton*>("loadConfigButton");
+    QObject::connect(loadConfigButton, &QPushButton::clicked, [&]() {
         const QString selectedFile = QFileDialog::getOpenFileName(nullptr, "Select Configuration",
                                                                         "../out", "Binary Files (*.bin)");
         if (!selectedFile.isEmpty()) {
             load(selectedFile.toStdString());
         }
+    });
+
+    auto loadPlannerButton = window->findChild<QPushButton*>("loadPlannerButton");
+    QObject::connect(loadPlannerButton, &QPushButton::clicked, [&]() {
+        const QString selectedFile = QFileDialog::getOpenFileName(nullptr, "Select Planner",
+                                                                  "../out", "Binary Files (*.bin)");
+
+        if (!selectedFile.isEmpty()) {
+            planner.load(selectedFile.toStdString());
+
+            config.width = planner.width();
+            config.height = planner.height();
+
+            config.start = planner.start();
+            config.goal = planner.goal();
+            updateFields();
+        }
+    });
+
+    auto loadPolyButton = window->findChild<QPushButton*>("loadPolyButton");
+    QObject::connect(loadPolyButton, &QPushButton::clicked, [&]() {
+        const QStringList selectedFiles = QFileDialog::getOpenFileNames(nullptr, "Select Polygons",
+                                                                  "../out", "Binary Files (*.bin)");
+        for (const QString& file : selectedFiles) {
+            if (!file.isEmpty()) {
+                config.polygons.emplace_back(file.toStdString());
+            }
+        }
+
+        updateDisplay();
+    });
+
+    auto loadPolyListButton = window->findChild<QPushButton*>("loadPolyListButton");
+    QObject::connect(loadPolyListButton, &QPushButton::clicked, [&]() {
+        const QString selectedFile = QFileDialog::getOpenFileName(nullptr, "Select PolyList",
+                                                                        "../out", "Binary Files (*.bin)");
+
+        if (!selectedFile.isEmpty()) {
+            config.polygons.clear();
+
+            SerialList<Polygon> list(selectedFile.toStdString());
+            config.polygons = list.objects;
+
+            updateDisplay();
+        }
+
+
+    });
+
+    auto clearButton = window->findChild<QPushButton*>("clearButton");
+    QObject::connect(clearButton, &QPushButton::clicked, [&]() {
+        config.polygons.clear();
+        updateDisplay();
     });
 
     load("../out/PlanEnv0.bin");

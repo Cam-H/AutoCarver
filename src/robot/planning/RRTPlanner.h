@@ -5,15 +5,22 @@
 #ifndef AUTOCARVER_RRTPLANNER_H
 #define AUTOCARVER_RRTPLANNER_H
 
-#include <glm.hpp>
+#include "glm.hpp"
 
 #include <iostream>
 #include <random>
 
-#include <nanoflann.hpp>
+#include "nanoflann.hpp"
 
-class Polygon;
 class Waypoint;
+
+#include "fileIO/Serializable.h"
+
+#include "geometry/primitives/Triangle.h"
+#include "geometry/primitives/Circle.h"
+#include "geometry/primitives/Ray.h"
+
+#include "geometry/poly/Polygon.h"
 
 struct Node {
     explicit Node(const glm::dvec3& location)
@@ -57,31 +64,57 @@ struct NodeCloud {
 using KDTree2D = nanoflann::KDTreeSingleIndexAdaptor<nanoflann::L2_Simple_Adaptor<double, NodeCloud>, NodeCloud, 2>;
 
 // Resolves 2D + rotation path planning using the RRT* algorithm
-class RRTPlanner {
+class RRTPlanner : public Serializable {
 public:
+
+    enum class SampleSpace {
+        BOX = 0, TRIANGLE, CIRCLE
+    };
 
 //    RRTPlanner(const glm::dvec3& start, const glm::dvec3& goal);
 
     RRTPlanner();
     ~RRTPlanner();
 
-    void updateBounds(const std::vector<Polygon>& env, double margin = 0.01);
+    bool serialize(std::ofstream& file) const override;
+    bool deserialize(std::ifstream& file) override;
+
+    void setBounds(const glm::dvec2& min, const glm::dvec2& max);
+    void setBounds(const Triangle2D& bounds);
+    void setBounds(const Circle& bounds);
+
+    void setSampler(SampleSpace method);
+    void updateParameters();
+
+    [[nodiscard]] std::tuple<glm::dvec2, glm::dvec2> getBounds() const;
+    [[nodiscard]] const Triangle2D& getTriBounds() const;
+    [[nodiscard]] const Circle& getCircBounds() const;
+
+    [[nodiscard]] SampleSpace getSampler() const;
+
     void setTargetDimensions(double targetWidth, double targetHeight);
 
     void setStart(const glm::dvec3& start);
     bool setStart(const std::vector<Polygon>& env, const glm::dvec3& start);
 
+    bool moveToGoal();
+
     void setGoal(const glm::dvec3& goal);
+
+    std::tuple<double, double> clearObstacle(const Polygon& obstacle, double clearance);
 
     void reset();
 
     bool solve(const std::vector<Polygon>& env, uint32_t maximumIterations);
 
     bool iterate(const std::vector<Polygon>& env);
+    void iterate(const std::vector<Polygon>& env, uint32_t iterations);
 
     void clearUpdateFlag();
 
     [[nodiscard]] const glm::dvec3& start() const;
+    [[nodiscard]] const glm::dvec3& first() const;
+
     [[nodiscard]] const glm::dvec3& goal() const;
 
     [[nodiscard]] double width() const;
@@ -89,6 +122,10 @@ public:
     [[nodiscard]] double radius() const;
 
     [[nodiscard]] double diagonal() const;
+
+    [[nodiscard]] Polygon bounds(const glm::dvec3& location) const;
+
+    [[nodiscard]] std::tuple<glm::dvec2, glm::dvec2> minimumBounds(const std::vector<Polygon>& env);
 
     [[nodiscard]] std::tuple<glm::dvec2, double> profile(const glm::dvec3& start, const glm::dvec3& end) const;
 
@@ -100,9 +137,14 @@ public:
     [[nodiscard]] bool solutionImproved() const;
 
     [[nodiscard]] uint32_t iterations() const;
+
+    [[nodiscard]] double cost() const;
+
     [[nodiscard]] const std::pair<uint32_t, double>& lastSolution() const;
 
     [[nodiscard]] std::vector<glm::dvec3> path() const;
+    [[nodiscard]] std::vector<glm::dvec3> prunedPath(const std::vector<Polygon>& env) const;
+
     [[nodiscard]] std::vector<Waypoint> waypoints() const;
     [[nodiscard]] std::vector<Waypoint> waypoints(const std::vector<Polygon>& env) const;
 
@@ -113,7 +155,9 @@ private:
     void resetTree();
     void resetPath();
 
-    void reroot(const std::vector<Polygon>& env);
+    [[nodiscard]] static glm::dvec3 limit(glm::dvec3 location);
+
+    void reroot();
 
     void updateCosts();
 
@@ -136,13 +180,19 @@ private:
     static std::vector<Waypoint> waypoints(const std::vector<glm::dvec3>& path);
 
     [[nodiscard]] std::tuple<uint32_t, glm::dvec3> sample();
+    [[nodiscard]] inline glm::dvec3 random();
+
     [[nodiscard]] uint32_t selectParent(const glm::dvec3& position);
 
-    [[nodiscard]] static inline double distance(const Node& a, const Node& b) { return distance(a, b.location); }
-    [[nodiscard]] static double distance(const Node& a, const glm::dvec3& b);
+    [[nodiscard]] inline double travelCost(const Node& a, const glm::dvec3& b) const;
+
+    [[nodiscard]] static inline double distance(const glm::dvec3& a, const glm::dvec3& b) ;
+    [[nodiscard]] inline double rotation(double theta, double phi) const;
 
     [[nodiscard]] bool free(const std::vector<Polygon>& env, const Polygon& bounds) const;
     [[nodiscard]] bool free(const std::vector<Polygon>& env, const glm::dvec3& start, const glm::dvec3& end) const;
+
+    [[nodiscard]] bool freespin(const std::vector<Polygon>& env, const glm::dvec3& position) const;
 
     [[nodiscard]] uint32_t nearest(const glm::dvec3& position) const;
     [[nodiscard]] std::vector<uint32_t> near(const glm::dvec3& position, double radius) const;
@@ -165,8 +215,6 @@ private:
 
     uint32_t m_first; // Index of the start node (Usually 0 but can be different if start position is changed)
 
-    glm::dvec2 m_min, m_max;
-
     double m_width;
     double m_height;
     double m_radius; // Length of hypotenuse
@@ -174,8 +222,8 @@ private:
     double m_diagonal; // Angle formed with x-axis and target diagonal
 
     double m_stepSize, m_goalRadius;
-    uint32_t m_iterations;
 
+    uint32_t m_iterations;
     uint32_t m_lastRebuild;
 
     std::array<std::pair<uint32_t, double>, FRONTIER_NODE_COUNT> m_frontier;
@@ -186,6 +234,10 @@ private:
     std::uniform_real_distribution<double> m_xDist;
     std::uniform_real_distribution<double> m_yDist;
     std::uniform_real_distribution<double> m_tDist;
+
+    SampleSpace m_method;
+    Triangle2D m_triBounds;
+    Circle m_circBounds;
 
     bool m_solved; // Whether a path was found
     uint32_t m_terminus; // Index of the end of the best path discovered

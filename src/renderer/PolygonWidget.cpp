@@ -216,6 +216,11 @@ Polygon* PolygonWidget::getPolygon(uint32_t idx)
     return m_polygons[idx];
 }
 
+int PolygonWidget::selection() const
+{
+    return m_selection.first;
+}
+
 void PolygonWidget::paintEvent(QPaintEvent *event)
 {
     QPainter painter(this);
@@ -240,8 +245,13 @@ void PolygonWidget::drawForeground(QPainter& painter)
         const glm::vec2& vertex = transformed(m_polygons[m_selection.first]->border()[m_selection.second]);
 
         painter.drawEllipse(QPoint((int)vertex.x, (int)vertex.y), 5, 5);
+    }
 
-        painter.drawText(20, 20, QString(("[" + std::to_string(m_selection.first + 1) + ": " + std::to_string(m_selection.second) + "]").c_str()));
+    if (m_selection.first != -1) {
+        std::string text = "[" + std::to_string(m_selection.first) + ": " + std::to_string(m_selection.second) + "]";
+
+        painter.setPen(Qt::darkCyan);
+        painter.drawText(10, 20, text.c_str());
     }
 }
 
@@ -400,21 +410,30 @@ void PolygonWidget::keyPressEvent(QKeyEvent *event)
 {
     if (m_polygons.empty()) return;
 
-    if (m_selection.first != -1 && m_selection.second != -1) {
-        switch (event->key()) {
-            case Qt::Key_Delete:
-                if (m_polygons[m_selection.first]->vertexCount() > 3) {
-                    m_polygons[m_selection.first]->removeVertex(m_selection.second);
-                    m_selection = { -1, -1 };
+    if (m_selection.first != -1 && m_polyControl[m_selection.first].editable) {
+        if (m_selection.second != -1) {
+            switch (event->key()) {
+                case Qt::Key_Delete: // Delete vertex of polygon
+                    if (m_polygons[m_selection.first]->vertexCount() > 3) {
+                        m_polygons[m_selection.first]->removeVertex(m_selection.second);
+                        m_selection = { -1, -1 };
+                        repaint();
+                    }
+                    break;
+                case Qt::Key_Control: // Insert vertex on polygon
+                    m_polygons[m_selection.first]->insertVertex(m_selection.second, m_polygons[m_selection.first]->border()[m_selection.second]);
+                    m_selection.second++;
                     repaint();
-                }
-                break;
-            case Qt::Key_Control:
-                m_polygons[m_selection.first]->insertVertex(m_selection.second, m_polygons[m_selection.first]->border()[m_selection.second]);
-                m_selection.second++;
-                repaint();
-                break;
+                    break;
+            }
+        } else if (event->key() == Qt::Key_Delete) { // Delete polygon itself
+            emit requestDeletion(m_selection.first);
+            m_polygons.erase(m_polygons.begin() + m_selection.first);
+            m_polyControl.erase(m_polyControl.begin() + m_selection.first);
+            m_selection = { -1, -1 };
+            repaint();
         }
+
     }
 }
 

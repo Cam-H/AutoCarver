@@ -194,12 +194,12 @@ QMatrix4x4 Camera::getViewProjection() const
 }
 
 // Returns a ray projected from the camera's origin through the view. position should be defined [-1, 1]
-Ray Camera::getRay(QPointF position) const
+Ray<3> Camera::getRay(QPointF position) const
 {
     QVector3D fwd = forward(), horz = horizontal(), vert = vertical();
 
     // Create a ray directly from the camera
-    Ray ray({ m_eye.x(), m_eye.y(), m_eye.z() }, { fwd.x(), fwd.y(), fwd.z() });
+    Ray<3> ray({ m_eye.x(), m_eye.y(), m_eye.z() }, { fwd.x(), fwd.y(), fwd.z() });
 
     if (m_type == Type::PERSPECTIVE) {
         double tFOV = tan(M_PI * m_fov / 360.0);

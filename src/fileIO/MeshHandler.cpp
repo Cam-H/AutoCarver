@@ -28,7 +28,7 @@ std::shared_ptr<Mesh> MeshHandler::loadAsMeshBody(const std::string& filepath, d
 
     // Report failed imports
     if (nullptr == scene) {
-        std::cout << "\033[31mImport failed: " << importer.GetErrorString() << "\033[0m\n";
+        std::cout << "\033[31m[MeshHandler]Import failed for file: \"" << filepath << "\" " << importer.GetErrorString() << "\033[0m\n";
         return nullptr;
     }
 

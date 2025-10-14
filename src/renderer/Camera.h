@@ -61,7 +61,7 @@ public:
     [[nodiscard]] QVector3D cameraRotated(QVector3D base) const;
 
     // Returns a world-space ray projected from the camera, provided the normalized screen coordinates
-    [[nodiscard]] Ray getRay(QPointF position) const;
+    [[nodiscard]] Ray<3> getRay(QPointF position) const;
 
 private:
 

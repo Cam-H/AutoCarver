@@ -53,7 +53,7 @@ std::tuple<uint32_t, glm::dvec2> Circle::extreme(const glm::dvec2& axis, uint32_
 // Compute circumcenter and radius
 Circle Circle::triangleCircumcircle(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c) {
     double d = 2 * (a.x*(b.y - c.y) + b.x*(c.y - a.y) + c.x*(a.y - b.y));
-    if (std::abs(d) < 1e-9) throw std::runtime_error("Degenerate triangle");
+    if (std::abs(d) < 1e-12) throw std::runtime_error("[Circle] Can not calculate circumcircle. Degenerate triangle");
 
     double ad = glm::dot(a, a), bd = glm::dot(b, b), cd = glm::dot(c, c);
 

@@ -15,25 +15,32 @@
 class Sequence {
 public:
 
+    Sequence(const Profile* profile, const std::vector<glm::dvec3>& approach);
     Sequence(const Profile* profile, const std::vector<SectionOperation::Set>& cuts);
 
     void transform(const glm::dquat& rotation, const glm::dvec3& translation);
 
     [[nodiscard]] const glm::dvec3& start() const;
-    [[nodiscard]] Pose startPose(const glm::dvec3& forward) const;
 
     [[nodiscard]] const glm::dvec3& end() const;
 
     struct Set {
 
+        Set()
+            : axis()
+            , normal()
+            , travel()
+            , type(0) {}
+
         Set(const glm::dvec3& axis, const glm::dvec3& normal, const glm::dvec3& travel)
                 : axis(axis)
                 , normal(normal)
                 , travel(travel)
-                , blind(std::abs(glm::dot(travel, axis)) > 1 - 1e-6) {}
+                , type(std::abs(glm::dot(travel, axis)) > 1 - 1e-6) {}
 
         Axis3D axes(const glm::dvec3& forward) const;
 
+        [[nodiscard]] bool isApproach() const;
         [[nodiscard]] bool isBlind() const;
         [[nodiscard]] bool isMill() const;
 
@@ -43,8 +50,10 @@ public:
         glm::dvec3 normal;
         glm::dvec3 travel;
 
+        std::vector<std::pair<glm::dvec3, double>> approach;
+
     private:
-        bool blind;
+        uint8_t type;
     };
 
 
@@ -52,7 +61,6 @@ public:
 public:
     std::vector<Set> sets;
     glm::dvec3 normal;
-    glm::dvec3 exit;
 };
 
 

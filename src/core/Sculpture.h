@@ -41,6 +41,8 @@ public:
 
     std::shared_ptr<Debris> applySection();
 
+    void complete();
+
     bool form();
 
     void enableAutoRemesh(bool enable);
