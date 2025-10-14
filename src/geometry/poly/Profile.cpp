@@ -5,6 +5,7 @@
 #include "Profile.h"
 
 #include <iostream>
+#include "fileIO/SerialList.h"
 
 #include <gtc/quaternion.hpp>
 
@@ -21,8 +22,6 @@ Profile::Profile(const std::vector<glm::dvec2>& contour, const glm::dvec3& norma
     , m_floorIndex(0)
     , m_width(0.108)
     , m_thickness(0.011)
-    , m_start()
-    , m_orientation(0.0)
 {
     initialize();
 }
@@ -56,8 +55,8 @@ bool Profile::serialize(std::ofstream& file) const
     Serializer::writeUint(file, m_hull.size());
     for (uint32_t idx : m_hull) Serializer::writeUint(file, idx);
 
-    Serializer::writeUint(file, m_remainder.size());
-    for (const auto& pair : m_remainder) {
+    Serializer::writeUint(file, m_operations.size());
+    for (const auto& pair : m_operations) {
         Serializer::writeUint(file, pair.first);
         Serializer::writeUint(file, pair.second);
     }
@@ -70,7 +69,19 @@ bool Profile::serialize(std::ofstream& file) const
 
         Serializer::writeUint(file, section.depth);
         Serializer::writeUint(file, section.children);
+
+        Serializer::writeBool(file, section.external);
+        Serializer::writeBool(file, section.skipped);
     }
+
+    SerialList<Polygon>(m_remainder).serialize(file);
+
+    Serializer::writeDouble(file, m_thickness);
+    Serializer::writeDouble(file, m_width);
+
+    Serializer::writeDouble(file, m_minimumArea);
+
+    Serializer::writeUint(file, m_floorIndex);
 
 //    std::cout << "Serialize\n";
 //    print();
@@ -97,8 +108,8 @@ bool Profile::deserialize(std::ifstream& file)
     m_hull = std::vector<uint32_t>(Serializer::readUint(file));
     for (uint32_t& idx : m_hull) idx = Serializer::readUint(file);
 
-    m_remainder = std::vector<std::pair<uint32_t, uint32_t>>(Serializer::readUint(file));
-    for (std::pair<uint32_t, uint32_t>& pair : m_remainder) {
+    m_operations = std::vector<std::pair<uint32_t, uint32_t>>(Serializer::readUint(file));
+    for (std::pair<uint32_t, uint32_t>& pair : m_operations) {
         pair.first = Serializer::readUint(file);
         pair.second = Serializer::readUint(file);
     }
@@ -107,8 +118,20 @@ bool Profile::deserialize(std::ifstream& file)
     uint32_t size = Serializer::readUint(file);
     for (uint32_t i = 0; i < size; i++) {
         uint32_t I0 = Serializer::readUint(file), I1 = Serializer::readUint(file), I2 = Serializer::readUint(file);
-        m_sections.emplace_back(TriIndex(I0, I1, I2), Serializer::readUint(file), Serializer::readUint(file));
+        uint32_t depth = Serializer::readUint(file), children = Serializer::readUint(file);
+        m_sections.emplace_back(TriIndex(I0, I1, I2), depth, children);
+        m_sections.back().external = Serializer::readBool(file);
+        m_sections.back().skipped = Serializer::readBool(file);
     }
+
+    m_remainder = SerialList<Polygon>(file).objects;
+
+    m_thickness = Serializer::readDouble(file);
+    m_width = Serializer::readDouble(file);
+
+    m_minimumArea = Serializer::readDouble(file);
+
+    m_floorIndex = Serializer::readUint(file);
 
 //    std::cout << "Deserialize\n";
 //    print();
@@ -148,8 +171,8 @@ void Profile::initialize()
 // Returns the index of the terminal vertex for the step
 uint32_t Profile::terminus(uint32_t step) const
 {
-    if (step >= m_remainder.size()) throw std::runtime_error("[Profile] Array index out of bounds");
-    return offsetIndex(m_remainder[step].first + m_remainder[step].second - 2);
+    if (step >= m_operations.size()) throw std::runtime_error("[Profile] Array index out of bounds");
+    return offsetIndex(m_operations[step].first + m_operations[step].second - 2);
 }
 
 uint32_t Profile::offsetIndex(uint32_t idx, uint32_t offset) const
@@ -164,7 +187,7 @@ void Profile::emplaceRemainder(uint32_t start, uint32_t count)
 
     while ((subCount = subdivide(axis, start, count)) < count) {
         // Additional check to remove adjacent collinear vertices
-        if (subCount >= 2) m_remainder.emplace_back(start, subCount + 1);
+        if (subCount >= 2) m_operations.emplace_back(start, subCount + 1);
 
         // Prepare for next division
         start = offsetIndex(start, subCount);
@@ -172,7 +195,7 @@ void Profile::emplaceRemainder(uint32_t start, uint32_t count)
     }
 
     // Capture remaining
-    if(count > 2) m_remainder.emplace_back(start, count);
+    if(count > 2) m_operations.emplace_back(start, count);
 }
 void Profile::insertRemainder(uint32_t index, uint32_t start, uint32_t count)
 {
@@ -181,7 +204,7 @@ void Profile::insertRemainder(uint32_t index, uint32_t start, uint32_t count)
 
     while ((subCount = subdivide(axis, start, count)) < count) {
         // Additional check to remove adjacent collinear vertices
-        if (subCount >= 2) m_remainder.insert(m_remainder.begin() + index, { start, subCount + 1 });
+        if (subCount >= 2) m_operations.insert(m_operations.begin() + index, { start, subCount + 1 });
 
         // Prepare for next division
         start = offsetIndex(start, subCount);
@@ -189,7 +212,7 @@ void Profile::insertRemainder(uint32_t index, uint32_t start, uint32_t count)
     }
 
     // Capture remaining
-    if (count > 2) m_remainder.insert(m_remainder.begin() + index, { start, count });
+    if (count > 2) m_operations.insert(m_operations.begin() + index, { start, count });
 }
 
 // Splits a section into subcomponents along protrusions. This is necessary because
@@ -212,7 +235,9 @@ glm::dvec2 Profile::edgeNormal(uint32_t start, uint32_t end)
 
 void Profile::setRefinementMethod(RefinementMethod method)
 {
-    if (m_method != method && !m_remainder.empty()) {
+    m_sections.clear();
+
+    if (!m_operations.empty()) {
         m_method = method;
 
         // More involved decomposition of concave regions for processing
@@ -263,7 +288,7 @@ void Profile::inverseWinding()//TODO update
 {
     Polygon::inverseWinding();
 
-    for (auto& remainder : m_remainder) {
+    for (auto& remainder : m_operations) {
 
         // Offset index by count (Required because inversion causes initiation from opposite side of section)
         remainder.first += remainder.second;
@@ -279,56 +304,95 @@ void Profile::setToolDimensions(double width, double thickness)
     m_thickness = thickness;
 }
 
-void Profile::setReferencePosition(const glm::dvec2& start)
-{
-    m_start = start;
-}
-void Profile::setReferenceOrientation(double orientation)
-{
-    m_orientation = orientation;
-}
-
-// Skips the next section along with any further sections dependent on it, moving them to the back of the queue
+// Skips the next section along with any further sections dependent on it
+// IF the section is internal and has not yet been skipped - Delay processing for later in case the operation becomes possible
+// OTHERWISE (If external or already seen == section is infeasible) Remove section and its dependents
 void Profile::skip()
 {
     if (!m_sections.empty()) {
-        const uint32_t count = 1 + m_sections[0].children;
-        if (count <= m_sections.size()) {
-            if (m_sections[0].skipped) { // Delete section if it has already been skipped once
+//        const std::vector<Polygon>& skips = nextSkips();
+//        m_remainder.insert(m_remainder.end(), skips.begin(), skips.end());
+        std::cout << m_sections.size() << " | " << m_sections[0].depth << " " << m_sections[0].children << " " << m_sections[0].skipped << " " << m_sections[0].external << "\n";
+
+        uint32_t count = 1 + m_sections[0].children;
+        if (count < m_sections.size()) {
+            std::cout << count << " " << m_sections.size() << ": " << m_sections[count].external << " " << m_sections[count].skipped << "\n";
+
+            // Directly remove section when delaying can not make a section possible
+            if (m_sections[0].external || m_sections[0].skipped || m_sections[count].external || m_sections[count].skipped) {
+                if (m_sections[count].skipped) count += m_sections[count].children + 1;
                 for (uint32_t i = 0; i < count; i++) m_sections.pop_front();
-            } else { // Move section to the back of the queue, if it has not been seen before
+            } else { // Swap internal equal-depth sections
                 m_sections[0].skipped = true;
-                for (uint32_t i = 0; i < count; i++) {
-                    m_sections.push_back(m_sections[0]);
-                    m_sections.pop_front();
+                auto copy = std::deque(m_sections.begin(), m_sections.begin() + count);
+
+                m_sections[0] = m_sections[count];
+                for (uint32_t i = 1; i < m_sections[0].children + 1; i++) {
+                    m_sections[i] = m_sections[count + i];
+                }
+
+                count = m_sections[0].children + 1;
+                for (uint32_t i = 0; i < copy.size(); i++) {
+                    m_sections[count + i] = copy[i];
                 }
             }
-        } else m_sections.clear();
+
+        } else m_sections.clear(); // No use skipping the sole independent section - Always delete
     }
 }
 
 void Profile::refine()
 {
-    if (!m_sections.empty()) m_sections.pop_front();
+    if (!m_sections.empty()) {
+        uint32_t children = m_sections[0].children;
+
+        // Remove prior skipped flag - If an equal-depth internal section is removed it is worth considering again
+        if (children + 1 < m_sections.size()) m_sections[children + 1].skipped = false;
+
+        m_sections.pop_front();
+
+        for (uint32_t i = 0; i < children; i++) m_sections[i].depth--;
+    }
 }
 
-TriIndex Profile::next() const
+TriIndex Profile::nextTriangle() const
 {
     if (!m_sections.empty()) return m_sections[0].triangle;
     return { 0, 0, 0 };
 }
 
-SectionOperation Profile::next(double bladeWidth, double bladeThickness) const
+glm::dvec3 Profile::nextNormal() const
 {
     if (m_sections.empty()) return {};
 
     const TriIndex& tri = m_sections[0].triangle;
-    auto operation = SectionOperation {
+    glm::dvec2 external = m_vertices[tri.I2] - m_vertices[tri.I0];
+    external = { external.y, -external.x };
+    external *= 1.0 - 2.0 * (glm::dot(external, m_vertices[tri.I0] - m_vertices[tri.I1]) < 0);
+
+    return projected3D(glm::normalize(external));
+}
+std::pair<glm::dvec3, glm::dvec3> Profile::nextEdge() const
+{
+    if (m_sections.empty()) return {};
+
+    return {
+        projected3D(m_vertices[m_sections[0].triangle.I0]),
+        projected3D(m_vertices[m_sections[0].triangle.I2])
+    };
+}
+
+SectionOperation Profile::nextOperation() const
+{
+    if (m_sections.empty()) return {};
+
+    const TriIndex& tri = m_sections[0].triangle;
+    SectionOperation operation = {
             m_vertices[tri.I0],
             m_vertices[tri.I1],
             m_vertices[tri.I2],
-            bladeWidth,
-            bladeThickness
+            m_width,
+            m_thickness
     };
 
     operation.prepareReliefs(this);
@@ -354,7 +418,7 @@ bool Profile::isVertexExternal(uint32_t index) const
 
 bool Profile::isNextExternal() const
 {
-    return !m_sections.empty() && m_sections[0].depth == 0;
+    return !m_sections.empty() && m_sections[0].external;
 }
 
 uint32_t Profile::nextDepth() const
@@ -422,15 +486,6 @@ uint32_t Profile::nextVertex(uint32_t vertexIndex) const
     }
 
     return Polygon::nextVertex(vertexIndex);
-}
-
-const glm::dvec2& Profile::getReferencePosition() const
-{
-    return m_start;
-}
-double Profile::getReferenceOrientation() const
-{
-    return m_orientation;
 }
 
 // Returns the clearance from either vertex before the first obstruction on the reversed cut direction (Margin for alignment)
@@ -517,23 +572,9 @@ std::pair<uint32_t, uint32_t> Profile::nextHullVertices(uint32_t vertexIndex) co
     };
 }
 
-std::vector<glm::dvec2> Profile::corners(const glm::dvec2& start, double orientation) const
+const Axis3D& Profile::system() const
 {
-    double ht = 0.5 * m_width, hw = 0.5 * m_thickness, c0 = cos(m_orientation), s0 = sin(m_orientation);
-    std::vector<glm::dvec2> vertices = {
-            glm::dvec2(-ht, -hw),
-            glm::dvec2(-ht,  hw),
-            glm::dvec2( ht,  hw),
-            glm::dvec2( ht, -hw)
-    };
-
-    for (glm::dvec2& vertex : vertices) {
-        double yp = vertex.x * s0 + vertex.y * c0;
-        vertex.x = m_start.x + vertex.x * c0 - vertex.y * s0;
-        vertex.y = m_start.y + yp;
-    }
-
-    return vertices;
+    return m_system;
 }
 
 const glm::dvec3& Profile::normal() const
@@ -543,17 +584,20 @@ const glm::dvec3& Profile::normal() const
 
 void Profile::addTriangle(uint32_t startIndex)
 {
-    auto tri = TriIndex(startIndex,offsetIndex(startIndex, 1),offsetIndex(startIndex, 2));
-    if (area(tri) > m_minimumArea) m_sections.emplace_back(tri, 0);
+    auto tri = TriIndex(startIndex, offsetIndex(startIndex, 1), offsetIndex(startIndex, 2));
+    if (area(tri) > m_minimumArea) {
+        m_sections.emplace_back(tri, 0);
+        m_sections.back().external = true;
+    }
 }
 
 void Profile::directRefinement()
 {
-//    auto cut = m_remainder[m_next];
+//    auto cut = m_operations[m_next];
 //    auto indices = sectionIndices(cut);
 //
 //    if (isValidRefinement(indices)) {
-//        m_remainder.erase(m_remainder.begin() + m_next);
+//        m_operations.erase(m_operations.begin() + m_next);
 //        return indices;
 //    } else m_next++;
 //
@@ -563,7 +607,7 @@ void Profile::directRefinement()
 
 void Profile::delauneyRefinement()
 {
-    for (const std::pair<uint32_t, uint32_t>& rem : m_remainder) {
+    for (const std::pair<uint32_t, uint32_t>& rem : m_operations) {
 
         // Easy direct triangle cutout
         if (rem.second == 3) {
@@ -620,7 +664,6 @@ std::vector<Profile::Section> Profile::prepareSections(std::vector<TriIndex>& tr
     };
 
     std::vector<Edge> edges = { { 0, (uint32_t)indexMap.size() - 1, 0 } };
-    std::vector<uint32_t> dIndex; // Index of last section with depth == index of element in dIndex
 
     // Select triangles from exterior to interior like a tree
     while (!triangles.empty()) {
@@ -638,20 +681,16 @@ std::vector<Profile::Section> Profile::prepareSections(std::vector<TriIndex>& tr
             edges.emplace_back(nextTri.I0, nextTri.I1, depth + 1);
             edges.emplace_back(nextTri.I1, nextTri.I2, depth + 1);
         }
-
-        // Calculate # of children whenever a similar or shallower depth is reached
-        while (depth < dIndex.size()) {
-            sections[dIndex.back()].children = sections.size() - dIndex.back() - 2;
-            dIndex.pop_back();
-        }
-
-        dIndex.emplace_back(sections.size() - 1);
     }
 
-    // Capture remaining (Considers the last node at each depth)
-    while (!dIndex.empty()) {
-        sections[dIndex.back()].children = sections.size() - dIndex.back() - 1;
-        dIndex.pop_back();
+    // Calculate # of children of each section (Based on distance to next section of equal depth)
+    for (uint32_t i = 0; i < sections.size(); i++) {
+        sections[i].external = sections[i].depth == 0;
+
+        for (uint32_t j = i + 1; j < sections.size(); j++) {
+            if (sections[j].depth <= sections[i].depth) break;
+            sections[i].children++;
+        }
     }
 
     return sections;
@@ -752,6 +791,70 @@ std::vector<glm::dvec3> Profile::projected3D(const std::vector<uint32_t>& indice
     return Polygon::projected3D(vertices, m_system.xAxis, m_system.yAxis, offset);
 }
 
+//std::vector<Polygon> Profile::decompose() const
+//{
+//    std::vector<Polygon> hulls = Polygon::decompose();
+//
+//    for (int i = m_sections.size() - 1; i >= 0; i--) {
+//        const TriIndex& tri = m_sections[i].triangle;
+//        hulls.emplace_back(std::vector<glm::dvec2>{ m_vertices[tri.I0], m_vertices[tri.I1], m_vertices[tri.I2] });
+//    }
+//
+//    return hulls;
+//}
+
+// Decomposition based on standard polygon + any triangles that were skipped during refining
+std::vector<Polygon> Profile::decompose() const
+{
+    std::vector<Polygon> hulls = Polygon::decompose();
+    for (const Polygon& hull : m_remainder) hulls.emplace_back(hull);
+    return hulls;
+}
+
+// Returns a list of all hulls that make up the current frontier (Directly accessible sections to refine)
+std::vector<Polygon> Profile::frontier() const
+{
+    std::vector<Polygon> hulls;
+
+    for (const Section& section : m_sections) {
+        if (section.depth == 0) {
+            hulls.emplace_back(std::vector<glm::dvec2>{
+                m_vertices[section.triangle.I0],
+                m_vertices[section.triangle.I1],
+                m_vertices[section.triangle.I2]
+            });
+        }
+    }
+
+    // TODO better - Ensure that the current operating hull is last
+    std::reverse(hulls.begin(), hulls.end());
+
+    return hulls;
+}
+
+const std::vector<Polygon>& Profile::remainder() const
+{
+    return m_remainder;
+}
+
+std::vector<Polygon> Profile::nextSkips()
+{
+    std::vector<Polygon> skips;
+
+    if (!m_sections.empty()) {
+        const uint32_t count = std::min(m_sections[0].children + 1, (uint32_t)m_sections.size());
+
+        if (m_sections[0].skipped || count == m_sections.size()) {
+            for (uint32_t i = 0; i < count; i++) {
+                const TriIndex& tri = m_sections[0].triangle;
+                skips.emplace_back(std::vector<glm::dvec2>{ m_vertices[tri.I0], m_vertices[tri.I1], m_vertices[tri.I2] });
+            }
+        }
+    }
+
+    return skips;
+}
+
 std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
     auto edges = Polygon::debugEdges();
 
@@ -773,7 +876,7 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
 //        if (margin.second != 0) edges.emplace_back(m_vertices[tri.I2], m_vertices[tri.I2] + std::min(margin.second, 2.0) * glm::normalize(m_vertices[tri.I2] - m_vertices[tri.I1]));
 //        else checks.emplace_back(1);
 
-        auto op = next(m_width, m_thickness);
+        auto op = nextOperation();
 
         // Show reliefs, if appropriate
 //        std::cout << "XX " << op.valid << " " << op.reliefs.size() << "\n";
@@ -786,41 +889,30 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
                                relief.start + relief.internal * relief.projection(m_thickness) + glm::dvec2{ 0, 0.2 });
         }
 
-        auto d1 = m_vertices[tri.I0] - m_vertices[tri.I1], d2 = m_vertices[tri.I2] - m_vertices[tri.I1];
-//        auto d1 = m_vertices[prevVertex(tri.I0)] - m_vertices[tri.I0], d2 = m_vertices[nextVertex(tri.I2)] - m_vertices[tri.I2];
+//        Polygon tool(m_start, m_width, m_thickness, m_orientation);
+//        edges.emplace_back(tool.border()[0], tool.border()[1]);
+//        edges.emplace_back(tool.border()[1], tool.border()[2]);
+//        edges.emplace_back(tool.border()[2], tool.border()[3]);
+//        edges.emplace_back(tool.border()[3], tool.border()[0]);
 
-        auto t0 = atan2(d1.y, d1.x), dt = glm::atan(d2.y, d2.x) - t0;
-        if (t0 < 0) t0 += 2 * M_PI;
-        if (dt < 0) dt += 2 * M_PI;
-        dt /= 1.0;
-//        std::cout << "TH: " << t0 << " " << dt << "\n";
-
-        double t = t0;
-        for (uint32_t i = 0; i < 2; i++) {
-            edges.emplace_back(m_vertices[tri.I1], m_vertices[tri.I1] + 5.0 * glm::dvec2(cos(t), sin(t)));
-            t += dt;
-        }
-
-        auto vertices = corners(m_start, m_orientation);
-        edges.emplace_back(vertices[3], vertices[0]);
-        for (uint32_t i = 0; i < vertices.size() - 1; i++) {
-            edges.emplace_back(vertices[i], vertices[i + 1]);
-        }
-
-//        auto v0 =
+//        Polygon collider = op.midBounds();
+//        edges.emplace_back(collider.border().back(), collider.border()[0]);
+//        for (uint32_t i = 0; i < collider.vertexCount() - 1; i++) {
+//            edges.emplace_back(collider.border()[i], collider.border()[i + 1]);
+//        }
 
 
-//        const std::vector<SectionOperation::Set>& cuts = op.cuts();
-//        for (const SectionOperation::Set& set : cuts) {
-//            for (uint32_t i = 0; i < set.motions.size(); i++) {
-//                glm::dvec2 terminus = set.motions[i].first + set.axis * set.motions[i].second;
-//                glm::dvec2 corner = terminus + set.normal * thickness;
+//        auto d1 = m_vertices[tri.I0] - m_vertices[tri.I1], d2 = m_vertices[tri.I2] - m_vertices[tri.I1];
+
+//        auto t0 = atan2(d1.y, d1.x), dt = glm::atan(d2.y, d2.x) - t0;
+//        if (t0 < 0) t0 += 2 * M_PI;
+//        if (dt < 0) dt += 2 * M_PI;
+//        dt /= 1.0;
 //
-//                edges.emplace_back(set.motions[i].first, terminus);
-//                edges.emplace_back(terminus, corner);
-//
-//                if (i < set.motions.size() - 1) edges.emplace_back(corner, set.motions[i + 1].first);
-//            }
+//        double t = t0;
+//        for (uint32_t i = 0; i < 2; i++) {
+//            edges.emplace_back(m_vertices[tri.I1], m_vertices[tri.I1] + 5.0 * glm::dvec2(cos(t), sin(t)));
+//            t += dt;
 //        }
     }
 
@@ -834,17 +926,18 @@ void Profile::print() const
     std::cout << "[Profile]\n";
     m_system.print();
 
+    Polygon::print();
+
     std::cout << "hull: [";
     for (uint32_t idx : m_hull) std::cout << idx << " ";
 
-    for (uint32_t idx : m_hull) std::cout << "(" << m_vertices[idx].x << ", " << m_vertices[idx].y << ")\n";
-
     std::cout << "]\nrem: [";
-    for (const auto& rem : m_remainder) std::cout << "(" << rem.first << ", " << rem.second << ") ";
+    for (const auto& rem : m_operations) std::cout << "(" << rem.first << ", " << rem.second << ") ";
 
     std::cout << "]\nsections: \n";
     for (const Section& section : m_sections) {
-        std::cout << section.triangle.I0 << " " << section.triangle.I1 << " " << section.triangle.I2 << " " << section.children << "\n";
+        std::cout << section.triangle.I0 << " " << section.triangle.I1 << " " << section.triangle.I2
+            << " | " << section.depth << " " << section.children << " | " << section.external << " " << section.skipped << "\n";
     }
 
     auto [xNear, xFar] = xExtents();

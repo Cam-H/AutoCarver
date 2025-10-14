@@ -29,7 +29,7 @@ PolygonWidget *displayWidget = nullptr;
 QLabel *countLabel = nullptr;
 QCheckBox *centerButton = nullptr;
 
-std::vector<Polygon> polygons;
+std::vector<Polygon*> polygons;
 uint32_t selection = 0;
 
 
@@ -59,12 +59,12 @@ void load(const QStringList& selectedFiles) {
     uint32_t idx = polygons.size();
 
     for (const QString& filename : selectedFiles) {
-        polygons.emplace_back(filename.toStdString());
+        polygons.emplace_back(new T(filename.toStdString()));
     }
 
     // Can not be added directly (In case vector resizing changes memory locations)
     displayWidget->clearPolygons();
-    for (Polygon& poly : polygons) displayWidget->addPolygon(&poly);
+    for (Polygon* poly : polygons) displayWidget->addPolygon(poly);
 
     centerButton->setChecked(true);
     displayWidget->setCentered(true);
@@ -93,20 +93,20 @@ int main(int argc, char *argv[])
 
     displayWidget = window->findChild<PolygonWidget*>("displayWidget");
 
-    polygons.emplace_back(std::vector<glm::dvec2>{
+    polygons.emplace_back(new Polygon(std::vector<glm::dvec2>{
             { 213.000000, 156.000000},{ 205.000000, 276.000000},{ 400.000000, 100.000000},{ 420.000000, 189.000000},{ 314.000000, 252.000000},{ 342.000000, 400.000000},{ 265.000000, 304.000000},{ 114.000000, 422.000000},{ 95.000000, 402.000000},{ 158.000000, 349.000000},{ 24.000000, 196.000000},{ 108.000000, 246.000000},{ 103.000000, 34.000000},{ 119.000000, 171.000000},{ 197.000000, 96.000000},{ 240.000000, 23.000000}
-    });
+    }));
 
-    polygons.emplace_back(std::vector<glm::dvec2>{
+    polygons.emplace_back(new Polygon(std::vector<glm::dvec2>{
             { 100.000000, 100.000000},{ 445.000000, 70.000000},{ 216.000000, 230.000000},{ 238.000000, 150.000000},{ 184.000000, 143.000000},{ 144.000000, 252.000000},{ 203.000000, 341.000000},{ 400.000000, 400.000000},{ 95.000000, 402.000000}
-    });
+    }));
 
-    polygons.emplace_back(std::vector<glm::dvec2>{
+    polygons.emplace_back(new Polygon(std::vector<glm::dvec2>{
             { 100.000000, 100.000000},{ 400.000000, 100.000000},{ 400.000000, 400.000000},{ 95.000000, 402.000000}
-    });
+    }));
 
 
-    polygons.emplace_back(std::vector<glm::dvec2>{
+    polygons.emplace_back(new Polygon(std::vector<glm::dvec2>{
             glm::vec2(100.0f, 100.0f),
             glm::vec2(400.0f, 100.0f),
             glm::vec2(400.0f, 400.0f),
@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
             glm::vec2(32.0f, 279.0f),
             glm::vec2(28.0f, 185.0f),
             glm::vec2(63.0f, 62.0f)
-    });
+    }));
 
     auto test = std::vector<glm::dvec2>{
             {341.096,42.1527},
@@ -142,9 +142,9 @@ int main(int argc, char *argv[])
     };
 
 //    Polygon::cullCollinear(test);
-    polygons.emplace_back(test);
+    polygons.emplace_back(new Polygon(test));
 
-    for (Polygon& poly : polygons) displayWidget->addPolygon(&poly);
+    for (Polygon* poly : polygons) displayWidget->addPolygon(poly);
 
     countLabel = window->findChild<QLabel*>("countLabel");
     updateLabel();
@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
 
     auto downScaleButton = window->findChild<QPushButton*>("downScaleButton");
     QObject::connect(downScaleButton, &QPushButton::clicked, [&]() {
-        polygons[selection].scale({ 250, 250}, 0.95f);
+        polygons[selection]->scale({ 250, 250}, 0.95f);
         displayWidget->update();
     });
 
@@ -191,13 +191,50 @@ int main(int argc, char *argv[])
 
     auto upScaleButton = window->findChild<QPushButton*>("upScaleButton");
     QObject::connect(upScaleButton, &QPushButton::clicked, [&]() {
-        polygons[selection].scale({ 250, 250}, 1.05f);
+        polygons[selection]->scale({ 250, 250}, 1.05f);
         displayWidget->update();
+    });
+
+    auto regenButton = window->findChild<QPushButton*>("regenButton");
+    QObject::connect(regenButton, &QPushButton::clicked, [&]() {
+        auto profile = dynamic_cast<Profile*>(polygons[selection]);
+        if (profile != nullptr) {
+            profile->setRefinementMethod(Profile::RefinementMethod::DELAUNEY);
+            displayWidget->repaint();
+        }
+    });
+
+    auto refineButton = window->findChild<QPushButton*>("refineButton");
+    QObject::connect(refineButton, &QPushButton::clicked, [&]() {
+        auto profile = dynamic_cast<Profile*>(polygons[selection]);
+        if (profile != nullptr) {
+            const auto& op = profile->nextOperation();
+
+            if (op.isValid()) profile->refine();
+            else profile->skip();
+
+            displayWidget->repaint();
+        }
+    });
+
+    auto skipButton = window->findChild<QPushButton*>("skipButton");
+    QObject::connect(skipButton, &QPushButton::clicked, [&]() {
+        auto profile = dynamic_cast<Profile*>(polygons[selection]);
+        if (profile != nullptr) {
+            profile->skip();
+
+            displayWidget->repaint();
+        }
+    });
+
+    auto printButton = window->findChild<QPushButton*>("printButton");
+    QObject::connect(printButton, &QPushButton::clicked, [&]() {
+        polygons[selection]->print();
     });
 
     auto copyButton = window->findChild<QPushButton*>("copyButton");
     QObject::connect(copyButton, &QPushButton::clicked, [=]() {
-        const Polygon& poly = polygons[selection];
+        const Polygon& poly = *polygons[selection];
 
         std::string text = "polygons.emplace_back(std::vector<glm::vec2>{\n";
         for (uint32_t i = 0; i < poly.vertexCount(); i++) {
@@ -213,7 +250,7 @@ int main(int argc, char *argv[])
     auto saveButton = window->findChild<QPushButton*>("saveButton");
     QObject::connect(saveButton, &QPushButton::clicked, [=]() {
         std::string source = "../out/polygon.bin";
-        polygons[selection].save(source);
+        polygons[selection]->save(source);
     });
 
     auto loadPolygonButton = window->findChild<QPushButton*>("loadPolygonButton");

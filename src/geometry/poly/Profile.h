@@ -42,14 +42,14 @@ public:
 
     void setToolDimensions(double width, double thickness);
 
-    void setReferencePosition(const glm::dvec2& start);
-    void setReferenceOrientation(double orientation);
-
     void skip();
     void refine();
 
-    [[nodiscard]] TriIndex next() const;
-    [[nodiscard]] SectionOperation next(double bladeWidth, double bladeThickness) const;
+    [[nodiscard]] TriIndex nextTriangle() const;
+    [[nodiscard]] glm::dvec3 nextNormal() const;
+    [[nodiscard]] std::pair<glm::dvec3, glm::dvec3> nextEdge() const;
+
+    [[nodiscard]] SectionOperation nextOperation() const;
 
     [[nodiscard]] uint32_t remainingSections() const;
     [[nodiscard]] bool complete() const;
@@ -73,6 +73,7 @@ public:
 
     [[nodiscard]] bool validate(const SectionOperation::Relief& relief) const;
 
+    [[nodiscard]] const Axis3D& system() const;
     [[nodiscard]] const glm::dvec3& normal() const;
 
     [[nodiscard]] glm::dvec2 project(const glm::dvec3& vertex) const;
@@ -86,12 +87,15 @@ public:
     [[nodiscard]] uint32_t prevVertex(uint32_t vertexIndex) const override;
     [[nodiscard]] uint32_t nextVertex(uint32_t vertexIndex) const override;
 
-    [[nodiscard]] const glm::dvec2& getReferencePosition() const;
-    [[nodiscard]] double getReferenceOrientation() const;
+    [[nodiscard]] std::vector<Polygon> decompose() const override;
+    [[nodiscard]] std::vector<Polygon> frontier() const;
+
+    [[nodiscard]] const std::vector<Polygon>& remainder() const;
+    [[nodiscard]] std::vector<Polygon> nextSkips();
 
     [[nodiscard]] std::vector<std::pair<glm::dvec2, glm::dvec2>> debugEdges() const override;
 
-    void print() const;
+    void print() const override;
 
 private:
 
@@ -100,6 +104,7 @@ private:
             : triangle(triangle)
             , depth(depth)
             , children(children)
+            , external(false)
             , skipped(false) {}
 
         TriIndex triangle; // Indices to the vertices forming the section
@@ -107,6 +112,7 @@ private:
         uint32_t depth; // Number of sections that this one is dependent on
         uint32_t children; // Number of sections dependent on this one
 
+        bool external; // Whether the section has no dependencies (depth == 0 to start)
         bool skipped; // Track if section has previously been skipped
     };
 
@@ -131,9 +137,9 @@ private:
 
     inline static uint32_t difference(uint32_t a, uint32_t b, uint32_t max);
 
-    inline std::vector<uint32_t> sectionIndices(const std::pair<uint32_t, uint32_t>& limits) const;
-    inline std::vector<glm::dvec2> sectionVertices(const std::pair<uint32_t, uint32_t>& limits) const;
-    inline std::vector<glm::dvec2> sectionVertices(const std::vector<uint32_t>& indices) const;
+    [[nodiscard]] inline std::vector<uint32_t> sectionIndices(const std::pair<uint32_t, uint32_t>& limits) const;
+    [[nodiscard]] inline std::vector<glm::dvec2> sectionVertices(const std::pair<uint32_t, uint32_t>& limits) const;
+    [[nodiscard]] inline std::vector<glm::dvec2> sectionVertices(const std::vector<uint32_t>& indices) const;
 
     static std::vector<Section> prepareSections(std::vector<TriIndex>& triangles, const std::vector<uint32_t>& indexMap);
     static std::tuple<bool, TriIndex> nextTriangle(std::vector<TriIndex>& triangles, uint32_t first, uint32_t last);
@@ -144,8 +150,6 @@ private:
     void intersection(const glm::dvec2& a, const glm::dvec2& b, uint32_t start, uint32_t end, double& t) const;
 
     [[nodiscard]] std::pair<uint32_t, uint32_t> nextHullVertices(uint32_t vertexIndex) const;
-
-    [[nodiscard]] std::vector<glm::dvec2> corners(const glm::dvec2& start, double orientation) const;
 
     static double angle(const glm::dvec2& a, const glm::dvec2& b);
 
@@ -158,9 +162,10 @@ private:
     RefinementMethod m_method;
 
     std::vector<uint32_t> m_hull; // Indices of vertices that form the convex hull (Stored in ascending order)
-    std::vector<std::pair<uint32_t, uint32_t>> m_remainder; // first (index), second (number of subsequent vertices)
+    std::vector<std::pair<uint32_t, uint32_t>> m_operations; // first (index), second (number of subsequent vertices)
 
     std::deque<Section> m_sections;
+    std::vector<Polygon> m_remainder;
 
     double m_thickness;
     double m_width;
@@ -168,10 +173,6 @@ private:
     double m_minimumArea;
 
     uint32_t m_floorIndex;
-
-    // Track reference position (For the purposes of path planning)
-    glm::dvec2 m_start;
-    double m_orientation;
 };
 
 
