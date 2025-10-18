@@ -19,6 +19,7 @@
 #include "renderer/PolygonWidget.h"
 #include "renderer/UiLoader.h"
 #include "fileIO/Serializable.h"
+#include "fileIO/SerialList.h"
 
 #endif
 
@@ -229,6 +230,11 @@ int main(int argc, char *argv[])
 
     auto printButton = window->findChild<QPushButton*>("printButton");
     QObject::connect(printButton, &QPushButton::clicked, [&]() {
+        auto profile = dynamic_cast<Profile*>(polygons[selection]);
+        if (profile != nullptr) {
+            SerialList<Polygon>(profile->decompose()).save("../out/1P.bin");
+        }
+
         polygons[selection]->print();
     });
 

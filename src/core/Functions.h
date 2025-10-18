@@ -72,5 +72,12 @@ namespace Functions {
     {
         return { { (a + b) / 2.0 }, glm::length(b - a) / 2.0 };
     }
+
+    inline double radWrap(double value)
+    {
+        if (value < 0) value += 2 * M_PI;
+        if (value > M_PI) value -= M_PI;
+        return value;
+    }
 }
 

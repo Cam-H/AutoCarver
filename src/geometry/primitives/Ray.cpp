@@ -45,6 +45,16 @@ Ray<2>::Ray(const glm::dvec3& location) : RayBase<Ray<2>, 2>({ location.x, locat
 
 Ray<2>::Ray(const glm::dvec2& origin, const glm::dvec2& axis) : RayBase<Ray<2>, 2>(origin, axis) {}
 
+double Ray<2>::angle() const
+{
+    return atan2(axis.y, axis.x);
+}
+
+Ray<2> Ray<2>::normal() const
+{
+    return { origin, { axis.y, -axis.x }};
+}
+
 void Ray<2>::print() const
 {
     std::cout << "[RayD] origin: (" << origin.x << ", " << origin.y

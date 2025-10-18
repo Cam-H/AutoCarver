@@ -45,6 +45,7 @@ public:
     virtual void inverseWinding();
 
     void convexify();
+    static Polygon convex(const std::vector<glm::dvec2>& vertices);
 
     void clean();
     static std::vector<glm::dvec2> clean(const std::vector<glm::dvec2>& vertices);

@@ -17,7 +17,6 @@
 #include "robot/trajectory/Waypoint.h"
 
 uint32_t RRTPlanner::REBUILD_THRESHOLD = 20;
-double RRTPlanner::EXPLORATION_BIAS = 0.10;
 
 RRTPlanner::RRTPlanner()
     : m_tree(new KDTree2D(2, m_cloud, nanoflann::KDTreeSingleIndexAdaptorParams(10)))
@@ -46,7 +45,6 @@ RRTPlanner::RRTPlanner()
     , m_tDist(std::uniform_real_distribution<double>(0.0, M_PI))
 {
     m_cloud.pts = { Node(m_start) };
-    m_frontier.fill({ 0, 0 });
 }
 
 RRTPlanner::~RRTPlanner()
@@ -72,10 +70,17 @@ bool RRTPlanner::serialize(std::ofstream& file) const
 //    Serializer::writeUint(file, m_iterations);
 //    Serializer::writeUint(file, m_lastRebuild);
 
+    Serializer::writeUint(file, m_method == SampleSpace::BOX ? 0 : (m_method == SampleSpace::TRIANGLE ? 1 : 2));
+
     Serializer::writeDouble(file, m_xDist.min());
     Serializer::writeDouble(file, m_xDist.max());
     Serializer::writeDouble(file, m_yDist.min());
     Serializer::writeDouble(file, m_yDist.max());
+
+    Serializer::writeDouble(file, m_circBounds.center.x);
+    Serializer::writeDouble(file, m_circBounds.center.y);
+    Serializer::writeDouble(file, m_circBounds.radius);
+
 
     std::cout << "BOUNDS: [" << m_xDist.min() << " " << m_xDist.max() << "], [" << m_yDist.min() << " " << m_yDist.max() << "]\n";
 
@@ -84,6 +89,9 @@ bool RRTPlanner::serialize(std::ofstream& file) const
 
 bool RRTPlanner::deserialize(std::ifstream& file)
 {
+    delete m_tree;
+    m_tree = new KDTree2D(2, m_cloud, nanoflann::KDTreeSingleIndexAdaptorParams(10));
+
     m_start = Serializer::readDVec3(file);
     m_goal = Serializer::readDVec3(file);
 
@@ -100,6 +108,12 @@ bool RRTPlanner::deserialize(std::ifstream& file)
 //    Serializer::writeUint(file, m_iterations);
 //    Serializer::writeUint(file, m_lastRebuild);
 
+    switch (Serializer::readUint(file)) {
+        case 0: m_method = SampleSpace::BOX; break;
+        case 1: m_method = SampleSpace::TRIANGLE; break;
+        case 2: m_method = SampleSpace::CIRCLE; break;
+    }
+
     double min, max;
 
     min = Serializer::readDouble(file);
@@ -109,6 +123,8 @@ bool RRTPlanner::deserialize(std::ifstream& file)
     min = Serializer::readDouble(file);
     max = Serializer::readDouble(file);
     m_yDist = std::uniform_real_distribution<double>(min, max);
+
+    m_circBounds = { { Serializer::readDouble(file), Serializer::readDouble(file) }, Serializer::readDouble(file) };
 
     std::cout << "BOUNDS: [" << m_xDist.min() << " " << m_xDist.max() << "], [" << m_yDist.min() << " " << m_yDist.max() << "]\n";
 
@@ -168,6 +184,11 @@ void RRTPlanner::updateParameters()
     m_goalRadius = 2.0 * m_stepSize;
 }
 
+void RRTPlanner::setStepSize(double stepSize)
+{
+    m_stepSize = stepSize;
+}
+
 std::tuple<glm::dvec2, glm::dvec2> RRTPlanner::getBounds() const
 {
     return { { m_xDist.min(), m_yDist.min() }, { m_xDist.max(), m_yDist.max() } };
@@ -206,8 +227,6 @@ void RRTPlanner::resetTree()
 
     m_cloud.pts = { Node(m_start) };
     m_first = 0;
-
-    m_frontier.fill({ 0, 0 });
 
     m_tree->buildIndex();
 }
@@ -350,8 +369,13 @@ glm::dvec3 RRTPlanner::limit(glm::dvec3 location)
 // Iterates maximumIterations times, or until a faster solution is discovered, whichever comes first.
 // Returns true if a path solution was discovered
 bool RRTPlanner::solve(const std::vector<Polygon>& env, uint32_t maximumIterations) {
-    ScopedTimer timer(m_solved ? "[RRTPlanner] Failed to find a better solution"
-        : "[RRTPlanner] Failed to find a solution");
+    ScopedTimer timer(m_solved ? "\033[93m[RRTPlanner] Failed to find a better solution\033[0m"
+        : "\033[93m[RRTPlanner] Failed to find a solution\033[0m");
+
+    if (tryDirect(env)) {
+        timer.setMessage("\033[93m[RRTPlanner] Found a direct path. Cost: " + std::to_string(m_cloud.pts[m_terminus].cost) + "\033[0m");
+        return true;
+    }
 
     maximumIterations += m_iterations; // Perform up to maximumIterations on top of what has already been done
     while (m_iterations < maximumIterations) {
@@ -362,6 +386,17 @@ bool RRTPlanner::solve(const std::vector<Polygon>& env, uint32_t maximumIteratio
             timer.setMessage("[RRTPlanner] Found a solution at iteration: " + std::to_string(m_iterations) + ". Cost: " + std::to_string(m_cloud.pts[m_terminus].cost));
             return true;
         }
+    }
+
+    return false;
+}
+
+bool RRTPlanner::tryDirect(const std::vector<Polygon>& env)
+{
+    if (free(env, m_start, m_goal)) {
+        addNode(m_goal, travelCost(m_cloud.pts[m_first], m_goal), m_first);
+        checkGoal(m_cloud.pts.back());
+        return true;
     }
 
     return false;
@@ -482,64 +517,6 @@ void RRTPlanner::checkGoal(Node& node)
     }
 }
 
-// Update frontier based on the new node
-bool RRTPlanner::tryFrontierInsertion(const std::vector<uint32_t>& set, const std::vector<double>& distances)
-{
-    bool updated = false;
-
-    // Reduce frontier weights when closer to the new node
-    for (uint32_t i = 0; i < set.size(); i++) {
-        if (m_cloud.pts[set[i]].frontier != std::numeric_limits<uint16_t>::max()
-            && distances[i] < m_frontier[set[i]].second) {
-            m_frontier[set[i]].second = distances[i];
-            updated = true;
-        }
-    }
-
-    // Try adding the new node to the frontier when it is relatively far from any neighbors
-    auto cost = std::min(distances.begin(), distances.end());
-    if (*cost > m_frontier.back().second) {
-        m_frontier.back() = { m_cloud.pts.size() - 1, *cost };
-        updated = true;
-    }
-
-    //
-    // TODO NOTE: Although a frontier node may be incorrectly removed, it is probably not worth sorting twice to deal with it
-    if (updated) sortFrontier();
-
-    return updated;
-}
-
-void RRTPlanner::sortFrontier()
-{
-    std::sort(m_frontier.begin(), m_frontier.end(), [](const std::pair<uint32_t, double>& lhs, const std::pair<uint32_t, double>& rhs) {
-        return lhs.second > rhs.second;
-    });
-
-    // Update frontier indexing
-    for (uint16_t i = 0; i < FRONTIER_NODE_COUNT; i++) {
-        m_cloud.pts[m_frontier[i].first].frontier = i;
-    }
-}
-
-uint32_t RRTPlanner::selectFrontier()
-{
-    double sum = 0;
-
-    for (const auto& front : m_frontier) {
-        sum += front.second;
-    }
-
-    double sel = m_dist01(m_rng) * sum;
-    for (const auto& front : m_frontier) {
-        if (sel < front.second) return front.first;
-        sel -= front.second;
-    }
-
-    throw std::runtime_error("[RRTPlanner] Error selecting frontier");
-}
-
-
 const glm::dvec3& RRTPlanner::start() const
 {
     return m_start;
@@ -554,6 +531,12 @@ const glm::dvec3& RRTPlanner::first() const
 const glm::dvec3& RRTPlanner::goal() const
 {
     return m_goal;
+}
+
+// Returns true if the cost to travel between test and the start is less than the travel between comparison and the start
+bool RRTPlanner::nearer(const glm::dvec3& test, const glm::dvec3& comparison) const
+{
+    return travelCost(m_cloud.pts[m_first], test) < travelCost(m_cloud.pts[m_first], comparison);
 }
 
 double RRTPlanner::width() const
@@ -572,6 +555,11 @@ double RRTPlanner::radius() const
 double RRTPlanner::diagonal() const
 {
     return m_diagonal;
+}
+
+double RRTPlanner::stepSize() const
+{
+    return m_stepSize;
 }
 
 // Returns the resultant polygonal bounds of the target, given the location

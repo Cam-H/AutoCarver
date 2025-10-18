@@ -227,7 +227,7 @@ void PlannerWidget::drawForeground(QPainter& painter)
 
         painter.setPen(Qt::black);
 
-        std::string text = "Iterations: " + std::to_string(planner->iterations());
+        std::string text = "Iterations: " + std::to_string(planner->iterations()) + ", nodes: " + std::to_string(planner->nodes().size());
         if (planner->solved()) {
             const auto& sol = planner->lastSolution();
             text += ", solution cost: " + std::to_string(sol.second);

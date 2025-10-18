@@ -7,11 +7,10 @@
 
 #include <glm.hpp>
 
-#include "robot/planning/RRTPlanner.h"
-
-
 class Profile;
 class Polygon;
+
+#include "geometry/primitives/Triangle.h"
 
 // Helper class to decompose refinement steps into a series of cuts based on what is physically accessible during the process
 // In cases with insufficient clearance, tries to find a set of relief cuts to enable the cut
@@ -25,6 +24,7 @@ public:
                      double width, double thickness);
 
     void prepareReliefs(const Profile* profile);
+    void adjustPositions();
 
     struct Set {
 
@@ -37,12 +37,24 @@ public:
         Set(const glm::dvec2& axis, const glm::dvec2& normal, const glm::dvec2& travel)
             : axis(axis), normal(normal), travel(travel) {}
 
+        Set(const std::vector<glm::dvec3>& approach)
+                : axis(), normal(), travel(), approach(approach) {}
+
+        void offset(double dx, double dy);
+
+        void flipNormal();
+
         [[nodiscard]] glm::dvec3 start() const;
         [[nodiscard]] glm::dvec3 end() const;
 
-        glm::dvec2 axis;
-        glm::dvec2 normal;
-        glm::dvec2 travel;
+        [[nodiscard]] glm::dvec2 initialNormal() const;
+        [[nodiscard]] glm::dvec2 finalNormal() const;
+
+        [[nodiscard]] std::vector<glm::dvec3> path() const;
+
+        glm::dvec2 axis; // Along the flat of the blade
+        glm::dvec2 normal; // Normal to the flat of the blade
+        glm::dvec2 travel; // Direction of travel of the blade
 
         std::vector<std::pair<glm::dvec2, double>> motions; // First = start position, second = final distance from start
 
@@ -66,7 +78,9 @@ public:
         [[nodiscard]] const glm::dvec2& apex();
         [[nodiscard]] glm::dvec2 center() const;
 
-        glm::dvec2 start; // Start position for relief
+        void print() const;
+
+        glm::dvec2 start; // External triangle vertex for the relief
 
         glm::dvec2 internal; // Direction of internal edge of cut
         glm::dvec2 external; // Direction of external edge of cut
@@ -80,46 +94,42 @@ public:
         double sink; // Record offset for first depth (For collisions with opposing edge)
 
         std::vector<glm::dvec2> edges; // (continuous) edges of the relief, excluding edges shared with the profile
-
-        bool valid;
     };
 
     bool clear(const Polygon& hull);
-    bool plan(RRTPlanner& planner, std::vector<Polygon>& env);
 
     [[nodiscard]] inline bool isValid() const { return m_valid; }
 
-    [[nodiscard]] glm::dvec2 start() const;
-    [[nodiscard]] glm::dvec2 end() const;
-
-    [[nodiscard]] double startOrientation() const;
-    [[nodiscard]] double endOrientation() const;
-
-    [[nodiscard]] glm::dvec3 initialLeft() const;
-    [[nodiscard]] glm::dvec3 initialRight() const;
-
     [[nodiscard]] glm::dvec2 splitVertex() const;
+    [[nodiscard]] const glm::dvec2& external() const;
+    [[nodiscard]] glm::dvec2 normal() const;
 
+    [[nodiscard]] bool reliefLeft() const;
+    [[nodiscard]] bool reliefRight() const;
     [[nodiscard]] bool requiresRelief() const;
 
-    [[nodiscard]] Triangle2D bounds(double expansion) const;
-
-    [[nodiscard]] Polygon bounds() const;
-    [[nodiscard]] Polygon midBounds(bool rightFirst = false) const;
+    [[nodiscard]] Triangle2D bounds(double expansion = -RUN_UP) const;
+//
+//    [[nodiscard]] Polygon bounds() const;
+    [[nodiscard]] Polygon boundsNoLeft() const;
+    [[nodiscard]] Polygon boundsNoRight() const;
 
     [[nodiscard]] inline const std::vector<Relief>& reliefs() const { return m_reliefs; }
 
 //    [[nodiscard]] std::vector<Set> connected(const Profile* profile, const glm::dvec2& start, double theta) const;
 
-    [[nodiscard]] std::vector<Set> sequence() const;
+    [[nodiscard]] std::vector<Set> left() const;
+    [[nodiscard]] std::vector<Set> right() const;
 
-    [[nodiscard]] std::vector<SectionOperation::Set> left() const;
-    [[nodiscard]] std::vector<SectionOperation::Set> right() const;
+    void print() const;
 
     static double RUN_UP;
     static uint8_t ITERATIONS;
 
 private:
+
+    [[nodiscard]] double leftOrientation() const;
+    [[nodiscard]] double rightOrientation() const;
 
     [[nodiscard]] glm::dvec2 reliefStart(const SectionOperation::Relief& relief, double offset) const;
 
@@ -138,7 +148,8 @@ private:
 
     bool m_valid; // Operation is possible given constraints
 
-    glm::dvec2 m_start, m_end; // Endpoints of the triangle
+    glm::dvec2 m_split;
+    glm::dvec2 m_left, m_right; // Initial positions to perform operations from
     double width, thickness, floor;
 
     glm::dvec2 BA, BC, AC; // Edge unit vectors
@@ -150,8 +161,6 @@ private:
     std::vector<Relief> m_reliefs;
 
     bool m_cutBA, m_cutBC;
-
-    std::vector<Set> m_sequence;
 };
 
 

@@ -122,10 +122,11 @@ private:
     std::vector<Action> planConvexTrim(const std::pair<Plane, std::vector<glm::dvec3>>& step);
 
     void planSilhouetteRefinement();
+    void planSilhouetteTrim();
 
     std::vector<Action> planProfile(Profile& profile);
 
-    bool planSection(const Profile& profile, const SectionOperation& operation, std::vector<Action>& actions);
+    bool planSection(const Profile& profile, std::vector<Action>& actions);
 
     bool planTranslation(const glm::dvec3& translation, Action& action);
     bool planSequence(const Sequence& sequence, Action& action);

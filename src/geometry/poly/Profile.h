@@ -10,7 +10,10 @@
 #include <deque>
 
 #include "geometry/Axis3D.h"
+
 #include "SectionOperation.h"
+
+class RRTPlanner;
 
 class Profile : public Polygon {
 public:
@@ -41,15 +44,30 @@ public:
     void inverseWinding() override;
 
     void setToolDimensions(double width, double thickness);
+    [[nodiscard]] std::tuple<double, double> toolDimensions() const;
 
     void skip();
     void refine();
 
+    void prepare(const Polygon& wrapper);
+    void prepare();
+
+    bool planReturn();
+    bool planNext();
+
     [[nodiscard]] TriIndex nextTriangle() const;
+    [[nodiscard]] glm::dvec2 nextExternal() const;
     [[nodiscard]] glm::dvec3 nextNormal() const;
     [[nodiscard]] std::pair<glm::dvec3, glm::dvec3> nextEdge() const;
 
     [[nodiscard]] SectionOperation nextOperation() const;
+    [[nodiscard]] std::vector<glm::dvec3> nextPath() const;
+
+    [[nodiscard]] const Triangle2D& nextBounds() const;
+    [[nodiscard]] bool nextSequenceAccessible() const;
+    [[nodiscard]] bool nextSequenceReady() const;
+    [[nodiscard]] std::vector<SectionOperation::Set> nextSequence() const;
+    [[nodiscard]] std::vector<glm::dvec3> returnPath() const;
 
     [[nodiscard]] uint32_t remainingSections() const;
     [[nodiscard]] bool complete() const;
@@ -93,6 +111,9 @@ public:
     [[nodiscard]] const std::vector<Polygon>& remainder() const;
     [[nodiscard]] std::vector<Polygon> nextSkips();
 
+    [[nodiscard]] const RRTPlanner* planner() const;
+    [[nodiscard]] const Polygon& wrapper() const;
+
     [[nodiscard]] std::vector<std::pair<glm::dvec2, glm::dvec2>> debugEdges() const override;
 
     void print() const override;
@@ -100,14 +121,16 @@ public:
 private:
 
     struct Section {
-        Section(TriIndex triangle, uint32_t depth, uint32_t children = 0)
+        Section(TriIndex triangle, uint32_t index, uint32_t depth, uint32_t children = 0, bool external = false)
             : triangle(triangle)
+            , index(index)
             , depth(depth)
             , children(children)
-            , external(false)
+            , external(external)
             , skipped(false) {}
 
         TriIndex triangle; // Indices to the vertices forming the section
+        uint32_t index; // Index of this section (as created)
 
         uint32_t depth; // Number of sections that this one is dependent on
         uint32_t children; // Number of sections dependent on this one
@@ -116,13 +139,53 @@ private:
         bool skipped; // Track if section has previously been skipped
     };
 
+    struct Sequence {
+
+        Sequence() : valid(false), bounds({}, {}, {}), leftFirst(false), cutWrap(false) {}
+
+        Sequence(const Triangle2D& bounds, const std::vector<SectionOperation::Set>& left, const std::vector<SectionOperation::Set>& right)
+            : valid(false)
+            , bounds(bounds)
+            , leftFirst(true)
+            , left(left)
+            , right(right)
+            , cutWrap(false)
+            , cutPosition()
+            , cutDirection()
+            , cutDepth(0.0)
+        {
+            // Make sure there is extra space to add return set if needed
+            this->left.reserve(left.size() + 1);
+            this->right.reserve(right.size() + 1);
+        }
+
+        [[nodiscard]] std::pair<glm::dvec3, glm::dvec3> cut() const;
+
+        bool valid;
+        Triangle2D bounds;
+
+        std::vector<glm::dvec3> approach;
+        std::vector<glm::dvec3> transition;
+
+        bool leftFirst;
+        std::vector<SectionOperation::Set> left;
+        std::vector<SectionOperation::Set> right;
+
+        bool cutWrap; // Whether m_wrapper needs to be trimmed before performing the sequence
+        std::vector<glm::dvec3> cutApproach; // Approach to the cut, if required
+        glm::dvec2 cutPosition;
+        glm::dvec2 cutDirection;
+        double cutDepth;
+    };
+
     void initialize();
+
+    void sortOperations();
 
     [[nodiscard]] inline uint32_t terminus(uint32_t step) const;
     [[nodiscard]] inline uint32_t offsetIndex(uint32_t idx, uint32_t offset = 1) const;
 
-    void emplaceRemainder(uint32_t start, uint32_t count);
-    void insertRemainder(uint32_t index, uint32_t start, uint32_t count);
+    void emplaceOperation(uint32_t start, uint32_t count);
     uint32_t subdivide(const glm::dvec2& normal, uint32_t start, uint32_t count);
     glm::dvec2 edgeNormal(uint32_t start, uint32_t end);
 
@@ -132,6 +195,14 @@ private:
     void testRefinement();
 
     void findFloor();
+
+    bool planSlice(const SectionOperation& op);
+    bool planSequence(std::vector<Polygon>& decomposition, const SectionOperation& op);
+    bool planTransition(const Triangle2D& bounds, const std::vector<Polygon>& env, std::vector<SectionOperation::Set>& sets);
+
+    std::vector<glm::dvec3> planClear(const std::vector<Polygon>& decomposition, const std::vector<Polygon>& bounds, uint32_t iterations, bool& success);
+
+    bool developApproach(const std::vector<Polygon>& decomposition, uint32_t iterations = 5000);
 
     [[nodiscard]] double area(const TriIndex& triangle) const;
 
@@ -165,6 +236,9 @@ private:
     std::vector<std::pair<uint32_t, uint32_t>> m_operations; // first (index), second (number of subsequent vertices)
 
     std::deque<Section> m_sections;
+    std::vector<Sequence> m_sequence;
+    std::vector<glm::dvec3> m_return;
+
     std::vector<Polygon> m_remainder;
 
     double m_thickness;
@@ -173,6 +247,9 @@ private:
     double m_minimumArea;
 
     uint32_t m_floorIndex;
+
+    RRTPlanner* m_planner;
+    Polygon m_wrapper;
 };
 
 

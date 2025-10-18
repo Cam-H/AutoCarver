@@ -5,6 +5,7 @@
 #include "Sequence.h"
 
 #include <gtc/quaternion.hpp>
+#include <iostream>
 
 Sequence::Sequence(const Profile* profile, const std::vector<glm::dvec3>& approach)
 {
@@ -23,6 +24,7 @@ Sequence::Sequence(const Profile* profile, const std::vector<SectionOperation::S
 {
     assert(profile != nullptr);
 
+    std::cout << cuts.size() << " SEQUENCE!\n";
     for (const SectionOperation::Set& cut : cuts) {
 
         sets.emplace_back(
@@ -36,7 +38,11 @@ Sequence::Sequence(const Profile* profile, const std::vector<SectionOperation::S
         }
 
         for (const glm::dvec3& vertex : cut.approach) {
+            std::cout << "TSI: " << vertex.x << " " << vertex.y << " " << vertex.z << " -> \n";
+
             auto proj = profile->projected3D(glm::dvec2(vertex.x, vertex.y));
+//            std::cout << "TSF: " << proj.x << " " << proj.y << " " << proj.z << " -> \n";
+
             sets.back().approach.emplace_back(proj, vertex.z);
         }
     }
@@ -57,6 +63,7 @@ void Sequence::transform(const glm::dquat& rotation, const glm::dvec3& translati
 
         for (std::pair<glm::dvec3, double>& vertex : set.approach) {
             vertex.first = rotation * vertex.first + translation;
+            std::cout << "TS: " << vertex.first.x << " " << vertex.first.y << " " << vertex.first.z << " " << vertex.second << "\n";
         }
     }
 

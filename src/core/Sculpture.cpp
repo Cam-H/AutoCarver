@@ -220,7 +220,6 @@ std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
 {
     m_newFaces.clear();
 
-    std::cout << "PS0\n";
     if (!Collision3D::test(m_hull, plane)) return nullptr;
 
     auto debris = std::make_shared<Debris>();
@@ -242,8 +241,6 @@ std::shared_ptr<Debris> Sculpture::planarSection(const Plane& plane)
         for (uint32_t j = 0; j < source; j++) faceCount += components()[j].facetCount();
 //        m_newFaces.emplace_back(faceCount + index);
     }
-
-    std::cout << "R " << debris->components().size() << " " << components().size() << "\n";
 
     if (!debris->components().empty()) { // Action was taken to remove parts of the sculpture
         debris->setTransform(m_transform);

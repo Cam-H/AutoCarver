@@ -116,7 +116,7 @@ std::tuple<double, double, double, double> PolygonWidget::bounds() const
 {
     double xMin = std::numeric_limits<double>::max(), xMax = std::numeric_limits<double>::lowest(), yMin = xMin, yMax = xMax;
     for (uint32_t i = 0; i < m_polygons.size(); i++) {
-        if (m_polyControl[i].visible) {
+        if (m_polygons[i]->isValid() && m_polyControl[i].visible) {
             auto [pXMin, pXMax, pYMin, pYMax] = bounds(m_polygons[i]);
             if (pXMin < xMin) xMin = pXMin;
             if (pXMax > xMax) xMax = pXMax;
@@ -310,7 +310,7 @@ void PolygonWidget::paint(QPainter& painter, uint32_t index)
 
     // Draw border
     if (m_polygon) {
-        auto color = m_selection.first == index && m_selection.second == -1 ? Qt::blue : Qt::black;
+        auto color = m_selection.first == index && m_selection.second == -1 ? Qt::blue : QColor(40, 40, 40);
         drawPolygon(index, painter, color);
     }
 

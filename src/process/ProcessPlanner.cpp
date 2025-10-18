@@ -306,7 +306,7 @@ void ProcessPlanner::planSilhouetteRefinement()
     m_report.appliedSilhouetteRefinement = true;
 
     uint32_t steps = std::floor(180.0 / m_config.stepOffset);
-    const double baseRotation = sculpture->rotation() + M_PI * m_config.stepStart / 180, offset = M_PI / 8;
+    const double baseRotation = sculpture->rotation() + M_PI * m_config.stepStart / 180, offset = M_PI / 6;
     double initialRotation = turntable->getJointValue(0), step = 0;
 
     // Prepare a 3D render / edge detection system to find the profile of the model
@@ -364,19 +364,20 @@ void ProcessPlanner::planSilhouetteRefinement()
 
 }
 
+void ProcessPlanner::planSilhouetteTrim()
+{
+
+}
+
 // Given a profile (silhouette) of the mesh, prepares sculptor actions to perform required cuts to match
 std::vector<Action> ProcessPlanner::planProfile(Profile& profile)
 {
     ScopedTimer timer("[ProcessPlanner] profile planning");
 
-    static int iter = 0, piter = 0;
-
     std::vector<Action> actions;
     actions.reserve(profile.remainingSections());
 
     auto rotation = glm::angleAxis(turntable->getJointValue(0), UP);
-
-    m_latestRobotCommand = m_config.robotHome;
 
     // Get the current mesh, as developed through all currently planned operations
     auto model = std::make_shared<Sculpture>(*sculpture);
@@ -387,24 +388,10 @@ std::vector<Action> ProcessPlanner::planProfile(Profile& profile)
 
     ProfileBuilder pb(model->mesh());
     pb.build(profile.system());
-    std::vector<Polygon> hulls = { pb.hull() };
+    profile.prepare(pb.hull());
 
-    hulls[0].save("../out/PB" + std::to_string(iter++) + ".bin");
-    profile.save("../out/PROF" + std::to_string(iter++) + ".bin");
-
-    // Prepare planner for use navigating around the hull
-    RRTPlanner planner;
-    planner.setTargetDimensions(m_config.bladeWidth, m_config.bladeThickness);
-
-    auto [xMin, xMax] = profile.xExtents();
-    auto [yMin, yMax] = profile.yExtents();
-
-    double margin = 1.2 * planner.radius();
-    const glm::dvec3 initial = { xMax + margin, yMax + margin, 0 };
-
-    // Start refinement from a position clear of the profile (top right)
-    planner.setBounds({ xMin - margin, yMin }, { initial.x, initial.y });
-    planner.setStart(initial);
+    static int iter = 0;
+    profile.save("../out/APROF" + std::to_string(iter++) + ".bin");
 
     profile.print();
     while (!profile.complete()) {
@@ -412,110 +399,25 @@ std::vector<Action> ProcessPlanner::planProfile(Profile& profile)
 
         std::cout << "\033[91mPR" << profile.remainingSections() << " " << profile.nextDepth() << " " << actions.size() << " " << m_actions.size() << "\033[0m\n";
 
-        auto operation = profile.nextOperation();
-        bool success = operation.isValid();
-        assert(profile.isNextExternal());
-
-        planner.setSampler(RRTPlanner::SampleSpace::BOX);
-        // Special consideration to extend cut in case profile is more refined than the actual current state
-        if (!operation.clear(hulls[0])) { // Must perform through cut to open space for relief
-            auto edge = profile.nextEdge();
-
-            Plane local(edge.first, -profile.nextNormal());
-            Plane world(rotation * local.origin + m_config.center, rotation * local.normal);
-            auto axes = Axis3D::faceAligned(-world.normal, profile.normal(), true);
-
-            auto border = Collision3D::intersection(hull, world);
-
-            std::cout << world.normal.x << " " << world.normal.y << " " << world.normal.z << " | " << border.size() << "\n";
-            for (glm::dvec3 v : border) {
-                std::cout << v.x << " " << v.y << " " << v.z << "\n";
-            }
-
-            auto trajectory = preparePlanarTrajectory(border, axes);
-            if (trajectory != nullptr) {
-                glm::dvec3 pos = projected2D(trajectory->start(), profile);
-                std::cout << "NS z " << trajectory << " " << trajectory->duration() << " | " << pos.x << " " << pos.y << " " << pos.z << "\n";
-                planner.setStart(projected2D(trajectory->end(), profile));//todo rm
-                planner.setGoal(pos);
-                planner.save("../out/A" + std::to_string(piter++) + ".bin");
-                sculpture->queueSection(local);
-                actions.emplace_back(planRoboticSection(trajectory));
-                planner.setStart(projected2D(trajectory->end(), profile));
-            } else {
-                std::cout << "\033[93m[ProcessPlanner] Failed to prepare planar refinement trajectory\033[0m\n";
-                success = false;
-            }
-        }
-
-        // The topmost section of the current stack is accessible
-        if (success) {
-//                glm::dvec3 start = planner.goal();
-            planner.setStart(operation.initialLeft());
-            planner.setGoal(operation.initialRight());
-
-            std::vector<Polygon> decomposition = profile.decompose(); // Don't really need to calculate the full thing every time TODO
-            if (planner.solve(decomposition, 5000)) {
-                while (!profile.complete() && operation.isValid()) {
-
-                    if (operation.plan(planner, hulls) && planSection(profile, operation, actions)) {
-                        profile.refine();
-
-//                        m_latestRobotCommand = actions.back().trajectory->end();
-//
-//
-//                        // Ensure planner starts from new position on successful operation
-//                        if (!planner.moveToGoal()) {
-//                            std::cout << "\033[93mFailed to relocate start\033[0m\n";
-//                        } else std::cout << "\033[32mStart moved successfully\033[0m\n";
-                    } else profile.skip();
-
-                    if (!profile.isNextExternal()) {
-                        operation = profile.nextOperation();
-                        decomposition = profile.decompose();
-                    } else operation = {};
-                }
-            } else success = false;
-        }
-
-        if (!success) {
-            profile.skip();
-        }
-
-//        glm::dvec3 start = planner.start();
-//
-//        if (success && planSection(profile, operation, actions)) {
-//            profile.refine();
-//
-//
-//        } else success = false;
-//
-//        if (!success) {
-//            planner.setStart(start); // Restore active starting position for next plan
-//
-////                const std::vector<Polygon>& skips = profile.nextSkips();
-////                hulls.erase(hulls.begin() + reference, hulls.end());
-////                hulls.insert(hulls.end(), skips.begin(), skips.end());
-////                reference += skips.size();
-//            profile.skip();
-//        }
-
+        if (profile.planNext()) {
+            if (planSection(profile, actions)) profile.refine();
+            else profile.skip();
+        } else profile.skip();
     }
-
 
     if (!actions.empty()) {
         std::cout << "Outline complete. Returning...\n";
+        if (profile.planReturn()) {
+            Sequence seq(&profile, profile.returnPath());
+            seq.transform(rotation, m_config.center);
 
-        planner.setGoal(initial);
-        if (planner.solved()) actions.emplace_back(planPath2D(profile, planner.prunedPath(hulls)));
-        else {
-            actions.emplace_back(planRetraction(actions.back().trajectory->end()));
-        }
+            auto trajectory = std::make_shared<CompositeTrajectory>(robot->dof());
+            trajectory->setLimits(m_config.baseVelocityLimits, m_config.baseAccelerationLimits);
 
-        if (actions.back().target == nullptr) {
-            std::cout << "\033[93mFailed to prepare return\n\033[0m";
-//        return {};
-            actions.pop_back();
+            Action action(trajectory, robot);
+            if (planSequence(seq, action)) {
+                actions.emplace_back(action);
+            } else std::cout << "\033[93mFailed to prepare return\n\033[0m";
         }
     }
 
@@ -524,7 +426,7 @@ std::vector<Action> ProcessPlanner::planProfile(Profile& profile)
     return actions;
 }
 
-bool ProcessPlanner::planSection(const Profile& profile, const SectionOperation& operation, std::vector<Action>& actions)
+bool ProcessPlanner::planSection(const Profile& profile, std::vector<Action>& actions)
 {
     auto rotation = glm::angleAxis(turntable->getJointValue(0), UP);
 
@@ -533,7 +435,7 @@ bool ProcessPlanner::planSection(const Profile& profile, const SectionOperation&
 
     Action action(trajectory, robot);
 
-    Sequence seq(&profile, operation.sequence());
+    Sequence seq(&profile, profile.nextSequence());
     seq.transform(rotation, m_config.center);
 
     if (!planSequence(seq, action)) {
@@ -548,7 +450,7 @@ bool ProcessPlanner::planSection(const Profile& profile, const SectionOperation&
         cut.tf = tf;
     }
 
-    Triangle2D section = operation.bounds(profile.isNextExternal() ? 10.0 : 0);
+    Triangle2D section = profile.nextBounds();
     sculpture->queueSection(profile.projected3D(section.a),
                             profile.projected3D(section.b),
                             profile.projected3D(section.c),
@@ -567,26 +469,14 @@ bool ProcessPlanner::planSequence(const Sequence& sequence, Action& action)
         if (!set.approach.empty() && !planApproach(ref, set.approach, action)) return false;
 
         if (!set.motions.empty()) {
+
             auto axes = set.axes(m_config.forward);
             double direction = 1 - 2 * (glm::dot(set.axis, axes.xAxis) < 0);
-            auto delta = -0.5 * set.axis * m_config.bladeWidth;
 
             auto trajectory = std::static_pointer_cast<CompositeTrajectory>(action.trajectory);
 
-            // TODO actual handle rotation properly
-            if (!set.approach.empty()) {
-                auto pose = Pose(m_config.alignedToBlade(axes, set.motions[0].first + delta), axes);
-                trajectory->addTrajectory(std::make_shared<HoldPosition>(robot->inverse(pose), 0.01));
-            }
-
             for (const std::pair<glm::dvec3, double>& motion : set.motions) {
-                auto pose = Pose(m_config.alignedToBlade(axes, motion.first + delta), axes);
-                auto wp = robot->inverse(pose);
-                if (wp.values.size() != robot->dof()) {
-                    std::cout << "\033[93mCan not connect\033[0m\n";
-                    return false;
-                } else trajectory->connect(wp);
-
+                auto pose = Pose(motion.first + m_config.bladeCenterOffset(axes.zAxis, motion.first), axes);
 
                 if (set.isBlind()) {
                     if (!planBlindCut(pose, direction * motion.second, action)) return false;
@@ -604,7 +494,7 @@ bool ProcessPlanner::planSequence(const Sequence& sequence, Action& action)
 
 bool ProcessPlanner::planApproach(const Axis3D& axes, const std::vector<std::pair<glm::dvec3, double>>& approach, Action& action)
 {
-    std::cout << "PS APPROACH\n";
+    std::cout << approach.size() << " PS APPROACH\n";
 
 //    std::vector<Waypoint> waypoints;
     for (const std::pair<glm::dvec3, double>& vertex : approach) {

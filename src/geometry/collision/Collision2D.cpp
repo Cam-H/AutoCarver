@@ -120,3 +120,30 @@ std::tuple<bool, double, double> Collision2D::intersection(const Polygon& bodyA,
 
     return { false, -1.0, -1.0 };
 }
+
+// TODO Expand - currently only supports convex polygons
+Polygon Collision2D::fragment(const Polygon& poly, const Ray<2>& lim)
+{
+    std::vector<glm::dvec2> border;
+
+    const Ray<2> norm = lim.normal();
+
+    glm::dvec2 prev = poly.border().back();
+    bool prevUp = glm::dot(prev - lim.origin, lim.axis) > 0;
+
+    for (const glm::dvec2& vertex : poly.border()) {
+        bool vUp = glm::dot(vertex - lim.origin, lim.axis) > 0;
+
+        if (prevUp ^ vUp) { // Edge intersects limit
+            auto [hit, t] = intersection({ prev, vertex}, norm);
+            border.emplace_back(t * norm);
+        }
+
+        if (vUp) border.emplace_back(vertex);
+
+        prev = vertex;
+        prevUp = vUp;
+    }
+
+    return Polygon(border);
+}

@@ -430,6 +430,8 @@ std::vector<TriIndex> Polygon::triangulate(const std::vector<glm::dvec2>& vertic
 // Decompose polygon into a set of convex hulls
 std::vector<Polygon> Polygon::decompose() const
 {
+    if (!isValid()) return {};
+
     if (hull().size() == m_vertices.size()) return { *this }; // Early exit if polygon is already convex. TODO: save convex state
 
     auto triangles = triangulate();
@@ -464,13 +466,11 @@ std::vector<Polygon> Polygon::decompose() const
 
 
         for (uint32_t i = 0; i < edges.size(); i++) { // Iterate over all edges, trying to expand the border by subsuming adjacent triangles
-            auto& edge = edges[i];
+            auto edge = edges[i];
 
             // Adjacent vertices from the perspective of the current edge
             uint32_t prev = i == 0 ? edges.back().first : edges[i - 1].first;
             uint32_t next = i >= edges.size() - 1 ? edges.front().first : edges[i + 1].second;
-
-            std::cout << "PN " << prev << " " << next << "\n";
 
             for (uint32_t j = 0; j < shared[edge.first].size(); j++) { // Check all triangles that share a vertex (might share an edge)
                 uint32_t idx = shared[edge.first][j];
@@ -512,10 +512,19 @@ void Polygon::clean()
 
 void Polygon::convexify()
 {
+    if (m_vertices.empty()) return;
+
     const auto& indices = hull();
     std::vector<glm::dvec2> vertices(indices.size());
     for (uint32_t i = 0; i < vertices.size(); i++) vertices[i] = m_vertices[indices[i]];
     m_vertices = std::move(vertices);
+}
+
+Polygon Polygon::convex(const std::vector<glm::dvec2>& vertices)
+{
+    Polygon poly(vertices);
+    poly.convexify();
+    return poly;
 }
 
 // Remove duplicate vertices from the polygon - Only applies to adjacent vertices

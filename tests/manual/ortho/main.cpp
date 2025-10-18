@@ -73,16 +73,13 @@ static QWidget *loadUiFile(QWidget *parent)
 
 void updateRef (const SectionOperation& op)
 {
-    start = op.startVertex();
+    start = op.start();
     double orientation = op.startOrientation();
 
     xField->setValue(start.x);
     yField->setValue(start.y);
 
     angleField->setValue(orientation);
-
-    profile.setReferencePosition(start);
-    profile.setReferenceOrientation(orientation);
 }
 
 void updateRef()
@@ -384,7 +381,6 @@ int main(int argc, char *argv[])
     QObject::connect(xField, &QDoubleSpinBox::valueChanged, [](double value) {
         start.x = value;
 
-        profile.setReferencePosition(start);
         polygonWidget->update();
     });
 
@@ -392,13 +388,11 @@ int main(int argc, char *argv[])
     QObject::connect(yField, &QDoubleSpinBox::valueChanged, [](double value) {
         start.y = value;
 
-        profile.setReferencePosition(start);
         polygonWidget->update();
     });
 
     angleField = window->findChild<QDoubleSpinBox*>("angleField");
     QObject::connect(angleField, &QDoubleSpinBox::valueChanged, [](double value) {
-        profile.setReferenceOrientation(value);
         polygonWidget->update();
     });
 

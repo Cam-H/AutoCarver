@@ -35,6 +35,8 @@ public:
     static std::tuple<bool, double> intersection(const Line& bodyA, const Ray<2>& bodyB);
     static std::tuple<bool, double, double> intersection(const Polygon& bodyA, const Ray<2>& bodyB);
 
+    static Polygon fragment(const Polygon& poly, const Ray<2>& lim);
+
 private:
 
     template<class T1, class T2>

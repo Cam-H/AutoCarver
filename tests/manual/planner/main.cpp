@@ -57,6 +57,7 @@ PlannerWidget *displayWidget = nullptr;
 QDoubleSpinBox *widthField, *heightField, *timeScalarField;
 QDoubleSpinBox *startXField, *startYField, *startAngleField;
 QDoubleSpinBox *goalXField, *goalYField, *goalAngleField;
+QDoubleSpinBox *stepField = nullptr;
 
 QSpinBox *countField, *rateField;
 QPushButton *randomButton, *iterateButton, *solveButton, *followButton;
@@ -136,6 +137,8 @@ void updateBounds()
 {
     double margin = 2.0 * planner.radius();
     planner.setBounds({ min.x - margin, min.y }, { max.x + margin, max.y + margin });
+
+    if (stepField != nullptr) stepField->setValue(planner.stepSize());
 }
 
 void updateStart()
@@ -274,6 +277,11 @@ int main(int argc, char *argv[])
             travel({ wp.values[0], wp.values[1], wp.values[2] });
 
         }
+    });
+
+    stepField = window->findChild<QDoubleSpinBox*>("stepField");
+    QObject::connect(stepField, &QDoubleSpinBox::valueChanged, [](double value) {
+        planner.setStepSize(value);
     });
 
     heightField = window->findChild<QDoubleSpinBox*>("heightField");

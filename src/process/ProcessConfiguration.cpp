@@ -9,8 +9,8 @@
 #include "fileIO/MeshHandler.h"
 
 ProcessConfiguration::ProcessConfiguration()
-//    : targetSource("../res/meshes/devil.obj")
-    : targetSource("../res/meshes/teddy.obj")
+    : targetSource("../res/meshes/devil.obj")
+//    : targetSource("../res/meshes/teddy.obj")
 //    : targetSource("../res/meshes/bunny.obj")
     , materialWidth(1.0)
     , materialHeight(1.1)

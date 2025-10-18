@@ -29,16 +29,13 @@ struct Node {
     Node(const glm::dvec3& location, double cost, uint32_t parent)
             : location(location)
             , cost(cost)
-            , parent(parent)
-            , frontier(std::numeric_limits<uint16_t>::max()){}
+            , parent(parent) {}
 
     glm::dvec3 location;
 
     double cost;
     uint32_t parent; // Index of parent node
     std::vector<uint32_t> children; // Indices of child nodes
-
-    uint16_t frontier; // Index of entry in frontier node list (= MAX if not a frontier node)
 };
 
 struct NodeCloud {
@@ -86,6 +83,8 @@ public:
     void setSampler(SampleSpace method);
     void updateParameters();
 
+    void setStepSize(double stepSize);
+
     [[nodiscard]] std::tuple<glm::dvec2, glm::dvec2> getBounds() const;
     [[nodiscard]] const Triangle2D& getTriBounds() const;
     [[nodiscard]] const Circle& getCircBounds() const;
@@ -110,6 +109,8 @@ public:
     bool iterate(const std::vector<Polygon>& env);
     void iterate(const std::vector<Polygon>& env, uint32_t iterations);
 
+    bool tryDirect(const std::vector<Polygon>& env);
+
     void clearUpdateFlag();
 
     [[nodiscard]] const glm::dvec3& start() const;
@@ -117,11 +118,17 @@ public:
 
     [[nodiscard]] const glm::dvec3& goal() const;
 
+    [[nodiscard]] bool nearer(const glm::dvec3& test, const glm::dvec3& comparison) const;
+
+    [[nodiscard]] static glm::dvec3 limit(glm::dvec3 location);
+
     [[nodiscard]] double width() const;
     [[nodiscard]] double height() const;
     [[nodiscard]] double radius() const;
 
     [[nodiscard]] double diagonal() const;
+
+    [[nodiscard]] double stepSize() const;
 
     [[nodiscard]] Polygon bounds(const glm::dvec3& location) const;
 
@@ -155,8 +162,6 @@ private:
     void resetTree();
     void resetPath();
 
-    [[nodiscard]] static glm::dvec3 limit(glm::dvec3 location);
-
     void reroot();
 
     void updateCosts();
@@ -170,11 +175,6 @@ private:
     void propagateCost(uint32_t index, double delta);
 
     void checkGoal(Node& node);
-
-    bool tryFrontierInsertion(const std::vector<uint32_t>& set, const std::vector<double>& distances);
-    void sortFrontier();
-
-    [[nodiscard]] uint32_t selectFrontier();
 
     [[nodiscard]] std::vector<glm::dvec3> pruned(const std::vector<Polygon>& env, const std::vector<glm::dvec3>& path) const;
     static std::vector<Waypoint> waypoints(const std::vector<glm::dvec3>& path);
@@ -202,9 +202,6 @@ private:
 
     static uint32_t REBUILD_THRESHOLD;
 
-    static double EXPLORATION_BIAS;
-    static const uint16_t FRONTIER_NODE_COUNT = 10;
-
 private:
 
     NodeCloud m_cloud;
@@ -225,8 +222,6 @@ private:
 
     uint32_t m_iterations;
     uint32_t m_lastRebuild;
-
-    std::array<std::pair<uint32_t, double>, FRONTIER_NODE_COUNT> m_frontier;
 
     std::mt19937 m_rng;
     std::uniform_real_distribution<double> m_dist01;

@@ -43,6 +43,9 @@ public:
     Ray(const glm::dvec3& location);
     Ray(const glm::dvec2& origin, const glm::dvec2& axis);
 
+    [[nodiscard]] double angle() const;
+    [[nodiscard]] Ray<2> normal() const;
+
     void print() const;
 };
 
