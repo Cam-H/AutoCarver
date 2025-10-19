@@ -70,6 +70,18 @@ std::vector<double> ArticulatedWrist::invkin(const glm::dvec3& position, const g
     values[4] = atan2(sqrt(R36[2][0] * R36[2][0] + R36[2][1] * R36[2][1]), R36[2][2]);
     values[5] = atan2(R36[1][2], -R36[0][2]);
 
+    // TODO Note: Only works for range [-2pi 2pi]
+    if (values[5] >= 0 && values[5] - m_joints[5].getValue() >  M_PI) {
+        values[5] -= 2 * M_PI;
+
+//        std::cout << values[5] << " SWAPDEC\n";
+    }
+    if (values[5] <= 0 && values[5] - m_joints[5].getValue() < -M_PI) {
+        values[5] += 2 * M_PI;
+
+//        std::cout << values[5] << " SWAPINC\n";
+    }
+
     // Verify the solved rotation joints are valid
     if (!ikValidation(values, position, rotation)) return {};
 

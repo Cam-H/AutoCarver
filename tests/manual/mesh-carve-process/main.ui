@@ -24,7 +24,7 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>640</width>
+       <width>854</width>
        <height>480</height>
       </size>
      </property>
@@ -74,7 +74,7 @@
             <double>5.000000000000000</double>
            </property>
            <property name="value">
-            <double>180.000000000000000</double>
+            <double>90.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -376,7 +376,7 @@
         </property>
        </widget>
       </item>
-      <item row="2" column="4">
+      <item row="6" column="2">
        <widget class="QCheckBox" name="convexSkipButton">
         <property name="text">
          <string>Skip Convex Sim</string>

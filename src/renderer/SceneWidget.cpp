@@ -313,6 +313,8 @@ void SceneWidget::resizeGL(int w, int h)
     // Calculate aspect ratio
     m_camera.setAspectRatio(qreal(w) / qreal(h ? h : 1));
 
+    std::cout << "[SceneWidget] Resize. width: " << w << ", height: " << h << "\n";
+
     emit perspectiveChanged();
 }
 

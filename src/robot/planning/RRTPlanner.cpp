@@ -181,7 +181,7 @@ void RRTPlanner::updateParameters()
             break;
     }
 
-    m_goalRadius = 2.0 * m_stepSize;
+    m_goalRadius = 1.0 * m_stepSize;
 }
 
 void RRTPlanner::setStepSize(double stepSize)

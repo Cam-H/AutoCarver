@@ -16,9 +16,11 @@
 
 
 #include "geometry/poly/Profile.h"
+#include "robot/planning/RRTPlanner.h"
 #include "ViewerWidget.h"
 
 #include "core/Timer.h"
+#include "fileIO/SerialList.h"
 
 #endif
 
@@ -68,16 +70,10 @@ double length(const glm::dvec3& a, const glm::dvec3& b)
     return glm::length(delta);
 }
 
-void planNext()
+void updatePath(const std::vector<glm::dvec3>& path)
 {
-    if (!profile.planNext() && profile.nextSequenceAccessible()) {
-        std::cout << "Approach retry:\n";
-//        if (profile.developApproach(20000)) std::cout << "Developed fix!\n";
-    }
+    displayWidget->setPath(path);
 
-    displayWidget->updatePath();
-
-    const auto& path = displayWidget->path();
     if (!path.empty()) {
         displayWidget->updateTool();
 
@@ -88,14 +84,26 @@ void planNext()
         total = 1 / total;
 
         std::cout << "PATH:\n";
+        double prevZ = path[0].z;
         for (const glm::dvec3& v : path) {
+            if (std::abs(prevZ - v.z) > 0.95 * M_PI) std::cout << "\033[31mxx \033[0m";
             std::cout << v.x << " " << v.y << " " << v.z << "\n";
+            prevZ = v.z;
         }
     }
 
     setSelectBox->clear();
     for (uint32_t i = 0; i < path.size(); i++) {
         setSelectBox->addItem(("P" + std::to_string(i)).c_str());
+    }
+}
+
+void planNext()
+{
+    if (profile.complete()) {
+        if (profile.planReturn()) updatePath(profile.returnPath());
+    } else {
+        if (profile.planNext()) updatePath(profile.nextPath());
     }
 
     displayWidget->repaint();
@@ -296,6 +304,12 @@ int main(int argc, char *argv[])
 //        displayWidget->update();
     });
 
+    auto saveButton = window->findChild<QPushButton*>("saveButton");
+    QObject::connect(saveButton, &QPushButton::clicked, [&]() {
+        static int iter = 0;
+        SerialList<Polygon>(profile.decompose()).save("../out/spoly" + std::to_string(iter) + ".bin");
+        profile.planner()->save("../out/splan" + std::to_string(iter++) + ".bin");
+    });
 
     auto loadProfileButton = window->findChild<QPushButton*>("loadProfileButton");
     QObject::connect(loadProfileButton, &QPushButton::clicked, [&]() {
@@ -308,7 +322,7 @@ int main(int argc, char *argv[])
     });
 
 
-    updateProfile("../out/APROF0.bin");
+    updateProfile("../out/BPROFTED2.bin");
 
     // Handle updating robot
     updateThread = std::make_unique<std::thread>([&](){

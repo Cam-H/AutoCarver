@@ -101,7 +101,7 @@ void Sculpture::scaleToFit(const std::shared_ptr<Mesh>& model, double maxHeight)
 
     model->translate({ -(xNear + xFar) / 2, -yNear, -(zNear + zFar) / 2 }); // Center the model in span
 
-    m_rotation = atanf((xFar - xNear) / (zFar - zNear));
+    m_rotation = atanf((xFar - xNear) / (zFar - zNear)) + M_PI_2;
     model->rotate({ 0, 1, 0 }, m_rotation); // Rotate the model to make the best use of diagonal space
 
     // Re-evaluate extents to figure out scaling requirements

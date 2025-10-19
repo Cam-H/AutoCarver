@@ -94,7 +94,8 @@ void Debris::beginCut()
     }
 
 //    std::cout << "KERFS: " << kerfs.size() << "\n";
-    if (kerfs.empty()) throw std::runtime_error("[Debris] Failed to prepare cut");
+//    if (kerfs.empty()) throw std::runtime_error("[Debris] Failed to prepare cut");
+    std::cout << "\33[93m[Debris] Failed to prepare cut\033[0m\n";
 
     // Prepare sections
     for (uint32_t kerf : kerfs) {

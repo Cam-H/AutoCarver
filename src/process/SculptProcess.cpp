@@ -163,10 +163,17 @@ void SculptProcess::attachSculpture()
     neutralPose.localTranslate({ 0, 1.0 * m_sculpture->width(), -0.5 * getConfiguration().bladeLength });
     getConfiguration().robotHoverRight = m_robot->inverse(neutralPose);
 
+    neutralPose.globalTranslate(-0.5 * m_sculpture->height() * UP);
+    getConfiguration().robotRight = m_robot->inverse(neutralPose);
+
     neutralPose.localTranslate({ 0, -2.0 * m_sculpture->width(), 0 });
+    getConfiguration().robotLeft = m_robot->inverse(neutralPose);
+
+    neutralPose.globalTranslate(0.5 * m_sculpture->height() * UP);
     getConfiguration().robotHoverLeft = m_robot->inverse(neutralPose);
 
-    assert(getConfiguration().robotHoverLeft.isValid() && getConfiguration().robotHoverRight.isValid());
+    assert(getConfiguration().robotHoverLeft.isValid() && getConfiguration().robotLeft.isValid()
+        && getConfiguration().robotHoverRight.isValid() && getConfiguration().robotRight.isValid());
 }
 
 SculptProcess::~SculptProcess()
@@ -812,7 +819,7 @@ std::shared_ptr<Trajectory> SculptProcess::prepareApproach(const Waypoint& desti
     auto pose = m_robot->getPose(destination);
     pose.localTranslate({ 0, 0.5, 0});
 
-    std::vector<Waypoint> testWPs = { m_robot->inverse(pose), getConfiguration().robotHoverRight, getConfiguration().robotHome };
+    std::vector<Waypoint> testWPs = { m_robot->inverse(pose), getConfiguration().robotHoverRight, getConfiguration().robotRight, getConfiguration().robotHome };
 
     for (const Waypoint& midpoint : testWPs) {
         if (midpoint.isValid()) {

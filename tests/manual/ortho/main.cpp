@@ -73,13 +73,13 @@ static QWidget *loadUiFile(QWidget *parent)
 
 void updateRef (const SectionOperation& op)
 {
-    start = op.start();
-    double orientation = op.startOrientation();
+//    start = op.start();
+//    double orientation = op.startOrientation();
 
     xField->setValue(start.x);
     yField->setValue(start.y);
 
-    angleField->setValue(orientation);
+//    angleField->setValue(orientation);
 }
 
 void updateRef()

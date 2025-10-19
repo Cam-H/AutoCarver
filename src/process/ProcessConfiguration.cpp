@@ -9,8 +9,8 @@
 #include "fileIO/MeshHandler.h"
 
 ProcessConfiguration::ProcessConfiguration()
-    : targetSource("../res/meshes/devil.obj")
-//    : targetSource("../res/meshes/teddy.obj")
+//    : targetSource("../res/meshes/devil.obj")
+    : targetSource("../res/meshes/teddy.obj")
 //    : targetSource("../res/meshes/bunny.obj")
     , materialWidth(1.0)
     , materialHeight(1.1)
@@ -48,13 +48,18 @@ ProcessConfiguration::ProcessConfiguration()
     , robotHome(Waypoint({ 0, 110, 20, 0, -130, 0 }, true).toRad())
 
     , baseVelocityLimits(std::vector<double>(kinematics->jointCount(), M_PI / 2))
-    , baseAccelerationLimits(std::vector<double>(kinematics->jointCount(), M_PI))
+    , baseAccelerationLimits(std::vector<double>(kinematics->jointCount(), M_PI / 2))
     , slowVelocityLimits(std::vector<double>(kinematics->jointCount(), M_PI / 8)) //TODO slowdown after testing
     , verySlowVelocityLimits(std::vector<double>(kinematics->jointCount(), M_PI / 16))
 
-//    , tableMesh(MeshHandler::loadAsMeshBody("../res/meshes/Table.obj"))
-    , tableMesh(MeshHandler::loadAsMeshBody("../res/meshes/TableQuick.obj"))
+    , tableMesh(MeshHandler::loadAsMeshBody("../res/meshes/Table.obj"))
+//    , tableMesh(MeshHandler::loadAsMeshBody("../res/meshes/TableQuick.obj"))
 {
+
+    baseVelocityLimits.back() *= 2.0;
+    baseAccelerationLimits.back() *= 2.0;
+    slowVelocityLimits.back() *= 2.0;
+    verySlowVelocityLimits.back() *= 2.0;
 
 }
 

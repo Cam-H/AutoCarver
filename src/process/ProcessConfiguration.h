@@ -140,6 +140,9 @@ private:
     Waypoint robotHoverLeft;
     Waypoint robotHoverRight;
 
+    Waypoint robotLeft;
+    Waypoint robotRight;
+
     std::vector<double> baseVelocityLimits, baseAccelerationLimits;
     std::vector<double> slowVelocityLimits, verySlowVelocityLimits; // TODO use cartesian speed limit (Needs further trajectory development)
 

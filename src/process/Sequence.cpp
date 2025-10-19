@@ -29,7 +29,7 @@ Sequence::Sequence(const Profile* profile, const std::vector<SectionOperation::S
 
         sets.emplace_back(
                 profile->projected3D(cut.axis),
-                profile->projected3D(cut.normal),
+                profile->projected3D(cut.normal()),
                 profile->projected3D(cut.travel)
         );
 

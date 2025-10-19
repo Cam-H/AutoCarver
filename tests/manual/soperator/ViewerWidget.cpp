@@ -73,9 +73,9 @@ void ViewerWidget::updateTool(const glm::dvec3& location)
     }
 }
 
-void ViewerWidget::updatePath()
+void ViewerWidget::setPath(const std::vector<glm::dvec3>& path)
 {
-    if (profile != nullptr) m_path = profile->nextPath();
+    m_path = path;
 }
 
 void ViewerWidget::enableBounds(bool enable)
@@ -120,31 +120,6 @@ void ViewerWidget::drawForeground(QPainter& painter)
 
                 painter.drawEllipse(QPointF(center.x, center.y), m_scalar * bounds.radius, m_scalar * bounds.radius);
 
-            }
-        }
-
-        if (profile != nullptr) {
-            const Polygon& wrapper = profile->wrapper();
-            const std::vector<glm::dvec2>& border = wrapper.border();
-
-            painter.setPen(Qt::darkCyan);
-            for (uint32_t i = 0; i < border.size(); i++) {
-                const glm::vec2& a = transformed(border[i]);
-                const glm::vec2& b = transformed(border[(i + 1) % border.size()]);
-                painter.drawLine(QPointF(a.x, a.y), QPointF(b.x, b.y));
-            }
-
-            if (!profile->complete()) {
-                auto tri = profile->nextTriangle();
-                Ray<2> ray(profile->border()[tri.I0], glm::normalize(profile->border()[tri.I2] - profile->border()[tri.I0]));
-
-                auto [hit, tr, tf] = Collision2D::intersection(wrapper, ray);
-//                std::cout << "P " << hit << " " << tr << " " << tf << "\n";
-                if (hit) {
-                    const glm::vec2& a = transformed(tr * ray);
-                    const glm::vec2& b = transformed(tf * ray);
-                    painter.drawLine(QPointF(a.x, a.y), QPointF(b.x, b.y));
-                }
             }
         }
 

@@ -41,7 +41,7 @@ public:
     void updateTool();
     void updateTool(const glm::dvec3& location);
 
-    void updatePath();
+    void setPath(const std::vector<glm::dvec3>& path);
 
     void enableBounds(bool enable);
     void enableTree(bool enable);

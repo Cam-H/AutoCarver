@@ -10,7 +10,7 @@
 #include "fileIO/SerialList.h"
 #include "core/Functions.h"
 
-double SectionOperation::RUN_UP = 0.02;
+double SectionOperation::RUN_UP = 0.025;
 uint8_t SectionOperation::ITERATIONS = 8;
 
 SectionOperation::SectionOperation()
@@ -153,20 +153,31 @@ bool SectionOperation::clear(const Polygon& hull)
 
 void SectionOperation::Set::offset(double dx, double dy)
 {
-    glm::dvec2 delta = dx * axis + dy * normal;
+    glm::dvec2 delta = dx * axis + dy * normal();
+
+    for (glm::dvec3& vertex : approach) {
+        vertex.x += delta.x;
+        vertex.y += delta.y;
+    }
 
     for (std::pair<glm::dvec2, double>& motion : motions) {
         motion.first += delta;
     }
 }
 
-void SectionOperation::Set::flipNormal()
+void SectionOperation::Set::smooth(double reference)
 {
-    for (glm::dvec3& vertex : approach) {
-        vertex.z = Functions::radWrap(vertex.z + M_PI);
+    double start = approach.empty() ? theta : approach[0].z;
+    double delta = reference - initialOrientation();
+
+    std::cout << "DELTA: " << delta << " -> ";
+
+    if (std::abs(delta) > 1e-6) {
+        for (glm::dvec3& vertex : approach) vertex.z += delta;
+        theta += delta;
     }
 
-    normal = -normal;
+    std::cout << reference - initialOrientation() << "\n";
 }
 
 glm::dvec3 SectionOperation::Set::start() const
@@ -178,7 +189,7 @@ glm::dvec3 SectionOperation::Set::start() const
     return {
         motions.front().first.x,
         motions.front().first.y,
-        atan2(axis.y, axis.x)
+        theta
     };
 }
 
@@ -188,7 +199,7 @@ glm::dvec3 SectionOperation::Set::end() const
         return {
             motions.back().first.x,
             motions.back().first.y,
-            atan2(axis.y, axis.x)
+            theta
         };
     }
 
@@ -196,14 +207,36 @@ glm::dvec3 SectionOperation::Set::end() const
     return approach.back();
 }
 
+glm::dvec2 SectionOperation::Set::normal() const
+{
+    return { -sin(theta), cos(theta) };
+}
+
+double SectionOperation::Set::angle(const glm::dvec2& normal) const
+{
+    return atan2(-normal.x, normal.y);
+}
+
+
+double SectionOperation::Set::initialOrientation() const
+{
+    if (!approach.empty()) return approach[0].z;
+    return theta;
+}
+double SectionOperation::Set::finalOrientation() const
+{
+    if (motions.empty() && !approach.empty()) return approach.back().z;
+    return theta;
+}
+
 glm::dvec2 SectionOperation::Set::initialNormal() const
 {
     if (!approach.empty()) return { -sin(approach[0].z), cos(approach[0].z) };
-    return normal;
+    return normal();
 }
 glm::dvec2 SectionOperation::Set::finalNormal() const
 {
-    if (!motions.empty()) return normal;
+    if (!motions.empty()) return normal();
     return { -sin(approach.back().z), cos(approach.back().z) };
 }
 
@@ -213,14 +246,13 @@ std::vector<glm::dvec3> SectionOperation::Set::path() const
 
     std::vector<glm::dvec3> path = approach;
 
-    double z = atan2(-normal.x, normal.y);
     for (const std::pair<glm::dvec2, double>& motion : motions) {
-        path.emplace_back(motion.first.x, motion.first.y, z);
+        path.emplace_back(motion.first.x, motion.first.y, theta);
 
         glm::dvec2 peak = motion.first + motion.second * travel;
-        path.emplace_back(peak.x, peak.y, z);
+        path.emplace_back(peak.x, peak.y, theta);
 
-        path.emplace_back(motion.first.x, motion.first.y, z);
+        path.emplace_back(motion.first.x, motion.first.y, theta);
     }
 
     return path;
@@ -258,8 +290,10 @@ bool SectionOperation::prepareRelief(const glm::dvec2& initial,
                    double length,
                    const Profile* profile)
 {
-    if (checkFloor(initial, normal) && std::abs(glm::dot(external, normal)) > 0.2) {
+    if (checkFloor(initial, normal) && std::abs(glm::dot(internal, normal)) < 0.99 && std::abs(glm::dot(external, normal)) > 0.2) { // TODO better internal check
         m_reliefs.emplace_back(initial, internal, external, opposite, normal, length, width + RUN_UP, thickness);
+        std::cout << glm::dot(internal, normal) << " " << glm::dot(external, normal) << " | " << m_reliefs.back().step(thickness) << " " << lAC << "\n";
+
         if (m_reliefs.back().step(thickness) < lAC && profile->validate(m_reliefs.back())) return true;
         m_reliefs.pop_back();
     }
@@ -422,16 +456,18 @@ std::vector<SectionOperation::Set> SectionOperation::sequence(const SectionOpera
     cuts.back().motions.emplace_back(initial, millDistance);
 
     // Perform a blind cut against the newly accessible surface, if the milling did not entirely clear it
-    if (millDistance + 1e-12 < relief.length && width < millDistance) {
+    bool doBlind = millDistance + 1e-12 < relief.length && width < millDistance;
+    if (doBlind) {
         normal = { relief.internal.y, -relief.internal.x };
+        if (reverse ^ (glm::dot(normal, relief.external) > 0)) normal = -normal;
 
-        initial = relief.start + relief.internal * (width + 0.5 * RUN_UP);
+        initial = relief.start - !reverse * thickness * normal + relief.internal * (width + 0.5 * RUN_UP);
 
-        glm::dvec3 prev = cuts.back().end();
+
+//        cuts.emplace_back(std::vector<glm::dvec3>{}); // Buffer for the approach that will be added later
 
         cuts.emplace_back(relief.internal, normal);
         cuts.back().motions.emplace_back(initial, relief.length - width - 0.5 * RUN_UP);
-//        cuts.back().approach = { prev, cuts.back().start() };
 
         // TODO backcut
 //        cuts.emplace_back( relief.internal, normal, -relief.internal);
@@ -445,6 +481,25 @@ std::vector<SectionOperation::Set> SectionOperation::sequence(const SectionOpera
 
 //        if (atan2(set.normal.y, set.normal.x) < 0) set.normal = -set.normal;
     }
+
+    if (doBlind) {
+        glm::dvec3 prev = cuts[cuts.size() - 2].end();
+        double start = cuts.back().initialOrientation();
+        while (prev.z - start >  M_PI) prev.z -= M_PI;
+        while (prev.z - start < -M_PI) prev.z += M_PI;
+        cuts.back().approach.emplace_back(prev);
+    }
+
+//    if (doBlind) {
+//        Set& transition = cuts[cuts.size() - 2];
+//        glm::dvec3 prev = cuts[cuts.size() - 3].end(), start = cuts.back().start();
+//        glm::dvec2 off = -0.5 * !reverse * thickness * normal;
+//
+//        if (start.z - prev.z > M_PI) start.z -= M_PI;
+//        if (start.z - prev.z < -M_PI) start.z += M_PI;
+//
+//        transition.approach = { prev, { prev.x, prev.y, start.z }, { start.x + off.x, start.y + off.y, start.z}, start};
+//    }
 
     return cuts;
 }

@@ -66,8 +66,12 @@ void CartesianTrajectory::resolve(uint32_t steps)
 //    }
 
     m_path = PiecewisePolyPath(waypoints);
+//    std::cout << m_path.segments() << " " << m_path.sEnd() << " " << m_dof << " " << m_valid << "sizzz\n";
 
-    if (TOPPTrajectory::testValidity()) update();
+    if (TOPPTrajectory::testValidity()) {
+//        std::cout << "TV TPass\n";
+        update();
+    }
 //    testValidity();
 }
 

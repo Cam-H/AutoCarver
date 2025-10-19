@@ -49,8 +49,8 @@ public:
     void skip();
     void refine();
 
-    void prepare(const Polygon& wrapper);
     void prepare();
+    void prepare(const Polygon& wrapper);
 
     bool planReturn();
     bool planNext();
@@ -112,7 +112,6 @@ public:
     [[nodiscard]] std::vector<Polygon> nextSkips();
 
     [[nodiscard]] const RRTPlanner* planner() const;
-    [[nodiscard]] const Polygon& wrapper() const;
 
     [[nodiscard]] std::vector<std::pair<glm::dvec2, glm::dvec2>> debugEdges() const override;
 
@@ -141,7 +140,7 @@ private:
 
     struct Sequence {
 
-        Sequence() : valid(false), bounds({}, {}, {}), leftFirst(false), cutWrap(false) {}
+        Sequence() : valid(false), bounds({}, {}, {}), leftFirst(false) {}
 
         Sequence(const Triangle2D& bounds, const std::vector<SectionOperation::Set>& left, const std::vector<SectionOperation::Set>& right)
             : valid(false)
@@ -149,17 +148,11 @@ private:
             , leftFirst(true)
             , left(left)
             , right(right)
-            , cutWrap(false)
-            , cutPosition()
-            , cutDirection()
-            , cutDepth(0.0)
         {
             // Make sure there is extra space to add return set if needed
             this->left.reserve(left.size() + 1);
             this->right.reserve(right.size() + 1);
         }
-
-        [[nodiscard]] std::pair<glm::dvec3, glm::dvec3> cut() const;
 
         bool valid;
         Triangle2D bounds;
@@ -170,17 +163,9 @@ private:
         bool leftFirst;
         std::vector<SectionOperation::Set> left;
         std::vector<SectionOperation::Set> right;
-
-        bool cutWrap; // Whether m_wrapper needs to be trimmed before performing the sequence
-        std::vector<glm::dvec3> cutApproach; // Approach to the cut, if required
-        glm::dvec2 cutPosition;
-        glm::dvec2 cutDirection;
-        double cutDepth;
     };
 
     void initialize();
-
-    void sortOperations();
 
     [[nodiscard]] inline uint32_t terminus(uint32_t step) const;
     [[nodiscard]] inline uint32_t offsetIndex(uint32_t idx, uint32_t offset = 1) const;
@@ -196,11 +181,8 @@ private:
 
     void findFloor();
 
-    bool planSlice(const SectionOperation& op);
     bool planSequence(std::vector<Polygon>& decomposition, const SectionOperation& op);
     bool planTransition(const Triangle2D& bounds, const std::vector<Polygon>& env, std::vector<SectionOperation::Set>& sets);
-
-    std::vector<glm::dvec3> planClear(const std::vector<Polygon>& decomposition, const std::vector<Polygon>& bounds, uint32_t iterations, bool& success);
 
     bool developApproach(const std::vector<Polygon>& decomposition, uint32_t iterations = 5000);
 
@@ -249,7 +231,6 @@ private:
     uint32_t m_floorIndex;
 
     RRTPlanner* m_planner;
-    Polygon m_wrapper;
 };
 
 

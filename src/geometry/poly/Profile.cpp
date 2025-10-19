@@ -25,7 +25,6 @@ Profile::Profile(const std::vector<glm::dvec2>& contour, const glm::dvec3& norma
     , m_width(0.108)
     , m_thickness(0.011)
     , m_planner(nullptr)
-    , m_wrapper(Polygon::convex(contour))
 {
     initialize();
 }
@@ -87,8 +86,6 @@ bool Profile::serialize(std::ofstream& file) const
 
     Serializer::writeUint(file, m_floorIndex);
 
-    m_wrapper.serialize(file);
-
 //    std::cout << "Serialize\n";
 //    print();
 
@@ -141,11 +138,8 @@ bool Profile::deserialize(std::ifstream& file)
 
     m_floorIndex = Serializer::readUint(file);
 
-    m_wrapper = Polygon(file);
 //    std::cout << "Deserialize\n";
 //    print();
-
-//    sortOperations();
 
     return true;
 }
@@ -156,9 +150,18 @@ void Profile::initialize()
 
     correctWinding();
 
+    // Order vertices such that they begin from 6 o'clock
+    auto it = std::min_element(m_vertices.begin(), m_vertices.end(), [](const glm::dvec2& lhs, const glm::dvec2& rhs){
+        return lhs.y < rhs.y;
+    });
+
+    std::vector<glm::dvec2> vertices = { it, m_vertices.end() };
+    vertices.insert(vertices.end(), m_vertices.begin(), it);
+    m_vertices = std::move(vertices);
+
     m_hull = hull();
 
-    // Reorganize recorded border to ensure it is in ascending order (Needed for future operations)
+    // Reorganize recorded border to ensure it is in ascending order (Needed for future operations) TODO check may be unnecessary now with above ^
     uint32_t last = m_hull[0];
     for (uint32_t i = 1; i < m_hull.size(); i++) {
         if (m_hull[i] < last) {
@@ -176,43 +179,7 @@ void Profile::initialize()
         if (count > 2) emplaceOperation(m_hull[i], count);
     }
 
-    sortOperations();
-
     findFloor();
-}
-
-// Sort operations by normal in a counter-clockwise direction beginning from 6 o'clock ([0, -1])
-void Profile::sortOperations()
-{
-    std::vector<std::pair<uint32_t, double>> positions;
-    positions.reserve(m_operations.size());
-
-    for (uint32_t i = 0; i < m_operations.size(); i++) {
-        glm::dvec2 ref = m_vertices[offsetIndex(m_operations[i].first, m_operations[i].second - 1)] - m_vertices[m_operations[i].first];
-        glm::dvec2 ext = glm::normalize(glm::dvec2(ref.y, -ref.x));
-        ref = m_vertices[offsetIndex(m_operations[i].first, 1)] - m_vertices[m_operations[i].first];
-        if (glm::dot(ext, ref) > 0) ext = -ext;
-
-        positions.emplace_back(i, atan2(ext.x, ext.y));
-    }
-
-//    for (const std::pair<uint32_t, double>& position : positions) {
-//        std::cout << position.first << " " << position.second << "\n";
-//    }
-
-    std::sort(positions.begin(), positions.end(), [](const std::pair<uint32_t, double>& lhs, const std::pair<uint32_t, double>& rhs){
-       return lhs.second > rhs.second; // Reverse for clockwise
-    });
-
-    std::vector<std::pair<uint32_t, uint32_t>> operations;
-    operations.reserve(m_operations.size());
-
-    for (const std::pair<uint32_t, double>& position : positions) {
-        operations.emplace_back(m_operations[position.first]);
-//        std::cout << "-> " << position.first << " " << operations.back().first << "\n";
-    }
-
-    m_operations = std::move(operations);
 }
 
 // Returns the index of the terminal vertex for the step
@@ -405,17 +372,9 @@ const RRTPlanner* Profile::planner() const
     return m_planner;
 }
 
-const Polygon& Profile::wrapper() const
-{
-    return m_wrapper;
-}
-
 void Profile::refine()
 {
     if (!m_sections.empty()) {
-        if (m_sequence[m_sections[0].index].cutWrap) { // Adjust wrapper to account for now removed material
-            m_wrapper = Collision2D::fragment(m_wrapper, Ray<2>(m_vertices[m_sections[0].triangle.I0], -nextExternal()));
-        }
 
         if (m_planner != nullptr) { // Ensure planner starts from the latest position
             const Sequence& seq = m_sequence[m_sections[0].index];
@@ -436,7 +395,7 @@ void Profile::refine()
 
 void Profile::prepare()
 {
-    prepare(m_wrapper);
+    prepare(Polygon::convex(m_vertices));
 }
 
 void Profile::prepare(const Polygon& wrapper)
@@ -444,12 +403,10 @@ void Profile::prepare(const Polygon& wrapper)
     delete m_planner;
     m_planner = new RRTPlanner();
 
-    m_wrapper = wrapper;
-
     m_planner->setTargetDimensions(m_width, m_thickness);
 
-    auto [xMin, xMax] = m_wrapper.xExtents();
-    auto [yMin, yMax] = m_wrapper.yExtents();
+    auto [xMin, xMax] = wrapper.xExtents();
+    auto [yMin, yMax] = wrapper.yExtents();
 
     double margin = 2.0 * m_planner->radius();
 
@@ -463,7 +420,8 @@ void Profile::prepare(const Polygon& wrapper)
 bool Profile::planReturn()
 {
     auto [min, max] = m_planner->getBounds();
-    m_planner->setGoal({ max.x, max.y, 0.0 });
+    glm::dvec2 home = min + 0.95 * (max - min); // Return a bit below the top corner (Faster planning)
+    m_planner->setGoal({ home.x, home.y, 0.0 });
 
     std::vector<Polygon> decomposition = decompose();
     if (m_planner->solve(decomposition, 10000)) {
@@ -478,33 +436,36 @@ bool Profile::planNext()
 {
     if (m_sections.empty()) return false;
 
+    // Only plan one side at a time
+    if (isNextExternal() && glm::dot({ 1, 0 }, nextExternal()) < 1e-6) {
+        std::cout << "\033[93m[Profile] Rejected section. Only right-half sections are used\033[0m\n";
+        return false; // TOOD better division
+    }
+//    if (!isNextExternal()) return false;
+
     auto op = nextOperation();
 
     if (op.isValid()) {
 
         const glm::dvec3 initialStart = m_planner->start();
-        bool cutWrap = isNextExternal() && !op.clear(m_wrapper);
 
-        std::cout << "PN " << isNextExternal() << " " << cutWrap << " " << initialStart.x << " " << initialStart.y << "\n";
+        std::cout << "PN " << isNextExternal() << " " << initialStart.x << " " << initialStart.y << "\n";
 
         m_sequence[m_sections[0].index] = { op.bounds(0.5 * m_width), op.left(), op.right() };
         Sequence& seq = m_sequence[m_sections[0].index];
+        for (auto& set : seq.left) if (set.theta < 0) set.theta += M_PI;
+        for (auto& set : seq.right) if (set.theta < 0) set.theta += M_PI;
 
-        if (cutWrap && !planSlice(op)) {
-            std::cout << "\033[93mFailed to perform slice!\n\033[0m";
-            return false;
-        }
 
-        std::vector<Polygon> decomposition = decompose();
+        std::vector<Polygon> decomposition = decompose(); // Don't really need to calculate the full thing every time TODO
 
-        if (planSequence(decomposition, op)) {
+        bool success = planSequence(decomposition, op);
+        m_planner->setStart(initialStart); // Restore planner start
+
+        if (success) {
             seq.valid = true;
-
-            m_planner->setStart(initialStart);
-            if (developApproach(decomposition, 10000)) return true;
+            if (developApproach(decomposition, 20000)) return true;
         } else std::cout << "\033[93m[Profile] Failed to develop sequence!\n\033[0m";
-
-        m_planner->setStart(initialStart); // Restore planner start when planning failed
     } else std::cout << "\033[93m[Profile] Next section operation is invalid!\n\033[0m";
 
     return false;
@@ -513,140 +474,28 @@ bool Profile::planNext()
 bool Profile::developApproach(const std::vector<Polygon>& decomposition, uint32_t iterations)
 {
     if (!m_sections.empty()) {
-        const glm::dvec3 initialStart = m_planner->start();
 
         Sequence& seq = m_sequence[m_sections[0].index];
         seq.approach.clear();
 
-        std::vector<Polygon> bounds = { m_wrapper };
-        bool success = true;
-
-        if (seq.cutWrap) { // Begin with approach to the through cut, if needed
-            double z = atan2(seq.cutDirection.y, seq.cutDirection.x);
-            if (seq.cutApproach.empty()) { // Don't bother recalculating
-
-                // Plan wrapper clear if needed
-                seq.cutApproach = planClear(decomposition, bounds, iterations, success);
-                if (!success) {
-                    seq.cutApproach.clear();
-                    return false;
-                }
-
-                // Plan travel to the slice position
-                m_planner->setGoal({ seq.cutPosition.x, seq.cutPosition.y, z });
-                if (m_planner->solve({ m_wrapper }, iterations)) {
-                    auto path = m_planner->prunedPath(bounds);
-                    seq.cutApproach.insert(seq.cutApproach.end(), path.begin(), path.end());
-                } else {
-                    std::cout << "\033[93m[Profile] Failed to develop slice approach!\n\033[0m";
-                    seq.cutApproach.clear();
-                    return false;
-                }
-            }
-
-            if (!seq.cutApproach.empty()) { // Prepare for subsequent approach planning (towards actual cuts)
-                glm::dvec2 end = seq.cutPosition + seq.cutDepth * seq.cutDirection;
-                end += 0.02 * glm::dvec2(1, 0) * (1.0 - 2.0 * (seq.cutDirection.x > 0)); // Move off piece a bit to help path planning
-                m_planner->setStart({ end.x, end.y, z });
-
-                bounds[0] = Collision2D::fragment(bounds[0], Ray<2>(m_vertices[m_sections[0].triangle.I0], -nextExternal()));
-                seq.approach.emplace_back(end.x, end.y, z);
-
-                //                return true; // todo remove
-            }
-        } else if (isNextExternal()) {
-            seq.approach = planClear(decomposition, bounds, iterations, success);
-            if (!success) {
-                std::cout << "\033[93m[Profile] Failed to clear for approach!\n\033[0m";
-                return false;
-            }
-        }
-
-
         // Select the nearer edge to begin from
-        if (m_planner->nearer(seq.left.front().start(), seq.right.front().start())) m_planner->setGoal(seq.left.front().start());
-        else {
-            m_planner->setGoal(seq.right.front().start());
+        glm::dvec3 goal = seq.left.front().start();
+        if (m_planner->nearer(seq.right.front().start(), goal)) {
+            goal = seq.right.front().start();
             seq.leftFirst = false;
         }
 
-        const std::vector<Polygon>& env = isNextExternal() ? bounds : decomposition;
-        bool solve = m_planner->solve(env, iterations);
-        if (!solve) {
-            SerialList<Polygon>(env).save("../out/apoly.bin");
-            m_planner->save("../out/aplan.bin");
-        }
-
-        if (seq.cutWrap) m_planner->setStart(initialStart);
-
-        if (solve) {
-            const std::vector<glm::dvec3> path = m_planner->prunedPath(env);
-            seq.approach.insert(seq.approach.end(), path.begin(), path.end());
-            return true;
-        } else std::cout << "\033[93m[Profile] Failed to develop approach!\n\033[0m";
-    }
-
-    return false;
-}
-
-// Develop path to clear the wrapper
-std::vector<glm::dvec3> Profile::planClear(const std::vector<Polygon>& decomposition, const std::vector<Polygon>& bounds, uint32_t iterations, bool& success)
-{
-    success = true;
-
-    glm::dvec3 start = m_planner->start();
-    double overlap = m_wrapper.clear(SectionOperation::RUN_UP, start);
-    if (std::abs(overlap) > 1e-6) {
-        m_planner->setGoal(start);
+        m_planner->setGoal(goal);
 
         if (m_planner->solve(decomposition, iterations)) {
-            m_planner->setStart(start);
-            return m_planner->prunedPath(bounds);
+            seq.approach = m_planner->prunedPath(decomposition);
+            std::cout << "CONNECTION " << seq.approach[0].z << " " << seq.approach.back().z << " | " << goal.z << " " << m_planner->goal().z << "\n";
+            return true;
         } else {
-            std::cout << "\033[93m[Profile] Failed to clear!\n\033[0m";
-            success = false;
+            std::cout << "\033[93m[Profile] Failed to develop approach!\n\033[0m";
+            SerialList<Polygon>(decomposition).save("../out/apoly.bin");
+            m_planner->save("../out/aplan.bin");
         }
-    }
-
-    return {};
-}
-
-//glm::dvec3 Profile::Sequence::start() const
-//{
-//    if (cutWrap)
-//}
-
-bool Profile::planSlice(const SectionOperation& op)
-{
-    Ray<2> ray(m_vertices[m_sections[0].triangle.I0], op.external());
-
-    auto [hit, tr, tf] = Collision2D::intersection(m_wrapper, ray);
-    std::cout << "P " << hit << " " << tr << " " << tf << " | " << ray.axis.x << " " << ray.axis.y << " " << glm::dot(ray.axis, { 0, 1 }) << "\n";
-    if (hit) {
-
-        Sequence& seq = m_sequence[m_sections[0].index];
-        double offset = 0.5 * m_width + SectionOperation::RUN_UP;
-
-        // Ensure cut is performed downwards
-        seq.cutDirection = -ray.axis;
-        if (glm::dot(ray.axis, { 0, 1 }) < 0) {
-            seq.cutDirection = -seq.cutDirection;
-            seq.cutPosition = (tr - offset) * ray;
-        } else seq.cutPosition = (tf + offset) * ray;
-
-        seq.cutDepth = tf - tr + SectionOperation::RUN_UP;
-
-        // Adjust (reduce) depth to prevent impacting the floor
-        double angle = ray.angle(), dh = 0.5 * m_width * sin(angle) + 0.5 * m_thickness * cos(angle);
-        double yc = seq.cutPosition.y + seq.cutDirection.y * seq.cutDepth, dy = -std::min(0.0, yc - dh - floor());
-//        std::cout << angle << " " << cos(angle) << " " << sin(angle) << " " << yc << " | " << (yc - dh) << " ~ " << floor() << "\n";
-//        std::cout << seq.cutPosition.y << " " << floor() << " " << dh << " " << std::hypot(m_width, m_thickness) << " PSSSSSSSSSS\n";
-        seq.cutDepth -= dy / sin(angle);
-
-        glm::dvec2 normal = op.normal();
-        seq.cutPosition += 0.5 * m_thickness * normal;
-
-        return (seq.cutWrap = true);
     }
 
     return false;
@@ -663,13 +512,11 @@ bool Profile::planSequence(std::vector<Polygon>& decomposition, const SectionOpe
     m_planner->setGoal(seq.right.front().start());
 
     // Use the wrapper to develop path between external start positions
-    bool useWrapper = isNextExternal() && !seq.cutWrap;
-    const std::vector<Polygon>& bounds = useWrapper ? std::vector<Polygon>{ m_wrapper } : decomposition; // Don't really need to calculate the full thing every time TODO
 
-    std::cout << "PSOP " << bounds.size() << "\n";
+    std::cout << "PSOP " << decomposition.size() << "\n";
     m_planner->setSampler(RRTPlanner::SampleSpace::BOX);
-    if (m_planner->solve(bounds, 10000)) {
-        m_sequence[m_sections[0].index].transition = m_planner->prunedPath(bounds);
+    if (m_planner->solve(decomposition, 20000)) {
+        m_sequence[m_sections[0].index].transition = m_planner->prunedPath(decomposition);
 
         std::cout << "PATH " << m_sequence[m_sections[0].index].transition.size() << " / " << m_planner->path().size() << "\n";
 
@@ -712,7 +559,7 @@ bool Profile::planSequence(std::vector<Polygon>& decomposition, const SectionOpe
         return true;
     } else {
         std::cout << "\033[93m[Profile] Failed to develop path between edges!\n\033[0m";
-        SerialList<Polygon>(bounds).save("../out/FPOLY" + std::to_string(iter) + "-SEQ.bin");
+        SerialList<Polygon>(decomposition).save("../out/FPOLY" + std::to_string(iter) + "-SEQ.bin");
         m_planner->save("../out/FPLAN" + std::to_string(iter++) + "-SEQ.bin");
     }
 
@@ -722,52 +569,39 @@ bool Profile::planSequence(std::vector<Polygon>& decomposition, const SectionOpe
 // Develops approaches to connect disjoint sets
 bool Profile::planTransition(const Triangle2D& bounds, const std::vector<Polygon>& env, std::vector<SectionOperation::Set>& sets)
 {
-    glm::dvec3 start = sets.front().start(), end = sets.back().end();
+    // Try planning approach to the blind cut
+    glm::dvec3 start = sets[sets.size() - 3].end(), end = sets.back().start();
+//    m_planner->setStart(end);
+//    m_planner->setGoal(start);
+//
+//    static int iter = 0;
+//    m_planner->save("../out/aplan" + std::to_string(iter) + ".bin");
+//    SerialList<Polygon>(env).save("../out/apoly" + std::to_string(iter++) + ".bin");
+//    if (m_planner->solve(env, 10000)) {
+//        sets[sets.size() - 2].approach = m_planner->prunedPath(env);
+//        std::reverse(sets[sets.size() - 2].approach.begin(), sets[sets.size() - 2].approach.end()); // Test backwards (Easier for planner)
+//    } else { // TODO method not guaranteed to avoid collision
+//        sets[sets.size() - 2].approach = std::vector<glm::dvec3>{ start, { end.x, end.y, start.z }, end };
+//        std::cout << "DEFAULT BLIND TRANSITION\n";
+////        return false;
+//    }
 
     // Restrict configuration space to a smaller area (Solution is necessarily in the region)
 //    auto region = Circle::enclose({ bounds.a, bounds.b, bounds.c, { start.x, start.y } });
 //    region.radius += 2.0 * m_planner->radius();
 //    m_planner->setBounds(region);
 
-    // Try preparing approach to return to the start point of these sets
+    // Try planning approach to return to the start point of these sets
+    start = sets.front().start(), end = sets.back().end();
     m_planner->setStart(end);
     m_planner->setGoal(start);
+
     if (m_planner->solve(env, 5000)) {
         sets.emplace_back(m_planner->prunedPath(env));
     } else { // TODO method not guaranteed to avoid collision
         sets.emplace_back(std::vector<glm::dvec3>{ end, start });
 //        return false;
     }
-
-//    start = sets.front().end();
-//    for (uint32_t i = 0; i < sets.size(); i++) {
-//        std::cout << "PT " << i << " " << sets[i].approach.size() << " " << sets[i].motions.size() << " " << atan2(sets[i].axis.y, sets[i].axis.x) << " " << atan2(sets[i].normal.y, sets[i].normal.x) << "\n";
-//        if (!sets[i].motions.empty() && atan2(sets[i].normal.y, sets[i].normal.x) < 0) {
-//            std::cout << "REVERSING\n";
-//            sets[i].normal = -sets[i].normal;
-//        }
-////        start = sets[i].end();
-//    }
-
-//    std::cout << sets.size() << " zzPT:\n";
-//    for (const auto& set : sets) {
-//        auto s = set.start(), e = set.end();
-//        std::cout << set.approach.size() << " " << set.motions.size() << " " << s.x << " " << s.y << " " << s.z << " | " << e.x << " " << e.y << " " << e.z << "\n";
-//    }
-//
-//    for (uint32_t i = 1; i < sets.size(); i++) {
-//        start = sets[i - 1].end();
-//        end = sets[i].start();
-//
-//        glm::dvec3 delta = end - start;
-//        if (glm::dot(delta, delta) > 1e-3) {
-//            m_planner->setStart(start);
-//            m_planner->setGoal(end);
-//            if (m_planner->solve(env, 5000)) {
-//                sets[i].approach = m_planner->prunedPath(env);
-//            } // else return false;
-//        }
-//    }
 
     return true;
 }
@@ -839,14 +673,6 @@ std::vector<glm::dvec3> Profile::nextPath() const
     return path;
 }
 
-std::pair<glm::dvec3, glm::dvec3> Profile::Sequence::cut() const
-{
-    glm::dvec3 pos = { cutPosition.x, cutPosition.y, atan2(cutDirection.y, cutDirection.x) };
-    auto delta = cutDepth * glm::dvec3(cutDirection.x, cutDirection.y, 0);
-
-    return { pos, pos + delta };
-}
-
 const Triangle2D& Profile::nextBounds() const
 {
     assert(!m_sections.empty() && m_sections[0].index < m_sequence.size());
@@ -867,14 +693,7 @@ std::vector<SectionOperation::Set> Profile::nextSequence() const
     if (nextSequenceReady()) {
         const Sequence& seq = m_sequence[m_sections[0].index];
 
-        std::vector<SectionOperation::Set> sequence;
-        if (seq.cutWrap) {
-            sequence.emplace_back(seq.cutDirection, glm::dvec2(seq.cutDirection.y, -seq.cutDirection.x));
-            sequence[0].motions.emplace_back(seq.cutPosition, seq.cutDepth);
-            sequence[0].approach = seq.cutApproach;
-        }
-
-        sequence.emplace_back(seq.approach);
+        std::vector<SectionOperation::Set> sequence = { seq.approach };
 
         const std::vector<SectionOperation::Set>& first = seq.leftFirst ? seq.left : seq.right;
         sequence.insert(sequence.end(), first.begin(), first.end());
@@ -884,53 +703,18 @@ std::vector<SectionOperation::Set> Profile::nextSequence() const
         if (!seq.leftFirst) std::reverse(sequence.back().approach.begin(), sequence.back().approach.end());
         sequence.insert(sequence.end(), second.begin(), second.end());
 
-        std::cout << "PRE\n";
-        for (const auto& set : sequence) {
-            std::cout << set.initialNormal().x << " " << set.initialNormal().y << " P " << set.finalNormal().x << " " << set.finalNormal().y << "\n";
-        }
+//        for (const auto& set : sequence) {
+//            std::cout << set.approach.size() << " " << set.motions.size() << " | " << set.start().z << " -> " << set.end().z << "\n";
+//        }
 
-        glm::dvec2 test = { 2, 1 };
-        std::cout << atan2(test.y, test.x) << " " << atan2(-test.y, -test.x) << " TEST\n";
-
-        glm::dvec2 prev = sequence[0].initialNormal();
-        for (uint32_t i = 0; i < 1; i++) {
-
-            std::cout << i << ": " << sequence[i].approach.size() << " " << sequence[i].motions.size()
-                      << " | " << glm::dot(prev, sequence[i].initialNormal()) << " " << glm::dot(sequence[i].initialNormal(), sequence[i].normal) << "\n";
-
-            for (const glm::dvec3& v : sequence[i].approach) std::cout << "[" << v.x << " " << v.y << " " << v.z << "]\n";
-
-            prev = sequence[i].finalNormal();
-        }
-
+        // Adjust rotations such that endpoints are continuous
         for (uint32_t i = 1; i < sequence.size(); i++) {
-            std::cout << i << ": " << sequence[i].approach.size() << " " << sequence[i].motions.size()
-                      << " | " << glm::dot(sequence[i - 1].finalNormal(), sequence[i].initialNormal()) << " " << glm::dot(sequence[i].initialNormal(), sequence[i].normal) << "\n";
-
-            for (const glm::dvec3& v : sequence[i].approach) std::cout << "[" << v.x << " " << v.y << " " << v.z << "]\n";
-            if (sequence[i].approach.empty()) {
-                auto s = sequence[i].start(), e = sequence[i].end();
-                std::cout << "[" << s.x << " " << s.y << " " << s.z << "]\n";
-                std::cout << "[" << e.x << " " << e.y << " " << e.z << "]\n";
-            }
-
-            if (glm::dot(sequence[i - 1].finalNormal(), sequence[i].initialNormal()) < 0) {
-                sequence[i].flipNormal();
-            }
+            sequence[i].smooth(sequence[i - 1].finalOrientation());
         }
 
-        std::cout << "POST\n";
-        for (const auto& set : sequence) {
-            std::cout << set.initialNormal().x << " " << set.initialNormal().y << " P " << set.finalNormal().x << " " << set.finalNormal().y << "\n";
-        }
-
-        std::cout << "~~~~~~~~~~~~~~~~~~~\n";
-        glm::dvec3 last = sequence[0].start();
-        for (const auto& set : sequence) {
-            auto s = set.start(), del = s - last;
-            prev = set.end();
-            std::cout << s.x << " " << s.y << " " << s.z << ", delta: " << del.x << " " << del.y << " " << del.y << "\n";
-        }
+//        for (const auto& set : sequence) {
+//            std::cout << "TO: " << set.approach.size() << " " << set.motions.size() << " | " << set.start().z << " -> " << set.end().z << "\n";
+//        }
 
         return sequence;
     }

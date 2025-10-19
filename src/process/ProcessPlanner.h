@@ -121,8 +121,8 @@ private:
 
     std::vector<Action> planConvexTrim(const std::pair<Plane, std::vector<glm::dvec3>>& step);
 
-    void planSilhouetteRefinement();
-    void planSilhouetteTrim();
+    void planSilhouetteRefinement(double stepOffset);
+    void planSilhouetteTrim(const Profile& profile);
 
     std::vector<Action> planProfile(Profile& profile);
 

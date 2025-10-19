@@ -29,23 +29,29 @@ public:
     struct Set {
 
         Set(const glm::dvec2& axis, const glm::dvec2& normal)
-            : axis(axis), normal(normal), travel(axis) {}
+            : axis(axis), theta(angle(normal)), travel(axis) {}
 
         Set(const glm::dvec2& axis, const glm::dvec2& normal, const std::vector<std::pair<glm::dvec2, double>>& motions)
-                : axis(axis), normal(normal), travel(axis), motions(motions) {}
+                : axis(axis), theta(angle(normal)), travel(axis), motions(motions) {}
 
         Set(const glm::dvec2& axis, const glm::dvec2& normal, const glm::dvec2& travel)
-            : axis(axis), normal(normal), travel(travel) {}
+            : axis(axis), theta(angle(normal)), travel(travel) {}
 
         Set(const std::vector<glm::dvec3>& approach)
-                : axis(), normal(), travel(), approach(approach) {}
+                : axis(), theta(), travel(), approach(approach) {}
 
         void offset(double dx, double dy);
 
-        void flipNormal();
+        void smooth(double reference);
 
         [[nodiscard]] glm::dvec3 start() const;
         [[nodiscard]] glm::dvec3 end() const;
+
+        [[nodiscard]] glm::dvec2 normal() const; // Returns the normal to the flat of the blade
+        [[nodiscard]] double angle(const glm::dvec2& normal) const;
+
+        [[nodiscard]] double initialOrientation() const;
+        [[nodiscard]] double finalOrientation() const;
 
         [[nodiscard]] glm::dvec2 initialNormal() const;
         [[nodiscard]] glm::dvec2 finalNormal() const;
@@ -53,8 +59,8 @@ public:
         [[nodiscard]] std::vector<glm::dvec3> path() const;
 
         glm::dvec2 axis; // Along the flat of the blade
-        glm::dvec2 normal; // Normal to the flat of the blade
         glm::dvec2 travel; // Direction of travel of the blade
+        double theta; // Angle to normal
 
         std::vector<std::pair<glm::dvec2, double>> motions; // First = start position, second = final distance from start
 

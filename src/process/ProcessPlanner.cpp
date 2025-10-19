@@ -87,7 +87,10 @@ ProcessPlanner::Report ProcessPlanner::plan(const std::shared_ptr<Sculpture>& ta
     } else sculpture->restoreAsHull();
 
     // Repeatedly refined the sculpture by cutting to the outline of the model at discrete orientations
-    if (m_config.silhouetteRefinementEnable) planSilhouetteRefinement();
+    if (m_config.silhouetteRefinementEnable) {
+        planSilhouetteRefinement(0.0);
+        planSilhouetteRefinement(M_PI / 2);
+    }
 
     // Capture model features with fine carving
 //    planFeatureRefinement();
@@ -166,6 +169,34 @@ void ProcessPlanner::planConvexTrim()
         }
 
         m_report.ctStepCount += actions.size();
+    }
+
+    if (m_config.silhouetteRefinementEnable) {
+
+        uint32_t count = std::floor(360.0 / m_config.stepOffset);
+        const double baseRotation = sculpture->rotation() + M_PI * m_config.stepStart / 180, offset = M_PI / 6;
+
+        auto* detector = new EdgeDetect(sculpture->model()->mesh());
+
+        detector->capture()->camera().setViewingAngle(180 / M_PI * -baseRotation, 0);
+        detector->capture()->focus();
+
+        for (uint32_t i = 0; i < count; i++) {
+            if (!withinActionLimit(0)) break;
+
+            // Render and determine the profile of the result
+            detector->update();
+
+            // Use the profile to prepare appropriate sculpting instructions for the robots
+            auto profile = detector->profile();
+            profile.setRefinementMethod(Profile::RefinementMethod::DELAUNEY);
+            profile.setToolDimensions(m_config.bladeWidth, m_config.bladeThickness);
+            planSilhouetteTrim(profile);
+
+            // Move the camera for the next image (in dg)
+            detector->capture()->camera().rotate(m_config.stepOffset);
+            detector->capture()->focus();
+        }
     }
 }
 
@@ -301,12 +332,12 @@ std::vector<Action> ProcessPlanner::planConvexTrim(const std::pair<Plane, std::v
 }
 
 // Generates profiles at the specified offsets before generating cut instructions
-void ProcessPlanner::planSilhouetteRefinement()
+void ProcessPlanner::planSilhouetteRefinement(double stepOffset)
 {
     m_report.appliedSilhouetteRefinement = true;
 
-    uint32_t steps = std::floor(180.0 / m_config.stepOffset);
-    const double baseRotation = sculpture->rotation() + M_PI * m_config.stepStart / 180, offset = M_PI / 6;
+    uint32_t steps = 2;
+    const double baseRotation = sculpture->rotation() + stepOffset, offset = M_PI / 6;
     double initialRotation = turntable->getJointValue(0), step = 0;
 
     // Prepare a 3D render / edge detection system to find the profile of the model
@@ -325,6 +356,10 @@ void ProcessPlanner::planSilhouetteRefinement()
     for (uint32_t i = 0; i < steps; i++) {
         if (!withinActionLimit(0)) break;
 
+        auto toNeutral = std::make_shared<SimpleTrajectory>(robot->getWaypoint(), m_config.robotHoverRight, m_config.solver);
+        toNeutral->setLimits(m_config.baseVelocityLimits, m_config.baseAccelerationLimits);
+        m_actions.emplace_back(toNeutral, robot);
+
         // Render and determine the profile of the result
         detector->update();
 
@@ -336,7 +371,7 @@ void ProcessPlanner::planSilhouetteRefinement()
         turntable->setJointValue(0, offset + baseRotation + M_PI * step / 180);
 
         auto actions = planProfile(profile);
-        m_report.srOrientations.emplace_back(m_config.stepStart + step, actions.size());
+        m_report.srOrientations.emplace_back(180 * stepOffset / M_PI + step, actions.size());
 
         if (!actions.empty()) {
             m_report.srStepCount += actions.size() + 1;
@@ -354,9 +389,9 @@ void ProcessPlanner::planSilhouetteRefinement()
         detector->sink().save(QString(filename.c_str()));
 
         // Move the camera for the next image (in dg)
-        detector->capture()->camera().rotate(m_config.stepOffset);
+        detector->capture()->camera().rotate(180);
         detector->capture()->focus();
-        step += m_config.stepOffset;
+        step += 180;
     }
 
     // Restore blade-sculpture collision checking
@@ -364,9 +399,54 @@ void ProcessPlanner::planSilhouetteRefinement()
 
 }
 
-void ProcessPlanner::planSilhouetteTrim()
+// Trim the sculpture such that the hull (from profile's perspective) matches the model
+// This step is important for later path planning to navigate with the profile
+void ProcessPlanner::planSilhouetteTrim(const Profile& profile)
 {
+    auto toNeutral = std::make_shared<SimpleTrajectory>(robot->getWaypoint(), m_config.robotHoverRight, m_config.solver);
+    toNeutral->setLimits(m_config.baseVelocityLimits, m_config.baseAccelerationLimits);
+    m_actions.emplace_back(toNeutral, robot);
 
+    auto model = std::make_shared<Sculpture>(*sculpture);
+    model->complete();
+
+    auto hull = ConvexHull(model->mesh());
+    std::vector<glm::dvec2> border = Polygon::convex(profile.border()).border();
+
+    double volume = hull.volume();
+
+    glm::dvec2 prev = border.back();
+    std::vector<std::pair<Plane, std::vector<glm::dvec3>>> steps;
+    for (const glm::dvec2& vertex : border) {
+        glm::dvec2 ext = glm::normalize(vertex - prev);
+        ext = { ext.y, -ext.x };
+
+        Plane plane = { profile.projected3D(prev), profile.projected3D(ext) };
+        if (glm::dot(ext, { 1, 0}) > 1e-6 && glm::dot(plane.normal, UP) > -0.95) { // Skip downwards facing edge TODO
+            steps.emplace_back(plane, Collision3D::intersection(hull, plane));
+            hull = Collision3D::fragment(hull, plane.inverted());
+
+            double newVolume = hull.volume();
+            if (steps.back().second.size() < 3) { // Ignore slices with negligible effects
+//                std::cout << "V: " << volume - hull.volume() << "\n";
+                volume = newVolume;
+                steps.pop_back();
+            }
+        }
+
+        prev = vertex;
+    }
+
+    for (const std::pair<Plane, std::vector<glm::dvec3>>& step : steps) {
+        if (m_config.actionLimitEnable && steps.size() >= m_config.actionLimit) break;
+
+        auto actions = planConvexTrim(step);
+        if (!actions.empty()) {
+            m_actions.insert(m_actions.end(), actions.begin(), actions.end());
+        }
+
+        m_report.ctStepCount += actions.size(); // In SR but same work as CT
+    }
 }
 
 // Given a profile (silhouette) of the mesh, prepares sculptor actions to perform required cuts to match
@@ -379,16 +459,7 @@ std::vector<Action> ProcessPlanner::planProfile(Profile& profile)
 
     auto rotation = glm::angleAxis(turntable->getJointValue(0), UP);
 
-    // Get the current mesh, as developed through all currently planned operations
-    auto model = std::make_shared<Sculpture>(*sculpture);
-    model->complete();
-
-    auto hull = ConvexHull(model->mesh());
-    hull.transform(rotation, m_config.center);
-
-    ProfileBuilder pb(model->mesh());
-    pb.build(profile.system());
-    profile.prepare(pb.hull());
+    profile.prepare();
 
     static int iter = 0;
     profile.save("../out/APROF" + std::to_string(iter++) + ".bin");
@@ -407,18 +478,26 @@ std::vector<Action> ProcessPlanner::planProfile(Profile& profile)
 
     if (!actions.empty()) {
         std::cout << "Outline complete. Returning...\n";
-        if (profile.planReturn()) {
-            Sequence seq(&profile, profile.returnPath());
-            seq.transform(rotation, m_config.center);
+        for (uint32_t i = 0; i < 10; i++) {
+            std::cout << "Return attempt " << i << ":\n";
+            if (profile.planReturn()) {
+                Sequence seq(&profile, profile.returnPath());
+                seq.transform(rotation, m_config.center);
 
-            auto trajectory = std::make_shared<CompositeTrajectory>(robot->dof());
-            trajectory->setLimits(m_config.baseVelocityLimits, m_config.baseAccelerationLimits);
+                auto trajectory = std::make_shared<CompositeTrajectory>(robot->dof());
+                trajectory->setLimits(m_config.baseVelocityLimits, m_config.baseAccelerationLimits);
 
-            Action action(trajectory, robot);
-            if (planSequence(seq, action)) {
-                actions.emplace_back(action);
-            } else std::cout << "\033[93mFailed to prepare return\n\033[0m";
+                Action action(trajectory, robot);
+                if (planSequence(seq, action)) {
+                    trajectory->update();
+                    if (trajectory->isValid()) {
+                        actions.emplace_back(action);
+                        break;
+                    }
+                } else std::cout << "\033[93mFailed to prepare return sequence\n\033[0m";
+            } else std::cout << "\033[93mFailed to plane return\n\033[0m";
         }
+
     }
 
     std::cout << "Profile complete\n";
@@ -477,6 +556,10 @@ bool ProcessPlanner::planSequence(const Sequence& sequence, Action& action)
 
             for (const std::pair<glm::dvec3, double>& motion : set.motions) {
                 auto pose = Pose(motion.first + m_config.bladeCenterOffset(axes.zAxis, motion.first), axes);
+                auto wp = robot->inverse(pose);
+
+                assert(wp.values.size() == robot->dof());
+                trajectory->connect(wp);
 
                 if (set.isBlind()) {
                     if (!planBlindCut(pose, direction * motion.second, action)) return false;
@@ -512,10 +595,18 @@ bool ProcessPlanner::planApproach(const Axis3D& axes, const std::vector<std::pai
         destination.axes.rotateZ(M_PI_2 + approach[i].second);
 
         auto transit = std::make_shared<CartesianTrajectory>(robot, start, destination, 10);
-        if (!transit->isValid()) return false;
-        trajectory->addTrajectory(transit);
+        if (transit->isValid()) {
+            trajectory->addTrajectory(transit);
+        } else {
+            std::cout << "\33[93m[ProcessPlanner] Failed to prepare cartesian link for approach. Fallback to simple\033[0m\n";
+            std::cout << robot->inverse(start) << "\n" << robot->inverse(destination) << "\n";
+            trajectory->connectTrajectory(std::make_shared<SimpleTrajectory>(robot->inverse(start), robot->inverse(destination), m_config.solver));
+        }
+
         start = destination;
     }
+
+    robot->setJointValue(5, trajectory->end().values[5]);
     std::cout << "APPROACH successful\n";
 
     return true;

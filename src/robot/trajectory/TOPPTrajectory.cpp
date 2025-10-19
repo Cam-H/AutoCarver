@@ -42,7 +42,7 @@ void TOPPTrajectory::update()
 
     m_ds = m_path.sEnd() / (500 - 1);
     TOPP solver(m_path, 500);
-    m_valid &= solver.compute(m_velocityLimits, m_accelerationLimits);
+    m_valid &= solver.compute(m_velocityLimits, m_accelerationLimits); // TODO better error checking
 
     m_t = solver.timestep();
 
