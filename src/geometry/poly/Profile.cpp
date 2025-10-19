@@ -1188,57 +1188,27 @@ std::vector<std::pair<glm::dvec2, glm::dvec2>> Profile::debugEdges() const {
     // Show clearances
     if (!m_sections.empty()) {
         TriIndex tri = m_sections[0].triangle;
-
-        std::vector<uint8_t> checks;
-
-//        auto margin = clearance();
-//        if (margin.first  != 0) edges.emplace_back(m_vertices[tri.I0], m_vertices[tri.I0] + std::min(margin.first,  2.0) * glm::normalize(m_vertices[tri.I0] - m_vertices[tri.I1]));
-//        else checks.emplace_back(0);
-//
-//        if (margin.second != 0) edges.emplace_back(m_vertices[tri.I2], m_vertices[tri.I2] + std::min(margin.second, 2.0) * glm::normalize(m_vertices[tri.I2] - m_vertices[tri.I1]));
-//        else checks.emplace_back(1);
-
         auto op = nextOperation();
 
         // Show reliefs, if appropriate
-//        std::cout << "XX " << op.valid << " " << op.reliefs.size() << "\n";
         for (const SectionOperation::Relief& relief : op.reliefs()) {
             for (uint32_t i = 1; i < relief.edges.size(); i++) edges.emplace_back(relief.edges[i - 1], relief.edges[i]);
 
-            edges.emplace_back(relief.start + relief.internal * m_width,
-                               relief.start + relief.internal * m_width + glm::dvec2{ 0, -0.2 });
-            edges.emplace_back(relief.start + relief.internal * relief.projection(m_thickness),
-                               relief.start + relief.internal * relief.projection(m_thickness) + glm::dvec2{ 0, 0.2 });
+            // Rough mockup of cut positions
+            std::vector<double> depths = relief.depths(m_thickness);
+            double t = relief.step(m_thickness);
+            glm::dvec2 pos = relief.start + relief.extLength * relief.external;
+            for (double depth : depths) {
+                edges.emplace_back(pos, pos - depth * relief.normal);
+                pos -= t * relief.external;
+            }
+
+//            edges.emplace_back(relief.start + relief.internal * m_width,
+//                               relief.start + relief.internal * m_width + glm::dvec2{ 0, -0.2 });
+//            edges.emplace_back(relief.start + relief.internal * relief.projection(m_thickness),
+//                               relief.start + relief.internal * relief.projection(m_thickness) + glm::dvec2{ 0, 0.2 });
         }
-
-//        Polygon tool(m_start, m_width, m_thickness, m_orientation);
-//        edges.emplace_back(tool.border()[0], tool.border()[1]);
-//        edges.emplace_back(tool.border()[1], tool.border()[2]);
-//        edges.emplace_back(tool.border()[2], tool.border()[3]);
-//        edges.emplace_back(tool.border()[3], tool.border()[0]);
-
-//        Polygon collider = op.midBounds();
-//        edges.emplace_back(collider.border().back(), collider.border()[0]);
-//        for (uint32_t i = 0; i < collider.vertexCount() - 1; i++) {
-//            edges.emplace_back(collider.border()[i], collider.border()[i + 1]);
-//        }
-
-
-//        auto d1 = m_vertices[tri.I0] - m_vertices[tri.I1], d2 = m_vertices[tri.I2] - m_vertices[tri.I1];
-
-//        auto t0 = atan2(d1.y, d1.x), dt = glm::atan(d2.y, d2.x) - t0;
-//        if (t0 < 0) t0 += 2 * M_PI;
-//        if (dt < 0) dt += 2 * M_PI;
-//        dt /= 1.0;
-//
-//        double t = t0;
-//        for (uint32_t i = 0; i < 2; i++) {
-//            edges.emplace_back(m_vertices[tri.I1], m_vertices[tri.I1] + 5.0 * glm::dvec2(cos(t), sin(t)));
-//            t += dt;
-//        }
     }
-
-//    std::cout << "FLOOR: " << floor() << "\n";
 
     return edges;
 }
